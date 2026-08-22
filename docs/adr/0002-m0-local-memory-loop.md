@@ -72,7 +72,7 @@ CaptureRequest
 
 ### Canonical 边界
 
-M0 冻结对象职责和关系，不在本 ADR 中冻结数据库表、序列化格式、ID 编码或语言类型。字段级 canonical schema 由下一工作包定义，但必须覆盖：
+M0 冻结对象职责和关系，不在本 ADR 中冻结数据库表、序列化格式、ID 编码或语言类型。字段级逻辑契约已由 [M0 Canonical Schema](../schema/m0-canonical-schema.md) 冻结，并覆盖：
 
 - 来源、片段和内容完整性；
 - proposal、decision、record 与状态事件；
@@ -105,4 +105,4 @@ M0 必须用合成数据证明：
 
 ## 后续决策
 
-完成 M0 实现前仍需依次冻结：字段级 canonical schema、合成 fixture 格式与指标口径、首个同步信任模式、RadishMind 首批参与方式，以及实现栈与迁移边界 ADR。
+M0 合成 fixture 格式与指标口径已经由 [M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 冻结。完成 M0 实现前仍需依次冻结：首个同步信任模式、RadishMind 首批参与方式，以及实现栈与迁移边界 ADR。

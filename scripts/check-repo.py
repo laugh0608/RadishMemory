@@ -40,6 +40,7 @@ REQUIRED_FILES = (
     "docs/adr/0001-branch-and-pr-governance.md",
     "docs/adr/0002-m0-local-memory-loop.md",
     "docs/architecture.md",
+    "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
     "docs/governance/agent-collaboration.md",
     "docs/governance/repository-governance.md",
@@ -49,11 +50,15 @@ REQUIRED_FILES = (
     "docs/product-scope.md",
     "docs/radishmind-boundary.md",
     "docs/references.md",
+    "docs/schema/m0-canonical-schema.md",
     "docs/status/current.md",
+    "fixtures/m0/local-memory-loop.v1.json",
+    "scripts/check-m0-fixtures.py",
     "scripts/check-repo.ps1",
     "scripts/check-repo.py",
     "scripts/check-repo.sh",
     "scripts/tests/test_check_repo.py",
+    "scripts/tests/test_check_m0_fixtures.py",
 )
 
 TEXT_SUFFIXES = {
@@ -370,7 +375,7 @@ def check_m0_contract(repo_root: Path, errors: list[str]) -> None:
         "docs/status/current.md": (
             "ADR 0002",
             "M0 字段级 canonical schema",
-            "M0 合成验收",
+            "M0 Fixture 与指标契约",
         ),
         "docs/product-scope.md": (
             "M0 Local Memory Loop",
@@ -407,6 +412,129 @@ def check_m0_contract(repo_root: Path, errors: list[str]) -> None:
         for fragment in fragments:
             if fragment not in text:
                 errors.append(f"{name} is missing M0 contract fragment: {fragment}")
+
+
+def check_m0_schema_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/schema/m0-canonical-schema.md": (
+            "radishmemory.m0/1",
+            "## SourceArtifact",
+            "## SourceFragment",
+            "## MemoryProposal",
+            "## MemoryDecision",
+            "## MemoryRecord",
+            "## MemoryStateEvent",
+            "## ContextPack",
+            "## DeleteRequest",
+            "## DeletionEvidence",
+            "UTF-8",
+            "sha256",
+            "local_only",
+            "effective_at",
+            "planned_components",
+            "component_results",
+            "processed_count = target_count",
+            "previous_evidence_id",
+            "未知版本必须返回显式 unsupported schema 错误",
+        ),
+        "docs/status/current.md": (
+            "M0 Canonical Schema",
+            "九种顶层对象",
+            "不绑定数据库、生产 ID 编码或语言类型",
+        ),
+        "docs/memory-model.md": (
+            "schema/m0-canonical-schema.md",
+            "last_state_event_id",
+            "不使用 `updated_at` 原地改写历史",
+        ),
+        "docs/architecture.md": (
+            "M0 Canonical Schema",
+            "MemoryStateEvent",
+            "以下运行接口仍需在对应阶段冻结",
+        ),
+        "docs/evaluation/m0-local-memory-loop.md": (
+            "M0 Canonical Schema",
+            "不得另造平行字段",
+            "字段级 canonical schema、fixture 格式",
+        ),
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "M0 Canonical Schema",
+            "合成 fixture 格式与指标口径",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已冻结的 [M0 Canonical Schema]",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing M0 schema contract fragment: {fragment}"
+                )
+
+
+def check_m0_fixture_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/evaluation/m0-fixture-contract.md": (
+            "radishmemory.m0-fixture/1",
+            "radishmemory-canonical-json-v1",
+            "radishmemory-fixture-id-v1",
+            "./scripts/check-m0-fixtures.py",
+            "retrieval_recall_at_5",
+            "model_free_loop_completion_rate",
+            "目标闭包未冻结",
+            "runner 不得用默认成功",
+        ),
+        "docs/status/current.md": (
+            "12 个场景的 86 个有序操作",
+            "12 个指标 gate",
+            "真实 M0 runner 和产品能力仍未实现",
+        ),
+        "docs/evaluation/m0-local-memory-loop.md": (
+            "M0 Fixture 与指标契约",
+            "Retrieval Recall@5",
+            "仓库校验器可以验证契约自洽",
+        ),
+        "docs/schema/m0-canonical-schema.md": (
+            "M0 Fixture 与指标契约",
+            "production API 仍由实现阶段决策",
+            "不得自行发明第二种编码",
+        ),
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "M0 Fixture 与指标契约",
+            "首个同步信任模式",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已冻结的 [M0 Fixture 与指标契约]",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing M0 fixture contract fragment: {fragment}"
+                )
+
+
+def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/check-m0-fixtures.py"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stdout + result.stderr).strip()
+        errors.append(f"M0 fixture validation failed: {detail}")
 
 
 def check_issue_and_pr_contracts(repo_root: Path, errors: list[str]) -> None:
@@ -633,11 +761,14 @@ def main() -> int:
     check_document_budgets(REPO_ROOT, errors)
     check_agent_contract(REPO_ROOT, errors)
     check_m0_contract(REPO_ROOT, errors)
+    check_m0_schema_contract(REPO_ROOT, errors)
+    check_m0_fixture_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)
     check_diff(REPO_ROOT, args.base_ref, errors)
     check_commit_messages(REPO_ROOT, args.base_ref, errors)
+    run_m0_fixture_check(REPO_ROOT, errors)
     run_checker_tests(REPO_ROOT, errors)
 
     if errors:

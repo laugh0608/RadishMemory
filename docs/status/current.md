@@ -12,13 +12,16 @@
 
 `M0 Local Memory Loop` 已通过 [ADR 0002](../adr/0002-m0-local-memory-loop.md)冻结为单用户、单设备、本地、合成文本 / Markdown、无模型和无网络的最小闭环。它验证来源、引用、proposal / decision、时间更正、失败关闭和单设备删除证据，不包含 PDF、向量、Provider、RadishMind 或同步实现。
 
+M0 字段级 canonical schema 已在 [M0 Canonical Schema](../schema/m0-canonical-schema.md) 冻结为九种顶层对象及共同逻辑类型。它确定字段、必填性、条件约束、时间、治理标签、事件和删除证据关系，但不绑定数据库、生产 ID 编码或语言类型。
+
+[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 已冻结合成 JSON mapping、fixture ID、摘要 profile、12 个场景的 86 个有序操作和 12 个指标 gate。仓库校验器只验证这些输入与 oracle 自洽；真实 M0 runner 和产品能力仍未实现。
+
 ## 当前顺位
 
-1. 形成 M0 字段级 canonical schema，覆盖来源、片段、候选、决定、记忆、状态事件、ContextPack、删除请求和删除证据。
-2. 冻结合成 fixture 格式、操作序列和指标计算方法，把 [M0 合成验收](../evaluation/m0-local-memory-loop.md)转为可执行契约。
-3. 明确首个同步信任模式。
-4. 明确 RadishMind 在 M0 之后首次进入哪一运行阶段；M0 已决定无依赖。
-5. 在以上决策稳定后，评审首个实现栈、目录结构、依赖和运行验证入口。
+1. 明确首个同步信任模式。
+2. 明确 RadishMind 在 M0 之后首次进入哪一运行阶段；M0 已决定无依赖。
+3. 在以上决策稳定后，评审首个实现栈、目录结构、依赖和运行验证入口。
+4. 实现真实 M0 runner，并以冻结 fixture 证明采集、检索、确认、更正、删除和无网络闭环。
 
 ## 当前门禁
 
@@ -42,11 +45,12 @@
 进入实现前至少应具备：
 
 - 已完成：经评审的 M0 采集、检索、引用、确认、更正和删除闭环；
+- 已完成：与首个切片对应的字段级 canonical schema；
+- 已完成：与首个切片对应的可执行合成 fixture 与指标 oracle；
 - 明确的记忆状态机、时间与冲突语义；
 - 首个同步信任模式决策；
 - 可测量的召回、污染、删除与隐私指标；
 - RadishMind 首批参与方式的明确决定；
-- 与首个切片对应的 canonical schema、合成评测和验证计划；
 - 一份记录实现栈选择、替代方案、迁移边界和风险的 ADR。
 
 ## 当前验证入口
@@ -55,6 +59,7 @@ macOS / Linux：
 
 ```bash
 ./scripts/check-repo.sh
+./scripts/check-m0-fixtures.py
 ```
 
 Windows：

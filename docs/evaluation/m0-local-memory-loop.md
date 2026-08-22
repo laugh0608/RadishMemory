@@ -2,6 +2,8 @@
 
 本文定义 [ADR 0002](../adr/0002-m0-local-memory-loop.md)的可执行验收边界。它描述测试事实、操作、预期结果和必须保留的证据，不指定测试框架或实现语言。
 
+测试对象和引用必须符合 [M0 Canonical Schema](../schema/m0-canonical-schema.md)；具体 JSON mapping、操作协议、稳定 ID、摘要向量和指标聚合以 [M0 Fixture 与指标契约](m0-fixture-contract.md)及其机器 suite 为准，不得另造平行字段。
+
 ## 数据边界
 
 - 所有人物、项目、内容、时间、设备和标识均为合成数据。
@@ -33,7 +35,7 @@
 1. `2026-01-10` 明确记录“项目默认使用蓝色主题”，有效时间从当天开始。
 2. 用户接受该 preference proposal。
 3. `2026-03-20` 明确更正为“项目默认使用绿色主题”，并接受新 proposal。
-4. 新记录 `supersedes` 旧记录，旧记录的 `valid_to` 与新记录的 `valid_from` 边界一致。
+4. 新记录 `supersedes` 旧记录；superseded 事件的生效时间与新记录的有效起点一致，查询得到的旧记录有效终点也落在该边界。
 5. 查询“现在的默认主题”只把绿色作为当前确认值；查询“二月的默认主题”返回蓝色及原始 citation。
 
 冲突 fixture 使用两个不同合成来源给出互斥值，但不提供用户决定。系统必须报告 conflict，不得用向量或全文得分把任一值改成 confirmed current value。
@@ -60,8 +62,10 @@
 | 已枚举本地删除组件覆盖率 | `100%` |
 | 错误声明完全删除 | `0` |
 | 无模型闭环完成率 | `100%` |
+| 标注 Retrieval Recall@5 | `100%` |
+| 无关历史导致的相关来源集合漂移 | `0` |
 
-Retrieval Recall@k、延迟和大规模压缩率需要在字段 schema 和 fixture 规模冻结后设定数值基线；M0 当前先固定标注方法与失败条件，不用小样本制造虚假的质量承诺。
+M0 fixture 已将全文基线固定为 Retrieval Recall@5，并用一个目标来源与 1000 条固定 seed 的无关资料验证来源集合不漂移。延迟和大规模压缩率仍需在实现栈、运行环境和数据规模具备代表性后设定，当前不使用小样本制造虚假的性能承诺。
 
 ## 每次验证必须保存的证据
 
@@ -78,4 +82,4 @@ Retrieval Recall@k、延迟和大规模压缩率需要在字段 schema 和 fixtu
 
 ## 退出条件
 
-字段级 canonical schema 和 fixture 格式冻结后，把上述场景转成无网络、无 Provider Key、可重复执行的自动测试。全部强制门禁通过之前，不进入 PDF / OCR、Embedding、多模型或同步实现。
+字段级 canonical schema、fixture 格式、操作序列和指标 oracle 均已冻结，仓库校验器可以验证契约自洽。下一步在实现栈决策后接入真实 runner，把上述场景转成无网络、无 Provider Key、可重复执行的产品测试。全部强制门禁通过之前，不进入 PDF / OCR、Embedding、多模型或同步实现。

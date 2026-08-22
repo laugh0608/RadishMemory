@@ -14,7 +14,8 @@ MVP 不以功能数量为目标，而要证明一个可信闭环：
 
 - 产品范围、架构、记忆模型和威胁模型评审；
 - [M0 本地记忆闭环](adr/0002-m0-local-memory-loop.md)及其[合成验收边界](evaluation/m0-local-memory-loop.md)；
-- canonical schema 草案；
+- 已冻结的 [M0 Canonical Schema](schema/m0-canonical-schema.md)；
+- 已冻结的 [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)；
 - 至少覆盖事实、偏好、时间变化、冲突、敏感度和删除的本地评测集；
 - 全历史输入、全文检索、向量检索和混合检索的基线方案；
 - 首个同步信任模式决策；

@@ -33,6 +33,8 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 - [产品范围](docs/product-scope.md)
 - [系统架构](docs/architecture.md)
 - [记忆模型](docs/memory-model.md)
+- [M0 Canonical Schema](docs/schema/m0-canonical-schema.md)
+- [M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)
 - [隐私与威胁模型](docs/privacy-threat-model.md)
 - [与 RadishMind 的边界](docs/radishmind-boundary.md)
 - [MVP 路线图](docs/mvp-roadmap.md)
@@ -45,6 +47,8 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 当前处于 `documentation-first / pre-implementation` 阶段：先冻结产品边界、记忆模型、隐私假设和验证目标，再选择技术栈并进入实现。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
 首个可执行切片已冻结为 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md)：只用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和删除证据，不依赖模型、网络、RadishMind 或同步。
+
+M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical-schema.md) 中冻结为实现中立的字段级契约；[M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)进一步冻结 JSON mapping、稳定 ID、摘要向量、12 个场景的 86 个操作和指标 oracle。两者都是实现约束，不代表产品能力已经完成。
 
 当前不把以下内容声明为已实现：
 

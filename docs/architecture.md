@@ -56,7 +56,7 @@ Device B Local Store ◄── encrypted operation/object sync ──┘
 
 首个可执行切片只启用总体架构的本地最小子集：Capture Gateway 接收合成短文本与 Markdown；Source Vault 保存正文和摘要；Ingestion Pipeline 做确定性分段；Derived Indexes 只包含全文基线；Policy Engine 执行 namespace、敏感度、状态和删除过滤；Memory Engine 管理 proposal、decision、record、时间更正和删除事件；Memory Compiler 生成带 citation map 的本地 ContextPack。
 
-M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest、Provider trace 或模型用量，也不实现同步。核心验收期间任何网络请求都视为失败。这个边界不删除长期组件，只避免在来源、状态、权限和删除契约尚未成立时引入模型与分布式复杂度。完整决策见 [ADR 0002](adr/0002-m0-local-memory-loop.md)。
+M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest、Provider trace 或模型用量，也不实现同步。核心验收期间任何网络请求都视为失败。这个边界不删除长期组件，只避免在来源、状态、权限和删除契约尚未成立时引入模型与分布式复杂度。完整决策见 [ADR 0002](adr/0002-m0-local-memory-loop.md)，字段与跨对象不变量见 [M0 Canonical Schema](schema/m0-canonical-schema.md)，可执行操作与指标 oracle 见 [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)。
 
 ## 核心组件
 
@@ -203,18 +203,17 @@ sources/
 
 同步事实建议采用不可变对象与追加操作日志；结构化记忆的用户修改保留版本与冲突，不简单依赖最后写入覆盖。设备撤销后必须阻止新的同步读取，并通过密钥轮换控制未来数据访问。
 
-## Canonical 接口草案
+## Canonical 接口边界
 
-实现前应冻结以下领域接口，而不是先绑定某个 Provider SDK：
+M0 已冻结 `SourceArtifact`、`SourceFragment`、`MemoryProposal`、`MemoryDecision`、`MemoryRecord`、`MemoryStateEvent`、`ContextPack`、`DeleteRequest` 和 `DeletionEvidence` 的逻辑字段。精确契约以 [M0 Canonical Schema](schema/m0-canonical-schema.md) 为准。
+
+M0 fixture 已冻结这些动作在评测中的输入与预期，但不把测试 operation 当作 production API。以下运行接口仍需在对应阶段冻结，而不是提前绑定某个 Provider SDK：
 
 - `CaptureRequest / CaptureReceipt`
-- `SourceArtifact / SourceFragment`
-- `MemoryRecord / MemoryProposal / MemoryDecision`
 - `SearchRequest / SearchCandidate`
-- `ContextPack / OutboundContextManifest`
+- `OutboundContextManifest`
 - `ModelRequest / ModelResponse / UsageRecord`
 - `SyncOperation / DeviceIdentity`
-- `DeleteRequest / DeletionEvidence`
 
 ## 候选存储基线
 

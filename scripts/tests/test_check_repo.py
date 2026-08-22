@@ -211,6 +211,36 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_m0_schema_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/schema/m0-canonical-schema.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 Canonical Schema\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_m0_schema_contract(root, errors)
+
+            self.assertIn(
+                "docs/schema/m0-canonical-schema.md is missing M0 schema contract fragment: radishmemory.m0/1",
+                errors,
+            )
+
+    def test_m0_fixture_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/evaluation/m0-fixture-contract.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 Fixture Contract\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_m0_fixture_contract(root, errors)
+
+            self.assertIn(
+                "docs/evaluation/m0-fixture-contract.md is missing M0 fixture contract fragment: radishmemory.m0-fixture/1",
+                errors,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

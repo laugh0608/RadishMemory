@@ -114,7 +114,7 @@ allowed_purposes[]
 
 ## M0 信任边界
 
-M0 只运行在一个受信本地设备，所有 fixture 和产物默认 `local_only`。它不调用生成模型、不配置 Provider Key、不接入 RadishMind、不启动同步，也不向外部服务发送 ContextPack。
+M0 只运行在一个受信本地设备，所有 fixture 和产物默认 `local_only`。这个标签及 sensitivity、retention、deletion state 的必填和失败关闭语义以 [M0 Canonical Schema](schema/m0-canonical-schema.md) 为准；fixture 的 synthetic 标记、网络断言和最小证据以 [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md) 为准。M0 不调用生成模型、不配置 Provider Key、不接入 RadishMind、不启动同步，也不向外部服务发送 ContextPack。
 
 M0 删除证据只覆盖已枚举的单设备正文、片段、结构化记忆、全文索引和缓存；它不声明其它设备、服务端或备份已经清除。测试必须禁用或拦截网络，并把任何请求视为策略违规。该边界用于验证失败关闭，不代表本地设备天然安全或已经实现加密存储。
 
