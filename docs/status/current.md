@@ -22,7 +22,7 @@
 - 产品、架构、记忆或隐私语义变化必须同步更新对应真相源，不能只改入口摘要或检查器。
 - 技术栈、依赖、数据库、消息系统、向量实现和 Provider SDK 尚未冻结；实验建议不得写成长期格式或已接受架构。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
-- 远程 GitHub Ruleset、默认分支和 Merge options 尚不因模板存在而视为已启用；必须在工作流产生 `Candidate Quality` 后单独核对并落地。
+- GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
 - 当前仓库检查只证明治理、文本、链接和配置合同成立，不证明产品功能、隐私协议、删除或同步已经实现。
 
 ## 当前不做
