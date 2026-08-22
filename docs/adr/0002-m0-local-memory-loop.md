@@ -30,8 +30,8 @@ RadishMemory 的长期路线包含多媒体采集、混合检索、多模型、�
 | 上下文 | 本地生成带 citation map 的 `ContextPack` |
 | 更正 | 新版本与 `supersedes`，不覆盖旧记录 |
 | 删除 | 单设备范围的 `DeleteRequest` 与 `DeletionEvidence` |
-| RadishMind | 不进入运行链路，只保留未来契约边界 |
-| 同步 | 不实现；首个同步信任模式仍由后续阶段决策 |
+| RadishMind | 不进入运行链路；ADR 0004 将首次可选 Gateway 接入后置到完整 MVP 阶段 3 |
+| 同步 | 不实现；后续首个多设备同步以 ADR 0003 的零知识信任边界为准 |
 
 M0 不支持 PDF、图片、OCR、音频、Embedding、向量索引、图数据库、Provider SDK、后台模型整理、多设备同步、备份清除、虚拟形象或通用聊天界面。
 
@@ -105,4 +105,4 @@ M0 必须用合成数据证明：
 
 ## 后续决策
 
-M0 合成 fixture 格式与指标口径已经由 [M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 冻结。完成 M0 实现前仍需依次冻结：首个同步信任模式、RadishMind 首批参与方式，以及实现栈与迁移边界 ADR。
+M0 合成 fixture 格式与指标口径已经由 [M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 冻结，首个同步信任模式已由 [ADR 0003](0003-zero-knowledge-sync-first.md) 冻结，RadishMind 首次接入阶段也已由 [ADR 0004](0004-radishmind-optional-gateway-entry.md) 冻结。完成 M0 实现前仍需冻结实现栈与迁移边界 ADR。

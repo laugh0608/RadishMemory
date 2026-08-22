@@ -39,6 +39,8 @@ REQUIRED_FILES = (
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
     "docs/adr/0002-m0-local-memory-loop.md",
+    "docs/adr/0003-zero-knowledge-sync-first.md",
+    "docs/adr/0004-radishmind-optional-gateway-entry.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -524,6 +526,91 @@ def check_m0_fixture_contract(repo_root: Path, errors: list[str]) -> None:
                 )
 
 
+def check_sync_trust_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0003-zero-knowledge-sync-first.md": (
+            "状态：Accepted",
+            "模式 B：零知识同步服务",
+            "服务端账号重置不能单独恢复内容解密能力",
+            "不得从零知识模式静默降级",
+            "可选可信计算节点",
+            "已接受的目标信任模式",
+        ),
+        "docs/status/current.md": (
+            "ADR 0003",
+            "可信计算节点后置为显式可选能力",
+            "不代表零知识同步已经实现",
+        ),
+        "docs/privacy-threat-model.md": (
+            "首个多设备同步已经通过 [ADR 0003]",
+            "服务端账号重置不能单独恢复内容",
+        ),
+        "docs/architecture.md": (
+            "首个多设备同步已经通过 [ADR 0003]",
+            "服务端数据库不是记忆 canonical truth",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0003]",
+            "可信计算节点后置",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing sync trust contract fragment: {fragment}"
+                )
+
+
+def check_radishmind_entry_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0004-radishmind-optional-gateway-entry.md": (
+            "状态：Accepted",
+            "完整 MVP 的阶段 3",
+            "首次接入只使用模型网关能力",
+            "不同路径之间不得隐式回退",
+            "不直接复制 RadishMind 的 Copilot、Application、Workflow 或 Session schema",
+            "只能声明“RadishMind 可选 Gateway 接入阶段已规划或正在验证”",
+        ),
+        "docs/status/current.md": (
+            "ADR 0004",
+            "显式可关闭的 Model Gateway",
+            "首次不接 Workflow、Tooling、RAG 数据 owner、Session owner 或业务写回",
+        ),
+        "docs/radishmind-boundary.md": (
+            "首次运行接入已由 [ADR 0004]",
+            "## 最小逻辑契约",
+            "retry / fallback 默认关闭",
+        ),
+        "docs/architecture.md": (
+            "根据 [ADR 0004]",
+            "M0、单机资料库和记忆生命周期不以 RadishMind 可用为前提",
+        ),
+        "docs/privacy-threat-model.md": (
+            "RadishMind 等 Gateway",
+            "Gateway 是独立接收方",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0004]",
+            "首次 RadishMind 接入不包含 Workflow、Tooling、RAG 数据 owner 或业务写回",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing RadishMind entry contract fragment: {fragment}"
+                )
+
+
 def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
     result = subprocess.run(
         [sys.executable, "scripts/check-m0-fixtures.py"],
@@ -763,6 +850,8 @@ def main() -> int:
     check_m0_contract(REPO_ROOT, errors)
     check_m0_schema_contract(REPO_ROOT, errors)
     check_m0_fixture_contract(REPO_ROOT, errors)
+    check_sync_trust_contract(REPO_ROOT, errors)
+    check_radishmind_entry_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)

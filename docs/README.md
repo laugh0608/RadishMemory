@@ -15,7 +15,9 @@
 9. [ADR 0002：M0 本地记忆闭环](adr/0002-m0-local-memory-loop.md)：首个可执行切片的范围、处理顺序和失败关闭规则。
 10. [M0 合成验收](evaluation/m0-local-memory-loop.md)：固定场景、指标、证据和退出条件。
 11. [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)：JSON mapping、操作序列、稳定 ID、摘要和指标聚合方法。
-12. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+12. [ADR 0003：首个同步采用零知识服务](adr/0003-zero-knowledge-sync-first.md)：服务端、受信设备、密钥、恢复、删除和可信计算节点边界。
+13. [ADR 0004：RadishMind 首次以可选 Gateway 接入](adr/0004-radishmind-optional-gateway-entry.md)：首次进入阶段、逻辑交换、外发、失败和后续 Workflow 边界。
+14. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 治理入口
 

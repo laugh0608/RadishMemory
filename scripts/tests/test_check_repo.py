@@ -241,6 +241,36 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_sync_trust_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0003-zero-knowledge-sync-first.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Sync trust\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_sync_trust_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0003-zero-knowledge-sync-first.md is missing sync trust contract fragment: 模式 B：零知识同步服务",
+                errors,
+            )
+
+    def test_radishmind_entry_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0004-radishmind-optional-gateway-entry.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Gateway entry\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_radishmind_entry_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0004-radishmind-optional-gateway-entry.md is missing RadishMind entry contract fragment: 首次接入只使用模型网关能力",
+                errors,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

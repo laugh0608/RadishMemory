@@ -9,6 +9,8 @@ RadishMemory 与 RadishMind 是职责不同的独立项目：
 
 两者可以集成，但不能共用业务真相、数据库或隐式授权。
 
+首次运行接入已由 [ADR 0004](adr/0004-radishmind-optional-gateway-entry.md) 冻结：M0、单机资料库和长期记忆生命周期不依赖 RadishMind；完整 MVP 阶段 3 在 RadishMemory 直接 adapter 基线成立后，以显式可关闭的 Model Gateway 接入。首次不接 Workflow、Tooling、RAG 数据 owner 或业务写回。
+
 ## 职责矩阵
 
 | 能力 | RadishMemory | RadishMind |
@@ -25,7 +27,7 @@ RadishMemory 与 RadishMind 是职责不同的独立项目：
 | MemoryProposal 最终确认 | 拥有 | 只能提出候选 |
 | 虚拟形象和个人伴侣 UI | 拥有 | 不拥有产品人格真相 |
 
-## 推荐调用流
+## 已决策调用流
 
 ```text
 RadishMemory
@@ -38,7 +40,7 @@ RadishMemory
 RadishMind（可选）
   5. 选择 Provider/Profile
   6. 执行模型或受控工作流
-  7. 返回 ModelResponse、UsageRecord、Trace 和 MemoryProposal
+  7. 返回 ModelResponse、UsageRecord、Trace 和候选输出
            │
            ▼
 RadishMemory
@@ -46,17 +48,21 @@ RadishMemory
   9. 校验、审查并决定是否写入记忆
 ```
 
-## 最小集成契约
+## 最小逻辑契约
 
-RadishMemory 向 RadishMind 提交的请求不应包含资料库访问凭据，而应包含已经编译完成的最小上下文：
+以下列表表达首次 Gateway 接入必须携带的逻辑信息，不冻结 JSON 字段名、HTTP route、SDK 或序列化格式。RadishMemory 向 RadishMind 提交的请求不应包含资料库访问凭据，而应包含已经编译完成的最小上下文：
 
 ```text
+contract_version
 request_id
+idempotency / replay constraints
 task
 context_pack
-provider_constraints
+outbound_manifest_ref
+allowed_provider_routes
 capability_requirements
 privacy_classification
+retention_constraints
 timeout / cancellation
 expected_output_schema
 ```
@@ -64,12 +70,14 @@ expected_output_schema
 RadishMind 返回：
 
 ```text
+contract_version
 request_id
 model_response
 citations_or_source_handles
-memory_proposals[]
+candidate_outputs[]
 usage_record
-provider_trace
+actual_provider_attempts
+gateway_trace
 sanitized_failure
 ```
 
@@ -78,10 +86,11 @@ RadishMind 不应收到 RadishMemory 的数据库连接、根密钥、全库搜�
 ## 安全约束
 
 - RadishMemory 在调用 RadishMind 前完成权限和外发过滤。
+- OutboundContextManifest 必须同时约束 Gateway、允许的 Provider / Profile 集合，并在调用后记录实际 attempts。
 - RadishMind 不得扩大 ContextPack、回查未授权资料或把上下文用于其它 workflow。
-- MemoryProposal 必须回到 RadishMemory 规则层，RadishMind 不直接提交已确认记忆。
+- 候选输出必须回到 RadishMemory 规则层形成并校验 MemoryProposal，RadishMind 不直接提交已确认记忆。
 - 两个项目分别保留审计 ID，通过 `request_id / trace_id` 关联，不复制完整私密正文。
-- 失败不得回退到权限更宽、隐私等级更低或未经用户允许的 Provider。
+- retry / fallback 默认关闭；失败不得回退到权限更宽、隐私等级更低、未在本次 manifest 中授权的 Provider 或另一条 adapter 路径。
 - RadishMind 不可用时，RadishMemory 的本地采集、浏览、搜索和资料导出仍应可用。
 
 ## 可复用能力
@@ -98,18 +107,18 @@ RadishMind 已有或适合继续发展的能力包括：
 
 ## 集成阶段
 
-### 阶段 1：无依赖
+### 接入批次 1：本地与直接适配基线
 
-M0 不使用 RadishMind、直接模型适配器或生成模型，只以确定性本地流程验证采集、检索、ContextPack 和记忆治理。M0 完成后，后续单机阶段可以使用 mock 或一个直接模型适配器验证模型调用，但不得改变已冻结的记忆真相与确认边界。
+M0 不使用 RadishMind、直接模型适配器或生成模型，只以确定性本地流程验证采集、检索、ContextPack 和记忆治理。M0 完成后，阶段 1 与阶段 2 可以使用 mock 或一个直接模型适配器验证模型调用，但不得把 RadishMind 变成资料库和记忆生命周期的启动依赖，也不得改变已冻结的记忆真相与确认边界。
 
-### 阶段 2：可选 Gateway
+### 接入批次 2：可选 Gateway
 
-通过稳定请求契约接入 RadishMind，验证至少两个 Provider 与一个本地模型，并比较返回结构、引用和用量。
+在完整 MVP 阶段 3，通过稳定请求契约接入 RadishMind Model Gateway，比较直接 adapter 与 Gateway adapter 的返回结构、引用、usage 和失败。首次只接 Gateway，不接 Workflow、Tooling、RAG 数据 owner、Session owner 或业务写回。
 
-### 阶段 3：受控 Workflow
+### 接入批次 3：受控 Workflow
 
 把复杂整理、评测或批量任务交给 RadishMind，但保持资料授权短期、最小化和可撤销。
 
-### 阶段 4：共享协议包
+### 接入批次 4：共享协议包
 
-只有在两个项目的真实实现稳定后，才考虑提取共享 schema/SDK；不在需求尚未验证时建立过早的跨仓库抽象。
+只有在两个项目的真实实现稳定后，才考虑提取共享 schema/SDK；不直接复制现有 Copilot、Application、Workflow 或 Session schema，也不在需求尚未验证时建立过早的跨仓库抽象。
