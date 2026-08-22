@@ -82,4 +82,4 @@ M0 fixture 已将全文基线固定为 Retrieval Recall@5，并用一个目标�
 
 ## 退出条件
 
-字段级 canonical schema、fixture 格式、操作序列和指标 oracle 均已冻结，仓库校验器可以验证契约自洽。下一步在实现栈决策后接入真实 runner，把上述场景转成无网络、无 Provider Key、可重复执行的产品测试。全部强制门禁通过之前，不进入 PDF / OCR、Embedding、多模型或同步实现。
+字段级 canonical schema、fixture 格式、操作序列和指标 oracle 均已冻结，仓库校验器可以验证契约自洽。真实 runner 必须在 canonical core 与 SQLite adapter 成立后调用同一套产品实现，把上述场景转成无网络、无 Provider Key、可重复执行的产品测试，不得在 runner 内复制领域或存储逻辑。全部强制门禁通过之前，不进入 PDF / OCR、Embedding、多模型或同步实现。
