@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -170,6 +171,30 @@ class GovernanceContractChecks(unittest.TestCase):
             CHECK_REPO.check_agent_contract(root, errors)
 
             self.assertIn("AGENTS.md and CLAUDE.md must remain identical", errors)
+
+    def test_ruleset_requires_extra_approval_for_unattributed_changes(self) -> None:
+        source = CHECK_REPO.REPO_ROOT / ".github/rulesets/master-protection.json"
+        ruleset = json.loads(source.read_text(encoding="utf-8"))
+        pull_request = next(
+            rule for rule in ruleset["rules"] if rule["type"] == "pull_request"
+        )
+        pull_request["parameters"][
+            "require_extra_approval_for_unattributed_changes"
+        ] = False
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / ".github/rulesets/master-protection.json"
+            target.parent.mkdir(parents=True)
+            target.write_text(json.dumps(ruleset), encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_ruleset_contract(root, errors)
+
+            self.assertIn(
+                "unattributed Copilot changes must require extra approval",
+                errors,
+            )
 
 
 if __name__ == "__main__":

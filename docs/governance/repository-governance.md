@@ -50,7 +50,7 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 
 ## 分支与提交
 
-- `master` 是稳定主线；`dev` 是常态开发与集成分支，初始治理基线建立后作为 GitHub 默认分支。
+- `master` 是稳定主线和 GitHub 默认分支；`dev` 是常态开发与集成分支。普通 PR 必须显式选择 `dev`，只有阶段稳定化和 hotfix 才以 `master` 为目标。
 - 普通贡献进入 `dev`，阶段性稳定化和 hotfix 才进入 `master`。
 - 主题分支使用 `feature/*`、`fix/*`、`docs/*`、`proposal/*`、`experiment/*`、`chore/*` 或 `hotfix/*`。
 - 共享分支禁止 force push 和破坏性历史重写。
@@ -82,14 +82,14 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 | 项目 | 策略 |
 | --- | --- |
 | 保护分支 | 仅 `master` |
-| GitHub 默认分支 | 初始基线后为 `dev` |
+| GitHub 默认分支 | `master` |
 | PR 要求 | 必须 |
 | 删除 / force push | 禁止 |
 | required context | `Candidate Quality`，来源限定为 GitHub Actions App |
 | strict / up-to-date | 启用 |
 | review conversation | 必须解决 |
 | 审批数 | 单人阶段为 `0` |
-| unattributed Copilot PR 额外审批 | 单人阶段默认关闭，启用时必须作为独立决策记录 |
+| unattributed Copilot PR 额外审批 | 启用；此类变更至少需要一名批准者 |
 | CODEOWNERS | 暂不启用 |
 | 合并方式 | merge commit、rebase merge |
 | squash merge | 禁用 |

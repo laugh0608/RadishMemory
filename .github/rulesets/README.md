@@ -14,15 +14,17 @@ GitHub 官方说明：[About rulesets](https://docs.github.com/en/repositories/c
 - 要求 strict / up-to-date 的 `Candidate Quality` 状态检查，并限定来源为 GitHub Actions App；
 - 允许 merge commit 与 rebase merge，禁用 squash merge；
 - 单人维护阶段审批数为 `0`，不要求 CODEOWNERS；
+- unattributed Copilot changes 需要额外审批；
 - 管理员只可在 Pull Request 内绕过，不开放直接 push。
 
 Conventional Commits 由仓库检查器校验 PR commit range，不在 Ruleset 中添加提交正则，避免 GitHub 生成的正常 merge commit 被远程规则误拦截。
 
 ## `dev` 策略
 
-`dev` 是日常集成分支，初始基线后应设为 GitHub 默认分支。当前单人阶段不启用强制 Ruleset：
+`master` 保持 GitHub 默认分支，`dev` 是日常集成分支。当前单人阶段不为 `dev` 启用强制 Ruleset：
 
 - 直接 push 前执行风险匹配的本地验证；
+- 创建普通 Pull Request 时显式选择 `dev`，避免 GitHub 默认指向 `master`；
 - 目标为 `dev` 的 PR 自动运行 `PR Checks`，用于外部贡献和并行分支反馈；
 - 每次 `master` 合并后，下一轮开发前必须把 `master` 回流到 `dev`；
 - 达到多人维护、持续外部贡献、并行自动化写入或出现实际回归时，再评估 `dev` 保护。
@@ -30,11 +32,11 @@ Conventional Commits 由仓库检查器校验 PR commit range，不在 Ruleset �
 ## 启用前核对
 
 1. 将治理基线提交并推送到远端 `master`。
-2. 从同一提交创建并推送 `dev`，再把 GitHub 默认分支切换为 `dev`。
+2. 从同一提交创建并推送 `dev`，确认 GitHub 默认分支为 `master`。
 3. 用测试 PR 确认 `Candidate Quality` context 已实际产生且来源是本仓库 workflow；不要只依赖 `workflow_dispatch` 的结果。
 4. 用 `gh api /apps/github-actions --jq .id` 核对 GitHub Actions App ID 与模板中的 `integration_id` 一致；当前模板记录为 `15368`。
 5. 在仓库 Merge options 中启用 merge commit 与 rebase merge、关闭 squash merge，并确认现有 Ruleset 未启用 Merge Queue。
-6. 在 Ruleset UI 中核对“unattributed Copilot Pull Request 额外审批”预览项；单人阶段若它会把审批数从 `0` 实际提升为 `1`，应关闭或把该差异记录为明确决策。
+6. 在 Ruleset UI 中确认启用“unattributed Copilot Pull Request 额外审批”；一般 Pull Request 仍保持 `0` 名批准者，仅无法归因的 Copilot changes 至少需要一名批准者。
 7. 读取仓库级和上级组织 Rulesets，确认没有重叠或冲突规则。
 8. 复核 `master-protection.json` 的目标、bypass、审批数、required context 和来源 App。
 9. 创建或精确更新 Ruleset，再用非受保护分支发起测试 PR 验证直接 push、force push、会话解决和 required check。

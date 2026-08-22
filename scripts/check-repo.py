@@ -432,6 +432,8 @@ def check_ruleset_contract(repo_root: Path, errors: list[str]) -> None:
             errors.append("single-maintainer baseline must require zero approvals")
         if parameters.get("require_code_owner_review") is not False:
             errors.append("single-maintainer baseline must not require CODEOWNERS")
+        if parameters.get("require_extra_approval_for_unattributed_changes") is not True:
+            errors.append("unattributed Copilot changes must require extra approval")
 
     checks = find_rule(rules, "required_status_checks")
     if checks is not None:

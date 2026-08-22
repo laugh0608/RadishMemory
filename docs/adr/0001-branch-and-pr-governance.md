@@ -14,8 +14,8 @@ Radish、RadishMind、RadishCatalyst、RadishFlow 和 RadishAxiom 已共同验�
 
 ### 分支职责
 
-- `master`：稳定主线，只通过 Pull Request 接收变更。
-- `dev`：常态开发与集成分支；初始治理基线建立后，GitHub 默认分支应切换为 `dev`，使普通贡献默认进入正确目标。
+- `master`：稳定主线和 GitHub 默认分支，只通过 Pull Request 接收变更。
+- `dev`：常态开发与集成分支。由于 GitHub 默认目标是 `master`，普通贡献创建 Pull Request 时必须显式选择 `dev`。
 - `feature/*`：边界清楚的产品或实现功能。
 - `fix/*`：非紧急缺陷修复。
 - `docs/*`：不改变实现行为的文档工作。
@@ -53,6 +53,7 @@ git rev-list --left-right --count origin/master...dev
 - 所有 `master` 变更必须通过 PR，并解决全部 review conversation。
 - `master` PR 必须通过 strict / up-to-date 的 `Candidate Quality` 聚合检查。
 - 单人维护阶段要求 `0` 名批准者；形成稳定第二维护者或持续外部贡献后，再提升审批数并评估 CODEOWNERS。
+- 启用 unattributed Copilot changes 的额外审批；仅当 GitHub 无法把 Copilot 提交归因给 Pull Request 作者时，要求至少一名批准者。
 - 产品范围、记忆状态、时间冲突、权限、外发、同步、删除、RadishMind 边界或公共 schema 变化必须说明兼容性、迁移、失败模式、隐私影响和验证证据。
 - 只有静态检查、mock 或局部测试时，不得把结果表述为隐私保证、删除完成、零知识或生产可用。
 - 管理员绕过仅限 Pull Request 内，不开放直接 push 绕过。
