@@ -1,0 +1,72 @@
+name: 长期变更提案
+description: 提议产品、记忆、隐私、同步、协议或治理的长期变化。
+title: "[Proposal] "
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: 要解决的问题
+      description: 说明当前边界、语义或流程中的真实缺口，不要先从技术栈或工具偏好出发。
+    validations:
+      required: true
+  - type: textarea
+    id: goals
+    attributes:
+      label: 目标与非目标
+      description: 分别列出本提案必须解决和明确不解决的内容。
+    validations:
+      required: true
+  - type: checkboxes
+    id: sources
+    attributes:
+      label: 受影响真相源
+      options:
+        - label: 产品范围
+        - label: 系统架构
+        - label: 记忆模型
+        - label: 隐私与威胁模型
+        - label: RadishMind 边界
+        - label: MVP 路线图或当前状态
+        - label: 仓库治理或协作规则
+  - type: textarea
+    id: ownership
+    attributes:
+      label: 数据所有权与记忆语义
+      description: 说明来源、状态、时间、冲突、确认、版本、迁移和可重建派生数据的影响。
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: 信任、隐私与删除边界
+      description: 说明授权、外发、Provider、同步信任模式、设备、密钥、审计、删除和失败关闭影响。
+    validations:
+      required: true
+  - type: textarea
+    id: compatibility
+    attributes:
+      label: 兼容性与迁移
+      description: 说明 canonical schema、已有资料、索引、客户端、服务端和跨项目消费者如何演进。
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: 验证计划与失败判据
+      description: 给出正例、负例、冲突、权限拒绝、删除或同步验证，以及哪些结果应阻止提案进入实现。
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案
+      description: 列出考虑过的方案、取舍和暂不采用的原因。
+    validations:
+      required: true
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: 确认
+      options:
+        - label: 我已阅读 SECURITY.md，并确认此提案不公开披露未修复漏洞或真实个人资料。
+          required: true

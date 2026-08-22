@@ -1,0 +1,72 @@
+name: 缺陷报告
+description: 报告可复现的实现、文档、记忆、隐私或治理问题。
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢报告问题。可利用的安全或隐私漏洞请使用 Private Vulnerability Reporting，不要填写公开 Issue。所有复现材料必须使用合成或安全脱敏的数据。
+  - type: textarea
+    id: summary
+    attributes:
+      label: 问题摘要
+      description: 简洁说明实际行为以及它为什么是问题。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现
+      description: 提供最小命令、合成输入、schema 或文档路径；不要粘贴个人资料、密钥、原始 ContextPack 或生产日志。
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望与实际结果
+      description: 分别说明预期行为、实际行为、错误信息和出现频率。
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 主要影响面
+      options:
+        - 产品或文档
+        - 采集与来源
+        - 记忆状态与时间冲突
+        - 检索、ContextPack 与引用
+        - 权限、外发与 Provider
+        - 同步、设备与密钥
+        - 删除、保留与备份
+        - RadishMind 集成
+        - CI 与仓库治理
+        - 其它
+    validations:
+      required: true
+  - type: textarea
+    id: privacy
+    attributes:
+      label: 数据与隐私影响
+      description: 是否涉及越权召回、错误外发、记忆污染、来源误归属、删除不完整或敏感信息泄露？可利用漏洞请改为私下报告。
+  - type: input
+    id: revision
+    attributes:
+      label: 版本或提交
+      description: 提供版本号、commit SHA 或文档更新时间。
+      placeholder: 例如 d42e611
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 操作系统、运行模式、Provider、索引或相关非敏感配置；不要粘贴密钥。
+  - type: checkboxes
+    id: confirmation
+    attributes:
+      label: 确认
+      options:
+        - label: 我已搜索现有 Issue，并尽量提供最小复现。
+          required: true
+        - label: 本报告不包含未修复漏洞、真实个人资料、凭据、密钥或受限材料。
+          required: true
