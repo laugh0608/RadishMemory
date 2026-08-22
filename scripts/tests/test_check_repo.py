@@ -271,6 +271,21 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_implementation_stack_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0005-m0-implementation-stack.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 stack\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_implementation_stack_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0005-m0-implementation-stack.md is missing implementation stack contract fragment: Rust 2024 edition",
+                errors,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

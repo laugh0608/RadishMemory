@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`documentation-first / pre-implementation`
+`M0 implementation entry`
 
-当前目标是冻结能够约束首个实现批次的产品、记忆、隐私、评测和仓库治理基线，而不是提前选择完整技术栈或堆叠产品功能。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结。当前目标是建立最小 Rust workspace 并实现真实 M0 runner，不扩大到 PDF、Embedding、模型、UI、同步或服务端。
 
 ## 已冻结的首个切片
 
@@ -20,17 +20,19 @@ M0 字段级 canonical schema 已在 [M0 Canonical Schema](../schema/m0-canonica
 
 RadishMind 首次运行接入已通过 [ADR 0004](../adr/0004-radishmind-optional-gateway-entry.md) 冻结在完整 MVP 阶段 3：只在 mock 或直接 adapter 基线成立后，以显式可关闭的 Model Gateway 接入。M0、阶段 1 单机资料库和阶段 2 记忆生命周期均不依赖它；首次不接 Workflow、Tooling、RAG 数据 owner、Session owner 或业务写回，也不复制兄弟项目业务 schema。
 
+M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体：`radishmemory-core`、`radishmemory-sqlite` 和 `radishmemory-m0` 三个 package，首个工具链固定为 Rust `1.96.0`，本地存储采用 bundled SQLite 与 FTS5。M0 不包含网络、异步运行时、ORM、模型 SDK 或静态加密，也不冻结未来 UI 和同步服务端语言。
+
 ## 当前顺位
 
-1. 评审首个实现栈、目录结构、依赖、迁移边界和运行验证入口，并形成 Accepted ADR。
-2. 实现真实 M0 runner，并以冻结 fixture 证明采集、检索、确认、更正、删除和无网络闭环。
-3. M0 退出后按路线图推进单机资料库与直接模型 adapter，不提前接入 RadishMind。
-4. 进入同步实现前，再冻结元数据清单、密钥与恢复、设备授权、同步 envelope、冲突 / 防回滚和删除传播契约。
+1. 建立 Rust workspace、精确工具链、依赖锁和三 package 空间，并把 Rust 检查接入仓库聚合入口。
+2. 实现 canonical 类型、校验、RFC 3339、canonical JSON、摘要和稳定错误，不接数据库或 CLI 业务捷径。
+3. 实现 SQLite migration、Source Vault 小文本、追加事件、FTS5、派生投影和删除组件。
+4. 实现真实 M0 runner，并以冻结 fixture 证明采集、检索、确认、更正、删除和无网络闭环。
 
 ## 当前门禁
 
 - 产品、架构、记忆或隐私语义变化必须同步更新对应真相源，不能只改入口摘要或检查器。
-- 技术栈、依赖、数据库、消息系统、向量实现和 Provider SDK 尚未冻结；实验建议不得写成长期格式或已接受架构。
+- M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
 - 当前仓库检查只证明治理、文本、链接和配置合同成立，不证明产品功能、隐私协议、删除或同步已经实现。
@@ -44,18 +46,18 @@ RadishMind 首次运行接入已通过 [ADR 0004](../adr/0004-radishmind-optiona
 - 不建立自动发布、tag Ruleset、装饰性 CODEOWNERS 或无真实评审人的审批门禁；
 - 不复制兄弟项目的技术栈、业务清单、CI 组件或目录结构。
 
-## 阶段退出条件
-
-进入实现前至少应具备：
+## M0 实现退出条件
 
 - 已完成：经评审的 M0 采集、检索、引用、确认、更正和删除闭环；
 - 已完成：与首个切片对应的字段级 canonical schema；
 - 已完成：与首个切片对应的可执行合成 fixture 与指标 oracle；
-- 明确的记忆状态机、时间与冲突语义；
+- 已完成：明确的记忆状态机、时间与冲突语义；
 - 已完成：首个同步信任模式决策；
-- 可测量的召回、污染、删除与隐私指标；
+- 已完成：可测量的召回、污染、删除与隐私指标；
 - 已完成：RadishMind 首批参与方式的明确决定；
-- 一份记录实现栈选择、替代方案、迁移边界和风险的 ADR。
+- 已完成：记录实现栈选择、替代方案、迁移边界和风险的 ADR；
+- 待完成：三 package workspace、SQLite / FTS5 adapter 和 M0 runner 真实实现；
+- 待完成：冻结 fixture 的全部 assertion、metric 和三平台运行门禁通过。
 
 ## 当前验证入口
 

@@ -54,6 +54,8 @@ M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical
 
 RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional-gateway-entry.md) 后置到完整 MVP 阶段 3，并且只作为可选 Model Gateway；M0、单机资料库和记忆生命周期不依赖它，首次不接 Workflow、Tooling 或共享业务数据库。
 
+M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
+
 当前不把以下内容声明为已实现：
 
 - 长期记忆算法；

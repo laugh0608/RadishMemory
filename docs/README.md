@@ -17,7 +17,8 @@
 11. [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)：JSON mapping、操作序列、稳定 ID、摘要和指标聚合方法。
 12. [ADR 0003：首个同步采用零知识服务](adr/0003-zero-knowledge-sync-first.md)：服务端、受信设备、密钥、恢复、删除和可信计算节点边界。
 13. [ADR 0004：RadishMind 首次以可选 Gateway 接入](adr/0004-radishmind-optional-gateway-entry.md)：首次进入阶段、逻辑交换、外发、失败和后续 Workflow 边界。
-14. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+14. [ADR 0005：M0 实现栈与模块边界](adr/0005-m0-implementation-stack.md)：Rust workspace、SQLite / FTS5、依赖、迁移和验证入口。
+15. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 治理入口
 

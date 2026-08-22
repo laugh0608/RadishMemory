@@ -217,16 +217,18 @@ M0 fixture 已冻结这些动作在评测中的输入与预期，但不把测试
 - `ModelRequest / ModelResponse / UsageRecord`
 - `SyncOperation / DeviceIdentity`
 
-## 候选存储基线
+## M0 实现与存储基线
 
-以下内容是实现栈 ADR 的待评估候选，不是 M0 已接受决策。在没有规模证据前，应优先保持简单、可迁移：
+[ADR 0005](adr/0005-m0-implementation-stack.md) 已冻结 M0 为 Rust 2024 模块化单体：`radishmemory-core` 承载领域与应用边界，`radishmemory-sqlite` 实现本地持久化和 FTS5，`radishmemory-m0` 执行冻结 fixture。三个 package 在单进程内运行，不引入网络、异步运行时、Provider SDK 或服务拆分。
 
-- 本地结构化数据：SQLite；
-- 本地全文：SQLite FTS 或等价可嵌入索引；
-- 原始对象：加密的内容寻址文件存储；
-- 服务端结构化数据：PostgreSQL；
-- 服务端向量：PostgreSQL 向量扩展或可替换适配器；
-- 实体与时间关系：先用关系表与递归查询验证，不默认引入独立图数据库；
-- 后台任务：先使用数据库任务表或单进程 worker，不默认引入消息队列。
+M0 每个场景使用隔离临时 SQLite 文件：正文作为独立 BLOB 保存，metadata、九种 canonical 对象和追加事件由结构化存储承载，FTS5、ContextPack cache 和当前状态表都是可重建派生数据。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。M0 不实现静态加密；该选择只允许合成 fixture，不能被描述为加密存储或生产隐私能力。
 
-具体技术选择必须由 MVP 数据规模、延迟、离线和加密模式验证后决定。
+以下仍是后续阶段候选，不是 ADR 0005 的已接受决定：
+
+- PDF、图片和大对象进入前评审加密内容寻址文件存储及其与 SQLite metadata 的事务协调；
+- 服务端结构化数据评估 PostgreSQL，但零知识同步服务不得因此获得内容明文或语义索引；
+- 向量实现保持可替换，不把模型、维度或数据库扩展写入 canonical 格式；
+- 实体与时间关系先以关系投影验证，不默认引入独立图数据库；
+- 后台任务先评估数据库任务表或单进程 worker，不默认引入消息队列。
+
+这些选择必须由对应阶段的数据规模、延迟、离线、加密和迁移证据另行决定。

@@ -19,7 +19,8 @@ MVP 不以功能数量为目标，而要证明一个可信闭环：
 - 至少覆盖事实、偏好、时间变化、冲突、敏感度和删除的本地评测集；
 - 全历史输入、全文检索、向量检索和混合检索的基线方案；
 - 已通过 [ADR 0003](adr/0003-zero-knowledge-sync-first.md) 冻结的首个零知识同步信任模式；
-- 已通过 [ADR 0004](adr/0004-radishmind-optional-gateway-entry.md) 冻结的 RadishMind 可选 Gateway 首次接入阶段。
+- 已通过 [ADR 0004](adr/0004-radishmind-optional-gateway-entry.md) 冻结的 RadishMind 可选 Gateway 首次接入阶段；
+- 已通过 [ADR 0005](adr/0005-m0-implementation-stack.md) 冻结的 Rust 模块化单体、SQLite / FTS5、依赖和验证基线。
 
 停止线：不先选择复杂图数据库、不先制作虚拟形象、不声明新记忆算法。
 

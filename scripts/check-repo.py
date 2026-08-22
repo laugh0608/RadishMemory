@@ -41,6 +41,7 @@ REQUIRED_FILES = (
     "docs/adr/0002-m0-local-memory-loop.md",
     "docs/adr/0003-zero-knowledge-sync-first.md",
     "docs/adr/0004-radishmind-optional-gateway-entry.md",
+    "docs/adr/0005-m0-implementation-stack.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -611,6 +612,52 @@ def check_radishmind_entry_contract(repo_root: Path, errors: list[str]) -> None:
                 )
 
 
+def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0005-m0-implementation-stack.md": (
+            "状态：Accepted",
+            "Rust 2024 edition",
+            "Rust `1.96.0`",
+            "crates/radishmemory-core/",
+            "crates/radishmemory-sqlite/",
+            "apps/radishmemory-m0/",
+            "bundled SQLite / FTS5",
+            "首批依赖白名单",
+            "M0 不实现静态加密",
+            "不引入 `tokio`",
+        ),
+        "docs/status/current.md": (
+            "M0 implementation entry",
+            "ADR 0005",
+            "首个工具链固定为 Rust `1.96.0`",
+            "待完成：三 package workspace",
+        ),
+        "docs/architecture.md": (
+            "[ADR 0005]",
+            "Rust 2024 模块化单体",
+            "数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0005]",
+            "Rust 模块化单体、SQLite / FTS5、依赖和验证基线",
+        ),
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "[ADR 0005]",
+            "下一步直接建立最小 workspace 并实现真实 runner",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing implementation stack contract fragment: {fragment}"
+                )
+
+
 def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
     result = subprocess.run(
         [sys.executable, "scripts/check-m0-fixtures.py"],
@@ -852,6 +899,7 @@ def main() -> int:
     check_m0_fixture_contract(REPO_ROOT, errors)
     check_sync_trust_contract(REPO_ROOT, errors)
     check_radishmind_entry_contract(REPO_ROOT, errors)
+    check_implementation_stack_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)
