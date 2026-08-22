@@ -44,6 +44,8 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 当前处于 `documentation-first / pre-implementation` 阶段：先冻结产品边界、记忆模型、隐私假设和验证目标，再选择技术栈并进入实现。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
+首个可执行切片已冻结为 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md)：只用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和删除证据，不依赖模型、网络、RadishMind 或同步。
+
 当前不把以下内容声明为已实现：
 
 - 长期记忆算法；

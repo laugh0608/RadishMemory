@@ -25,7 +25,7 @@
 请勾选所有受影响边界，并在有影响时说明兼容性、迁移、失败模式和验证证据。
 
 - [ ] 无数据、记忆或信任边界变化
-- [ ] Artifact / SourceFragment / 原始资料
+- [ ] SourceArtifact / SourceFragment / 原始资料
 - [ ] Observation / Claim / Episode / Preference / Procedure
 - [ ] MemoryProposal / 状态机 / 时间 / 冲突 / 版本
 - [ ] 权限 / 敏感度 / 保留 / 外发策略

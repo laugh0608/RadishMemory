@@ -64,7 +64,7 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 | 变化 | 必需说明 |
 | --- | --- |
 | 产品范围或数据所有权 | 用户承诺、非目标、迁移和现有数据影响 |
-| Artifact / SourceFragment | 原件完整性、稳定引用、解析失败和来源追溯 |
+| SourceArtifact / SourceFragment | 原件完整性、稳定引用、解析失败和来源追溯 |
 | MemoryRecord / MemoryProposal | 来源、确认、版本、时间、冲突和污染路径 |
 | 权限或外发策略 | 失败关闭、派生数据、Provider、用途和审计 |
 | ContextPack | 最小化、Token 截断、引用映射和 manifest |

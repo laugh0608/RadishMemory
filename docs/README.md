@@ -11,7 +11,9 @@
 5. [隐私与威胁模型](privacy-threat-model.md)：用户信任谁，数据可能在哪里泄露，系统如何失败关闭。
 6. [RadishMind 边界](radishmind-boundary.md)：两个项目如何协作而不混淆数据真相。
 7. [MVP 路线图](mvp-roadmap.md)：先验证什么，哪些能力后置。
-8. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+8. [ADR 0002：M0 本地记忆闭环](adr/0002-m0-local-memory-loop.md)：首个可执行切片的范围、处理顺序和失败关闭规则。
+9. [M0 合成验收](evaluation/m0-local-memory-loop.md)：固定场景、指标、证据和退出条件。
+10. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 治理入口
 

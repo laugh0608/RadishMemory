@@ -38,7 +38,9 @@ REQUIRED_FILES = (
     "SECURITY.md",
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
+    "docs/adr/0002-m0-local-memory-loop.md",
     "docs/architecture.md",
+    "docs/evaluation/m0-local-memory-loop.md",
     "docs/governance/agent-collaboration.md",
     "docs/governance/repository-governance.md",
     "docs/memory-model.md",
@@ -348,6 +350,65 @@ def check_agent_contract(repo_root: Path, errors: list[str]) -> None:
                 errors.append(f"{name} is missing startup contract fragment: {fragment}")
 
 
+def check_m0_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "M0 Local Memory Loop",
+            "SourceArtifact",
+            "MemoryDecision",
+            "DeletionEvidence",
+            "不调用云端或本地生成模型",
+            "测试观察到网络请求即失败",
+        ),
+        "docs/evaluation/m0-local-memory-loop.md": (
+            "M0-E01",
+            "M0-E12",
+            "标注 citation 可解析率",
+            "策略违规或网络外发",
+            "错误声明完全删除",
+        ),
+        "docs/status/current.md": (
+            "ADR 0002",
+            "M0 字段级 canonical schema",
+            "M0 合成验收",
+        ),
+        "docs/product-scope.md": (
+            "M0 Local Memory Loop",
+            "ADR 0002",
+        ),
+        "docs/architecture.md": (
+            "M0 本地架构边界",
+            "不调用 Model Adapter 或 RadishMind",
+        ),
+        "docs/memory-model.md": (
+            "SourceArtifact",
+            "MemoryDecision",
+            "DeleteRequest",
+            "ADR 0002",
+        ),
+        "docs/privacy-threat-model.md": (
+            "M0 信任边界",
+            "任何请求视为策略违规",
+        ),
+        "docs/radishmind-boundary.md": (
+            "M0 不使用 RadishMind",
+            "不得改变已冻结的记忆真相与确认边界",
+        ),
+        "docs/mvp-roadmap.md": (
+            "M0 本地记忆闭环",
+            "完整 MVP 首个可演示场景",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(f"{name} is missing M0 contract fragment: {fragment}")
+
+
 def check_issue_and_pr_contracts(repo_root: Path, errors: list[str]) -> None:
     contracts = {
         ".github/ISSUE_TEMPLATE/config.yml": (
@@ -571,6 +632,7 @@ def main() -> int:
     check_markdown_links(REPO_ROOT, paths, errors)
     check_document_budgets(REPO_ROOT, errors)
     check_agent_contract(REPO_ROOT, errors)
+    check_m0_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)

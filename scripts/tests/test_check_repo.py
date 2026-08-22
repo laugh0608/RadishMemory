@@ -196,6 +196,21 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_m0_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0002-m0-local-memory-loop.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 Local Memory Loop\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_m0_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0002-m0-local-memory-loop.md is missing M0 contract fragment: SourceArtifact",
+                errors,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

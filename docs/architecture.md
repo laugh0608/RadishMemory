@@ -52,6 +52,12 @@ Device A Local Store ── encrypted operation/object sync ── Self-hosted S
 Device B Local Store ◄── encrypted operation/object sync ──┘
 ```
 
+## M0 本地架构边界
+
+首个可执行切片只启用总体架构的本地最小子集：Capture Gateway 接收合成短文本与 Markdown；Source Vault 保存正文和摘要；Ingestion Pipeline 做确定性分段；Derived Indexes 只包含全文基线；Policy Engine 执行 namespace、敏感度、状态和删除过滤；Memory Engine 管理 proposal、decision、record、时间更正和删除事件；Memory Compiler 生成带 citation map 的本地 ContextPack。
+
+M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest、Provider trace 或模型用量，也不实现同步。核心验收期间任何网络请求都视为失败。这个边界不删除长期组件，只避免在来源、状态、权限和删除契约尚未成立时引入模型与分布式复杂度。完整决策见 [ADR 0002](adr/0002-m0-local-memory-loop.md)。
+
 ## 核心组件
 
 ### 1. Capture Gateway
@@ -210,9 +216,9 @@ sources/
 - `SyncOperation / DeviceIdentity`
 - `DeleteRequest / DeletionEvidence`
 
-## 初始存储建议
+## 候选存储基线
 
-在没有规模证据前，优先保持简单、可迁移：
+以下内容是实现栈 ADR 的待评估候选，不是 M0 已接受决策。在没有规模证据前，应优先保持简单、可迁移：
 
 - 本地结构化数据：SQLite；
 - 本地全文：SQLite FTS 或等价可嵌入索引；

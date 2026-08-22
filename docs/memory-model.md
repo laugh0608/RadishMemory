@@ -14,13 +14,13 @@
 
 ## 核心对象
 
-### Artifact
+### SourceArtifact
 
-用户保存的原始对象，例如文件、短语、网页快照、图片、音频、对话或应用事件。Artifact 是来源，不等于记忆推断。
+用户保存的原始对象，例如文件、短语、网页快照、图片、音频、对话或应用事件。SourceArtifact 是来源，不等于记忆推断。
 
 ### SourceFragment
 
-Artifact 中可稳定引用的片段，例如 PDF 页、Markdown 标题段、音频时间码、图片区域或对话 turn。回答引用和记忆来源应尽量指向 SourceFragment。
+SourceArtifact 中可稳定引用的片段，例如 PDF 页、Markdown 标题段、音频时间码、图片区域或对话 turn。回答引用和记忆来源应尽量指向 SourceFragment。
 
 ### Observation
 
@@ -48,7 +48,7 @@ Artifact 中可稳定引用的片段，例如 PDF 页、Markdown 标题段、音
 
 ### Relation
 
-Entity、MemoryRecord 与 Artifact 之间的关系。关系可以有类型、方向、来源、置信度和有效时间。时间变化通过新关系、失效时间与版本表达，而不是覆盖旧边。
+Entity、MemoryRecord 与 SourceArtifact 之间的关系。关系可以有类型、方向、来源、置信度和有效时间。时间变化通过新关系、失效时间与版本表达，而不是覆盖旧边。
 
 ### Projection
 
@@ -56,7 +56,7 @@ Entity、MemoryRecord 与 Artifact 之间的关系。关系可以有类型、方
 
 ## MemoryRecord 基础字段
 
-具体 schema 在实现阶段冻结，但所有长期记忆至少应表达：
+字段级 canonical schema 必须在首批实现前冻结；数据库表、序列化布局和语言类型可在实现栈 ADR 中决定。所有长期记忆至少应表达：
 
 ```text
 memory_id
@@ -95,9 +95,9 @@ content_digest
 
 ```text
 proposed
-   ├── confirmed
-   ├── rejected
-   └── expired
+   ├── accept decision ──► confirmed
+   ├── reject decision ──► rejected
+   └── expiry event ─────► expired
 
 confirmed
    ├── superseded
@@ -105,6 +105,8 @@ confirmed
    ├── retracted
    └── expired
 ```
+
+`defer` 决定不会产生新的状态，proposal 保持 `proposed`，等待后续决定或过期事件。
 
 - `proposed`：模型、解析器或规则提出，尚不是长期确认事实。
 - `confirmed`：用户明确确认，或满足用户授权的确定性规则。
@@ -122,7 +124,7 @@ confirmed
 
 ### 用户显式写入
 
-例如“记住我更喜欢简洁的中文说明”。可以直接进入确认流程，但仍需保存来源、作用域和时间。
+例如“记住我更喜欢简洁的中文说明”。可以在一次交互中产生 proposal 和 accept decision，但仍须分别保存候选、决定、来源、作用域和时间，不能跳过可审计的决策事件。
 
 ### 热路径候选
 
@@ -152,6 +154,24 @@ confirmed
 ```
 
 规则层负责 schema、来源、权限、重复、冲突和敏感度检查，用户或显式授权策略负责最终决定。
+
+## MemoryDecision
+
+MemoryDecision 是对一个具体 MemoryProposal 的不可变决定事件，至少区分 accept、reject 和 defer。它必须记录 proposal 引用、决定者、授权依据、原因和决定时间；未来允许确定性自动规则时，还必须记录规则与版本。
+
+accept decision 可以创建或连接一个 confirmed MemoryRecord；reject decision 使候选进入 rejected，并保留阻止相同证据重复提议所需的最小摘要；defer 不改变候选的未确认性质。已记录的决定不可修改；需要纠错时创建新的撤回 / 更正事件和必要的新 proposal，不原地改写历史决定。
+
+## M0 状态与操作约束
+
+M0 只实现足以证明治理闭环的对象和转换：SourceArtifact、SourceFragment、MemoryProposal、MemoryDecision、confirmed MemoryRecord、状态事件、ContextPack、DeleteRequest 和 DeletionEvidence。
+
+- 规则和测试桩与未来模型一样，只能创建 proposal。
+- accept decision 创建 confirmed record；reject decision 保留去重所需摘要，但不能进入确认召回。
+- 更正创建新 confirmed record，并通过 `supersedes` 和有效时间连接旧记录。
+- 无法安全收敛的互斥来源进入 contradicted 状态，不自动选择得分更高者。
+- 删除事件必须先枚举本地影响面，再逐项记录完成、pending 或 failed。
+
+M0 的完整运行与验收边界见 [ADR 0002](adr/0002-m0-local-memory-loop.md)。
 
 ## 时间与冲突
 
@@ -200,6 +220,8 @@ RadishMemory 不把用户建模成永远不变的单份 Profile。对于“以�
 - **逻辑删除**：对象进入删除流程，等待索引、设备和备份传播；
 - **物理清除**：正文、对象和派生索引已删除或通过密钥销毁变得不可恢复；
 - **备份到期**：受控备份超过保留期或完成重加密/销毁。
+
+DeleteRequest 表达用户要求删除或停止召回的目标、范围、期望保证、请求者和请求时间。它是删除意图，不等于删除完成。
 
 删除应生成 `DeletionEvidence`，列出 Source Vault、Memory Store、全文索引、向量索引、图投影、缓存、同步设备和备份的状态。系统只能在证据满足对应信任模式时声明完成。
 
