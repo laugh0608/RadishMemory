@@ -105,4 +105,4 @@ M0 必须用合成数据证明：
 
 ## 后续决策
 
-M0 合成 fixture 格式与指标口径已经由 [M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 冻结，首个同步信任模式已由 [ADR 0003](0003-zero-knowledge-sync-first.md) 冻结，RadishMind 首次接入阶段已由 [ADR 0004](0004-radishmind-optional-gateway-entry.md) 冻结，M0 实现栈与迁移边界也已由 [ADR 0005](0005-m0-implementation-stack.md) 冻结。下一步直接建立最小 workspace 并实现真实 runner。
+M0 合成 fixture 格式与指标口径已经由 [M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 冻结，首个同步信任模式已由 [ADR 0003](0003-zero-knowledge-sync-first.md) 冻结，RadishMind 首次接入阶段已由 [ADR 0004](0004-radishmind-optional-gateway-entry.md) 冻结，M0 实现栈与迁移边界也已由 [ADR 0005](0005-m0-implementation-stack.md) 冻结。实施顺序从最小 workspace 开始，再依次完成 canonical core、SQLite adapter 和真实 runner。

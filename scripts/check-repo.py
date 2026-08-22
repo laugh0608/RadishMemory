@@ -36,6 +36,14 @@ REQUIRED_FILES = (
     "LICENSE",
     "README.md",
     "SECURITY.md",
+    "Cargo.lock",
+    "Cargo.toml",
+    "apps/radishmemory-m0/Cargo.toml",
+    "apps/radishmemory-m0/src/main.rs",
+    "crates/radishmemory-core/Cargo.toml",
+    "crates/radishmemory-core/src/lib.rs",
+    "crates/radishmemory-sqlite/Cargo.toml",
+    "crates/radishmemory-sqlite/src/lib.rs",
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
     "docs/adr/0002-m0-local-memory-loop.md",
@@ -47,6 +55,7 @@ REQUIRED_FILES = (
     "docs/evaluation/m0-local-memory-loop.md",
     "docs/governance/agent-collaboration.md",
     "docs/governance/repository-governance.md",
+    "docs/implementation/m0-rust-dependency-baseline.md",
     "docs/memory-model.md",
     "docs/mvp-roadmap.md",
     "docs/privacy-threat-model.md",
@@ -56,6 +65,7 @@ REQUIRED_FILES = (
     "docs/schema/m0-canonical-schema.md",
     "docs/status/current.md",
     "fixtures/m0/local-memory-loop.v1.json",
+    "rust-toolchain.toml",
     "scripts/check-m0-fixtures.py",
     "scripts/check-repo.ps1",
     "scripts/check-repo.py",
@@ -110,9 +120,82 @@ TEXT_NAMES = {
     ".gitattributes",
     ".gitignore",
     "Dockerfile",
+    "Cargo.lock",
     "LICENSE",
     "Makefile",
 }
+
+EXPECTED_CARGO_MANIFESTS = {
+    "Cargo.toml": """[workspace]
+members = [
+  \"apps/radishmemory-m0\",
+  \"crates/radishmemory-core\",
+  \"crates/radishmemory-sqlite\",
+]
+resolver = \"3\"
+
+[workspace.package]
+version = \"0.1.0\"
+edition = \"2024\"
+rust-version = \"1.96.0\"
+license-file = \"LICENSE\"
+publish = false
+
+[workspace.dependencies]
+radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
+radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
+
+[workspace.lints.rust]
+unsafe_code = \"forbid\"
+unused_crate_dependencies = \"deny\"
+""",
+    "apps/radishmemory-m0/Cargo.toml": """[package]
+name = \"radishmemory-m0\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+radishmemory-core.workspace = true
+radishmemory-sqlite.workspace = true
+""",
+    "crates/radishmemory-core/Cargo.toml": """[package]
+name = \"radishmemory-core\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+""",
+    "crates/radishmemory-sqlite/Cargo.toml": """[package]
+name = \"radishmemory-sqlite\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+radishmemory-core.workspace = true
+""",
+}
+
+EXPECTED_RUST_TOOLCHAIN = """[toolchain]
+channel = \"1.96.0\"
+components = [\"clippy\", \"rustfmt\"]
+profile = \"minimal\"
+"""
 
 FORBIDDEN_DIRECTORY_NAMES = {
     "__pycache__",
@@ -212,6 +295,71 @@ def check_required_files(repo_root: Path, errors: list[str]) -> None:
     for item in REQUIRED_FILES:
         if not (repo_root / item).is_file():
             errors.append(f"missing required file: {item}")
+
+
+def check_rust_workspace_contract(
+    repo_root: Path,
+    errors: list[str],
+    paths: list[Path] | None = None,
+) -> None:
+    candidate_paths = paths if paths is not None else list(repo_root.rglob("Cargo.toml"))
+    manifests = sorted(
+        relative(repo_root, path)
+        for path in candidate_paths
+        if path.name == "Cargo.toml"
+        and not {".git", "target"}.intersection(path.relative_to(repo_root).parts)
+    )
+    expected_manifests = sorted(EXPECTED_CARGO_MANIFESTS)
+    if manifests != expected_manifests:
+        errors.append(
+            "Rust workspace must contain only the root manifest and the three M0 package manifests: "
+            f"found {manifests}"
+        )
+
+    for name, expected in EXPECTED_CARGO_MANIFESTS.items():
+        path = repo_root / name
+        if path.is_file() and path.read_text(encoding="utf-8") != expected:
+            errors.append(f"Rust workspace manifest differs from the M0-I01 contract: {name}")
+
+    toolchain = repo_root / "rust-toolchain.toml"
+    if toolchain.is_file() and toolchain.read_text(encoding="utf-8") != EXPECTED_RUST_TOOLCHAIN:
+        errors.append(
+            "rust-toolchain.toml must pin Rust 1.96.0 with the minimal profile, clippy, and rustfmt"
+        )
+
+    lockfile = repo_root / "Cargo.lock"
+    if not lockfile.is_file():
+        return
+    lock_text = lockfile.read_text(encoding="utf-8")
+    package_names = re.findall(r'^name = "([^"]+)"$', lock_text, flags=re.MULTILINE)
+    if package_names != [
+        "radishmemory-core",
+        "radishmemory-m0",
+        "radishmemory-sqlite",
+    ]:
+        errors.append(
+            "Cargo.lock must resolve only the three first-party M0 workspace packages"
+        )
+    for forbidden in ("source = ", "checksum = "):
+        if forbidden in lock_text:
+            errors.append(
+                "M0-I01 Cargo.lock must not contain registry or Git dependencies: "
+                f"found {forbidden.strip()}"
+            )
+
+    entrypoint_fragments = (
+        "fmt --all --check",
+        "clippy --workspace --all-targets --all-features --locked -- -D warnings",
+        "test --workspace --all-targets --all-features --locked",
+    )
+    for name in ("scripts/check-repo.sh", "scripts/check-repo.ps1"):
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in entrypoint_fragments:
+            if fragment not in text:
+                errors.append(f"{name} is missing Rust check fragment: {fragment}")
 
 
 def check_paths_sizes_and_safety(
@@ -630,7 +778,15 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "M0 implementation entry",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
-            "待完成：三 package workspace",
+            "`M0-I01` 已建立且仅建立上述三个可编译 package",
+            "已完成：精确 Rust 工具链、三 package workspace",
+        ),
+        "docs/implementation/m0-rust-dependency-baseline.md": (
+            "lockfile format 为 `4`",
+            "只包含三个第一方 workspace package",
+            "没有 registry 或 Git dependency",
+            "SQLite 版本、启用 feature、原生构建和第三方许可证当前均为不适用",
+            "不得宣称三平台已经通过",
         ),
         "docs/architecture.md": (
             "[ADR 0005]",
@@ -643,7 +799,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
         ),
         "docs/adr/0002-m0-local-memory-loop.md": (
             "[ADR 0005]",
-            "下一步直接建立最小 workspace 并实现真实 runner",
+            "实施顺序从最小 workspace 开始",
         ),
     }
     for name, fragments in contracts.items():
@@ -793,14 +949,28 @@ def check_workflow_contract(repo_root: Path, errors: list[str]) -> None:
         "persist-credentials: false",
         "uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0",
         "name: Repo Hygiene",
+        "python scripts/check-repo.py --base-ref",
+        "name: Rust Quality (${{ matrix.platform }})",
+        "          - platform: Linux\n            os: ubuntu-latest",
+        "          - platform: macOS\n            os: macos-latest",
+        "          - platform: Windows\n            os: windows-latest",
+        "rustup toolchain install 1.96.0 --profile minimal --component clippy,rustfmt",
+        "cargo fmt --all --check",
+        "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+        "cargo test --workspace --all-targets --all-features --locked",
         "name: Candidate Quality",
-        "./scripts/check-repo.sh --base-ref",
+        "RUST_QUALITY_RESULT: ${{ needs.rust-quality.result }}",
     )
     for fragment in required_fragments:
         if fragment not in text:
             errors.append(f"PR workflow is missing contract fragment: {fragment.strip()}")
-    if text.count("    timeout-minutes: 10") != 2:
+    if text.count("    timeout-minutes: 10") != 3:
         errors.append("PR workflow jobs must use the 10-minute timeout baseline")
+    checkout = (
+        "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
+    )
+    if text.count(checkout) != 2:
+        errors.append("PR workflow must pin checkout for Repo Hygiene and Rust Quality")
     for forbidden in ("pull_request_target:", "workflow_run:", "contents: write"):
         if forbidden in text:
             errors.append(f"PR workflow must not use privileged capability: {forbidden}")
@@ -888,6 +1058,7 @@ def main() -> int:
         return 1
 
     check_required_files(REPO_ROOT, errors)
+    check_rust_workspace_contract(REPO_ROOT, errors, paths)
     check_paths_sizes_and_safety(REPO_ROOT, paths, errors)
     check_text_files(REPO_ROOT, paths, errors)
     check_json_files(REPO_ROOT, paths, errors)

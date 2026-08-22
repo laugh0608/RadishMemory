@@ -161,6 +161,45 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn("missing required file: SECURITY.md", errors)
 
+    def test_rust_workspace_contract_rejects_a_fourth_package(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "crates/extra/Cargo.toml"
+            target.parent.mkdir(parents=True)
+            target.write_text(
+                '[package]\nname = "extra"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertTrue(
+                any(
+                    error.startswith(
+                        "Rust workspace must contain only the root manifest and the three M0 package manifests"
+                    )
+                    for error in errors
+                )
+            )
+
+    def test_rust_workspace_contract_rejects_a_floating_toolchain(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "rust-toolchain.toml"
+            target.write_text(
+                '[toolchain]\nchannel = "stable"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertIn(
+                "rust-toolchain.toml must pin Rust 1.96.0 with the minimal profile, clippy, and rustfmt",
+                errors,
+            )
+
     def test_agent_mirrors_must_match(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -193,6 +232,27 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn(
                 "unattributed Copilot changes must require extra approval",
+                errors,
+            )
+
+    def test_workflow_contract_requires_windows_rust_quality(self) -> None:
+        source = CHECK_REPO.REPO_ROOT / ".github/workflows/pr-check.yml"
+        workflow = source.read_text(encoding="utf-8").replace(
+            "          - platform: Windows\n            os: windows-latest\n",
+            "",
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / ".github/workflows/pr-check.yml"
+            target.parent.mkdir(parents=True)
+            target.write_text(workflow, encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_workflow_contract(root, errors)
+
+            self.assertIn(
+                "PR workflow is missing contract fragment: - platform: Windows\n            os: windows-latest",
                 errors,
             )
 

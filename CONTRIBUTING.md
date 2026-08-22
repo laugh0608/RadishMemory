@@ -1,6 +1,6 @@
 # 参与 RadishMemory
 
-感谢你关注 RadishMemory。项目当前处于文档先行和实现前定义阶段，贡献首先要保证用户数据主权、记忆语义、隐私声明和验证结论准确，而不是提前扩张功能或技术栈。
+感谢你关注 RadishMemory。项目当前处于 M0 实现入口阶段，贡献首先要保证用户数据主权、记忆语义、隐私声明和验证结论准确，并遵守已经冻结的实现栈与阶段顺位，而不是提前扩张功能。
 
 ## 开始之前
 
@@ -48,7 +48,7 @@
 
 ## 本地验证
 
-当前无第三方依赖的仓库级入口为：
+仓库级聚合入口会运行治理与 fixture 检查，以及 Rust workspace 的格式、Clippy 和 locked test：
 
 ```bash
 ./scripts/check-repo.sh
@@ -60,7 +60,7 @@ Windows PowerShell：
 pwsh ./scripts/check-repo.ps1
 ```
 
-实现技术栈冻结后，Pull Request 还必须执行与改动范围匹配的格式化、静态分析、测试、兼容性、隐私策略和删除验证。PR 只记录实际执行过的命令；未执行、失败、受环境阻塞或需要人工复核的内容必须明确列出。
+Pull Request 的 `Candidate Quality` 还会在 Linux、macOS 和 Windows 运行 Rust 检查。后续实现必须继续追加与改动范围匹配的兼容性、隐私策略和删除验证。PR 只记录实际执行过的命令；未执行、失败、受环境阻塞或需要人工复核的内容必须明确列出。
 
 ## Pull Request 说明
 

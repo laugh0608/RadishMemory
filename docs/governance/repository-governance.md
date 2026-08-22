@@ -27,7 +27,7 @@
 | `CODE_OF_CONDUCT.md` | 社区讨论、证据准确性和隐私保护边界 |
 | `SECURITY.md` | 私下漏洞报告与安全问题范围 |
 | `.editorconfig` / `.gitattributes` / `.gitignore` | 编码、换行、本地状态、凭据和个人资料边界 |
-| `scripts/check-repo.*` | 无第三方依赖的本地与 CI 仓库基线 |
+| `scripts/check-repo.*` | 本地治理、fixture 与 Rust 质量聚合入口 |
 | `.github/PULL_REQUEST_TEMPLATE.md` | 影响面、证据、风险和回流记录 |
 | `.github/ISSUE_TEMPLATE/` | 缺陷、长期提案与安全报告分流 |
 | `.github/workflows/pr-check.yml` | PR 自动检查和稳定聚合 context |
@@ -102,7 +102,7 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 
 ## CI 契约
 
-`Candidate Quality` 是 Ruleset 唯一绑定的稳定聚合 job，并限定由 GitHub Actions App 产生，避免其他拥有写权限的主体伪造同名成功状态。当前组件 `Repo Hygiene` 覆盖：
+`Candidate Quality` 是 Ruleset 唯一绑定的稳定聚合 job，并限定由 GitHub Actions App 产生，避免其他拥有写权限的主体伪造同名成功状态。当前组件包括 `Repo Hygiene` 和 `Rust Quality`。`Repo Hygiene` 覆盖：
 
 - 必需治理文件与核心真相源是否存在；
 - UTF-8、BOM、LF、末尾换行与尾随空格；
@@ -112,9 +112,15 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 - Issue、PR、Ruleset 和 workflow 合同；
 - 检查器单元测试、PR diff 空白和 Conventional Commits。
 
+`Rust Quality` 使用精确固定的 Rust `1.96.0`，分别在 Linux、macOS 和 Windows 真实执行：
+
+- `cargo fmt --all --check`；
+- `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`；
+- `cargo test --workspace --all-targets --all-features --locked`。
+
 Workflow 使用最小 `contents: read` 权限、禁用 checkout 凭据持久化、为 job 设置有限超时，并把 GitHub 官方 Actions 固定到带版本注释的完整 commit SHA；升级 Action 时必须核对官方发布、同步检查器合同并通过 PR 验证。
 
-技术栈冻结后按风险把实现检查作为独立 job 接入聚合，包括 schema 兼容、记忆状态、时间冲突、权限拒绝、ContextPack 最小化、删除传播、同步冲突、构建测试和供应链检查。组件名称可以演进，`Candidate Quality` 保持稳定。
+后续按风险把 schema 兼容、记忆状态、时间冲突、权限拒绝、ContextPack 最小化、删除传播、同步冲突和供应链检查接入现有组件或新增独立 job。组件名称可以演进，`Candidate Quality` 保持稳定。
 
 ## 变更同步矩阵
 

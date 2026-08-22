@@ -19,6 +19,8 @@ GitHub 官方说明：[About rulesets](https://docs.github.com/en/repositories/c
 
 Conventional Commits 由仓库检查器校验 PR commit range，不在 Ruleset 中添加提交正则，避免 GitHub 生成的正常 merge commit 被远程规则误拦截。
 
+当前 `Candidate Quality` 聚合 Ubuntu 上的 `Repo Hygiene`，以及 Linux、macOS、Windows 三平台的 `Rust Quality`。Ruleset 仍只绑定稳定聚合 context，不单独绑定矩阵展开后的 job 名称。
+
 ## `dev` 策略
 
 `master` 保持 GitHub 默认分支，`dev` 是日常集成分支。当前单人阶段不为 `dev` 启用强制 Ruleset：

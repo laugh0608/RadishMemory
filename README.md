@@ -44,7 +44,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `documentation-first / pre-implementation` 阶段：先冻结产品边界、记忆模型、隐私假设和验证目标，再选择技术栈并进入实现。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `M0 implementation entry` 阶段：产品边界、记忆模型、隐私假设、验证目标和 M0 实现栈已经冻结，最小 Rust workspace 与聚合检查入口已经建立。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
 首个可执行切片已冻结为 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md)：只用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和删除证据，不依赖模型、网络、RadishMind 或同步。
 
@@ -55,6 +55,8 @@ M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical
 RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional-gateway-entry.md) 后置到完整 MVP 阶段 3，并且只作为可选 Model Gateway；M0、单机资料库和记忆生命周期不依赖它，首次不接 Workflow、Tooling 或共享业务数据库。
 
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
+
+当前已完成精确 Rust `1.96.0` 工具链、三个空实现 package、第一方 lockfile 和三平台 Rust CI 合同；canonical 领域类型、SQLite / FTS5 和真实 M0 runner 仍未实现。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图和证据边界。
 
 当前不把以下内容声明为已实现：
 
