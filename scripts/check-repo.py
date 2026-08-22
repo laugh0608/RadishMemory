@@ -476,6 +476,8 @@ def check_workflow_contract(repo_root: Path, errors: list[str]) -> None:
     for fragment in required_fragments:
         if fragment not in text:
             errors.append(f"PR workflow is missing contract fragment: {fragment.strip()}")
+    if text.count("    timeout-minutes: 10") != 2:
+        errors.append("PR workflow jobs must use the 10-minute timeout baseline")
     for forbidden in ("pull_request_target:", "workflow_run:", "contents: write"):
         if forbidden in text:
             errors.append(f"PR workflow must not use privileged capability: {forbidden}")

@@ -112,7 +112,7 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 - Issue、PR、Ruleset 和 workflow 合同；
 - 检查器单元测试、PR diff 空白和 Conventional Commits。
 
-Workflow 使用最小 `contents: read` 权限、禁用 checkout 凭据持久化，并把 GitHub 官方 Actions 固定到带版本注释的完整 commit SHA；升级 Action 时必须核对官方发布、同步检查器合同并通过 PR 验证。
+Workflow 使用最小 `contents: read` 权限、禁用 checkout 凭据持久化、为 job 设置有限超时，并把 GitHub 官方 Actions 固定到带版本注释的完整 commit SHA；升级 Action 时必须核对官方发布、同步检查器合同并通过 PR 验证。
 
 技术栈冻结后按风险把实现检查作为独立 job 接入聚合，包括 schema 兼容、记忆状态、时间冲突、权限拒绝、ContextPack 最小化、删除传播、同步冲突、构建测试和供应链检查。组件名称可以演进，`Candidate Quality` 保持稳定。
 

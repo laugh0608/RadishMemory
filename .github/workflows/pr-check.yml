@@ -18,6 +18,7 @@ jobs:
   repo-hygiene:
     name: Repo Hygiene
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -46,6 +47,7 @@ jobs:
   candidate-quality:
     name: Candidate Quality
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: always()
     needs:
       - repo-hygiene
