@@ -6,6 +6,7 @@
 
 mod capability;
 mod error;
+mod memory_store;
 mod migration;
 mod source_store;
 

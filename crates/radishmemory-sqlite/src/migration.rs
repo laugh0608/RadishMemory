@@ -6,7 +6,7 @@ use rusqlite::{Connection, Transaction, TransactionBehavior, params};
 use crate::SqliteError;
 
 /// Newest on-disk schema version understood by this adapter.
-pub const SQLITE_SCHEMA_VERSION: u32 = 2;
+pub const SQLITE_SCHEMA_VERSION: u32 = 3;
 
 struct Migration {
     version: u32,
@@ -15,7 +15,7 @@ struct Migration {
     tables_created: &'static [&'static str],
 }
 
-const MIGRATIONS: [Migration; 2] = [
+const MIGRATIONS: [Migration; 3] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -32,6 +32,23 @@ const MIGRATIONS: [Migration; 2] = [
             "radishmemory_source_bodies",
             "radishmemory_source_fragments",
             "radishmemory_source_supersedes",
+        ],
+    },
+    Migration {
+        version: 3,
+        name: "0003_memory_storage",
+        sql: include_str!("../migrations/0003_memory_storage.sql"),
+        tables_created: &[
+            "radishmemory_event_related_memories",
+            "radishmemory_memory_decisions",
+            "radishmemory_memory_proposals",
+            "radishmemory_memory_records",
+            "radishmemory_memory_state_events",
+            "radishmemory_proposal_source_fragments",
+            "radishmemory_proposal_targets",
+            "radishmemory_record_contradicts",
+            "radishmemory_record_source_fragments",
+            "radishmemory_record_supersedes",
         ],
     },
 ];
@@ -256,30 +273,48 @@ mod tests {
     }
 
     #[test]
-    fn version_one_upgrades_to_source_storage_atomically() {
+    fn version_one_upgrades_through_memory_storage_atomically() {
         let mut connection = Connection::open_in_memory().expect("in-memory SQLite must open");
-        let first = &MIGRATIONS[0];
-        connection
-            .execute_batch(first.sql)
-            .expect("entry migration must apply");
-        connection
-            .execute(
-                "INSERT INTO radishmemory_schema_migrations (
-                     version, migration_name, canonical_schema_version
-                 ) VALUES (?1, ?2, ?3)",
-                params![first.version, first.name, M0_SCHEMA_VERSION],
-            )
-            .expect("entry migration history must be recorded");
-        connection
-            .pragma_update(None, "user_version", first.version)
-            .expect("entry schema version must be recorded");
+        apply_reviewed_prefix(&connection, 1);
 
-        migrate(&mut connection).expect("source storage migration must apply");
+        migrate(&mut connection).expect("pending storage migrations must apply");
 
         let version = user_version(&connection).expect("schema version must be queryable");
         assert_eq!(version, i64::from(SQLITE_SCHEMA_VERSION));
         validate_migration_history(&connection, SQLITE_SCHEMA_VERSION)
             .expect("upgraded schema must be exact");
+    }
+
+    #[test]
+    fn version_two_upgrades_to_memory_storage_atomically() {
+        let mut connection = Connection::open_in_memory().expect("in-memory SQLite must open");
+        apply_reviewed_prefix(&connection, 2);
+
+        migrate(&mut connection).expect("memory storage migration must apply");
+
+        let version = user_version(&connection).expect("schema version must be queryable");
+        assert_eq!(version, i64::from(SQLITE_SCHEMA_VERSION));
+        validate_migration_history(&connection, SQLITE_SCHEMA_VERSION)
+            .expect("upgraded memory schema must be exact");
+    }
+
+    fn apply_reviewed_prefix(connection: &Connection, count: usize) {
+        for migration in MIGRATIONS.iter().take(count) {
+            connection
+                .execute_batch(migration.sql)
+                .expect("reviewed migration must apply");
+            connection
+                .execute(
+                    "INSERT INTO radishmemory_schema_migrations (
+                         version, migration_name, canonical_schema_version
+                     ) VALUES (?1, ?2, ?3)",
+                    params![migration.version, migration.name, M0_SCHEMA_VERSION],
+                )
+                .expect("reviewed migration history must be recorded");
+            connection
+                .pragma_update(None, "user_version", migration.version)
+                .expect("reviewed schema version must be recorded");
+        }
     }
 
     #[test]

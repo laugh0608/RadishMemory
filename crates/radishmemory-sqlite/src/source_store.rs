@@ -342,7 +342,7 @@ fn validate_fragment_numbers(fragment: &SourceFragment) -> Result<(), SqliteErro
     Ok(())
 }
 
-fn load_source_artifact(
+pub(crate) fn load_source_artifact(
     connection: &Connection,
     namespace_id: &Identifier,
     source_id: &Identifier,
@@ -372,6 +372,43 @@ fn load_source_artifact(
     let source = stored.into_domain(supersedes)?;
     validate_stored_superseded_sources(connection, &source)?;
     Ok(Some(source))
+}
+
+pub(crate) fn load_resolved_source_fragment(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    fragment_id: &Identifier,
+) -> Result<Option<(SourceFragment, SourceArtifact)>, SqliteError> {
+    let stored = connection
+        .query_row(
+            "SELECT fragment_id, canonical_schema_version, object_type, namespace_id,
+                    source_id, ordinal, byte_start, byte_end, content_digest_algorithm,
+                    content_digest_profile, content_digest_value, segmenter_type,
+                    segmenter_id, segmenter_version, sensitivity, egress_policy,
+                    retention_mode, retention_expires_at, retention_policy_id,
+                    deletion_state, policy_basis, created_at
+             FROM radishmemory_source_fragments
+             WHERE fragment_id = ?1 AND namespace_id = ?2",
+            params![fragment_id.as_str(), namespace_id.as_str()],
+            StoredFragment::from_row,
+        )
+        .optional()
+        .map_err(SqliteError::storage)?;
+    let Some(stored) = stored else {
+        return Ok(None);
+    };
+    let source_id = identifier(stored.source_id.clone())?;
+    let source = load_source_artifact(connection, namespace_id, &source_id)?
+        .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch))?;
+    let headings = load_heading_path(connection, &stored.fragment_id)?;
+    let fragment = stored.into_domain(&source, headings)?;
+    validate_source_fragment_resolution(&fragment, &source).map_err(|source| {
+        SqliteError::invalid_stored_with_source(
+            SqliteStorageReason::StoredIntegrityMismatch,
+            source,
+        )
+    })?;
+    Ok(Some((fragment, source)))
 }
 
 fn load_superseded_ids(
@@ -629,7 +666,7 @@ impl StoredFragment {
     }
 }
 
-struct StoredGovernance {
+pub(crate) struct StoredGovernance {
     sensitivity: String,
     egress_policy: String,
     retention_mode: String,
@@ -640,7 +677,7 @@ struct StoredGovernance {
 }
 
 impl StoredGovernance {
-    fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+    pub(crate) fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
         Ok(Self {
             sensitivity: row.get("sensitivity")?,
             egress_policy: row.get("egress_policy")?,
@@ -652,7 +689,7 @@ impl StoredGovernance {
         })
     }
 
-    fn into_domain(self) -> Result<Governance, SqliteError> {
+    pub(crate) fn into_domain(self) -> Result<Governance, SqliteError> {
         let retention = RetentionRule::new(
             parse_retention_mode(&self.retention_mode)?,
             self.retention_expires_at
@@ -673,14 +710,14 @@ impl StoredGovernance {
     }
 }
 
-struct StoredProducer {
+pub(crate) struct StoredProducer {
     producer_type: String,
     producer_id: String,
     producer_version: String,
 }
 
 impl StoredProducer {
-    fn from_row(
+    pub(crate) fn from_row(
         row: &Row<'_>,
         type_column: &str,
         id_column: &str,
@@ -693,7 +730,7 @@ impl StoredProducer {
         })
     }
 
-    fn into_domain(self) -> Result<ProducerRef, SqliteError> {
+    pub(crate) fn into_domain(self) -> Result<ProducerRef, SqliteError> {
         Ok(ProducerRef::new(
             parse_producer_type(&self.producer_type)?,
             identifier(self.producer_id)?,
@@ -702,45 +739,45 @@ impl StoredProducer {
     }
 }
 
-fn to_i64(value: u64) -> Result<i64, SqliteError> {
+pub(crate) fn to_i64(value: u64) -> Result<i64, SqliteError> {
     i64::try_from(value)
         .map_err(|_| SqliteError::source_invariant(SqliteStorageReason::NumericRange))
 }
 
-fn from_i64(value: i64) -> Result<u64, SqliteError> {
+pub(crate) fn from_i64(value: i64) -> Result<u64, SqliteError> {
     u64::try_from(value).map_err(|_| SqliteError::invalid_stored(SqliteStorageReason::NumericRange))
 }
 
-fn usize_to_u64(value: usize) -> Result<u64, SqliteError> {
+pub(crate) fn usize_to_u64(value: usize) -> Result<u64, SqliteError> {
     u64::try_from(value)
         .map_err(|_| SqliteError::source_invariant(SqliteStorageReason::NumericRange))
 }
 
-fn identifier(value: String) -> Result<Identifier, SqliteError> {
+pub(crate) fn identifier(value: String) -> Result<Identifier, SqliteError> {
     Identifier::new(value).map_err(invalid_core)
 }
 
-fn non_empty_text(value: String) -> Result<NonEmptyText, SqliteError> {
+pub(crate) fn non_empty_text(value: String) -> Result<NonEmptyText, SqliteError> {
     NonEmptyText::new(value).map_err(invalid_core)
 }
 
-fn optional_text(value: Option<String>) -> Result<Option<NonEmptyText>, SqliteError> {
+pub(crate) fn optional_text(value: Option<String>) -> Result<Option<NonEmptyText>, SqliteError> {
     value.map(non_empty_text).transpose()
 }
 
-fn version(value: i64) -> Result<Version, SqliteError> {
+pub(crate) fn version(value: i64) -> Result<Version, SqliteError> {
     Version::new(from_i64(value)?).map_err(invalid_core)
 }
 
-fn timestamp(value: &str) -> Result<Timestamp, SqliteError> {
+pub(crate) fn timestamp(value: &str) -> Result<Timestamp, SqliteError> {
     Timestamp::parse(value).map_err(invalid_core)
 }
 
-fn digest(algorithm: &str, profile: &str, value: &str) -> Result<Digest, SqliteError> {
+pub(crate) fn digest(algorithm: &str, profile: &str, value: &str) -> Result<Digest, SqliteError> {
     Digest::parse(algorithm, profile, value).map_err(invalid_core)
 }
 
-fn invalid_core(source: CoreError) -> SqliteError {
+pub(crate) fn invalid_core(source: CoreError) -> SqliteError {
     let reason = if source.code() == CoreErrorCode::DigestMismatch {
         SqliteStorageReason::StoredIntegrityMismatch
     } else {
@@ -793,7 +830,7 @@ fn parse_source_origin_kind(value: &str) -> Result<SourceOriginKind, SqliteError
     }
 }
 
-fn sensitivity_str(value: Sensitivity) -> &'static str {
+pub(crate) fn sensitivity_str(value: Sensitivity) -> &'static str {
     match value {
         Sensitivity::Personal => "personal",
         Sensitivity::Sensitive => "sensitive",
@@ -810,7 +847,7 @@ fn parse_sensitivity(value: &str) -> Result<Sensitivity, SqliteError> {
     }
 }
 
-fn egress_policy_str(value: EgressPolicy) -> &'static str {
+pub(crate) fn egress_policy_str(value: EgressPolicy) -> &'static str {
     match value {
         EgressPolicy::LocalOnly => "local_only",
         EgressPolicy::TrustedDeviceOnly => "trusted_device_only",
@@ -829,7 +866,7 @@ fn parse_egress_policy(value: &str) -> Result<EgressPolicy, SqliteError> {
     }
 }
 
-fn retention_mode_str(value: RetentionMode) -> &'static str {
+pub(crate) fn retention_mode_str(value: RetentionMode) -> &'static str {
     match value {
         RetentionMode::UntilDeleted => "until_deleted",
         RetentionMode::UntilTime => "until_time",
@@ -846,7 +883,7 @@ fn parse_retention_mode(value: &str) -> Result<RetentionMode, SqliteError> {
     }
 }
 
-fn deletion_state_str(value: DeletionState) -> &'static str {
+pub(crate) fn deletion_state_str(value: DeletionState) -> &'static str {
     match value {
         DeletionState::Active => "active",
         DeletionState::Pending => "pending",
@@ -865,7 +902,7 @@ fn parse_deletion_state(value: &str) -> Result<DeletionState, SqliteError> {
     }
 }
 
-fn producer_type_str(value: ProducerType) -> &'static str {
+pub(crate) fn producer_type_str(value: ProducerType) -> &'static str {
     match value {
         ProducerType::Rule => "rule",
         ProducerType::Parser => "parser",

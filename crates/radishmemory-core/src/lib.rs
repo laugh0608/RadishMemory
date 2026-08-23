@@ -30,6 +30,6 @@ pub use error::{
 pub use invariants::*;
 pub use memory::*;
 pub use model::*;
-pub use ports::SourceVault;
+pub use ports::{MemoryStore, SourceVault};
 pub use source::*;
 pub use temporal::{TimePrecision, Timestamp, TimestampPrecision, ValidTime, ValidTimeMode};

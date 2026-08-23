@@ -15,6 +15,7 @@ pub enum SqliteErrorCode {
     Conflict,
     InvalidStoredData,
     SourceInvariant,
+    MemoryInvariant,
 }
 
 /// Runtime capabilities that the adapter requires before touching schema data.
@@ -33,7 +34,7 @@ pub enum SqliteConfigurationReason {
     PersistentJournalMode,
 }
 
-/// Stable source-storage detail without retaining identifiers or content.
+/// Stable storage detail without retaining identifiers or content.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SqliteStorageReason {
     EmptyFragmentBatch,
@@ -48,6 +49,18 @@ pub enum SqliteStorageReason {
     InvalidUtf8,
     InvalidCanonicalObject,
     StoredIntegrityMismatch,
+    DuplicateProposal,
+    MissingFragment,
+    ProposalSourceResolution,
+    MissingProposal,
+    DecisionChain,
+    TerminalDecision,
+    MissingDecision,
+    Materialization,
+    MissingMemory,
+    MemoryReference,
+    EventChain,
+    UnsupportedCause,
 }
 
 /// SQLite adapter failure that does not display database paths or SQL text.
@@ -150,6 +163,10 @@ impl SqliteError {
         }
     }
 
+    pub(crate) fn conflict(reason: SqliteStorageReason) -> Self {
+        Self::without_source(SqliteErrorCode::Conflict, reason)
+    }
+
     pub(crate) fn source_invariant(reason: SqliteStorageReason) -> Self {
         Self::without_source(SqliteErrorCode::SourceInvariant, reason)
     }
@@ -159,6 +176,17 @@ impl SqliteError {
         source: radishmemory_core::CoreError,
     ) -> Self {
         Self::with_storage_source(SqliteErrorCode::SourceInvariant, reason, source)
+    }
+
+    pub(crate) fn memory_invariant(reason: SqliteStorageReason) -> Self {
+        Self::without_source(SqliteErrorCode::MemoryInvariant, reason)
+    }
+
+    pub(crate) fn memory_invariant_with_core(
+        reason: SqliteStorageReason,
+        source: radishmemory_core::CoreError,
+    ) -> Self {
+        Self::with_storage_source(SqliteErrorCode::MemoryInvariant, reason, source)
     }
 
     pub(crate) fn invalid_stored(reason: SqliteStorageReason) -> Self {
@@ -229,7 +257,7 @@ impl SqliteError {
         self.configuration_reason
     }
 
-    /// Returns stable source-storage detail when available.
+    /// Returns stable storage detail when available.
     #[must_use]
     pub const fn storage_reason(&self) -> Option<SqliteStorageReason> {
         self.storage_reason
@@ -277,6 +305,7 @@ impl fmt::Display for SqliteError {
             SqliteErrorCode::Conflict => "immutable SQLite object already exists",
             SqliteErrorCode::InvalidStoredData => "stored SQLite object is invalid",
             SqliteErrorCode::SourceInvariant => "source storage invariant violation",
+            SqliteErrorCode::MemoryInvariant => "memory storage invariant violation",
         };
         formatter.write_str(message)
     }

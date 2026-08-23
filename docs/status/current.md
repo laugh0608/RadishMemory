@@ -28,11 +28,13 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `M0-I03 SQLite entry` 已实现版本化 migration、连接安全基线、bundled SQLite 精确版本与 FTS5 双重 capability probe，以及对未知较新版本、现有外来 schema 和 migration metadata 漂移的失败关闭。当前 lockfile 包含五个经审查的直接第三方依赖和 40 个第三方 package，没有 Git dependency 或产品网络能力；`libsqlite3-sys` build script 会通过 `cc` 编译 bundled SQLite `3.53.2` C 源码。feature、许可证与 native build 影响见 [M0 Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)。该入口提交本身没有为未来假设新增空 core port；真实 port 随下述 storage 操作进入。
 
-`M0-I03 SQLite storage` 的首个纵向切片已实现 SourceArtifact / SourceFragment 所需的真实 `SourceVault` core port，并把 adapter schema 单调升级到 v2。来源 metadata 与 exact body BLOB 分表原子写入；片段只保存 byte range、摘要、治理和生成器 metadata，读取时从已验真的 source body 重建 exact content，不建立第二份片段正文真相。写入保持不可变，namespace 读取失败关闭，重复对象不覆盖，批量片段冲突整批回滚，损坏或非 UTF-8 body 不进入领域对象。记忆事实 / 事件、FTS5 业务索引、当前投影和删除执行仍未实现。
+`M0-I03 SQLite storage` 的首个纵向切片已实现 SourceArtifact / SourceFragment 所需的真实 `SourceVault` core port，并把 adapter schema 单调升级到 v2。来源 metadata 与 exact body BLOB 分表原子写入；片段只保存 byte range、摘要、治理和生成器 metadata，读取时从已验真的 source body 重建 exact content，不建立第二份片段正文真相。写入保持不可变，namespace 读取失败关闭，重复对象不覆盖，批量片段冲突整批回滚，损坏或非 UTF-8 body 不进入领域对象。
+
+`M0-I03 SQLite storage` 的第二个纵向切片已实现 MemoryProposal / MemoryDecision / MemoryRecord / MemoryStateEvent 所需的真实 `MemoryStore` core port，并把 adapter schema 单调升级到 v3。proposal 在写入和读取时解析完整 SourceFragment / SourceArtifact 闭包，相同 namespace、operation、内容摘要、来源集合与目标集合的候选不会重复落库；decision 以不可变、无分叉链追加，accept / reject 终态不能被覆盖。accept materialization 在同一事务创建不可变 record facts、初始 confirmed event，并在 supersede 时同时追加旧记录关闭事件；record 表不保存可变 `current_state` 或 `last_state_event_id`，读取时从已验真的事件链重建。FTS5 业务索引、物化当前投影、删除对象 / 执行和 runner 仍未实现。
 
 ## 当前顺位
 
-1. `M0-I03 SQLite storage`：下一切片实现 proposal / decision / record / event 的不可变或追加写入与最小读取 port；随后再接 FTS5 派生索引、当前投影和删除组件。每个事务必须同时验证 canonical 事实、索引和投影一致性。
+1. `M0-I03 SQLite storage`：下一切片实现 FTS5 派生索引与可重建当前投影，使来源 / 记忆事实写入和对应索引 / 投影更新在同一事务收口；随后实现删除对象与本地删除组件。
 2. `M0-I04 fixture runner`：按冻结操作顺序调用真实 core 与 adapter，执行全部 assertion / metric，输出最小 JSON 证据并报告零网络能力边界。
 
 ## 本次完成（2026-08-23）
@@ -62,8 +64,14 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 21. SourceArtifact metadata 与 exact UTF-8 body 在同一 `IMMEDIATE` transaction 写入，重复 ID / lineage version 返回稳定 conflict 且不覆盖原正文；supersedes 必须解析到同 namespace、同 lineage 的更早已存版本；
 22. SourceFragment 以单来源非空批次写入，写入前对持久化 source 执行 namespace、治理、byte range、正文切片和摘要复验；片段表不复制 content，读取时从 source BLOB 按原始 UTF-8 byte range 重建并再次通过 canonical constructor；
 23. source storage 测试覆盖 CRLF / Unicode exact bytes、BLOB 类型、完整 metadata 往返、namespace 隔离、heading 顺序、版本关系、不可变冲突、批量回滚、body 摘要篡改与无效 UTF-8；错误只暴露稳定 code / reason，不保存或输出正文。
+24. core 新增且仅新增 M0 propose / decide / materialize / state event 已真实需要的 `MemoryStore` port：proposal 与 decision 不可变写入、accept 物化、非 supersede 状态事件追加，以及按 namespace + ID 读取四种对象；没有引入通用 repository、异步接口或 runner mapping；
+25. adapter schema v3 以十张 STRICT 表分离 proposal / decision / immutable record / append-only event facts 及其有序引用关系；record 表刻意不保存 `current_state` / `last_state_event_id`，v1 / v2 都能在单个 migration transaction 单调升级到 v3；
+26. proposal 写入与读取都从已持久化 Source Vault 解析完整 fragment / source 闭包并复验 namespace、active governance、原始 byte slice 和摘要；相同去重语义的候选返回稳定 conflict，不以新 ID 重复污染 proposal truth；
+27. decision 写入要求现存同 namespace proposal，并把首个决定或 defer 后续决定追加为唯一无分叉链；accept / reject 终态拒绝任何后续决定，accept 的 `result_memory_id` 在 materialization 前保持独立可审计引用；
+28. accept materialization 在单个 `IMMEDIATE` transaction 内验证 proposal / decision / record / initial event 闭环，写入 record facts 与初始事件；supersede 同时验证 lineage、递增版本、精确目标集与 effective time，并追加旧记录关闭事件。通用 append 不允许绕过该事务写 superseded event；
+29. MemoryRecord 读取通过完整事件链派生当前状态，复验 proposal、decision、来源、事件 cause、相关记忆和 supersede 闭环；memory storage 测试覆盖完整往返、namespace 隔离、语义去重、defer → accept、终态拒绝、真实写后冲突回滚、旧事实行不改写、事件分叉拒绝、v2 → v3 升级、持久化链 / 正文 / lineage 篡改与错误脱敏。
 
-下一实施单元继续 `M0-I03 SQLite storage`：先为 MemoryProposal / MemoryDecision / MemoryRecord / MemoryStateEvent 定义真实追加事实 port 和结构化 schema，完成 accept materialization 与事件链所需的事务写入 / 读取；FTS5、当前投影、删除和 runner 仍按后续独立评审切片推进。
+下一实施单元继续 `M0-I03 SQLite storage`：建立仅索引 active source fragments 与 confirmed memory records 的 FTS5 派生表，以及由事件链可重建的最小当前状态投影；事实、索引和投影必须在同一 adapter transaction 更新并提供重建 / 漂移测试。删除和 runner 仍按后续独立评审切片推进。
 
 ## 当前门禁
 
@@ -71,7 +79,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、SourceArtifact / SourceFragment 最小 Source Vault 与 FTS5 capability probe 的格式、lint 和测试在本机成立；不证明记忆事实 / 事件、FTS5 业务索引、当前投影、runner、真实删除执行或同步已经实现，也不等同于三平台 CI 已运行。
+- 当前仓库检查证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、最小 Source Vault、MemoryStore 不可变事实 / 追加事件与 FTS5 capability probe 的格式、lint 和测试在本机成立；不证明 FTS5 业务索引、物化当前投影、runner、真实删除执行或同步已经实现，也不等同于三平台 CI 已运行。
 
 ## 当前不做
 
@@ -98,7 +106,8 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - 已完成：同 namespace 引用、来源切片、记忆闭环、事件投影、ContextPack 和删除证据的 canonical 跨对象不变量；
 - 已完成：SQLite 连接、bundled 版本 / FTS5 能力检查、版本化 migration 与失败关闭入口；
 - 已完成：SQLite SourceArtifact / SourceFragment metadata、exact body BLOB 与最小 Source Vault port；
-- 待完成：SQLite 记忆事实 / 事件、FTS5 索引 / 投影 / 删除组件和 M0 runner 真实实现；
+- 已完成：SQLite proposal / decision / immutable record / append-only event facts、accept / supersede 事务与最小 MemoryStore port；
+- 待完成：SQLite FTS5 索引 / 当前投影 / 删除组件和 M0 runner 真实实现；
 - 待完成：冻结 fixture 的全部 assertion、metric 和三平台运行门禁通过。
 
 ## 当前验证入口
