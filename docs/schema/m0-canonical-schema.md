@@ -260,7 +260,11 @@ M0 允许 `none → confirmed` 以及 `confirmed → superseded | contradicted |
 
 `Budget` 包含 `unit`、`limit` 与 `used`。M0 的 `unit` 必须为 `utf8_bytes`，且 `0 <= used <= limit`；未来使用 `tokens` 时必须通过新版本同时冻结 tokenizer 标识。
 
-每个 `ContextItem` 必须包含唯一 `item_id`、`ordinal`、`item_type`、`object_refs`、`rendered_content`、`content_digest`、非空 `evidence_refs`、`citation_ids`、非空 `selection_reason_codes`、`temporal_role` 与截断事实。`item_type` 允许 `source_fragment`、`memory_record`、`conflict_notice` 和 `constraint`；`temporal_role` 允许 `current`、`historical`、`conflict` 和 `not_applicable`。除 constraint 外，`object_refs` 必须非空；constraint 可以只引用 `policy_basis` evidence。
+每个 `ContextItem` 必须包含唯一 `item_id`、`ordinal`、`item_type`、`object_refs`、非空 `rendered_content`、`content_digest`、非空 `evidence_refs`、`citation_ids`、非空 `selection_reason_codes`、`temporal_role` 与 `TruncationFacts`。`content_digest` 使用 `utf8-nfc-text-v1` 并匹配 `rendered_content`。`item_type` 允许 `source_fragment`、`memory_record`、`conflict_notice` 和 `constraint`；`temporal_role` 允许 `current`、`historical`、`conflict` 和 `not_applicable`。除 constraint 外，`object_refs` 必须非空；constraint 可以只引用 `policy_basis` evidence。
+
+`TruncationFacts` 包含 `was_truncated`、`original_utf8_bytes`、`rendered_utf8_bytes` 与条件 `reason_code`。`rendered_utf8_bytes` 必须匹配实际渲染文本；未截断时两个计数必须相等且不得携带 reason，截断时渲染计数必须更小且 reason 必须存在。该值只保存计数和稳定代码，不复制截断前正文。
+
+`filter_summary` 是按唯一 `reason_code` 去重的 `FilterCount` 集合；每项包含非负 `allowed_count`、`rejected_count` 与 `truncated_count`，且至少一个计数非零。它用于解释失败关闭和预算选择，不保存被拒绝内容。
 
 每个 `Citation` 必须包含唯一 `citation_id`、`source_id`、`fragment_id`、字节范围与片段摘要。所有 citation 必须解析到 active 来源并与正文匹配。普通 `memory_record` item 只允许 current state 为 confirmed；冲突内容必须进入显式 `conflict_notice`，未确认 proposal 永远不能成为 ContextItem。
 
@@ -284,7 +288,7 @@ M0 允许 `none → confirmed` 以及 `confirmed → superseded | contradicted |
 | `reason_code` | 是 | 非空稳定代码 |
 | `requested_at` | 是 | `Timestamp` |
 
-`DeletionTarget` 包含稳定 `component_key`、`component_type`、`target_ref`、正整数 `target_count` 和 `required_action`。`target_ref` 可以是 canonical `ObjectRef`，也可以引用某一组件内不可变、已排序的目标闭包；后者必须把完整目标集合纳入引用摘要，不能只保存模糊查询条件。它不得是数据库行号或真实文件路径。M0 的 `component_type` 至少可表达 `source_body`、`source_metadata`、`source_fragment`、`memory_proposal`、`memory_decision`、`memory_record`、`memory_state_event`、`full_text_index`、`context_cache` 和 `minimal_audit`；`required_action` 为 `delete`、`redact` 或 `retain_minimal`。
+`DeletionTarget` 包含稳定 `component_key`、`component_type`、`target_ref`、正整数 `target_count` 和 `required_action`。`target_ref` 是单个 canonical `ObjectRef`，或 `FrozenTargetClosure`；后者包含非空、去重、按 `object_type` 与 `object_id` 排序的完整 `target_refs`，以及覆盖该完整列表的 `target_refs_digest`，其 profile 为 `canonical-json-v1`。直接引用的 `target_count` 必须为 1，闭包计数必须等于列表长度；不能只保存模糊查询条件。目标引用不得是数据库行号或真实文件路径。M0 的 `component_type` 至少可表达 `source_body`、`source_metadata`、`source_fragment`、`memory_proposal`、`memory_decision`、`memory_record`、`memory_state_event`、`full_text_index`、`context_cache` 和 `minimal_audit`；`required_action` 为 `delete`、`redact` 或 `retain_minimal`。
 
 执行前必须先完成 target expansion 并冻结 `planned_components`。无法枚举影响面时请求保持失败关闭，不能边猜测边声明完成。
 
@@ -309,7 +313,7 @@ M0 允许 `none → confirmed` 以及 `confirmed → superseded | contradicted |
 | `verified_by` | 是 | `ProducerRef` |
 | `evidence_digest` | 是 | 不包含被删除正文的 `Digest`；profile 为 `deletion-evidence-v1` |
 
-每个 `ComponentResult` 必须包含对应 `component_key`、`component_type`、`target_ref`、`required_action`、`target_count`、非负 `processed_count`、`status`、`outcome`、`verification_method` 与 `checked_at`。`status` 为 `pending`、`succeeded` 或 `failed`；`outcome` 为 `deleted`、`redacted`、`retained_minimal`、`not_found` 或 `not_applicable`。`succeeded` 要求 `processed_count = target_count`；集合中任一目标无法复验时整个组件不能成功。失败结果还必须包含稳定 `error_code` 与 `retryable`，但不得复制正文、密钥或真实路径。
+每个 `ComponentResult` 必须包含对应 `component_key`、`component_type`、`target_ref`、`required_action`、`target_count`、非负 `processed_count`、`status`、`outcome`、`verification_method` 与 `checked_at`。`status` 为 `pending`、`succeeded` 或 `failed`；`outcome` 为 `deleted`、`redacted`、`retained_minimal`、`not_found` 或 `not_applicable`。`succeeded` 要求 `processed_count = target_count`，且除经验证的 `not_found` 外，outcome 必须分别匹配 `delete → deleted`、`redact → redacted` 或 `retain_minimal → retained_minimal`；集合中任一目标无法复验时整个组件不能成功。失败结果还必须包含稳定 `error_code` 与 `retryable`，其它状态不得携带这两个失败字段。`retained_minimal` 成功结果必须包含指向 `policy_basis` 的 `retention_basis`，其它结果不得携带该字段。错误和依据不得复制正文、密钥或真实路径。
 
 每个 DeletionEvidence 都是不可变快照；重试或进展必须创建新证据并引用前一快照。仅当全部计划组件都有唯一结果、必需动作验证成功，且 `retain_minimal` 具有明确保留依据时，`overall_status` 才能为 `completed`。`not_found` 只有在验证对象确实不存在且不会被索引或缓存恢复时才算成功。M0 证据不得扩展成其它设备、服务端或备份已删除的声明。
 

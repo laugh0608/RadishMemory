@@ -1,14 +1,17 @@
 use sha2::{Digest as _, Sha256};
 use unicode_normalization::UnicodeNormalization;
 
-use crate::{CanonicalJson, CoreError};
+use crate::{CanonicalJson, CoreError, InvalidCanonicalObjectReason};
 
-/// SHA-256 digest profiles implemented by the first M0 core slice.
+/// Frozen M0 SHA-256 digest profiles.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DigestProfile {
     ExactBytesV1,
     Utf8NfcTextV1,
     CanonicalJsonV1,
+    FixtureSuiteV1,
+    ContextPackV1,
+    DeletionEvidenceV1,
 }
 
 impl DigestProfile {
@@ -18,6 +21,9 @@ impl DigestProfile {
             "exact-bytes-v1" => Ok(Self::ExactBytesV1),
             "utf8-nfc-text-v1" => Ok(Self::Utf8NfcTextV1),
             "canonical-json-v1" => Ok(Self::CanonicalJsonV1),
+            "fixture-suite-v1" => Ok(Self::FixtureSuiteV1),
+            "context-pack-v1" => Ok(Self::ContextPackV1),
+            "deletion-evidence-v1" => Ok(Self::DeletionEvidenceV1),
             _ => Err(CoreError::unsupported_profile()),
         }
     }
@@ -28,6 +34,9 @@ impl DigestProfile {
             Self::ExactBytesV1 => "exact-bytes-v1",
             Self::Utf8NfcTextV1 => "utf8-nfc-text-v1",
             Self::CanonicalJsonV1 => "canonical-json-v1",
+            Self::FixtureSuiteV1 => "fixture-suite-v1",
+            Self::ContextPackV1 => "context-pack-v1",
+            Self::DeletionEvidenceV1 => "deletion-evidence-v1",
         }
     }
 }
@@ -40,6 +49,29 @@ pub struct Digest {
 }
 
 impl Digest {
+    /// Validates a persisted digest without retaining the rejected value in errors.
+    pub fn parse(algorithm: &str, profile: &str, value: &str) -> Result<Self, CoreError> {
+        if algorithm != "sha256" {
+            return Err(CoreError::invalid_canonical_object(
+                InvalidCanonicalObjectReason::InvalidDigestValue,
+            ));
+        }
+        let profile = DigestProfile::parse(profile)?;
+        if value.len() != 64
+            || !value
+                .bytes()
+                .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+        {
+            return Err(CoreError::invalid_canonical_object(
+                InvalidCanonicalObjectReason::InvalidDigestValue,
+            ));
+        }
+        Ok(Self {
+            profile,
+            value: value.to_owned(),
+        })
+    }
+
     #[must_use]
     pub const fn algorithm(&self) -> &'static str {
         "sha256"
@@ -83,8 +115,21 @@ pub fn compute_digest(profile: &str, input: &str) -> Result<Digest, CoreError> {
     match DigestProfile::parse(profile)? {
         DigestProfile::ExactBytesV1 => Ok(compute_exact_bytes_digest(input.as_bytes())),
         DigestProfile::Utf8NfcTextV1 => Ok(compute_nfc_text_digest(input)),
-        DigestProfile::CanonicalJsonV1 => compute_canonical_json_digest(input),
+        DigestProfile::CanonicalJsonV1
+        | DigestProfile::FixtureSuiteV1
+        | DigestProfile::ContextPackV1
+        | DigestProfile::DeletionEvidenceV1 => {
+            compute_profiled_canonical_json_digest(DigestProfile::parse(profile)?, input)
+        }
     }
+}
+
+fn compute_profiled_canonical_json_digest(
+    profile: DigestProfile,
+    input: &str,
+) -> Result<Digest, CoreError> {
+    let canonical = CanonicalJson::parse(input)?;
+    Ok(make_digest(profile, canonical.as_bytes()))
 }
 
 /// Recomputes a digest and returns a stable mismatch without retaining content.
