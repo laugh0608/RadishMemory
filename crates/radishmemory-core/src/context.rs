@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use crate::{
     CanonicalObject, CanonicalObjectType, CoreError, Digest, DigestProfile, EvidenceRef,
-    EvidenceType, Governance, Identifier, InvalidCanonicalObjectReason, NonEmptyText, ObjectRef,
-    Timestamp, compute_nfc_text_digest, require_non_empty, require_profile, require_unique,
-    require_unique_by,
+    EvidenceType, Governance, GovernedCanonicalObject, Identifier, InvalidCanonicalObjectReason,
+    NonEmptyText, ObjectRef, Timestamp, compute_nfc_text_digest, require_non_empty,
+    require_profile, require_unique, require_unique_by,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -215,6 +215,31 @@ impl Citation {
     pub const fn citation_id(&self) -> &Identifier {
         &self.citation_id
     }
+
+    #[must_use]
+    pub const fn source_id(&self) -> &Identifier {
+        &self.source_id
+    }
+
+    #[must_use]
+    pub const fn fragment_id(&self) -> &Identifier {
+        &self.fragment_id
+    }
+
+    #[must_use]
+    pub const fn byte_start(&self) -> u64 {
+        self.byte_start
+    }
+
+    #[must_use]
+    pub const fn byte_end(&self) -> u64 {
+        self.byte_end
+    }
+
+    #[must_use]
+    pub const fn fragment_digest(&self) -> &Digest {
+        &self.fragment_digest
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -352,5 +377,11 @@ impl CanonicalObject for ContextPack {
 
     fn namespace_id(&self) -> &Identifier {
         &self.0.namespace_id
+    }
+}
+
+impl GovernedCanonicalObject for ContextPack {
+    fn governance(&self) -> &Governance {
+        &self.0.governance
     }
 }

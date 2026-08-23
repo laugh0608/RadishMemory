@@ -2,7 +2,7 @@
 
 日期：2026-08-23
 
-范围：`M0-I02` canonical core 前两个评审单元、workspace 工具链与聚合检查入口。
+范围：`M0-I02` canonical core 三个评审单元、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
@@ -49,7 +49,7 @@
 
 - workspace 使用 Rust 2024 edition，`rust-toolchain.toml` 精确固定 `1.96.0`，并要求 `rustfmt` 与 `clippy` component；
 - 第一方 package 继承 `rust-version = "1.96.0"`、仓库许可证，以及 workspace `unsafe_code = "forbid"` 与 `unused_crate_dependencies = "deny"` lint；
-- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行全 workspace 的格式、Clippy 和全部 target 测试；core 的冻结 digest vectors、完整 suite digest、九种对象正例与补充的时间、NFC、JSON、字段条件和隐私错误负例均通过；
+- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行全 workspace 的格式、Clippy 和全部 target 测试；core 的冻结 digest vectors、完整 suite digest、九种对象正例、跨对象闭环与补充的时间、NFC、JSON、字段条件和隐私错误负例均通过；
 - PR workflow 已配置 Linux、macOS、Windows 三平台真实运行相同 locked 检查，并由 `Candidate Quality` 聚合；仓库内配置不等于 GitHub 执行结果，在实际 workflow run 产生前不得宣称三平台已经通过。
 
-本基线证明 canonical core primitive、九种顶层对象、字段级校验与当前依赖图在本机成立，不证明跨对象引用、SQLite、FTS5、fixture runner 或任何完整产品闭环已经实现。
+本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量与当前依赖图在本机成立，不证明 SQLite、FTS5、fixture runner 或任何完整产品闭环已经实现。

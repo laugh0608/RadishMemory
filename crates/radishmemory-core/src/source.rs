@@ -1,7 +1,7 @@
 use crate::{
-    CanonicalObject, CanonicalObjectType, CoreError, Digest, DigestProfile, Governance, Identifier,
-    InvalidCanonicalObjectReason, NonEmptyText, ProducerRef, Timestamp, Version,
-    compute_exact_bytes_digest, require_profile, require_unique,
+    CanonicalObject, CanonicalObjectType, CoreError, Digest, DigestProfile, Governance,
+    GovernedCanonicalObject, Identifier, InvalidCanonicalObjectReason, NonEmptyText, ProducerRef,
+    Timestamp, Version, compute_exact_bytes_digest, require_profile, require_unique,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -107,6 +107,12 @@ impl CanonicalObject for SourceArtifact {
     }
 }
 
+impl GovernedCanonicalObject for SourceArtifact {
+    fn governance(&self) -> &Governance {
+        &self.0.governance
+    }
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SourceFragmentParams {
     pub fragment_id: Identifier,
@@ -168,5 +174,11 @@ impl CanonicalObject for SourceFragment {
 
     fn namespace_id(&self) -> &Identifier {
         &self.0.namespace_id
+    }
+}
+
+impl GovernedCanonicalObject for SourceFragment {
+    fn governance(&self) -> &Governance {
+        &self.0.governance
     }
 }

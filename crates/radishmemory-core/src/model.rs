@@ -435,6 +435,11 @@ impl Governance {
     }
 }
 
+/// Canonical objects whose content can participate in ordinary local recall.
+pub trait GovernedCanonicalObject: CanonicalObject {
+    fn governance(&self) -> &Governance;
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MemoryValueKind {
     Text,

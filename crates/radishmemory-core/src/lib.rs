@@ -9,6 +9,7 @@ mod context;
 mod deletion;
 mod digest;
 mod error;
+mod invariants;
 mod memory;
 mod model;
 mod source;
@@ -22,9 +23,10 @@ pub use digest::{
     compute_exact_bytes_digest, compute_nfc_text_digest, verify_digest,
 };
 pub use error::{
-    CoreError, CoreErrorCode, InvalidCanonicalObjectReason, InvalidTimeReason,
-    NonCanonicalJsonReason,
+    CoreError, CoreErrorCode, CrossObjectInvariantReason, InvalidCanonicalObjectReason,
+    InvalidTimeReason, NonCanonicalJsonReason,
 };
+pub use invariants::*;
 pub use memory::*;
 pub use model::*;
 pub use source::*;

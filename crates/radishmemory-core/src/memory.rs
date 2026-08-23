@@ -1,8 +1,8 @@
 use crate::{
     ActorRef, CanonicalObject, CanonicalObjectType, CoreError, Digest, EvidenceRef, EvidenceType,
-    Governance, Identifier, InvalidCanonicalObjectReason, MemoryValue, NonEmptyText, ProducerRef,
-    Timestamp, UnitInterval, ValidTime, Version, require_non_empty, require_profile,
-    require_unique,
+    Governance, GovernedCanonicalObject, Identifier, InvalidCanonicalObjectReason, MemoryValue,
+    NonEmptyText, ProducerRef, Timestamp, UnitInterval, ValidTime, Version, require_non_empty,
+    require_profile, require_unique,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -77,6 +77,12 @@ impl CanonicalObject for MemoryProposal {
 
     fn namespace_id(&self) -> &Identifier {
         &self.0.namespace_id
+    }
+}
+
+impl GovernedCanonicalObject for MemoryProposal {
+    fn governance(&self) -> &Governance {
+        &self.0.governance
     }
 }
 
@@ -216,6 +222,12 @@ impl CanonicalObject for MemoryRecord {
 
     fn namespace_id(&self) -> &Identifier {
         &self.0.namespace_id
+    }
+}
+
+impl GovernedCanonicalObject for MemoryRecord {
+    fn governance(&self) -> &Governance {
+        &self.0.governance
     }
 }
 

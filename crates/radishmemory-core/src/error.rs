@@ -14,6 +14,28 @@ pub enum CoreErrorCode {
     DigestMismatch,
     /// A canonical value or object violates the frozen M0 field contract.
     InvalidCanonicalObject,
+    /// Multiple valid objects violate an M0 relationship or projection contract.
+    CrossObjectInvariant,
+}
+
+/// Stable detail for cross-object failures without retaining object content.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CrossObjectInvariantReason {
+    MissingReference,
+    DuplicateObject,
+    NamespaceMismatch,
+    IdentityMismatch,
+    SourceSliceMismatch,
+    GovernanceMismatch,
+    RecallBlocked,
+    MaterializationMismatch,
+    EventChainConflict,
+    StateProjectionMismatch,
+    SupersessionMismatch,
+    CitationMismatch,
+    DeletionPlanMismatch,
+    DeletionStateMismatch,
+    TimeAlignmentMismatch,
 }
 
 /// Stable detail for rejected M0 canonical values and objects.
@@ -75,6 +97,7 @@ pub struct CoreError {
     invalid_time_reason: Option<InvalidTimeReason>,
     canonical_json_reason: Option<NonCanonicalJsonReason>,
     invalid_canonical_object_reason: Option<InvalidCanonicalObjectReason>,
+    cross_object_invariant_reason: Option<CrossObjectInvariantReason>,
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
@@ -85,6 +108,7 @@ impl CoreError {
             invalid_time_reason: None,
             canonical_json_reason: None,
             invalid_canonical_object_reason: None,
+            cross_object_invariant_reason: None,
             source: None,
         }
     }
@@ -98,6 +122,7 @@ impl CoreError {
             invalid_time_reason: Some(reason),
             canonical_json_reason: None,
             invalid_canonical_object_reason: None,
+            cross_object_invariant_reason: None,
             source: source.map(|error| Box::new(error) as Box<_>),
         }
     }
@@ -111,6 +136,7 @@ impl CoreError {
             invalid_time_reason: None,
             canonical_json_reason: Some(reason),
             invalid_canonical_object_reason: None,
+            cross_object_invariant_reason: None,
             source: source.map(|error| Box::new(error) as Box<_>),
         }
     }
@@ -121,6 +147,7 @@ impl CoreError {
             invalid_time_reason: None,
             canonical_json_reason: None,
             invalid_canonical_object_reason: None,
+            cross_object_invariant_reason: None,
             source: None,
         }
     }
@@ -131,6 +158,18 @@ impl CoreError {
             invalid_time_reason: None,
             canonical_json_reason: None,
             invalid_canonical_object_reason: Some(reason),
+            cross_object_invariant_reason: None,
+            source: None,
+        }
+    }
+
+    pub(crate) fn cross_object_invariant(reason: CrossObjectInvariantReason) -> Self {
+        Self {
+            code: CoreErrorCode::CrossObjectInvariant,
+            invalid_time_reason: None,
+            canonical_json_reason: None,
+            invalid_canonical_object_reason: None,
+            cross_object_invariant_reason: Some(reason),
             source: None,
         }
     }
@@ -158,6 +197,12 @@ impl CoreError {
     pub const fn invalid_canonical_object_reason(&self) -> Option<InvalidCanonicalObjectReason> {
         self.invalid_canonical_object_reason
     }
+
+    /// Returns stable cross-object detail without retaining IDs or content.
+    #[must_use]
+    pub const fn cross_object_invariant_reason(&self) -> Option<CrossObjectInvariantReason> {
+        self.cross_object_invariant_reason
+    }
 }
 
 impl fmt::Display for CoreError {
@@ -168,6 +213,7 @@ impl fmt::Display for CoreError {
             CoreErrorCode::NonCanonicalJson => "non-canonical JSON input",
             CoreErrorCode::DigestMismatch => "digest mismatch",
             CoreErrorCode::InvalidCanonicalObject => "invalid canonical object",
+            CoreErrorCode::CrossObjectInvariant => "cross-object invariant violation",
         };
         formatter.write_str(message)
     }
