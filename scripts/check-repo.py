@@ -41,7 +41,12 @@ REQUIRED_FILES = (
     "apps/radishmemory-m0/Cargo.toml",
     "apps/radishmemory-m0/src/main.rs",
     "crates/radishmemory-core/Cargo.toml",
+    "crates/radishmemory-core/src/canonical_json.rs",
+    "crates/radishmemory-core/src/digest.rs",
+    "crates/radishmemory-core/src/error.rs",
     "crates/radishmemory-core/src/lib.rs",
+    "crates/radishmemory-core/src/temporal.rs",
+    "crates/radishmemory-core/tests/m0_primitives.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
     "crates/radishmemory-sqlite/src/lib.rs",
     "docs/README.md",
@@ -144,6 +149,10 @@ publish = false
 [workspace.dependencies]
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
 radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
+serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
+sha2 = { version = \"0.11.0\", default-features = false }
+time = { version = \"0.3.55\", default-features = false, features = [\"parsing\", \"std\"] }
+unicode-normalization = { version = \"0.1.25\", default-features = false, features = [\"std\"] }
 
 [workspace.lints.rust]
 unsafe_code = \"forbid\"
@@ -174,6 +183,12 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[dependencies]
+serde_json.workspace = true
+sha2.workspace = true
+time.workspace = true
+unicode-normalization.workspace = true
 """,
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
 name = \"radishmemory-sqlite\"
@@ -196,6 +211,47 @@ channel = \"1.96.0\"
 components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
+
+EXPECTED_M0_I02_LOCK_PACKAGES = (
+    ("block-buffer", "0.12.1"),
+    ("cfg-if", "1.0.4"),
+    ("cpufeatures", "0.3.0"),
+    ("crypto-common", "0.2.2"),
+    ("deranged", "0.5.8"),
+    ("digest", "0.11.3"),
+    ("hybrid-array", "0.4.14"),
+    ("itoa", "1.0.18"),
+    ("libc", "0.2.189"),
+    ("memchr", "2.8.3"),
+    ("num-conv", "0.2.2"),
+    ("powerfmt", "0.2.0"),
+    ("proc-macro2", "1.0.107"),
+    ("quote", "1.0.47"),
+    ("radishmemory-core", "0.1.0"),
+    ("radishmemory-m0", "0.1.0"),
+    ("radishmemory-sqlite", "0.1.0"),
+    ("serde", "1.0.229"),
+    ("serde_core", "1.0.229"),
+    ("serde_derive", "1.0.229"),
+    ("serde_json", "1.0.151"),
+    ("sha2", "0.11.0"),
+    ("syn", "3.0.3"),
+    ("time", "0.3.55"),
+    ("time-core", "0.1.9"),
+    ("time-macros", "0.2.32"),
+    ("tinyvec", "1.12.0"),
+    ("tinyvec_macros", "0.1.1"),
+    ("typenum", "1.20.1"),
+    ("unicode-ident", "1.0.24"),
+    ("unicode-normalization", "0.1.25"),
+    ("zmij", "1.0.23"),
+)
+FIRST_PARTY_RUST_PACKAGES = {
+    "radishmemory-core",
+    "radishmemory-m0",
+    "radishmemory-sqlite",
+}
+CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
 FORBIDDEN_DIRECTORY_NAMES = {
     "__pycache__",
@@ -319,7 +375,7 @@ def check_rust_workspace_contract(
     for name, expected in EXPECTED_CARGO_MANIFESTS.items():
         path = repo_root / name
         if path.is_file() and path.read_text(encoding="utf-8") != expected:
-            errors.append(f"Rust workspace manifest differs from the M0-I01 contract: {name}")
+            errors.append(f"Rust workspace manifest differs from the M0-I02 contract: {name}")
 
     toolchain = repo_root / "rust-toolchain.toml"
     if toolchain.is_file() and toolchain.read_text(encoding="utf-8") != EXPECTED_RUST_TOOLCHAIN:
@@ -331,21 +387,32 @@ def check_rust_workspace_contract(
     if not lockfile.is_file():
         return
     lock_text = lockfile.read_text(encoding="utf-8")
-    package_names = re.findall(r'^name = "([^"]+)"$', lock_text, flags=re.MULTILINE)
-    if package_names != [
-        "radishmemory-core",
-        "radishmemory-m0",
-        "radishmemory-sqlite",
-    ]:
-        errors.append(
-            "Cargo.lock must resolve only the three first-party M0 workspace packages"
-        )
-    for forbidden in ("source = ", "checksum = "):
-        if forbidden in lock_text:
-            errors.append(
-                "M0-I01 Cargo.lock must not contain registry or Git dependencies: "
-                f"found {forbidden.strip()}"
-            )
+    package_blocks = re.findall(
+        r"\[\[package\]\]\n(.*?)(?=\n\[\[package\]\]|\Z)",
+        lock_text,
+        flags=re.DOTALL,
+    )
+    resolved_packages: list[tuple[str, str]] = []
+    for block in package_blocks:
+        name_match = re.search(r'^name = "([^"]+)"$', block, flags=re.MULTILINE)
+        version_match = re.search(r'^version = "([^"]+)"$', block, flags=re.MULTILINE)
+        if name_match is None or version_match is None:
+            errors.append("Cargo.lock contains a package without a name or version")
+            continue
+        name = name_match.group(1)
+        resolved_packages.append((name, version_match.group(1)))
+        source_match = re.search(r'^source = "([^"]+)"$', block, flags=re.MULTILINE)
+        checksum_match = re.search(r'^checksum = "([^"]+)"$', block, flags=re.MULTILINE)
+        if name in FIRST_PARTY_RUST_PACKAGES:
+            if source_match is not None or checksum_match is not None:
+                errors.append(f"first-party lock package must remain a workspace path: {name}")
+        elif source_match is None or source_match.group(1) != CRATES_IO_SOURCE:
+            errors.append(f"third-party lock package must come from crates.io: {name}")
+        elif checksum_match is None:
+            errors.append(f"third-party lock package is missing a checksum: {name}")
+
+    if tuple(sorted(resolved_packages)) != EXPECTED_M0_I02_LOCK_PACKAGES:
+        errors.append("Cargo.lock differs from the reviewed M0-I02 dependency set")
 
     entrypoint_fragments = (
         "fmt --all --check",
@@ -779,12 +846,16 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
+            "`M0-I02` 的第一个独立评审单元已实现稳定 core 错误",
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
-            "只包含三个第一方 workspace package",
-            "没有 registry 或 Git dependency",
+            "29 个第三方 package",
+            "没有 Git dependency",
+            "`serde_json 1.0.151`",
+            "`serde_derive` 与 `time-macros` 是实际解析的 proc macro",
+            "不编译或链接第三方 C / C++ 源码",
             "SQLite 版本、启用 feature、原生构建和第三方许可证当前均为不适用",
             "不得宣称三平台已经通过",
         ),

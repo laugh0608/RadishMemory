@@ -16,6 +16,10 @@ publish = false
 [workspace.dependencies]
 radishmemory-core = { path = "crates/radishmemory-core", version = "=0.1.0" }
 radishmemory-sqlite = { path = "crates/radishmemory-sqlite", version = "=0.1.0" }
+serde_json = { version = "1.0.151", default-features = false, features = ["arbitrary_precision", "std"] }
+sha2 = { version = "0.11.0", default-features = false }
+time = { version = "0.3.55", default-features = false, features = ["parsing", "std"] }
+unicode-normalization = { version = "0.1.25", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

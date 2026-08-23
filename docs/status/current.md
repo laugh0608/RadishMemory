@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-更新时间：2026-08-22
+更新时间：2026-08-23
 
 ## 当前阶段
 
@@ -22,24 +22,27 @@ RadishMind 首次运行接入已通过 [ADR 0004](../adr/0004-radishmind-optiona
 
 M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体：`radishmemory-core`、`radishmemory-sqlite` 和 `radishmemory-m0` 三个 package，首个工具链固定为 Rust `1.96.0`，本地存储采用 bundled SQLite 与 FTS5。M0 不包含网络、异步运行时、ORM、模型 SDK 或静态加密，也不冻结未来 UI 和同步服务端语言。
 
-`M0-I01` 已建立且仅建立上述三个可编译 package，提交 Cargo 生成的 lockfile，并把 fmt、Clippy 和 locked test 接入本地双平台入口与 PR 的 Linux / macOS / Windows matrix。当前 lockfile 只有三个第一方 workspace package，没有 registry、Git 或传递第三方依赖；`rusqlite`、bundled SQLite 与 FTS5 尚未进入实现。精确清单和证据边界见 [M0 Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)。
+`M0-I01` 已建立且仅建立上述三个可编译 package，提交初始第一方 lockfile，并把 fmt、Clippy 和 locked test 接入本地双平台入口与 PR 的 Linux / macOS / Windows matrix。
+
+`M0-I02` 的第一个独立评审单元已实现稳定 core 错误、RFC 3339 / UTC 时间、`ValidTime`、`exact-bytes-v1` / `utf8-nfc-text-v1` / `canonical-json-v1` SHA-256，以及拒绝重复 key 和 `null` 的 `radishmemory-canonical-json-v1` parser / writer。当前 lockfile 包含四个经审查的 core 直接依赖和 29 个第三方 package，没有 Git dependency、产品网络能力或 native C / C++ 代码；build script、proc macro、feature 与许可证影响见 [M0 Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)。`rusqlite`、bundled SQLite 与 FTS5 尚未进入实现。
 
 ## 当前顺位
 
-1. `M0-I02 canonical core`：先实现稳定错误、RFC 3339 时间、Unicode NFC、SHA-256 profile 和 canonical JSON，再实现九种 canonical 对象、条件校验、引用与状态转换；不接数据库或 CLI 业务捷径。
+1. `M0-I02 canonical objects`：在已通过的 primitive 单元上实现九种 canonical 对象、条件校验、引用与状态转换；不接数据库或 CLI 业务捷径。
 2. `M0-I03 SQLite adapter`：实现版本化 migration、Source Vault 小文本、追加事件、FTS5、派生投影和删除组件，并验证 bundled SQLite 能力与事务边界。
 3. `M0-I04 fixture runner`：按冻结操作顺序调用真实 core 与 adapter，执行全部 assertion / metric，输出最小 JSON 证据并报告零网络能力边界。
 
-## 明日事项（2026-08-23）
+## 本次完成（2026-08-23）
 
-主任务是完成 `M0-I02` 的第一个独立评审单元，只修改 `radishmemory-core` 及其直接测试和依赖记录：
+`M0-I02` 第一评审单元保持在 `radishmemory-core`、直接测试、依赖记录和必要检查器内：
 
-1. 审查并加入本单元实际使用的 `serde_json`、`sha2`、`unicode-normalization` 和 `time`；记录解析版本、许可证、feature、build script / proc macro、网络与 native code 影响并更新 `Cargo.lock`，不提前加入仅供后续对象 mapping 使用的依赖。
-2. 建立稳定且不包含正文的 core 错误类型，只覆盖本单元真实产生的 unsupported profile、invalid time、non-canonical JSON 和 digest mismatch；保留底层原因，但不把错误字符串当作协议字段。
-3. 实现 RFC 3339 解析与 UTC 比较，同时保留外部表示的精度事实；实现 `ValidTime` 的 `unknown`、`instant`、`interval`、`open_ended` 条件校验和半开区间；实现 `exact-bytes-v1`、`utf8-nfc-text-v1` 与 SHA-256 小写十六进制摘要。
-4. 实现 `radishmemory-canonical-json-v1` parser / writer：解析时拒绝重复 key 并保留规范化 number 所需事实，写出时按 Unicode code point 排序 object key、保留 array 顺序、使用必需转义、最短整数与普通十进制 fraction，并输出无空白、无尾随换行的 UTF-8 bytes；M0 输入校验在进入 canonicalizer 前拒绝 `null`，实现不依赖 map 默认顺序或 `serde_json` 默认序列化格式。
-5. 用冻结 fixture 的 digest vectors 和补充负例验证偏移时间、无效区间、NFC、转义、key 排序、整数 / fraction 边界、未知 profile 与摘要不匹配；运行 package 级和仓库级 fmt、Clippy、locked test。
-6. 同步 [M0 Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)与必要检查器，复核 diff 后独立提交。只有该单元的正例、负例和 frozen vectors 全部通过，才进入九种 canonical 对象与跨对象校验；明日不启动 SQLite、migration、FTS5 或 runner。
+1. 四个直接依赖与全部传递依赖已经 lock，并记录解析版本、许可证、feature、build script / proc macro、网络与 native code 影响；
+2. 错误只暴露稳定 category / reason，解析 cause 可追溯，但不保存被拒绝的时间、JSON 或正文；
+3. 时间比较先归一到 UTC，同时保留原始 RFC 3339 表示、offset 与小数秒精度；`ValidTime` 四种 mode 和半开区间已覆盖；
+4. canonical JSON 显式按 Unicode code point 排 key、保留 array 顺序、规范化转义与普通十进制 number，并输出无空白、无尾随换行的 UTF-8 bytes；
+5. 冻结 digest vectors、完整 suite digest 与偏移时间、无效区间、NFC、转义、key 排序、integer / fraction、未知 profile、摘要不匹配、重复 key、`null` 等负例已通过本地 package 检查和正式仓库入口。
+
+下一实施单元仍属于 `M0-I02`：实现九种 canonical 顶层对象及字段级条件校验，再进入同 namespace 引用、状态转换和跨对象不变量。该单元未完成前不启动 SQLite、migration、FTS5 或 runner；若实现暴露 schema 缺口，先修订 canonical 真相源，不在 Rust mapping 中增加 fallback。
 
 ## 当前门禁
 
@@ -47,7 +50,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查证明治理、文本、链接、配置合同及空 Rust workspace 的格式、lint 和编译测试成立，不证明 canonical 类型、SQLite / FTS5、runner、隐私协议、删除或同步已经实现。
+- 当前仓库检查证明治理、文本、链接、配置合同及 canonical core primitive 的格式、lint、测试和 frozen digest vectors 在本机成立；不证明九种 canonical 对象、跨对象不变量、SQLite / FTS5、runner、删除执行或同步已经实现，也不等同于三平台 CI 已运行。
 
 ## 当前不做
 
@@ -68,8 +71,9 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - 已完成：可测量的召回、污染、删除与隐私指标；
 - 已完成：RadishMind 首批参与方式的明确决定；
 - 已完成：记录实现栈选择、替代方案、迁移边界和风险的 ADR；
-- 已完成：精确 Rust 工具链、三 package workspace、第一方依赖锁和三平台 Rust CI 合同；
-- 待完成：canonical core、SQLite / FTS5 adapter 和 M0 runner 真实实现；
+- 已完成：精确 Rust 工具链、三 package workspace、受审阅依赖锁和三平台 Rust CI 合同；
+- 已完成：canonical core 第一 primitive 单元，包括稳定错误、时间、摘要和 canonical JSON；
+- 待完成：九种 canonical 对象与跨对象 core、SQLite / FTS5 adapter 和 M0 runner 真实实现；
 - 待完成：冻结 fixture 的全部 assertion、metric 和三平台运行门禁通过。
 
 ## 当前验证入口

@@ -200,6 +200,32 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_rust_workspace_contract_rejects_unreviewed_lock_package(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name, content in CHECK_REPO.EXPECTED_CARGO_MANIFESTS.items():
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            lock_text = (CHECK_REPO.REPO_ROOT / "Cargo.lock").read_text(encoding="utf-8")
+            (root / "Cargo.lock").write_text(
+                lock_text
+                + '\n[[package]]\nname = "unreviewed"\nversion = "1.0.0"\n'
+                + f'source = "{CHECK_REPO.CRATES_IO_SOURCE}"\n'
+                + 'checksum = "'
+                + "0" * 64
+                + '"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertIn(
+                "Cargo.lock differs from the reviewed M0-I02 dependency set",
+                errors,
+            )
+
     def test_agent_mirrors_must_match(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
