@@ -56,7 +56,7 @@ Entity、MemoryRecord 与 SourceArtifact 之间的关系。关系可以有类型
 
 ## MemoryRecord 基础字段
 
-M0 字段级逻辑契约已经由 [M0 Canonical Schema](schema/m0-canonical-schema.md) 冻结；数据库表、序列化布局、ID 编码和语言类型仍由后续 fixture 与实现栈决策确定。所有长期记忆至少表达：
+M0 字段级逻辑契约已经由 [M0 Canonical Schema](schema/m0-canonical-schema.md) 冻结；数据库表、序列化布局、ID 编码和语言类型不由本文冻结。M0 的模块与存储边界以 [ADR 0005](adr/0005-m0-implementation-stack.md) 为准，当前实现进度以 [当前状态](status/current.md) 为准。所有长期记忆至少表达：
 
 ```text
 memory_id

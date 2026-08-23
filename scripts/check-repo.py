@@ -747,7 +747,7 @@ def check_m0_fixture_contract(repo_root: Path, errors: list[str]) -> None:
         "docs/status/current.md": (
             "12 个场景的 86 个有序操作",
             "12 个指标 gate",
-            "真实 M0 runner 和产品能力仍未实现",
+            "真实 M0 runner 和完整 M0 闭环仍未实现",
         ),
         "docs/evaluation/m0-local-memory-loop.md": (
             "M0 Fixture 与指标契约",

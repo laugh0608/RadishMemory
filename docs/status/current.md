@@ -6,7 +6,7 @@
 
 `M0 implementation entry`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结，最小 Rust workspace 与三平台检查合同已经建立。当前目标是按顺位实现 canonical core、SQLite adapter 和真实 M0 runner，不扩大到 PDF、Embedding、模型、UI、同步或服务端。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结，最小 Rust workspace、canonical core 与 SQLite v3 事实存储已经建立。当前目标是按顺位收口 FTS5 / 当前投影、删除组件和真实 M0 runner，不扩大到 PDF、Embedding、模型、UI、同步或服务端。
 
 ## 已冻结的首个切片
 
@@ -14,7 +14,7 @@
 
 M0 字段级 canonical schema 已在 [M0 Canonical Schema](../schema/m0-canonical-schema.md) 冻结为九种顶层对象及共同逻辑类型。它确定字段、必填性、条件约束、时间、治理标签、事件和删除证据关系，但不绑定数据库、生产 ID 编码或语言类型。
 
-[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 已冻结合成 JSON mapping、fixture ID、摘要 profile、12 个场景的 86 个有序操作和 12 个指标 gate。仓库校验器只验证这些输入与 oracle 自洽；真实 M0 runner 和产品能力仍未实现。
+[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 已冻结合成 JSON mapping、fixture ID、摘要 profile、12 个场景的 86 个有序操作和 12 个指标 gate。仓库校验器只验证这些输入与 oracle 自洽；真实 M0 runner 和完整 M0 闭环仍未实现。
 
 首个多设备同步信任模式已通过 [ADR 0003](../adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务：默认自部署服务端只中继密文对象、加密操作日志、密钥封装和已枚举最小元数据，不持有内容解密能力，也不运行语义索引、检索或 ContextPack 编译。可信计算节点后置为显式可选能力。该决定不把同步加入 M0，也不代表零知识同步已经实现。
 
@@ -24,7 +24,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `M0-I01` 已建立且仅建立上述三个可编译 package，提交初始第一方 lockfile，并把 fmt、Clippy 和 locked test 接入本地双平台入口与 PR 的 Linux / macOS / Windows matrix。
 
-`M0-I02` 的第一个独立评审单元已实现稳定 core 错误、RFC 3339 / UTC 时间、`ValidTime`、`exact-bytes-v1` / `utf8-nfc-text-v1` / `canonical-json-v1` SHA-256，以及拒绝重复 key 和 `null` 的 `radishmemory-canonical-json-v1` parser / writer。`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象、共同值类型与字段级条件校验。`M0-I02` 的第三个独立评审单元已实现跨对象不变量，包括同 namespace 引用、来源切片、governance 继承、accept 物化闭环、事件链投影、supersede、ContextPack citation / 召回边界与删除计划 / 证据一致性。外部 JSON mapping 和应用操作尚未实现。
+`M0-I02` 的第一个独立评审单元已实现稳定 core 错误、RFC 3339 / UTC 时间、`ValidTime`、`exact-bytes-v1` / `utf8-nfc-text-v1` / `canonical-json-v1` SHA-256，以及拒绝重复 key 和 `null` 的 `radishmemory-canonical-json-v1` parser / writer。`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象、共同值类型与字段级条件校验。`M0-I02` 的第三个独立评审单元已实现跨对象不变量，包括同 namespace 引用、来源切片、governance 继承、accept 物化闭环、事件链投影、supersede、ContextPack citation / 召回边界与删除计划 / 证据一致性。fixture 外部 JSON mapping 与 runner application operation dispatch 尚未实现。
 
 `M0-I03 SQLite entry` 已实现版本化 migration、连接安全基线、bundled SQLite 精确版本与 FTS5 双重 capability probe，以及对未知较新版本、现有外来 schema 和 migration metadata 漂移的失败关闭。当前 lockfile 包含五个经审查的直接第三方依赖和 40 个第三方 package，没有 Git dependency 或产品网络能力；`libsqlite3-sys` build script 会通过 `cc` 编译 bundled SQLite `3.53.2` C 源码。feature、许可证与 native build 影响见 [M0 Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)。该入口提交本身没有为未来假设新增空 core port；真实 port 随下述 storage 操作进入。
 
@@ -36,6 +36,18 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 1. `M0-I03 SQLite storage`：下一切片实现 FTS5 派生索引与可重建当前投影，使来源 / 记忆事实写入和对应索引 / 投影更新在同一事务收口；随后实现删除对象与本地删除组件。
 2. `M0-I04 fixture runner`：按冻结操作顺序调用真实 core 与 adapter，执行全部 assertion / metric，输出最小 JSON 证据并报告零网络能力边界。
+
+## 明日事项（2026-08-24）
+
+主任务继续 `M0-I03 SQLite storage`，只交付 FTS5 派生索引与最小当前状态投影这一独立评审单元：
+
+1. 先对照冻结的 search fixture 操作与 ADR 0005，确定本单元真实需要的最小查询 / 更新边界和 schema mapping；fixture operation 不直接升级为 production API，不预建通用 index manager。
+2. 使用下一份单调 migration 建立 FTS5 派生表和由事件链可重建的最小当前状态投影；只索引 active SourceFragment 与 confirmed MemoryRecord，使用稳定对象 ID 作为同分 tie-break，不把 rowid、FTS 原始分数或投影字段变成 canonical truth。
+3. 把 SourceVault / MemoryStore 的事实写入、状态事件、索引和投影更新收口到同一 `IMMEDIATE` transaction；任一环节失败整体回滚，不回退到内存扫描、陈旧投影或更宽数据范围。
+4. 补齐新库初始化、v1 / v2 / v3 单调升级、namespace 隔离、稳定排序、supersede / retract 后检索资格变化、事务回滚、重建一致性和持久化漂移失败关闭测试；错误不得复制正文、查询文本或数据库路径。
+5. 运行 SQLite package 与全 workspace 的 fmt、Clippy、locked tests 及正式仓库入口；预计不新增依赖，若实际改变依赖或 native build 边界，必须同步更新 lockfile 与依赖基线后再提交。
+
+明日停止线：不启动删除组件、runner mapping、ContextPack 编译、向量 / 模型、UI、网络或同步；只有 live 写入与全量重建结果一致、非 eligible 对象不可检索、失败事务不留下事实 / 索引 / 投影漂移，才进入删除切片。
 
 ## 本次完成（2026-08-23）
 
@@ -70,8 +82,6 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 27. decision 写入要求现存同 namespace proposal，并把首个决定或 defer 后续决定追加为唯一无分叉链；accept / reject 终态拒绝任何后续决定，accept 的 `result_memory_id` 在 materialization 前保持独立可审计引用；
 28. accept materialization 在单个 `IMMEDIATE` transaction 内验证 proposal / decision / record / initial event 闭环，写入 record facts 与初始事件；supersede 同时验证 lineage、递增版本、精确目标集与 effective time，并追加旧记录关闭事件。通用 append 不允许绕过该事务写 superseded event；
 29. MemoryRecord 读取通过完整事件链派生当前状态，复验 proposal、decision、来源、事件 cause、相关记忆和 supersede 闭环；memory storage 测试覆盖完整往返、namespace 隔离、语义去重、defer → accept、终态拒绝、真实写后冲突回滚、旧事实行不改写、事件分叉拒绝、v2 → v3 升级、持久化链 / 正文 / lineage 篡改与错误脱敏。
-
-下一实施单元继续 `M0-I03 SQLite storage`：建立仅索引 active source fragments 与 confirmed memory records 的 FTS5 派生表，以及由事件链可重建的最小当前状态投影；事实、索引和投影必须在同一 adapter transaction 更新并提供重建 / 漂移测试。删除和 runner 仍按后续独立评审切片推进。
 
 ## 当前门禁
 

@@ -56,7 +56,7 @@ RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional
 
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
 
-当前已完成精确 Rust `1.96.0` 工具链、三个 package、canonical core 第一评审单元、受审阅 lockfile 和三平台 Rust CI 合同；九种 canonical 顶层对象、SQLite / FTS5 和真实 M0 runner 仍未实现。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图和证据边界。
+当前已完成精确 Rust `1.96.0` 工具链、三个 package、canonical core 三个评审单元、SQLite v3 连接 / migration / Source Vault / MemoryStore 事实存储、受审阅 lockfile 和三平台 Rust CI 合同；FTS5 业务索引、可重建当前投影、删除组件和真实 M0 runner 仍未实现。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图和证据边界。
 
 当前不把以下内容声明为已实现：
 
