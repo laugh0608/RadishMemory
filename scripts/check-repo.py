@@ -56,7 +56,12 @@ REQUIRED_FILES = (
     "crates/radishmemory-core/tests/m0_invariants.rs",
     "crates/radishmemory-core/tests/m0_primitives.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
+    "crates/radishmemory-sqlite/migrations/0001_sqlite_entry.sql",
+    "crates/radishmemory-sqlite/src/capability.rs",
+    "crates/radishmemory-sqlite/src/error.rs",
     "crates/radishmemory-sqlite/src/lib.rs",
+    "crates/radishmemory-sqlite/src/migration.rs",
+    "crates/radishmemory-sqlite/tests/sqlite_entry.rs",
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
     "docs/adr/0002-m0-local-memory-loop.md",
@@ -157,6 +162,7 @@ publish = false
 [workspace.dependencies]
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
 radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
+rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
 serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
 sha2 = { version = \"0.11.0\", default-features = false }
 time = { version = \"0.3.55\", default-features = false, features = [\"parsing\", \"std\"] }
@@ -211,6 +217,7 @@ workspace = true
 
 [dependencies]
 radishmemory-core.workspace = true
+rusqlite.workspace = true
 """,
 }
 
@@ -220,29 +227,39 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_M0_I02_LOCK_PACKAGES = (
+EXPECTED_M0_I03_LOCK_PACKAGES = (
+    ("bitflags", "2.13.1"),
     ("block-buffer", "0.12.1"),
+    ("cc", "1.4.4"),
     ("cfg-if", "1.0.4"),
     ("cpufeatures", "0.3.0"),
     ("crypto-common", "0.2.2"),
     ("deranged", "0.5.8"),
     ("digest", "0.11.3"),
+    ("fallible-iterator", "0.3.0"),
+    ("fallible-streaming-iterator", "0.1.9"),
+    ("find-msvc-tools", "0.1.11"),
     ("hybrid-array", "0.4.14"),
     ("itoa", "1.0.18"),
     ("libc", "0.2.189"),
+    ("libsqlite3-sys", "0.38.2"),
     ("memchr", "2.8.3"),
     ("num-conv", "0.2.2"),
+    ("pkg-config", "0.3.34"),
     ("powerfmt", "0.2.0"),
     ("proc-macro2", "1.0.107"),
     ("quote", "1.0.47"),
     ("radishmemory-core", "0.1.0"),
     ("radishmemory-m0", "0.1.0"),
     ("radishmemory-sqlite", "0.1.0"),
+    ("rusqlite", "0.40.2"),
     ("serde", "1.0.229"),
     ("serde_core", "1.0.229"),
     ("serde_derive", "1.0.229"),
     ("serde_json", "1.0.151"),
     ("sha2", "0.11.0"),
+    ("shlex", "2.0.1"),
+    ("smallvec", "1.15.2"),
     ("syn", "3.0.3"),
     ("time", "0.3.55"),
     ("time-core", "0.1.9"),
@@ -252,6 +269,7 @@ EXPECTED_M0_I02_LOCK_PACKAGES = (
     ("typenum", "1.20.1"),
     ("unicode-ident", "1.0.24"),
     ("unicode-normalization", "0.1.25"),
+    ("vcpkg", "0.2.15"),
     ("zmij", "1.0.23"),
 )
 FIRST_PARTY_RUST_PACKAGES = {
@@ -383,7 +401,7 @@ def check_rust_workspace_contract(
     for name, expected in EXPECTED_CARGO_MANIFESTS.items():
         path = repo_root / name
         if path.is_file() and path.read_text(encoding="utf-8") != expected:
-            errors.append(f"Rust workspace manifest differs from the M0-I02 contract: {name}")
+            errors.append(f"Rust workspace manifest differs from the M0-I03 contract: {name}")
 
     toolchain = repo_root / "rust-toolchain.toml"
     if toolchain.is_file() and toolchain.read_text(encoding="utf-8") != EXPECTED_RUST_TOOLCHAIN:
@@ -419,8 +437,8 @@ def check_rust_workspace_contract(
         elif checksum_match is None:
             errors.append(f"third-party lock package is missing a checksum: {name}")
 
-    if tuple(sorted(resolved_packages)) != EXPECTED_M0_I02_LOCK_PACKAGES:
-        errors.append("Cargo.lock differs from the reviewed M0-I02 dependency set")
+    if tuple(sorted(resolved_packages)) != EXPECTED_M0_I03_LOCK_PACKAGES:
+        errors.append("Cargo.lock differs from the reviewed M0-I03 dependency set")
 
     entrypoint_fragments = (
         "fmt --all --check",
@@ -860,16 +878,19 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "`M0-I02` 的第一个独立评审单元已实现稳定 core 错误",
             "`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象",
             "`M0-I02` 的第三个独立评审单元已实现跨对象不变量",
+            "`M0-I03 SQLite entry` 已实现版本化 migration",
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
-            "29 个第三方 package",
+            "40 个第三方 package",
             "没有 Git dependency",
             "`serde_json 1.0.151`",
+            "`rusqlite 0.40.2`",
+            "`libsqlite3-sys 0.38.2`",
+            "SQLite `3.53.2`",
+            "`SQLITE_ENABLE_FTS5`",
             "`serde_derive` 与 `time-macros` 是实际解析的 proc macro",
-            "不编译或链接第三方 C / C++ 源码",
-            "SQLite 版本、启用 feature、原生构建和第三方许可证当前均为不适用",
             "不得宣称三平台已经通过",
         ),
         "docs/architecture.md": (

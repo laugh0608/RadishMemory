@@ -222,7 +222,7 @@ class GovernanceContractChecks(unittest.TestCase):
             CHECK_REPO.check_rust_workspace_contract(root, errors)
 
             self.assertIn(
-                "Cargo.lock differs from the reviewed M0-I02 dependency set",
+                "Cargo.lock differs from the reviewed M0-I03 dependency set",
                 errors,
             )
 

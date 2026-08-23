@@ -11,3 +11,4 @@ workspace = true
 
 [dependencies]
 radishmemory-core.workspace = true
+rusqlite.workspace = true
