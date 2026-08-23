@@ -7,6 +7,7 @@
 mod capability;
 mod error;
 mod migration;
+mod source_store;
 
 use std::fmt;
 use std::path::Path;
@@ -14,7 +15,9 @@ use std::path::Path;
 use rusqlite::Connection;
 
 pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
-pub use error::{SqliteCapability, SqliteConfigurationReason, SqliteError, SqliteErrorCode};
+pub use error::{
+    SqliteCapability, SqliteConfigurationReason, SqliteError, SqliteErrorCode, SqliteStorageReason,
+};
 pub use migration::SQLITE_SCHEMA_VERSION;
 
 /// An initialized RadishMemory SQLite database.

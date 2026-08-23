@@ -11,6 +11,10 @@ pub enum SqliteErrorCode {
     UnsupportedSchemaVersion,
     Migration,
     SchemaDrift,
+    Storage,
+    Conflict,
+    InvalidStoredData,
+    SourceInvariant,
 }
 
 /// Runtime capabilities that the adapter requires before touching schema data.
@@ -29,14 +33,32 @@ pub enum SqliteConfigurationReason {
     PersistentJournalMode,
 }
 
+/// Stable source-storage detail without retaining identifiers or content.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SqliteStorageReason {
+    EmptyFragmentBatch,
+    MixedFragmentBatch,
+    DuplicateFragment,
+    DuplicateObject,
+    NumericRange,
+    MissingSource,
+    NamespaceMismatch,
+    SourceResolution,
+    UnknownEnum,
+    InvalidUtf8,
+    InvalidCanonicalObject,
+    StoredIntegrityMismatch,
+}
+
 /// SQLite adapter failure that does not display database paths or SQL text.
 pub struct SqliteError {
     code: SqliteErrorCode,
     capability: Option<SqliteCapability>,
     configuration_reason: Option<SqliteConfigurationReason>,
+    storage_reason: Option<SqliteStorageReason>,
     found_schema_version: Option<i64>,
     supported_schema_version: Option<u32>,
-    source: Option<rusqlite::Error>,
+    source: Option<Box<dyn Error + Send + Sync + 'static>>,
 }
 
 impl SqliteError {
@@ -49,6 +71,7 @@ impl SqliteError {
             code: SqliteErrorCode::ConnectionConfiguration,
             capability: None,
             configuration_reason: Some(reason),
+            storage_reason: None,
             found_schema_version: None,
             supported_schema_version: None,
             source: None,
@@ -71,9 +94,10 @@ impl SqliteError {
             code: SqliteErrorCode::UnsupportedCapability,
             capability: Some(capability),
             configuration_reason: None,
+            storage_reason: None,
             found_schema_version: None,
             supported_schema_version: None,
-            source,
+            source: source.map(|source| Box::new(source) as Box<_>),
         }
     }
 
@@ -82,6 +106,7 @@ impl SqliteError {
             code: SqliteErrorCode::UnsupportedSchemaVersion,
             capability: None,
             configuration_reason: None,
+            storage_reason: None,
             found_schema_version: Some(found),
             supported_schema_version: Some(supported),
             source: None,
@@ -97,9 +122,80 @@ impl SqliteError {
             code: SqliteErrorCode::SchemaDrift,
             capability: None,
             configuration_reason: None,
+            storage_reason: None,
             found_schema_version: None,
             supported_schema_version: None,
-            source,
+            source: source.map(|source| Box::new(source) as Box<_>),
+        }
+    }
+
+    pub(crate) fn storage(source: rusqlite::Error) -> Self {
+        let conflict = matches!(
+            source.sqlite_extended_error_code(),
+            Some(rusqlite::ffi::SQLITE_CONSTRAINT_PRIMARYKEY)
+                | Some(rusqlite::ffi::SQLITE_CONSTRAINT_UNIQUE)
+        );
+        Self {
+            code: if conflict {
+                SqliteErrorCode::Conflict
+            } else {
+                SqliteErrorCode::Storage
+            },
+            capability: None,
+            configuration_reason: None,
+            storage_reason: conflict.then_some(SqliteStorageReason::DuplicateObject),
+            found_schema_version: None,
+            supported_schema_version: None,
+            source: Some(Box::new(source)),
+        }
+    }
+
+    pub(crate) fn source_invariant(reason: SqliteStorageReason) -> Self {
+        Self::without_source(SqliteErrorCode::SourceInvariant, reason)
+    }
+
+    pub(crate) fn source_invariant_with_core(
+        reason: SqliteStorageReason,
+        source: radishmemory_core::CoreError,
+    ) -> Self {
+        Self::with_storage_source(SqliteErrorCode::SourceInvariant, reason, source)
+    }
+
+    pub(crate) fn invalid_stored(reason: SqliteStorageReason) -> Self {
+        Self::without_source(SqliteErrorCode::InvalidStoredData, reason)
+    }
+
+    pub(crate) fn invalid_stored_with_source<E>(reason: SqliteStorageReason, source: E) -> Self
+    where
+        E: Error + Send + Sync + 'static,
+    {
+        Self::with_storage_source(SqliteErrorCode::InvalidStoredData, reason, source)
+    }
+
+    fn without_source(code: SqliteErrorCode, reason: SqliteStorageReason) -> Self {
+        Self {
+            code,
+            capability: None,
+            configuration_reason: None,
+            storage_reason: Some(reason),
+            found_schema_version: None,
+            supported_schema_version: None,
+            source: None,
+        }
+    }
+
+    fn with_storage_source<E>(code: SqliteErrorCode, reason: SqliteStorageReason, source: E) -> Self
+    where
+        E: Error + Send + Sync + 'static,
+    {
+        Self {
+            code,
+            capability: None,
+            configuration_reason: None,
+            storage_reason: Some(reason),
+            found_schema_version: None,
+            supported_schema_version: None,
+            source: Some(Box::new(source)),
         }
     }
 
@@ -108,9 +204,10 @@ impl SqliteError {
             code,
             capability: None,
             configuration_reason: None,
+            storage_reason: None,
             found_schema_version: None,
             supported_schema_version: None,
-            source: Some(source),
+            source: Some(Box::new(source)),
         }
     }
 
@@ -130,6 +227,12 @@ impl SqliteError {
     #[must_use]
     pub const fn configuration_reason(&self) -> Option<SqliteConfigurationReason> {
         self.configuration_reason
+    }
+
+    /// Returns stable source-storage detail when available.
+    #[must_use]
+    pub const fn storage_reason(&self) -> Option<SqliteStorageReason> {
+        self.storage_reason
     }
 
     /// Returns the unsupported on-disk schema version when available.
@@ -152,6 +255,7 @@ impl fmt::Debug for SqliteError {
             .field("code", &self.code)
             .field("capability", &self.capability)
             .field("configuration_reason", &self.configuration_reason)
+            .field("storage_reason", &self.storage_reason)
             .field("found_schema_version", &self.found_schema_version)
             .field("supported_schema_version", &self.supported_schema_version)
             .field("has_source", &self.source.is_some())
@@ -169,6 +273,10 @@ impl fmt::Display for SqliteError {
             SqliteErrorCode::UnsupportedSchemaVersion => "unsupported SQLite schema version",
             SqliteErrorCode::Migration => "SQLite schema migration failed",
             SqliteErrorCode::SchemaDrift => "SQLite schema metadata is inconsistent",
+            SqliteErrorCode::Storage => "SQLite storage operation failed",
+            SqliteErrorCode::Conflict => "immutable SQLite object already exists",
+            SqliteErrorCode::InvalidStoredData => "stored SQLite object is invalid",
+            SqliteErrorCode::SourceInvariant => "source storage invariant violation",
         };
         formatter.write_str(message)
     }
@@ -177,7 +285,7 @@ impl fmt::Display for SqliteError {
 impl Error for SqliteError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         self.source
-            .as_ref()
+            .as_deref()
             .map(|source| source as &(dyn Error + 'static))
     }
 }

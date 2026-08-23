@@ -2,7 +2,7 @@
 
 日期：2026-08-23
 
-范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry`、workspace 工具链与聚合检查入口。
+范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source storage`、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
@@ -60,7 +60,7 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 
 - workspace 使用 Rust 2024 edition，`rust-toolchain.toml` 精确固定 `1.96.0`，并要求 `rustfmt` 与 `clippy` component；
 - 第一方 package 继承 `rust-version = "1.96.0"`、仓库许可证，以及 workspace `unsafe_code = "forbid"` 与 `unused_crate_dependencies = "deny"` lint；
-- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 SQLite package 的格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 编译选项 / 临时虚表实探、新库初始化、重复打开、未来 schema 版本拒绝、外来 schema 拒绝和错误脱敏均通过。本单元最终仍以全 workspace 聚合入口结果为准；
+- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 SQLite package 的格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 编译选项 / 临时虚表实探、新库初始化、v1 → v2 原子升级、未来 schema 版本拒绝、SourceArtifact / SourceFragment BLOB 往返、冲突回滚、namespace 隔离、完整性失败关闭和错误脱敏均通过。本单元最终仍以全 workspace 聚合入口结果为准；
 - PR workflow 已配置 Linux、macOS、Windows 三平台真实运行相同 locked 检查，并由 `Candidate Quality` 聚合；仓库内配置不等于 GitHub 执行结果，在实际 workflow run 产生前不得宣称三平台已经通过。
 
-本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量、SQLite 连接 / migration 入口、FTS5 capability probe 与当前依赖图在本机成立，不证明 Source Vault、事件 / 投影 / FTS5 业务索引、删除执行、fixture runner 或任何完整产品闭环已经实现。
+本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量、SQLite 连接 / migration 入口、SourceArtifact / SourceFragment 最小 Source Vault、FTS5 capability probe 与当前依赖图在本机成立，不证明记忆事件 / 投影、FTS5 业务索引、删除执行、fixture runner 或任何完整产品闭环已经实现。

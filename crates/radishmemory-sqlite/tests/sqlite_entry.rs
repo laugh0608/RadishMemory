@@ -1,46 +1,12 @@
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
-
 use radishmemory_core as _;
 use radishmemory_sqlite::{
     REVIEWED_BUNDLED_SQLITE_VERSION, SQLITE_SCHEMA_VERSION, SqliteDatabase, SqliteErrorCode,
 };
 use rusqlite::Connection;
 
-static TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+mod support;
 
-struct SyntheticDatabase {
-    path: PathBuf,
-}
-
-impl SyntheticDatabase {
-    fn new(label: &str) -> Self {
-        let sequence = TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "radishmemory-synthetic-{label}-{}-{sequence}.sqlite3",
-            std::process::id()
-        ));
-        Self { path }
-    }
-
-    fn path(&self) -> &Path {
-        &self.path
-    }
-}
-
-impl Drop for SyntheticDatabase {
-    fn drop(&mut self) {
-        for suffix in ["", "-journal", "-shm", "-wal"] {
-            let mut candidate = self.path.as_os_str().to_owned();
-            candidate.push(suffix);
-            if let Err(error) = std::fs::remove_file(&candidate)
-                && error.kind() != std::io::ErrorKind::NotFound
-            {
-                panic!("synthetic SQLite test cleanup failed: {error}");
-            }
-        }
-    }
-}
+use support::SyntheticDatabase;
 
 #[test]
 fn new_database_initializes_capabilities_and_reopens_current_schema() {
@@ -166,7 +132,10 @@ fn altered_migration_history_is_reported_as_schema_drift() {
             [],
         )
         .expect("synthetic migration history must be writable");
-    assert_eq!(changed, 1);
+    assert_eq!(
+        changed,
+        usize::try_from(SQLITE_SCHEMA_VERSION).expect("schema version must fit usize")
+    );
     drop(connection);
 
     let error = SqliteDatabase::open(synthetic.path())
