@@ -883,7 +883,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 local implementation exit candidate",
+            "M0 remote-validated merge candidate",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -906,7 +906,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "SQLite `3.53.2`",
             "`SQLITE_ENABLE_FTS5`",
             "`serde_derive` 与 `time-macros` 是实际解析的 proc macro",
-            "不得宣称三平台已经通过",
+            "Linux、macOS、Windows 与 `Candidate Quality` 已通过",
         ),
         "docs/architecture.md": (
             "[ADR 0005]",

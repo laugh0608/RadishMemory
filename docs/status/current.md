@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`M0 local implementation exit candidate`
+`M0 remote-validated merge candidate`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate。当前目标是完成本批正式门禁与提交，并在获得外部授权后取得 Linux / macOS / Windows CI 证据；在此之前不进入 PDF、Embedding、模型、UI、同步或服务端实现。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的 head `918d045` 已在 [workflow run 32978669766](https://github.com/laugh0608/RadishMemory/actions/runs/32978669766) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。当前目标是审阅并决定是否把该阶段候选合入 `master`，在完成合并与 `master -> dev` 回流前不开始阶段 1 实现。
 
 ## 已冻结的首个切片
 
@@ -40,17 +40,17 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 ## 当前顺位
 
-1. 完成本批本地正式门禁与 Conventional Commit，保持工作区可审阅且不推送。
-2. 获得明确外部授权后推送并取得 Linux / macOS / Windows CI 的同一 locked runner 证据；远端未运行前不宣称三平台通过。
-3. M0 退出证据完整后，再冻结阶段 1“单机资料库与可追溯问答”的首个真实资料切片；先定义真实文件边界、导入 / 导出、派生数据和删除验收，不直接跳到 PDF、向量或 Provider 实现。
+1. 审阅 PR #1 的 M0 阶段 diff、远程运行证据、失败历史和未覆盖边界；未获明确授权不自动合并。
+2. 获得明确授权后以 merge commit 合入 `master`，再在下一轮开发前完成 `master -> dev` 回流与拓扑 / 仓库门禁复核。
+3. 合并与回流收口后，再冻结阶段 1“单机资料库与可追溯问答”的首个真实资料切片；先定义真实文件边界、导入 / 导出、派生数据和删除验收，不直接跳到 PDF、向量或 Provider 实现。
 
 ## 明日事项（2026-08-27）
 
 主任务收口 `M0-I04 fixture runner` 的本地退出证据，并为阶段 1 入口做窄范围准备：
 
-1. 复核 runner / adapter feature、依赖边、最小输出和测试 diff，运行 workspace fmt、Clippy、locked tests、fixture checker 与仓库级正式门禁后提交。
-2. 不把本机通过等同于三平台通过；若项目所有者授权 push / PR，再观察 Linux / macOS / Windows `Candidate Quality`，保留真实失败与重试历史。
-3. 只在 M0 退出证据完整后起草阶段 1 首个切片：优先把已成立的本地文本 / Markdown 事实存储转成真实但受控的单机资料库入口，先冻结文件路径、来源身份、导入幂等、导出、删除与合成验收边界。
+1. 复核 PR #1 的阶段范围、真实远程证据与未覆盖边界，由项目所有者明确决定是否 merge。
+2. 合并后完成 `master -> dev` 回流，确认 `origin/master` 是 `dev` 祖先并重新运行与实际回流 diff 相称的仓库门禁；保留首轮 Windows 超时与修复后成功的真实 CI 历史。
+3. 只在 M0 合并与回流收口后起草阶段 1 首个切片：优先把已成立的本地文本 / Markdown 事实存储转成真实但受控的单机资料库入口，先冻结文件路径、来源身份、导入幂等、导出、删除与合成验收边界。
 4. PDF / 图片解析、向量索引和模型 adapter 分别需要可替换边界、依赖 / 许可证 / native build 审查、隐私失败关闭和独立质量指标，不合并成一个大批次。
 
 明日停止线：未经新真相源与验收冻结，不进入真实个人资料导入、PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
@@ -104,7 +104,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 43. 普通搜索先调用严格 FTS query，零结果时才使用与 expected key 无关的确定性本地词项变体逐次调用同一 `LocalSearch`；当前查询仍受 adapter 状态过滤，历史查询从不可变 record 与事件 effective boundary 重建 confirmed point-in-time 投影；
 44. ContextPack 由真实召回对象、来源片段和 citation 构建并调用 core resolution invariant；删除失败通过 opt-in `fixture-runner` feature 选择已冻结组件并把 fixture error / retryable 真实写入 execution attempt，不向 production port 增加测试参数；
 45. assertion 与 metric 都从运行事实计算，suite 聚合使用整数 count 与精确有理数，不从 oracle 复制 observed value；最小 JSON 包含 runner / adapter version、步骤、稳定 ID、带 profile 摘要、状态、错误和 gate，不包含正文、临时路径或删除内容；
-46. runner 回归测试覆盖 12 场景 / 86 步 / 12 gate 成功、未知 operation / assertion 失败关闭、scenario / step 错误上下文、重复隔离运行字节级确定性、CLI JSON、预期删除失败和敏感内容缺席；本机 31 个仓库检查器单测与 `./scripts/check-repo.sh` 已通过，后者包含 fmt、Clippy 和 locked workspace all-target / all-feature tests。
+46. runner 回归测试覆盖 12 场景 / 86 步 / 12 gate 成功、未知 operation / assertion 失败关闭、scenario / step 错误上下文、重复隔离运行字节级确定性、CLI JSON、预期删除失败和敏感内容缺席；本机 31 个仓库检查器单测与 `./scripts/check-repo.sh` 已通过。PR #1 首轮 run `32976944213` 真实暴露 Windows 文件数据库逐事务同步把重复 runner 测试拖到 `10m14s` 超时，提交 `918d045` 将 runner-only 场景改为独立内存连接后，run `32978669766` 的 Repo Hygiene、Linux `48s`、macOS `52s`、Windows `1m37s` 与聚合 `Candidate Quality` 全部通过；未通过放宽超时或减少断言掩盖失败。
 
 ## 当前门禁
 
@@ -112,7 +112,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore 不可变事实 / 追加事件、FTS5 业务索引、当前投影、检索过滤、派生重建、本地删除对象 / 组件 / 证据链和真实 M0 runner 的格式、lint 与测试在本机成立；不证明 PDF / 图片、向量、模型、同步或生产能力，也不等同于三平台 CI 已运行。
+- 当前仓库检查与 PR #1 run `32978669766` 共同证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore 不可变事实 / 追加事件、FTS5 业务索引、当前投影、检索过滤、派生重建、本地删除对象 / 组件 / 证据链和真实 M0 runner 的格式、lint 与测试在本机及 Linux / macOS / Windows 当前 locked CI 环境成立；不证明 PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
 
 ## 当前不做
 
@@ -143,7 +143,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - 已完成：SQLite 删除请求 / 证据持久化、冻结组件闭包、逐组件本地执行、失败保持关闭与幂等证据链；
 - 已完成：M0 runner 真实实现；
 - 已完成：冻结 fixture 的全部 assertion 与 metric 在本机通过；
-- 待完成：本批提交进入远端后，Linux / macOS / Windows 三平台运行门禁通过。
+- 已完成：PR #1 head `918d045` 在 run `32978669766` 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`；阶段候选仍待项目所有者审阅、合并和回流。
 
 ## 当前验证入口
 
