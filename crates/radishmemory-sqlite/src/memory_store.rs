@@ -101,6 +101,10 @@ impl MemoryStore for SqliteDatabase {
         for event in superseded_events {
             insert_event(&transaction, event)?;
         }
+        crate::derived_index::insert_memory_record(&transaction, record)?;
+        for (target, _) in &superseded {
+            crate::derived_index::update_memory_record(&transaction, target)?;
+        }
 
         let event_refs = [initial_event];
         validate_memory_event_chain(record, &event_refs).map_err(|source| {
@@ -150,6 +154,7 @@ impl MemoryStore for SqliteDatabase {
             SqliteError::memory_invariant_with_core(SqliteStorageReason::EventChain, source)
         })?;
         insert_event(&transaction, event)?;
+        crate::derived_index::update_memory_record(&transaction, &projected)?;
         transaction.commit().map_err(SqliteError::storage)
     }
 
@@ -919,7 +924,7 @@ fn validate_event_references(
     Ok(())
 }
 
-fn load_memory_record_closure(
+pub(crate) fn load_memory_record_closure(
     connection: &Connection,
     namespace_id: &Identifier,
     memory_id: &Identifier,

@@ -13,6 +13,7 @@ mod invariants;
 mod memory;
 mod model;
 mod ports;
+mod search;
 mod source;
 mod temporal;
 
@@ -30,6 +31,7 @@ pub use error::{
 pub use invariants::*;
 pub use memory::*;
 pub use model::*;
-pub use ports::{MemoryStore, SourceVault};
+pub use ports::{LocalSearch, MemoryStore, SourceVault};
+pub use search::{LocalSearchHit, LocalSearchRequest};
 pub use source::*;
 pub use temporal::{TimePrecision, Timestamp, TimestampPrecision, ValidTime, ValidTimeMode};

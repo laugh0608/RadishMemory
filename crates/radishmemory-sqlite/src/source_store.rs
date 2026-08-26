@@ -176,6 +176,7 @@ impl SourceVault for SqliteDatabase {
                         .map_err(SqliteError::storage)?;
                 }
             }
+            crate::derived_index::insert_source_fragment(&transaction, fragment, &source)?;
         }
         transaction.commit().map_err(SqliteError::storage)
     }

@@ -12,6 +12,7 @@ pub enum SqliteErrorCode {
     Migration,
     SchemaDrift,
     Storage,
+    Search,
     Conflict,
     InvalidStoredData,
     SourceInvariant,
@@ -61,6 +62,7 @@ pub enum SqliteStorageReason {
     MemoryReference,
     EventChain,
     UnsupportedCause,
+    DerivedDataMismatch,
 }
 
 /// SQLite adapter failure that does not display database paths or SQL text.
@@ -161,6 +163,10 @@ impl SqliteError {
             supported_schema_version: None,
             source: Some(Box::new(source)),
         }
+    }
+
+    pub(crate) fn search(source: rusqlite::Error) -> Self {
+        Self::with_source(SqliteErrorCode::Search, source)
     }
 
     pub(crate) fn conflict(reason: SqliteStorageReason) -> Self {
@@ -302,6 +308,7 @@ impl fmt::Display for SqliteError {
             SqliteErrorCode::Migration => "SQLite schema migration failed",
             SqliteErrorCode::SchemaDrift => "SQLite schema metadata is inconsistent",
             SqliteErrorCode::Storage => "SQLite storage operation failed",
+            SqliteErrorCode::Search => "SQLite local search failed",
             SqliteErrorCode::Conflict => "immutable SQLite object already exists",
             SqliteErrorCode::InvalidStoredData => "stored SQLite object is invalid",
             SqliteErrorCode::SourceInvariant => "source storage invariant violation",

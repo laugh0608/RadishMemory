@@ -5,6 +5,7 @@
 //! adapter boundary.
 
 mod capability;
+mod derived_index;
 mod error;
 mod memory_store;
 mod migration;
@@ -13,7 +14,8 @@ mod source_store;
 use std::fmt;
 use std::path::Path;
 
-use rusqlite::Connection;
+use radishmemory_core::{LocalSearch, LocalSearchHit, LocalSearchRequest};
+use rusqlite::{Connection, TransactionBehavior};
 
 pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
 pub use error::{
@@ -39,6 +41,7 @@ impl SqliteDatabase {
         configure_connection(&connection)?;
         let capabilities = capability::probe(&connection)?;
         migration::migrate_from(&mut connection, schema_version)?;
+        derived_index::verify(&connection)?;
 
         Ok(Self {
             connection,
@@ -58,9 +61,32 @@ impl SqliteDatabase {
         &self.capabilities
     }
 
+    /// Rebuilds all M0 local-recall derivations from validated canonical facts.
+    pub fn rebuild_recall_derivations(&mut self) -> Result<(), SqliteError> {
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(SqliteError::storage)?;
+        derived_index::rebuild(&transaction)?;
+        transaction.commit().map_err(SqliteError::storage)
+    }
+
+    /// Verifies current projection and FTS rows against validated canonical facts.
+    pub fn verify_recall_derivations(&self) -> Result<(), SqliteError> {
+        derived_index::verify(&self.connection)
+    }
+
     #[cfg(test)]
     const fn connection(&self) -> &Connection {
         &self.connection
+    }
+}
+
+impl LocalSearch for SqliteDatabase {
+    type Error = SqliteError;
+
+    fn search(&self, request: &LocalSearchRequest) -> Result<Vec<LocalSearchHit>, Self::Error> {
+        derived_index::search(&self.connection, request)
     }
 }
 

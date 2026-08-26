@@ -6,7 +6,7 @@ use rusqlite::{Connection, Transaction, TransactionBehavior, params};
 use crate::SqliteError;
 
 /// Newest on-disk schema version understood by this adapter.
-pub const SQLITE_SCHEMA_VERSION: u32 = 3;
+pub const SQLITE_SCHEMA_VERSION: u32 = 4;
 
 struct Migration {
     version: u32,
@@ -15,7 +15,7 @@ struct Migration {
     tables_created: &'static [&'static str],
 }
 
-const MIGRATIONS: [Migration; 3] = [
+const MIGRATIONS: [Migration; 4] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -49,6 +49,20 @@ const MIGRATIONS: [Migration; 3] = [
             "radishmemory_record_contradicts",
             "radishmemory_record_source_fragments",
             "radishmemory_record_supersedes",
+        ],
+    },
+    Migration {
+        version: 4,
+        name: "0004_local_recall",
+        sql: include_str!("../migrations/0004_local_recall.sql"),
+        tables_created: &[
+            "radishmemory_memory_current_projection",
+            "radishmemory_recall_fts",
+            "radishmemory_recall_fts_config",
+            "radishmemory_recall_fts_content",
+            "radishmemory_recall_fts_data",
+            "radishmemory_recall_fts_docsize",
+            "radishmemory_recall_fts_idx",
         ],
     },
 ];
@@ -108,6 +122,9 @@ fn apply_pending(transaction: &Transaction<'_>, found: i64) -> Result<(), Sqlite
         transaction
             .execute_batch(migration.sql)
             .map_err(SqliteError::migration)?;
+        if migration.version == 4 {
+            crate::derived_index::rebuild(transaction)?;
+        }
         let changed = transaction
             .execute(
                 "INSERT INTO radishmemory_schema_migrations (
@@ -296,6 +313,19 @@ mod tests {
         assert_eq!(version, i64::from(SQLITE_SCHEMA_VERSION));
         validate_migration_history(&connection, SQLITE_SCHEMA_VERSION)
             .expect("upgraded memory schema must be exact");
+    }
+
+    #[test]
+    fn version_three_upgrades_to_local_recall_atomically() {
+        let mut connection = Connection::open_in_memory().expect("in-memory SQLite must open");
+        apply_reviewed_prefix(&connection, 3);
+
+        migrate(&mut connection).expect("local recall migration must apply");
+
+        let version = user_version(&connection).expect("schema version must be queryable");
+        assert_eq!(version, i64::from(SQLITE_SCHEMA_VERSION));
+        validate_migration_history(&connection, SQLITE_SCHEMA_VERSION)
+            .expect("upgraded local recall schema must be exact");
     }
 
     fn apply_reviewed_prefix(connection: &Connection, count: usize) {

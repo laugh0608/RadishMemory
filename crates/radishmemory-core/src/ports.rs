@@ -1,9 +1,17 @@
 use std::error::Error;
 
 use crate::{
-    Identifier, MemoryDecision, MemoryProposal, MemoryRecord, MemoryStateEvent, SourceArtifact,
-    SourceFragment,
+    Identifier, LocalSearchHit, LocalSearchRequest, MemoryDecision, MemoryProposal, MemoryRecord,
+    MemoryStateEvent, SourceArtifact, SourceFragment,
 };
+
+/// Minimal local retrieval boundary required by the frozen M0 search operation.
+pub trait LocalSearch {
+    type Error: Error + Send + Sync + 'static;
+
+    /// Fails closed on derived-data drift, then returns deterministic local top-k hits.
+    fn search(&self, request: &LocalSearchRequest) -> Result<Vec<LocalSearchHit>, Self::Error>;
+}
 
 /// Minimal persistence boundary required by M0 capture and segmentation.
 pub trait SourceVault {
