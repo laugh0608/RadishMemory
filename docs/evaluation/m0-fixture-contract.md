@@ -1,6 +1,6 @@
 # M0 Fixture 与指标契约
 
-状态：Frozen for M0 implementation
+状态：Frozen M0 baseline
 
 版本：`radishmemory.m0-fixture/1`
 
@@ -180,19 +180,25 @@ urn:radishmemory:fixture:<scenario-lower>:<object-type-kebab>:<logical-key>
 
 ## Runner 输出协议
 
-未来 runner 至少输出：
+当前 runner 输出以下确定性最小证据：
 
 ```text
 fixture_contract_version
 suite_id / suite_digest
 implementation_id / implementation_version
-scenario_id / step_id / status / assertion results
-emitted object IDs and digests
-metric observations and suite aggregates
-network interceptor result
+canonical_schema_version
+adapter id / schema_version
+logical_clock
+scenario_id / step_id / operation
+expected_status / observed_status / passed / assertion results
+emitted logical keys / object IDs / digest profiles and values
+metric observations / suite aggregates / metric gates
+network_interceptor mode / request_count / passed
 started_at / finished_at
 error_code / retryable
 ```
+
+`started_at` / `finished_at` 是冻结 suite 的逻辑证据边界，不是 wall-clock 性能测量；runner 报告不得包含临时路径或以运行耗时制造性能承诺。没有 error 的步骤省略 `error_code` / `retryable`，而不是使用 `null`。任何新增输出都必须保持确定性、最小化并遵守本节数据边界。
 
 缺失步骤、未识别 assertion、未识别 metric、额外网络请求、unsupported schema、悬空引用或摘要不一致都必须令本次 suite 失败。runner 不得用默认成功、跳过、重试后隐藏首个错误或把 expected failure 当成未运行。
 

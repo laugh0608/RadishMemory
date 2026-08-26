@@ -44,11 +44,11 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `M0 implementation entry` 阶段：产品边界、记忆模型、隐私假设、验证目标和 M0 实现栈已经冻结，最小 Rust workspace 与聚合检查入口已经建立。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `M0 merged baseline; Phase 1 entry definition` 阶段：M0 本地记忆闭环已经实现、通过三平台 CI 并合入稳定主线，下一步先定义阶段 1 的真实文本 / Markdown 文件入口。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
-首个可执行切片已冻结为 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md)：只用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和删除证据，不依赖模型、网络、RadishMind 或同步。
+首个可执行切片 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md) 已使用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和单设备删除证据，不依赖模型、网络、RadishMind 或同步。
 
-M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical-schema.md) 中冻结为实现中立的字段级契约；[M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)进一步冻结 JSON mapping、稳定 ID、摘要向量、12 个场景的 86 个操作和指标 oracle。两者都是实现约束，不代表产品能力已经完成。
+M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical-schema.md) 中冻结为实现中立的字段级契约；[M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)进一步冻结 JSON mapping、稳定 ID、摘要向量、12 个场景的 86 个操作和指标 oracle。契约本身不证明实现，但真实 runner 已在同一 core 与 SQLite adapter 上执行全部步骤和门禁；证据边界以[当前状态](docs/status/current.md)为准。
 
 首个多设备同步信任模式已由 [ADR 0003](docs/adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务：默认服务端只中继密文和最小元数据，解密、索引、检索和记忆计算留在受信设备；这仍是待实现、待密码协议评审和待验证的目标边界。
 
@@ -56,10 +56,12 @@ RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional
 
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
 
-当前已完成精确 Rust `1.96.0` 工具链、三个 package、canonical core 三个评审单元、SQLite v3 连接 / migration / Source Vault / MemoryStore 事实存储、受审阅 lockfile 和三平台 Rust CI 合同；FTS5 业务索引、可重建当前投影、删除组件和真实 M0 runner 仍未实现。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图和证据边界。
+当前已完成精确 Rust `1.96.0` 工具链、三个 package、canonical core、SQLite v5 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界。这仍只是合成、单设备、无网络的 M0 基线，不是可导入真实个人资料的产品入口。
 
 当前不把以下内容声明为已实现：
 
+- 真实个人文件导入、导出与可用产品入口；
+- PDF / 图片解析、向量检索或带引用模型问答；
 - 长期记忆算法；
 - 加密多端同步；
 - 生产可用部署；

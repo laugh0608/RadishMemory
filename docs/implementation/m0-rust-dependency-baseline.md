@@ -65,6 +65,6 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 - workspace 使用 Rust 2024 edition，`rust-toolchain.toml` 精确固定 `1.96.0`，并要求 `rustfmt` 与 `clippy` component；
 - 第一方 package 继承 `rust-version = "1.96.0"`、仓库许可证，以及 workspace `unsafe_code = "forbid"` 与 `unused_crate_dependencies = "deny"` lint；
 - 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 workspace 格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 capability、新库与 v1 → v5 迁移、Source Vault、MemoryStore、检索、删除、12 场景 / 86 操作 / 12 gate runner、确定性证据、未知操作失败关闭和错误脱敏均通过。本单元最终仍以正式仓库聚合入口结果为准；
-- PR workflow 在 [PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 对相同 locked 检查进行了真实执行：首轮 run `32976944213` 的 Linux / macOS 通过，Windows 因文件数据库逐事务同步放大重复 fixture suite 而在 `10m14s` 超时；提交 `918d045` 保留 production 文件入口与连接策略，仅把 runner-only 场景切换为独立内存连接，随后 run `32978669766` 的 Linux、macOS、Windows 与 `Candidate Quality` 已通过。该历史证明当前 head 的三平台 CI，不外推为未来版本或生产环境保证。
+- PR workflow 在 [PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 对相同 locked 检查进行了真实执行：首轮 run `32976944213` 的 Linux / macOS 通过，Windows 因文件数据库逐事务同步放大重复 fixture suite 而在 `10m14s` 超时；提交 `918d045` 保留 production 文件入口与连接策略，仅把 runner-only 场景切换为独立内存连接，随后 run `32978669766` 的 Linux、macOS、Windows 与 `Candidate Quality` 已通过。最终文档 head `6df0891` 又在 run `32979128488` 全部通过，并由 merge commit `fe8186a` 合入 `master`、fast-forward 回流 `dev`。该历史证明已合并 M0 基线的三平台 CI，不外推为未来版本或生产环境保证。
 
 本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore、FTS5 派生索引、当前投影、本地删除执行与真实 fixture runner 的当前依赖图在本机及 PR #1 当前三平台 locked CI 环境成立；它不证明 PDF / 图片采集、向量检索、模型问答、多设备同步、未来平台兼容或生产可用性。

@@ -1,6 +1,6 @@
 # M0 Canonical Schema
 
-状态：Frozen for M0 implementation
+状态：Frozen M0 baseline
 
 版本：`radishmemory.m0/1`
 

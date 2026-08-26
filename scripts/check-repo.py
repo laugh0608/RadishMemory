@@ -883,7 +883,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 remote-validated merge candidate",
+            "M0 merged baseline; Phase 1 entry definition",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -895,6 +895,12 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "`M0-I03 SQLite storage` 的第二个纵向切片已实现",
             "`M0-I04 fixture runner` 已实现冻结 suite 摘要与向量复验",
             "已完成：精确 Rust 工具链、三 package workspace",
+        ),
+        "README.md": (
+            "M0 merged baseline; Phase 1 entry definition",
+            "SQLite v5 connection / migration",
+            "真实 M0 runner",
+            "不是可导入真实个人资料的产品入口",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
@@ -911,11 +917,13 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
         "docs/architecture.md": (
             "[ADR 0005]",
             "Rust 2024 模块化单体",
+            "仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接",
             "数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式",
         ),
         "docs/mvp-roadmap.md": (
             "已通过 [ADR 0005]",
             "Rust 模块化单体、SQLite / FTS5、依赖和验证基线",
+            "阶段 1 不把上述范围一次性展开为大批次",
         ),
         "docs/adr/0002-m0-local-memory-loop.md": (
             "[ADR 0005]",

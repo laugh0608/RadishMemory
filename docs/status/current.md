@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`M0 remote-validated merge candidate`
+`M0 merged baseline; Phase 1 entry definition`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的 head `918d045` 已在 [workflow run 32978669766](https://github.com/laugh0608/RadishMemory/actions/runs/32978669766) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。当前目标是审阅并决定是否把该阶段候选合入 `master`，在完成合并与 `master -> dev` 回流前不开始阶段 1 实现。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留，下一目标是先冻结阶段 1 的首个真实文本 / Markdown 文件入口，不直接进入实现或扩大到 PDF、向量、模型、UI、网络与同步。
 
 ## 已冻结的首个切片
 
@@ -40,18 +40,19 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 ## 当前顺位
 
-1. 审阅 PR #1 的 M0 阶段 diff、远程运行证据、失败历史和未覆盖边界；未获明确授权不自动合并。
-2. 获得明确授权后以 merge commit 合入 `master`，再在下一轮开发前完成 `master -> dev` 回流与拓扑 / 仓库门禁复核。
-3. 合并与回流收口后，再冻结阶段 1“单机资料库与可追溯问答”的首个真实资料切片；先定义真实文件边界、导入 / 导出、派生数据和删除验收，不直接跳到 PDF、向量或 Provider 实现。
+1. 先为阶段 1 的首个文本 / Markdown 文件入口建立单一真相源；只定义用户显式选择的文件如何进入现有 Source Vault，不把 M0 fixture operation 直接升级为 production API。
+2. 在实现前冻结文件选择与目录 / symlink 边界、UTF-8 与大小限制、来源身份和版本、重复导入、原件所有权、导出 round-trip、派生重建、删除范围与失败证据。
+3. 用合成临时文件冻结 import → search / citation → export → delete / rebuild 验收后，再决定最小实现；PDF / 图片、向量索引、模型 adapter 和 UI 分别进入后续独立评审单元。
 
 ## 明日事项（2026-08-27）
 
-主任务收口 `M0-I04 fixture runner` 的本地退出证据，并为阶段 1 入口做窄范围准备：
+主任务只做阶段 1 首个真实文件入口的定义与评审，不立即扩大产品实现：
 
-1. 复核 PR #1 的阶段范围、真实远程证据与未覆盖边界，由项目所有者明确决定是否 merge。
-2. 合并后完成 `master -> dev` 回流，确认 `origin/master` 是 `dev` 祖先并重新运行与实际回流 diff 相称的仓库门禁；保留首轮 Windows 超时与修复后成功的真实 CI 历史。
-3. 只在 M0 合并与回流收口后起草阶段 1 首个切片：优先把已成立的本地文本 / Markdown 事实存储转成真实但受控的单机资料库入口，先冻结文件路径、来源身份、导入幂等、导出、删除与合成验收边界。
-4. PDF / 图片解析、向量索引和模型 adapter 分别需要可替换边界、依赖 / 许可证 / native build 审查、隐私失败关闭和独立质量指标，不合并成一个大批次。
+1. 开始产品改动前，先审阅并处理 2026-08-26 最后一笔文档提交的远程同步；若创建后续 PR，仍按独立授权、完整 CI、merge commit 与 `master -> dev` 回流闭环执行。
+2. 沿 [产品范围](../product-scope.md)、[系统架构](../architecture.md)、[隐私与威胁模型](../privacy-threat-model.md)和 [MVP 路线图](../mvp-roadmap.md)起草阶段 1 首个文本 / Markdown 文件入口契约；M0 schema 只复用已经稳定的来源、治理和删除语义，不为文件系统另造第二套对象。
+3. 契约必须明确：显式文件选择与允许根目录、symlink / hardlink 和路径规范化、UTF-8 / 换行 / 大小与扩展名、来源 identity / version、重复导入和变更检测、原外部文件与受管副本的所有权、导出 round-trip、删除 / 撤回 / 重建范围，以及错误如何失败关闭且不泄露正文或完整路径。
+4. 冻结合成验收：只使用临时 `.txt` / `.md`，覆盖首次导入、相同字节幂等、内容变化新增版本、全文召回与 citation、精确导出、删除后不召回、派生重建不复活、越界路径 / 非 UTF-8 / 不支持类型拒绝；评审通过前不写 production importer。
+5. PDF / 图片解析、向量索引、模型 adapter、UI 与真实个人资料试用分别需要可替换边界、依赖 / 许可证 / native build 审查、隐私失败关闭和独立质量指标，不合并进首个切片。
 
 明日停止线：未经新真相源与验收冻结，不进入真实个人资料导入、PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
 
@@ -105,6 +106,8 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 44. ContextPack 由真实召回对象、来源片段和 citation 构建并调用 core resolution invariant；删除失败通过 opt-in `fixture-runner` feature 选择已冻结组件并把 fixture error / retryable 真实写入 execution attempt，不向 production port 增加测试参数；
 45. assertion 与 metric 都从运行事实计算，suite 聚合使用整数 count 与精确有理数，不从 oracle 复制 observed value；最小 JSON 包含 runner / adapter version、步骤、稳定 ID、带 profile 摘要、状态、错误和 gate，不包含正文、临时路径或删除内容；
 46. runner 回归测试覆盖 12 场景 / 86 步 / 12 gate 成功、未知 operation / assertion 失败关闭、scenario / step 错误上下文、重复隔离运行字节级确定性、CLI JSON、预期删除失败和敏感内容缺席；本机 31 个仓库检查器单测与 `./scripts/check-repo.sh` 已通过。PR #1 首轮 run `32976944213` 真实暴露 Windows 文件数据库逐事务同步把重复 runner 测试拖到 `10m14s` 超时，提交 `918d045` 将 runner-only 场景改为独立内存连接后，run `32978669766` 的 Repo Hygiene、Linux `48s`、macOS `52s`、Windows `1m37s` 与聚合 `Candidate Quality` 全部通过；未通过放宽超时或减少断言掩盖失败。
+47. PR #1 最终 head `6df0891` 在 run `32979128488` 再次通过 Repo Hygiene、Linux `42s`、macOS `1m6s`、Windows `1m33s` 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master`；`master -> dev` 以 `--ff-only` 回流并推送，两个远程分支计数为 `0 / 0`，回流后的 `./scripts/check-repo.sh` 通过。
+48. 日终文档审阅纠正 README 的 M0 implementation-entry / SQLite v3 旧摘要、架构中 runner 临时文件与九对象持久化的过期描述，以及 fixture “未来 runner”输出措辞；长期产品、记忆、隐私、同步和 RadishMind 边界未因 M0 完成而扩大。
 
 ## 当前门禁
 
@@ -112,7 +115,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查与 PR #1 run `32978669766` 共同证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore 不可变事实 / 追加事件、FTS5 业务索引、当前投影、检索过滤、派生重建、本地删除对象 / 组件 / 证据链和真实 M0 runner 的格式、lint 与测试在本机及 Linux / macOS / Windows 当前 locked CI 环境成立；不证明 PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
+- 当前仓库检查与 PR #1 最终 run `32979128488` 共同证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore 不可变事实 / 追加事件、FTS5 业务索引、当前投影、检索过滤、派生重建、本地删除对象 / 组件 / 证据链和真实 M0 runner 的格式、lint 与测试在本机及 Linux / macOS / Windows 当前 locked CI 环境成立；不证明 PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
 
 ## 当前不做
 
@@ -143,7 +146,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - 已完成：SQLite 删除请求 / 证据持久化、冻结组件闭包、逐组件本地执行、失败保持关闭与幂等证据链；
 - 已完成：M0 runner 真实实现；
 - 已完成：冻结 fixture 的全部 assertion 与 metric 在本机通过；
-- 已完成：PR #1 head `918d045` 在 run `32978669766` 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`；阶段候选仍待项目所有者审阅、合并和回流。
+- 已完成：PR #1 最终 head `6df0891` 在 run `32979128488` 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，并以 merge commit `fe8186a` 合入 `master`、回流 `dev`；M0 退出条件全部收口。
 
 ## 当前验证入口
 
