@@ -33,6 +33,8 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 - [产品范围](docs/product-scope.md)
 - [系统架构](docs/architecture.md)
 - [记忆模型](docs/memory-model.md)
+- [M0 Canonical Schema](docs/schema/m0-canonical-schema.md)
+- [M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)
 - [隐私与威胁模型](docs/privacy-threat-model.md)
 - [与 RadishMind 的边界](docs/radishmind-boundary.md)
 - [MVP 路线图](docs/mvp-roadmap.md)
@@ -42,7 +44,19 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `documentation-first / pre-implementation` 阶段：先冻结产品边界、记忆模型、隐私假设和验证目标，再选择技术栈并进入实现。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `M0 implementation entry` 阶段：产品边界、记忆模型、隐私假设、验证目标和 M0 实现栈已经冻结，最小 Rust workspace 与聚合检查入口已经建立。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+
+首个可执行切片已冻结为 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md)：只用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和删除证据，不依赖模型、网络、RadishMind 或同步。
+
+M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical-schema.md) 中冻结为实现中立的字段级契约；[M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)进一步冻结 JSON mapping、稳定 ID、摘要向量、12 个场景的 86 个操作和指标 oracle。两者都是实现约束，不代表产品能力已经完成。
+
+首个多设备同步信任模式已由 [ADR 0003](docs/adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务：默认服务端只中继密文和最小元数据，解密、索引、检索和记忆计算留在受信设备；这仍是待实现、待密码协议评审和待验证的目标边界。
+
+RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional-gateway-entry.md) 后置到完整 MVP 阶段 3，并且只作为可选 Model Gateway；M0、单机资料库和记忆生命周期不依赖它，首次不接 Workflow、Tooling 或共享业务数据库。
+
+M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
+
+当前已完成精确 Rust `1.96.0` 工具链、三个 package、canonical core 三个评审单元、SQLite v3 连接 / migration / Source Vault / MemoryStore 事实存储、受审阅 lockfile 和三平台 Rust CI 合同；FTS5 业务索引、可重建当前投影、删除组件和真实 M0 runner 仍未实现。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图和证据边界。
 
 当前不把以下内容声明为已实现：
 

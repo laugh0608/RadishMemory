@@ -1,0 +1,2127 @@
+{
+  "fixture_contract_version": "radishmemory.m0-fixture/1",
+  "canonical_schema_version": "radishmemory.m0/1",
+  "suite_id": "urn:radishmemory:fixture:suite:m0-local-memory-loop-v1",
+  "data_classification": "synthetic",
+  "namespace_id": "urn:radishmemory:fixture:namespace:m0",
+  "device_id": "urn:radishmemory:fixture:device:local",
+  "canonical_json_profile": "radishmemory-canonical-json-v1",
+  "fixture_id_profile": "radishmemory-fixture-id-v1",
+  "governance_profiles": {
+    "m0-local-personal": {
+      "sensitivity": "personal",
+      "egress_policy": "local_only",
+      "retention": {
+        "mode": "until_deleted"
+      },
+      "deletion_state": "active",
+      "policy_basis": "policy:m0:local-only"
+    }
+  },
+  "deletion_profiles": {
+    "m0-local-purge": [
+      {
+        "component_key": "source-body",
+        "component_type": "source_body",
+        "required_action": "delete"
+      },
+      {
+        "component_key": "source-metadata",
+        "component_type": "source_metadata",
+        "required_action": "retain_minimal"
+      },
+      {
+        "component_key": "source-fragment",
+        "component_type": "source_fragment",
+        "required_action": "delete"
+      },
+      {
+        "component_key": "memory-proposal",
+        "component_type": "memory_proposal",
+        "required_action": "redact"
+      },
+      {
+        "component_key": "memory-decision",
+        "component_type": "memory_decision",
+        "required_action": "retain_minimal"
+      },
+      {
+        "component_key": "memory-record",
+        "component_type": "memory_record",
+        "required_action": "redact"
+      },
+      {
+        "component_key": "memory-state-event",
+        "component_type": "memory_state_event",
+        "required_action": "retain_minimal"
+      },
+      {
+        "component_key": "full-text-index",
+        "component_type": "full_text_index",
+        "required_action": "delete"
+      },
+      {
+        "component_key": "context-cache",
+        "component_type": "context_cache",
+        "required_action": "delete"
+      },
+      {
+        "component_key": "minimal-audit",
+        "component_type": "minimal_audit",
+        "required_action": "retain_minimal"
+      }
+    ]
+  },
+  "id_vectors": [
+    {
+      "scenario_id": "M0-E01",
+      "object_type": "SourceArtifact",
+      "logical_key": "orchard-note-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e01:source-artifact:orchard-note-v1"
+    },
+    {
+      "scenario_id": "M0-E01",
+      "object_type": "SourceFragment",
+      "logical_key": "orchard-note-fragment-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e01:source-fragment:orchard-note-fragment-v1"
+    },
+    {
+      "scenario_id": "M0-E04",
+      "object_type": "MemoryProposal",
+      "logical_key": "concise-chinese-proposal-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e04:memory-proposal:concise-chinese-proposal-v1"
+    },
+    {
+      "scenario_id": "M0-E04",
+      "object_type": "MemoryDecision",
+      "logical_key": "concise-chinese-accept-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e04:memory-decision:concise-chinese-accept-v1"
+    },
+    {
+      "scenario_id": "M0-E04",
+      "object_type": "MemoryRecord",
+      "logical_key": "concise-chinese-memory-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e04:memory-record:concise-chinese-memory-v1"
+    },
+    {
+      "scenario_id": "M0-E04",
+      "object_type": "MemoryStateEvent",
+      "logical_key": "concise-chinese-confirmed-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e04:memory-state-event:concise-chinese-confirmed-v1"
+    },
+    {
+      "scenario_id": "M0-E02",
+      "object_type": "ContextPack",
+      "logical_key": "orchard-search-context-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e02:context-pack:orchard-search-context-v1"
+    },
+    {
+      "scenario_id": "M0-E09",
+      "object_type": "DeleteRequest",
+      "logical_key": "delete-note-request-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e09:delete-request:delete-note-request-v1"
+    },
+    {
+      "scenario_id": "M0-E09",
+      "object_type": "DeletionEvidence",
+      "logical_key": "delete-note-evidence-v1",
+      "expected_id": "urn:radishmemory:fixture:m0-e09:deletion-evidence:delete-note-evidence-v1"
+    }
+  ],
+  "digest_vectors": [
+    {
+      "vector_id": "exact-source-bytes",
+      "profile": "exact-bytes-v1",
+      "input_text": "Project Orchard default theme is blue.\n",
+      "expected_sha256": "7079fa7680ce221ecb0c7a90526184e0e95e412fff4b0a97af629cbfd72b100f"
+    },
+    {
+      "vector_id": "nfc-semantic-text",
+      "profile": "utf8-nfc-text-v1",
+      "input_text": "Café",
+      "expected_sha256": "73473dcc12b763085904a5279d048c4d5b3b008c46f1f32443b99de04aa83a14"
+    },
+    {
+      "vector_id": "canonical-json-key-order",
+      "profile": "canonical-json-v1",
+      "input_value": {
+        "b": 2,
+        "a": 1
+      },
+      "expected_sha256": "43258cff783fe7036d8a43033f830adfc60ec037382473548ac742b888292777"
+    }
+  ],
+  "metric_gates": [
+    {
+      "metric_id": "citation_resolve_rate",
+      "kind": "ratio",
+      "comparator": "eq",
+      "threshold": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "metric_id": "retrieval_recall_at_5",
+      "kind": "ratio",
+      "comparator": "eq",
+      "threshold": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "metric_id": "unconfirmed_context_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "duplicate_reproposal_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "silent_overwrite_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "silent_conflict_selection_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "policy_violation_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "network_request_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "deletion_component_coverage",
+      "kind": "ratio",
+      "comparator": "eq",
+      "threshold": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "metric_id": "false_complete_deletion_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    },
+    {
+      "metric_id": "model_free_loop_completion_rate",
+      "kind": "ratio",
+      "comparator": "eq",
+      "threshold": {
+        "numerator": 1,
+        "denominator": 1
+      }
+    },
+    {
+      "metric_id": "relevant_source_set_drift_count",
+      "kind": "count",
+      "comparator": "eq",
+      "threshold": 0
+    }
+  ],
+  "scenarios": [
+    {
+      "scenario_id": "M0-E01",
+      "title": "采集短文本与 Markdown",
+      "isolation_key": "m0-e01",
+      "operations": [
+        {
+          "step_id": "m0-e01-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-note-v1",
+            "source_kind": "markdown",
+            "media_type": "text/markdown",
+            "content": "# Orchard\nDefault theme is blue.\n",
+            "observed_at": "2026-01-10T09:00:00Z",
+            "captured_at": "2026-01-10T09:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved",
+              "source-exact-digest-matches"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e01-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-note-v1",
+            "segmenter_profile": "m0-lines-v1",
+            "expected_fragments": [
+              {
+                "logical_key": "orchard-note-fragment-v1",
+                "byte_start": 10,
+                "byte_end": 33,
+                "content": "Default theme is blue.\n"
+              }
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-id-stable",
+              "fragment-range-resolves"
+            ]
+          }
+        }
+      ],
+      "metric_observations": []
+    },
+    {
+      "scenario_id": "M0-E02",
+      "title": "全文召回与引用",
+      "isolation_key": "m0-e02",
+      "operations": [
+        {
+          "step_id": "m0-e02-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-blue-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Project Orchard default theme is blue.\n",
+            "observed_at": "2026-01-10T09:00:00Z",
+            "captured_at": "2026-01-10T09:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e02-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-blue-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e02-s03",
+          "op": "search",
+          "input": {
+            "query": "blue theme",
+            "as_of": "2026-01-11T00:00:00Z",
+            "top_k": 5,
+            "expected_relevant_keys": [
+              "orchard-blue-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "annotated-source-in-top-5",
+              "policy-filter-ran-first"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e02-s04",
+          "op": "compile_context",
+          "input": {
+            "search_step_id": "m0-e02-s03",
+            "budget": {
+              "unit": "utf8_bytes",
+              "limit": 512
+            },
+            "expected_source_keys": [
+              "orchard-blue-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "citation-map-resolves",
+              "context-within-budget"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "citation_resolve_rate",
+          "numerator": 1,
+          "denominator": 1
+        },
+        {
+          "metric_id": "retrieval_recall_at_5",
+          "numerator": 1,
+          "denominator": 1
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E03",
+      "title": "未确认候选隔离",
+      "isolation_key": "m0-e03",
+      "operations": [
+        {
+          "step_id": "m0-e03-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "concise-chinese-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Use concise Chinese explanations.\n",
+            "observed_at": "2026-02-01T08:00:00Z",
+            "captured_at": "2026-02-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e03-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "concise-chinese-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e03-s03",
+          "op": "propose",
+          "input": {
+            "logical_key": "concise-chinese-proposal-v1",
+            "operation": "create",
+            "memory_type": "preference",
+            "subject_ref": "user:sample",
+            "content": "User prefers concise Chinese explanations.",
+            "source_keys": [
+              "concise-chinese-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-02-01T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-input"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e03-s04",
+          "op": "search",
+          "input": {
+            "query": "preferred explanation language",
+            "as_of": "2026-02-02T00:00:00Z",
+            "top_k": 5,
+            "forbidden_memory_keys": [
+              "concise-chinese-proposal-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-not-confirmed-result"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e03-s05",
+          "op": "compile_context",
+          "input": {
+            "search_step_id": "m0-e03-s04",
+            "budget": {
+              "unit": "utf8_bytes",
+              "limit": 512
+            },
+            "forbidden_item_keys": [
+              "concise-chinese-proposal-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "unconfirmed-proposal-excluded"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "unconfirmed_context_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E04",
+      "title": "接受候选并生成确认记忆",
+      "isolation_key": "m0-e04",
+      "operations": [
+        {
+          "step_id": "m0-e04-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "concise-chinese-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Use concise Chinese explanations.\n",
+            "observed_at": "2026-02-01T08:00:00Z",
+            "captured_at": "2026-02-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e04-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "concise-chinese-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e04-s03",
+          "op": "propose",
+          "input": {
+            "logical_key": "concise-chinese-proposal-v1",
+            "operation": "create",
+            "memory_type": "preference",
+            "subject_ref": "user:sample",
+            "content": "User prefers concise Chinese explanations.",
+            "source_keys": [
+              "concise-chinese-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-02-01T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-input"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e04-s04",
+          "op": "decide",
+          "input": {
+            "logical_key": "concise-chinese-accept-v1",
+            "proposal_key": "concise-chinese-proposal-v1",
+            "decision": "accept",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-confirmation",
+            "result_memory_key": "concise-chinese-memory-v1",
+            "decided_at": "2026-02-01T08:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "decision-is-separate-event"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e04-s05",
+          "op": "materialize_memory",
+          "input": {
+            "proposal_key": "concise-chinese-proposal-v1",
+            "decision_key": "concise-chinese-accept-v1",
+            "memory_key": "concise-chinese-memory-v1",
+            "lineage_key": "concise-chinese-lineage",
+            "version": 1
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "confirmed-record-has-source-and-decision",
+              "initial-state-event-created"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e04-s06",
+          "op": "search",
+          "input": {
+            "query": "preferred explanation language",
+            "as_of": "2026-02-02T00:00:00Z",
+            "top_k": 5,
+            "expected_memory_keys": [
+              "concise-chinese-memory-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "confirmed-memory-retrieved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e04-s07",
+          "op": "compile_context",
+          "input": {
+            "search_step_id": "m0-e04-s06",
+            "budget": {
+              "unit": "utf8_bytes",
+              "limit": 512
+            },
+            "expected_memory_keys": [
+              "concise-chinese-memory-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "citation-map-resolves",
+              "decision-lineage-resolves"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "citation_resolve_rate",
+          "numerator": 1,
+          "denominator": 1
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E05",
+      "title": "拒绝与重复提议抑制",
+      "isolation_key": "m0-e05",
+      "operations": [
+        {
+          "step_id": "m0-e05-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "verbose-style-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Use verbose explanations.\n",
+            "observed_at": "2026-02-03T08:00:00Z",
+            "captured_at": "2026-02-03T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e05-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "verbose-style-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e05-s03",
+          "op": "propose",
+          "input": {
+            "logical_key": "verbose-style-proposal-v1",
+            "operation": "create",
+            "memory_type": "preference",
+            "subject_ref": "user:sample",
+            "content": "User prefers verbose explanations.",
+            "source_keys": [
+              "verbose-style-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-02-03T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-input"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e05-s04",
+          "op": "decide",
+          "input": {
+            "logical_key": "verbose-style-reject-v1",
+            "proposal_key": "verbose-style-proposal-v1",
+            "decision": "reject",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-rejection",
+            "decided_at": "2026-02-03T08:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "reject-decision-is-terminal"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e05-s05",
+          "op": "attempt_duplicate_proposal",
+          "input": {
+            "original_proposal_key": "verbose-style-proposal-v1",
+            "same_source": true,
+            "same_content": true,
+            "same_targets": true
+          },
+          "expect": {
+            "status": "rejected",
+            "assertions": [
+              "duplicate-proposal-suppressed"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "duplicate_reproposal_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E06",
+      "title": "时间更正与历史查询",
+      "isolation_key": "m0-e06",
+      "operations": [
+        {
+          "step_id": "m0-e06-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-blue-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Project Orchard default theme is blue.\n",
+            "observed_at": "2026-01-10T09:00:00Z",
+            "captured_at": "2026-01-10T09:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-blue-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s03",
+          "op": "propose",
+          "input": {
+            "logical_key": "orchard-theme-blue-proposal-v1",
+            "operation": "create",
+            "memory_type": "preference",
+            "subject_ref": "project:orchard",
+            "content": "Project Orchard default theme is blue.",
+            "source_keys": [
+              "orchard-blue-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-01-10T09:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-input"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s04",
+          "op": "decide",
+          "input": {
+            "logical_key": "orchard-theme-blue-accept-v1",
+            "proposal_key": "orchard-theme-blue-proposal-v1",
+            "decision": "accept",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-confirmation",
+            "result_memory_key": "orchard-theme-blue-memory-v1",
+            "decided_at": "2026-01-10T09:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "decision-is-separate-event"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s05",
+          "op": "materialize_memory",
+          "input": {
+            "proposal_key": "orchard-theme-blue-proposal-v1",
+            "decision_key": "orchard-theme-blue-accept-v1",
+            "memory_key": "orchard-theme-blue-memory-v1",
+            "lineage_key": "orchard-theme-lineage",
+            "version": 1
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "confirmed-record-has-source-and-decision"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s06",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-green-v2",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Project Orchard default theme is green.\n",
+            "observed_at": "2026-03-20T10:00:00Z",
+            "captured_at": "2026-03-20T10:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s07",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-green-v2",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s08",
+          "op": "propose",
+          "input": {
+            "logical_key": "orchard-theme-green-proposal-v2",
+            "operation": "supersede",
+            "memory_type": "preference",
+            "subject_ref": "project:orchard",
+            "content": "Project Orchard default theme is green.",
+            "source_keys": [
+              "orchard-green-v2"
+            ],
+            "target_memory_keys": [
+              "orchard-theme-blue-memory-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-03-20T10:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-correction"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "supersede-target-explicit"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s09",
+          "op": "decide",
+          "input": {
+            "logical_key": "orchard-theme-green-accept-v2",
+            "proposal_key": "orchard-theme-green-proposal-v2",
+            "decision": "accept",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-confirmation",
+            "result_memory_key": "orchard-theme-green-memory-v2",
+            "decided_at": "2026-03-20T10:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "decision-is-separate-event"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s10",
+          "op": "materialize_memory",
+          "input": {
+            "proposal_key": "orchard-theme-green-proposal-v2",
+            "decision_key": "orchard-theme-green-accept-v2",
+            "memory_key": "orchard-theme-green-memory-v2",
+            "lineage_key": "orchard-theme-lineage",
+            "version": 2,
+            "supersedes_memory_key": "orchard-theme-blue-memory-v1",
+            "effective_at": "2026-03-20T10:00:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "old-record-not-mutated",
+              "superseded-event-boundary-matches"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s11",
+          "op": "query_at",
+          "input": {
+            "query": "Project Orchard default theme",
+            "as_of": "2026-02-15T00:00:00Z",
+            "expected_memory_keys": [
+              "orchard-theme-blue-memory-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "historical-value-is-blue",
+              "historical-citation-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e06-s12",
+          "op": "query_current",
+          "input": {
+            "query": "Project Orchard default theme",
+            "as_of": "2026-03-21T00:00:00Z",
+            "expected_memory_keys": [
+              "orchard-theme-green-memory-v2"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "current-value-is-green",
+              "current-citation-resolves"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "citation_resolve_rate",
+          "numerator": 2,
+          "denominator": 2
+        },
+        {
+          "metric_id": "retrieval_recall_at_5",
+          "numerator": 2,
+          "denominator": 2
+        },
+        {
+          "metric_id": "silent_overwrite_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E07",
+      "title": "冲突证据不静默选边",
+      "isolation_key": "m0-e07",
+      "operations": [
+        {
+          "step_id": "m0-e07-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-red-source-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Project Orchard status color is red.\n",
+            "observed_at": "2026-04-01T08:00:00Z",
+            "captured_at": "2026-04-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-red-source-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s03",
+          "op": "propose",
+          "input": {
+            "logical_key": "orchard-red-proposal-v1",
+            "operation": "create",
+            "memory_type": "claim",
+            "subject_ref": "project:orchard",
+            "content": "Project Orchard status color is red.",
+            "source_keys": [
+              "orchard-red-source-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-04-01T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-claim-v1",
+            "reason_code": "source-assertion"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s04",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-yellow-source-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Project Orchard status color is yellow.\n",
+            "observed_at": "2026-04-01T08:05:00Z",
+            "captured_at": "2026-04-01T08:05:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s05",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-yellow-source-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s06",
+          "op": "propose",
+          "input": {
+            "logical_key": "orchard-yellow-proposal-v1",
+            "operation": "create",
+            "memory_type": "claim",
+            "subject_ref": "project:orchard",
+            "content": "Project Orchard status color is yellow.",
+            "source_keys": [
+              "orchard-yellow-source-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-04-01T08:05:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-claim-v1",
+            "reason_code": "source-assertion"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s07",
+          "op": "detect_conflict",
+          "input": {
+            "proposal_keys": [
+              "orchard-red-proposal-v1",
+              "orchard-yellow-proposal-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "conflict-preserves-both-sources",
+              "no-current-value-selected"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e07-s08",
+          "op": "compile_context",
+          "input": {
+            "conflict_step_id": "m0-e07-s07",
+            "budget": {
+              "unit": "utf8_bytes",
+              "limit": 512
+            },
+            "expected_item_type": "conflict_notice"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "conflict-is-explicit",
+              "unconfirmed-proposal-excluded"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "unconfirmed_context_count",
+          "value": 0
+        },
+        {
+          "metric_id": "silent_conflict_selection_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E08",
+      "title": "local_only 无网络外发",
+      "isolation_key": "m0-e08",
+      "operations": [
+        {
+          "step_id": "m0-e08-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "local-only-note-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Local-only project note.\n",
+            "observed_at": "2026-05-01T08:00:00Z",
+            "captured_at": "2026-05-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e08-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "local-only-note-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e08-s03",
+          "op": "search",
+          "input": {
+            "query": "local-only project note",
+            "as_of": "2026-05-02T00:00:00Z",
+            "top_k": 5,
+            "expected_relevant_keys": [
+              "local-only-note-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "local-content-retrieved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e08-s04",
+          "op": "compile_context",
+          "input": {
+            "search_step_id": "m0-e08-s03",
+            "budget": {
+              "unit": "utf8_bytes",
+              "limit": 512
+            },
+            "delivery_scope": "local"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "citation-map-resolves",
+              "context-egress-local-only"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e08-s05",
+          "op": "assert_no_network",
+          "input": {
+            "expected_request_count": 0,
+            "expected_manifest_count": 0,
+            "expected_provider_trace_count": 0,
+            "expected_usage_record_count": 0
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "network-request-count-zero",
+              "provider-artifacts-absent"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "citation_resolve_rate",
+          "numerator": 1,
+          "denominator": 1
+        },
+        {
+          "metric_id": "retrieval_recall_at_5",
+          "numerator": 1,
+          "denominator": 1
+        },
+        {
+          "metric_id": "policy_violation_count",
+          "value": 0
+        },
+        {
+          "metric_id": "network_request_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E09",
+      "title": "删除传播完成证据",
+      "isolation_key": "m0-e09",
+      "operations": [
+        {
+          "step_id": "m0-e09-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "delete-note-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Synthetic note scheduled for deletion.\n",
+            "observed_at": "2026-06-01T08:00:00Z",
+            "captured_at": "2026-06-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "delete-note-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s03",
+          "op": "propose",
+          "input": {
+            "logical_key": "delete-note-proposal-v1",
+            "operation": "create",
+            "memory_type": "observation",
+            "subject_ref": "user:sample",
+            "content": "A synthetic note is scheduled for deletion.",
+            "source_keys": [
+              "delete-note-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "instant",
+              "start_at": "2026-06-01T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-observation-v1",
+            "reason_code": "explicit-user-input"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s04",
+          "op": "decide",
+          "input": {
+            "logical_key": "delete-note-accept-v1",
+            "proposal_key": "delete-note-proposal-v1",
+            "decision": "accept",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-confirmation",
+            "result_memory_key": "delete-note-memory-v1",
+            "decided_at": "2026-06-01T08:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "decision-is-separate-event"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s05",
+          "op": "materialize_memory",
+          "input": {
+            "proposal_key": "delete-note-proposal-v1",
+            "decision_key": "delete-note-accept-v1",
+            "memory_key": "delete-note-memory-v1",
+            "lineage_key": "delete-note-lineage",
+            "version": 1
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "confirmed-record-has-source-and-decision"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s06",
+          "op": "plan_delete",
+          "input": {
+            "logical_key": "delete-note-request-v1",
+            "target_keys": [
+              "delete-note-v1",
+              "delete-note-memory-v1"
+            ],
+            "requested_guarantee": "local_purge",
+            "component_profile": "m0-local-purge",
+            "requested_at": "2026-06-02T08:00:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "planned-component-count-10",
+              "targets-enter-pending-before-delete"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s07",
+          "op": "execute_deletion",
+          "input": {
+            "delete_request_key": "delete-note-request-v1",
+            "component_outcome_profile": "all-required-actions-succeeded"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "all-planned-components-have-results",
+              "deleted-content-not-in-evidence"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s08",
+          "op": "emit_deletion_evidence",
+          "input": {
+            "logical_key": "delete-note-evidence-v1",
+            "delete_request_key": "delete-note-request-v1",
+            "expected_overall_status": "completed"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "completed-only-after-all-success",
+              "evidence-component-set-exact"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e09-s09",
+          "op": "search",
+          "input": {
+            "query": "synthetic note scheduled for deletion",
+            "as_of": "2026-06-02T09:00:00Z",
+            "top_k": 5,
+            "forbidden_source_keys": [
+              "delete-note-v1"
+            ],
+            "forbidden_memory_keys": [
+              "delete-note-memory-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "deleted-targets-not-retrievable"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "deletion_component_coverage",
+          "numerator": 10,
+          "denominator": 10
+        },
+        {
+          "metric_id": "false_complete_deletion_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E10",
+      "title": "删除部分失败不得误报完成",
+      "isolation_key": "m0-e10",
+      "operations": [
+        {
+          "step_id": "m0-e10-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "partial-delete-note-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Synthetic note with a deletion failure.\n",
+            "observed_at": "2026-06-03T08:00:00Z",
+            "captured_at": "2026-06-03T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e10-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "partial-delete-note-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e10-s03",
+          "op": "plan_delete",
+          "input": {
+            "logical_key": "partial-delete-request-v1",
+            "target_keys": [
+              "partial-delete-note-v1"
+            ],
+            "requested_guarantee": "local_purge",
+            "component_profile": "m0-local-purge",
+            "requested_at": "2026-06-03T09:00:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "planned-component-count-10",
+              "targets-enter-pending-before-delete"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e10-s04",
+          "op": "execute_deletion",
+          "input": {
+            "delete_request_key": "partial-delete-request-v1",
+            "component_outcome_profile": "fail-one-component",
+            "failed_component_key": "full-text-index",
+            "error_code": "fixture-index-delete-failed",
+            "retryable": true
+          },
+          "expect": {
+            "status": "failed",
+            "assertions": [
+              "all-planned-components-have-results",
+              "failed-component-keeps-target-closed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e10-s05",
+          "op": "emit_deletion_evidence",
+          "input": {
+            "logical_key": "partial-delete-evidence-v1",
+            "delete_request_key": "partial-delete-request-v1",
+            "expected_overall_status": "failed"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "failed-evidence-not-completed",
+              "error-code-preserved"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "deletion_component_coverage",
+          "numerator": 10,
+          "denominator": 10
+        },
+        {
+          "metric_id": "false_complete_deletion_count",
+          "value": 0
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E11",
+      "title": "无模型断网完整闭环",
+      "isolation_key": "m0-e11",
+      "operations": [
+        {
+          "step_id": "m0-e11-s01",
+          "op": "assert_environment",
+          "input": {
+            "model_configured": false,
+            "provider_key_configured": false,
+            "network_mode": "blocked"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "model-absent",
+              "provider-key-absent",
+              "network-blocked"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s02",
+          "op": "capture",
+          "input": {
+            "logical_key": "offline-blue-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Offline project theme is blue.\n",
+            "observed_at": "2026-07-01T08:00:00Z",
+            "captured_at": "2026-07-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s03",
+          "op": "segment",
+          "input": {
+            "source_key": "offline-blue-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s04",
+          "op": "propose",
+          "input": {
+            "logical_key": "offline-blue-proposal-v1",
+            "operation": "create",
+            "memory_type": "preference",
+            "subject_ref": "project:offline",
+            "content": "Offline project theme is blue.",
+            "source_keys": [
+              "offline-blue-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-07-01T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-input"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "proposal-remains-unconfirmed"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s05",
+          "op": "decide",
+          "input": {
+            "logical_key": "offline-blue-accept-v1",
+            "proposal_key": "offline-blue-proposal-v1",
+            "decision": "accept",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-confirmation",
+            "result_memory_key": "offline-blue-memory-v1",
+            "decided_at": "2026-07-01T08:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "decision-is-separate-event"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s06",
+          "op": "materialize_memory",
+          "input": {
+            "proposal_key": "offline-blue-proposal-v1",
+            "decision_key": "offline-blue-accept-v1",
+            "memory_key": "offline-blue-memory-v1",
+            "lineage_key": "offline-theme-lineage",
+            "version": 1
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "confirmed-record-has-source-and-decision"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s07",
+          "op": "search",
+          "input": {
+            "query": "offline project theme",
+            "as_of": "2026-07-02T00:00:00Z",
+            "top_k": 5,
+            "expected_memory_keys": [
+              "offline-blue-memory-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "confirmed-memory-retrieved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s08",
+          "op": "compile_context",
+          "input": {
+            "search_step_id": "m0-e11-s07",
+            "budget": {
+              "unit": "utf8_bytes",
+              "limit": 512
+            },
+            "expected_memory_keys": [
+              "offline-blue-memory-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "citation-map-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s09",
+          "op": "capture",
+          "input": {
+            "logical_key": "offline-green-v2",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Offline project theme is green.\n",
+            "observed_at": "2026-07-03T08:00:00Z",
+            "captured_at": "2026-07-03T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s10",
+          "op": "segment",
+          "input": {
+            "source_key": "offline-green-v2",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s11",
+          "op": "propose",
+          "input": {
+            "logical_key": "offline-green-proposal-v2",
+            "operation": "supersede",
+            "memory_type": "preference",
+            "subject_ref": "project:offline",
+            "content": "Offline project theme is green.",
+            "source_keys": [
+              "offline-green-v2"
+            ],
+            "target_memory_keys": [
+              "offline-blue-memory-v1"
+            ],
+            "confidence": 1,
+            "importance": 1,
+            "valid_time": {
+              "mode": "open_ended",
+              "start_at": "2026-07-03T08:00:00Z",
+              "precision": "exact"
+            },
+            "governance_profile": "m0-local-personal",
+            "producer": "rule:m0-explicit-preference-v1",
+            "reason_code": "explicit-user-correction"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "supersede-target-explicit"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s12",
+          "op": "decide",
+          "input": {
+            "logical_key": "offline-green-accept-v2",
+            "proposal_key": "offline-green-proposal-v2",
+            "decision": "accept",
+            "decided_by": "user:sample",
+            "authorization_basis": "explicit-user-confirmation",
+            "result_memory_key": "offline-green-memory-v2",
+            "decided_at": "2026-07-03T08:01:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "decision-is-separate-event"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s13",
+          "op": "materialize_memory",
+          "input": {
+            "proposal_key": "offline-green-proposal-v2",
+            "decision_key": "offline-green-accept-v2",
+            "memory_key": "offline-green-memory-v2",
+            "lineage_key": "offline-theme-lineage",
+            "version": 2,
+            "supersedes_memory_key": "offline-blue-memory-v1",
+            "effective_at": "2026-07-03T08:00:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "old-record-not-mutated",
+              "superseded-event-boundary-matches"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s14",
+          "op": "query_current",
+          "input": {
+            "query": "offline project theme",
+            "as_of": "2026-07-04T00:00:00Z",
+            "expected_memory_keys": [
+              "offline-green-memory-v2"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "current-value-is-green",
+              "current-citation-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s15",
+          "op": "plan_delete",
+          "input": {
+            "logical_key": "offline-delete-request-v1",
+            "target_keys": [
+              "offline-blue-v1",
+              "offline-green-v2",
+              "offline-blue-memory-v1",
+              "offline-green-memory-v2"
+            ],
+            "requested_guarantee": "local_purge",
+            "component_profile": "m0-local-purge",
+            "requested_at": "2026-07-05T08:00:00Z"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "planned-component-count-10",
+              "targets-enter-pending-before-delete"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s16",
+          "op": "execute_deletion",
+          "input": {
+            "delete_request_key": "offline-delete-request-v1",
+            "component_outcome_profile": "all-required-actions-succeeded"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "all-planned-components-have-results"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s17",
+          "op": "emit_deletion_evidence",
+          "input": {
+            "logical_key": "offline-delete-evidence-v1",
+            "delete_request_key": "offline-delete-request-v1",
+            "expected_overall_status": "completed"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "completed-only-after-all-success"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e11-s18",
+          "op": "assert_no_network",
+          "input": {
+            "expected_request_count": 0,
+            "expected_manifest_count": 0,
+            "expected_provider_trace_count": 0,
+            "expected_usage_record_count": 0
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "network-request-count-zero",
+              "provider-artifacts-absent"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "citation_resolve_rate",
+          "numerator": 2,
+          "denominator": 2
+        },
+        {
+          "metric_id": "policy_violation_count",
+          "value": 0
+        },
+        {
+          "metric_id": "network_request_count",
+          "value": 0
+        },
+        {
+          "metric_id": "deletion_component_coverage",
+          "numerator": 10,
+          "denominator": 10
+        },
+        {
+          "metric_id": "false_complete_deletion_count",
+          "value": 0
+        },
+        {
+          "metric_id": "model_free_loop_completion_rate",
+          "numerator": 1,
+          "denominator": 1
+        }
+      ]
+    },
+    {
+      "scenario_id": "M0-E12",
+      "title": "无关历史不改变标注来源",
+      "isolation_key": "m0-e12",
+      "operations": [
+        {
+          "step_id": "m0-e12-s01",
+          "op": "capture",
+          "input": {
+            "logical_key": "orchard-target-v1",
+            "source_kind": "text",
+            "media_type": "text/plain",
+            "content": "Project Orchard launch code is amber-47.\n",
+            "observed_at": "2026-08-01T08:00:00Z",
+            "captured_at": "2026-08-01T08:00:01Z",
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "source-content-preserved"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e12-s02",
+          "op": "segment",
+          "input": {
+            "source_key": "orchard-target-v1",
+            "segmenter_profile": "m0-lines-v1"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "fragment-range-resolves"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e12-s03",
+          "op": "search",
+          "input": {
+            "query": "Orchard launch code amber-47",
+            "as_of": "2026-08-02T00:00:00Z",
+            "top_k": 5,
+            "expected_relevant_keys": [
+              "orchard-target-v1"
+            ],
+            "result_label": "baseline"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "annotated-source-in-top-5"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e12-s04",
+          "op": "seed_noise",
+          "input": {
+            "seed": 6048,
+            "count": 1000,
+            "template": "Synthetic unrelated note {index} about topic {topic}.\n",
+            "forbidden_terms": [
+              "Orchard",
+              "amber-47"
+            ],
+            "governance_profile": "m0-local-personal"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "noise-count-1000",
+              "noise-does-not-contain-target-terms"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e12-s05",
+          "op": "search",
+          "input": {
+            "query": "Orchard launch code amber-47",
+            "as_of": "2026-08-02T00:00:00Z",
+            "top_k": 5,
+            "expected_relevant_keys": [
+              "orchard-target-v1"
+            ],
+            "result_label": "after-noise"
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "annotated-source-in-top-5"
+            ]
+          }
+        },
+        {
+          "step_id": "m0-e12-s06",
+          "op": "compare_source_set",
+          "input": {
+            "baseline_step_id": "m0-e12-s03",
+            "candidate_step_id": "m0-e12-s05",
+            "expected_relevant_keys": [
+              "orchard-target-v1"
+            ]
+          },
+          "expect": {
+            "status": "succeeded",
+            "assertions": [
+              "relevant-source-set-unchanged"
+            ]
+          }
+        }
+      ],
+      "metric_observations": [
+        {
+          "metric_id": "retrieval_recall_at_5",
+          "numerator": 2,
+          "denominator": 2
+        },
+        {
+          "metric_id": "relevant_source_set_drift_count",
+          "value": 0
+        }
+      ]
+    }
+  ],
+  "suite_digest": {
+    "algorithm": "sha256",
+    "profile": "fixture-suite-v1",
+    "value": "7b17cb2b17a5a21c4c64df8c63804e8dd0ed31c66c2f870735a3d95516af997e"
+  }
+}

@@ -14,13 +14,13 @@
 
 ## 核心对象
 
-### Artifact
+### SourceArtifact
 
-用户保存的原始对象，例如文件、短语、网页快照、图片、音频、对话或应用事件。Artifact 是来源，不等于记忆推断。
+用户保存的原始对象，例如文件、短语、网页快照、图片、音频、对话或应用事件。SourceArtifact 是来源，不等于记忆推断。
 
 ### SourceFragment
 
-Artifact 中可稳定引用的片段，例如 PDF 页、Markdown 标题段、音频时间码、图片区域或对话 turn。回答引用和记忆来源应尽量指向 SourceFragment。
+SourceArtifact 中可稳定引用的片段，例如 PDF 页、Markdown 标题段、音频时间码、图片区域或对话 turn。回答引用和记忆来源应尽量指向 SourceFragment。
 
 ### Observation
 
@@ -48,7 +48,7 @@ Artifact 中可稳定引用的片段，例如 PDF 页、Markdown 标题段、音
 
 ### Relation
 
-Entity、MemoryRecord 与 Artifact 之间的关系。关系可以有类型、方向、来源、置信度和有效时间。时间变化通过新关系、失效时间与版本表达，而不是覆盖旧边。
+Entity、MemoryRecord 与 SourceArtifact 之间的关系。关系可以有类型、方向、来源、置信度和有效时间。时间变化通过新关系、失效时间与版本表达，而不是覆盖旧边。
 
 ### Projection
 
@@ -56,38 +56,36 @@ Entity、MemoryRecord 与 Artifact 之间的关系。关系可以有类型、方
 
 ## MemoryRecord 基础字段
 
-具体 schema 在实现阶段冻结，但所有长期记忆至少应表达：
+M0 字段级逻辑契约已经由 [M0 Canonical Schema](schema/m0-canonical-schema.md) 冻结；数据库表、序列化布局、ID 编码和语言类型不由本文冻结。M0 的模块与存储边界以 [ADR 0005](adr/0005-m0-implementation-stack.md) 为准，当前实现进度以 [当前状态](status/current.md) 为准。所有长期记忆至少表达：
 
 ```text
 memory_id
+lineage_id / version
 memory_type
-namespace
+namespace_id
 subject_ref
-content / structured_value
-status
-source_refs[]
+content / content_digest
+initial_state / current_state / last_state_event_id
+source_fragment_refs[]
+origin_proposal_id / accepted_by_decision_id
 observed_at
-valid_from / valid_to
+valid_time
 confidence
 importance
-sensitivity
-retention_policy
-created_by
-created_at / updated_at
-version
-supersedes[]
-contradicts[]
-generator / generator_version
-content_digest
+governance
+supersedes_memory_ids[]
+contradicts_memory_ids[]
+created_at
 ```
 
 其中：
 
 - `confidence` 表示事实或推断可信度，不代表访问授权；
 - `importance` 影响召回排序，不代表永久保留；
-- `sensitivity` 和权限由 Policy Engine 硬控制；
-- `source_refs` 为空的模型推断不能自动进入已确认长期记忆；
-- `generator` 必须区分用户、规则、解析器和具体模型。
+- `governance` 中的 sensitivity、egress、retention 和 deletion state 由 Policy Engine 硬控制；
+- `source_fragment_refs` 为空的候选不能进入 M0 已确认长期记忆；
+- proposal 的 `producer` 必须区分用户、规则、解析器、测试桩和未来具体模型；
+- 语义变化创建新的 memory 版本，状态变化创建追加事件，不使用 `updated_at` 原地改写历史。
 
 ## 状态机
 
@@ -95,9 +93,9 @@ content_digest
 
 ```text
 proposed
-   ├── confirmed
-   ├── rejected
-   └── expired
+   ├── accept decision ──► confirmed
+   ├── reject decision ──► rejected
+   └── expiry event ─────► expired
 
 confirmed
    ├── superseded
@@ -105,6 +103,8 @@ confirmed
    ├── retracted
    └── expired
 ```
+
+`defer` 决定不会产生新的状态，proposal 保持 `proposed`，等待后续决定或过期事件。
 
 - `proposed`：模型、解析器或规则提出，尚不是长期确认事实。
 - `confirmed`：用户明确确认，或满足用户授权的确定性规则。
@@ -114,7 +114,7 @@ confirmed
 - `retracted`：用户撤回或来源被判定错误，默认不得用于回答当前事实。
 - `expired`：超过适用期或保留期，不再用于普通召回。
 
-状态变化应形成追加事件，当前状态可以作为投影物化。
+状态变化应形成追加事件，当前状态可以作为投影物化。事件时间与状态生效时间必须分开；更正发生后，旧记录的有效终点由 superseded 事件与新记录有效起点计算，不为补写 `valid_to` 原地修改旧记录。
 
 ## 记忆写入
 
@@ -122,7 +122,7 @@ confirmed
 
 ### 用户显式写入
 
-例如“记住我更喜欢简洁的中文说明”。可以直接进入确认流程，但仍需保存来源、作用域和时间。
+例如“记住我更喜欢简洁的中文说明”。可以在一次交互中产生 proposal 和 accept decision，但仍须分别保存候选、决定、来源、作用域和时间，不能跳过可审计的决策事件。
 
 ### 热路径候选
 
@@ -134,24 +134,27 @@ confirmed
 
 ## MemoryProposal
 
-模型或解析器不能直接修改 MemoryRecord，应提交结构化候选：
+模型或解析器不能直接修改 MemoryRecord，应提交结构化候选。M0 proposal 只允许 `create` 或 `supersede`，并必须包含 namespace、memory type、subject、文本值、非空 SourceFragment 引用、observed / valid time、confidence、importance、治理标签、producer、稳定 reason code 和 proposed time；`supersede` 还必须明确目标 memory。
 
-```json
-{
-  "operation": "propose_upsert",
-  "memory_type": "preference",
-  "subject_ref": "user:self",
-  "content": "用户偏好简洁的中文技术说明",
-  "scope": "technical_communication",
-  "source_refs": ["turn:example"],
-  "confidence": 0.82,
-  "valid_from": null,
-  "sensitivity": "personal",
-  "reason": "用户在当前对话中明确表达"
-}
-```
+精确字段和条件约束以 [M0 Canonical Schema](schema/m0-canonical-schema.md) 为准。规则层负责 schema、来源、权限、重复、冲突和敏感度检查，用户或显式授权策略负责最终决定。
 
-规则层负责 schema、来源、权限、重复、冲突和敏感度检查，用户或显式授权策略负责最终决定。
+## MemoryDecision
+
+MemoryDecision 是对一个具体 MemoryProposal 的不可变决定事件，至少区分 accept、reject 和 defer。它必须记录 proposal 引用、决定者、授权依据、原因和决定时间；未来允许确定性自动规则时，还必须记录规则与版本。
+
+accept decision 创建一个对应的 confirmed MemoryRecord；reject decision 使候选进入 rejected，并保留阻止相同证据重复提议所需的最小摘要；defer 不改变候选的未确认性质。已记录的决定不可修改；需要纠错时创建新的撤回 / 更正事件和必要的新 proposal，不原地改写历史决定。
+
+## M0 状态与操作约束
+
+M0 只实现足以证明治理闭环的对象和转换：SourceArtifact、SourceFragment、MemoryProposal、MemoryDecision、confirmed MemoryRecord、状态事件、ContextPack、DeleteRequest 和 DeletionEvidence。
+
+- 规则和测试桩与未来模型一样，只能创建 proposal。
+- accept decision 创建 confirmed record；reject decision 保留去重所需摘要，但不能进入确认召回。
+- 更正创建新 confirmed record，并通过 `supersedes` 和有效时间连接旧记录。
+- 无法安全收敛的互斥来源进入 contradicted 状态，不自动选择得分更高者。
+- 删除事件必须先枚举本地影响面，再逐项记录完成、pending 或 failed。
+
+M0 的完整运行边界见 [ADR 0002](adr/0002-m0-local-memory-loop.md)，字段与跨对象不变量见 [M0 Canonical Schema](schema/m0-canonical-schema.md)。
 
 ## 时间与冲突
 
@@ -200,6 +203,8 @@ RadishMemory 不把用户建模成永远不变的单份 Profile。对于“以�
 - **逻辑删除**：对象进入删除流程，等待索引、设备和备份传播；
 - **物理清除**：正文、对象和派生索引已删除或通过密钥销毁变得不可恢复；
 - **备份到期**：受控备份超过保留期或完成重加密/销毁。
+
+DeleteRequest 表达用户要求删除或停止召回的目标、范围、期望保证、请求者和请求时间。它是删除意图，不等于删除完成。
 
 删除应生成 `DeletionEvidence`，列出 Source Vault、Memory Store、全文索引、向量索引、图投影、缓存、同步设备和备份的状态。系统只能在证据满足对应信任模式时声明完成。
 

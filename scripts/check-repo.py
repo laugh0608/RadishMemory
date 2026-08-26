@@ -36,22 +36,68 @@ REQUIRED_FILES = (
     "LICENSE",
     "README.md",
     "SECURITY.md",
+    "Cargo.lock",
+    "Cargo.toml",
+    "apps/radishmemory-m0/Cargo.toml",
+    "apps/radishmemory-m0/src/main.rs",
+    "crates/radishmemory-core/Cargo.toml",
+    "crates/radishmemory-core/src/canonical_json.rs",
+    "crates/radishmemory-core/src/context.rs",
+    "crates/radishmemory-core/src/deletion.rs",
+    "crates/radishmemory-core/src/digest.rs",
+    "crates/radishmemory-core/src/error.rs",
+    "crates/radishmemory-core/src/invariants.rs",
+    "crates/radishmemory-core/src/lib.rs",
+    "crates/radishmemory-core/src/memory.rs",
+    "crates/radishmemory-core/src/model.rs",
+    "crates/radishmemory-core/src/ports.rs",
+    "crates/radishmemory-core/src/source.rs",
+    "crates/radishmemory-core/src/temporal.rs",
+    "crates/radishmemory-core/tests/m0_canonical_objects.rs",
+    "crates/radishmemory-core/tests/m0_invariants.rs",
+    "crates/radishmemory-core/tests/m0_primitives.rs",
+    "crates/radishmemory-sqlite/Cargo.toml",
+    "crates/radishmemory-sqlite/migrations/0001_sqlite_entry.sql",
+    "crates/radishmemory-sqlite/migrations/0002_source_storage.sql",
+    "crates/radishmemory-sqlite/migrations/0003_memory_storage.sql",
+    "crates/radishmemory-sqlite/src/capability.rs",
+    "crates/radishmemory-sqlite/src/error.rs",
+    "crates/radishmemory-sqlite/src/lib.rs",
+    "crates/radishmemory-sqlite/src/migration.rs",
+    "crates/radishmemory-sqlite/src/memory_store.rs",
+    "crates/radishmemory-sqlite/src/source_store.rs",
+    "crates/radishmemory-sqlite/tests/memory_store.rs",
+    "crates/radishmemory-sqlite/tests/source_vault.rs",
+    "crates/radishmemory-sqlite/tests/sqlite_entry.rs",
+    "crates/radishmemory-sqlite/tests/support/mod.rs",
     "docs/README.md",
     "docs/adr/0001-branch-and-pr-governance.md",
+    "docs/adr/0002-m0-local-memory-loop.md",
+    "docs/adr/0003-zero-knowledge-sync-first.md",
+    "docs/adr/0004-radishmind-optional-gateway-entry.md",
+    "docs/adr/0005-m0-implementation-stack.md",
     "docs/architecture.md",
+    "docs/evaluation/m0-fixture-contract.md",
+    "docs/evaluation/m0-local-memory-loop.md",
     "docs/governance/agent-collaboration.md",
     "docs/governance/repository-governance.md",
+    "docs/implementation/m0-rust-dependency-baseline.md",
     "docs/memory-model.md",
     "docs/mvp-roadmap.md",
     "docs/privacy-threat-model.md",
     "docs/product-scope.md",
     "docs/radishmind-boundary.md",
     "docs/references.md",
+    "docs/schema/m0-canonical-schema.md",
     "docs/status/current.md",
+    "fixtures/m0/local-memory-loop.v1.json",
+    "rust-toolchain.toml",
+    "scripts/check-m0-fixtures.py",
     "scripts/check-repo.ps1",
     "scripts/check-repo.py",
     "scripts/check-repo.sh",
     "scripts/tests/test_check_repo.py",
+    "scripts/tests/test_check_m0_fixtures.py",
 )
 
 TEXT_SUFFIXES = {
@@ -100,9 +146,150 @@ TEXT_NAMES = {
     ".gitattributes",
     ".gitignore",
     "Dockerfile",
+    "Cargo.lock",
     "LICENSE",
     "Makefile",
 }
+
+EXPECTED_CARGO_MANIFESTS = {
+    "Cargo.toml": """[workspace]
+members = [
+  \"apps/radishmemory-m0\",
+  \"crates/radishmemory-core\",
+  \"crates/radishmemory-sqlite\",
+]
+resolver = \"3\"
+
+[workspace.package]
+version = \"0.1.0\"
+edition = \"2024\"
+rust-version = \"1.96.0\"
+license-file = \"LICENSE\"
+publish = false
+
+[workspace.dependencies]
+radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
+radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
+rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
+serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
+sha2 = { version = \"0.11.0\", default-features = false }
+time = { version = \"0.3.55\", default-features = false, features = [\"parsing\", \"std\"] }
+unicode-normalization = { version = \"0.1.25\", default-features = false, features = [\"std\"] }
+
+[workspace.lints.rust]
+unsafe_code = \"forbid\"
+unused_crate_dependencies = \"deny\"
+""",
+    "apps/radishmemory-m0/Cargo.toml": """[package]
+name = \"radishmemory-m0\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+radishmemory-core.workspace = true
+radishmemory-sqlite = { workspace = true, features = ["fixture-runner"] }
+serde_json.workspace = true
+""",
+    "crates/radishmemory-core/Cargo.toml": """[package]
+name = \"radishmemory-core\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+serde_json.workspace = true
+sha2.workspace = true
+time.workspace = true
+unicode-normalization.workspace = true
+""",
+    "crates/radishmemory-sqlite/Cargo.toml": """[package]
+name = \"radishmemory-sqlite\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+fixture-runner = []
+
+[dependencies]
+radishmemory-core.workspace = true
+rusqlite.workspace = true
+""",
+}
+
+EXPECTED_RUST_TOOLCHAIN = """[toolchain]
+channel = \"1.96.0\"
+components = [\"clippy\", \"rustfmt\"]
+profile = \"minimal\"
+"""
+
+EXPECTED_M0_I03_LOCK_PACKAGES = (
+    ("bitflags", "2.13.1"),
+    ("block-buffer", "0.12.1"),
+    ("cc", "1.4.4"),
+    ("cfg-if", "1.0.4"),
+    ("cpufeatures", "0.3.0"),
+    ("crypto-common", "0.2.2"),
+    ("deranged", "0.5.8"),
+    ("digest", "0.11.3"),
+    ("fallible-iterator", "0.3.0"),
+    ("fallible-streaming-iterator", "0.1.9"),
+    ("find-msvc-tools", "0.1.11"),
+    ("hybrid-array", "0.4.14"),
+    ("itoa", "1.0.18"),
+    ("libc", "0.2.189"),
+    ("libsqlite3-sys", "0.38.2"),
+    ("memchr", "2.8.3"),
+    ("num-conv", "0.2.2"),
+    ("pkg-config", "0.3.34"),
+    ("powerfmt", "0.2.0"),
+    ("proc-macro2", "1.0.107"),
+    ("quote", "1.0.47"),
+    ("radishmemory-core", "0.1.0"),
+    ("radishmemory-m0", "0.1.0"),
+    ("radishmemory-sqlite", "0.1.0"),
+    ("rusqlite", "0.40.2"),
+    ("serde", "1.0.229"),
+    ("serde_core", "1.0.229"),
+    ("serde_derive", "1.0.229"),
+    ("serde_json", "1.0.151"),
+    ("sha2", "0.11.0"),
+    ("shlex", "2.0.1"),
+    ("smallvec", "1.15.2"),
+    ("syn", "3.0.3"),
+    ("time", "0.3.55"),
+    ("time-core", "0.1.9"),
+    ("time-macros", "0.2.32"),
+    ("tinyvec", "1.12.0"),
+    ("tinyvec_macros", "0.1.1"),
+    ("typenum", "1.20.1"),
+    ("unicode-ident", "1.0.24"),
+    ("unicode-normalization", "0.1.25"),
+    ("vcpkg", "0.2.15"),
+    ("zmij", "1.0.23"),
+)
+FIRST_PARTY_RUST_PACKAGES = {
+    "radishmemory-core",
+    "radishmemory-m0",
+    "radishmemory-sqlite",
+}
+CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
 FORBIDDEN_DIRECTORY_NAMES = {
     "__pycache__",
@@ -202,6 +389,82 @@ def check_required_files(repo_root: Path, errors: list[str]) -> None:
     for item in REQUIRED_FILES:
         if not (repo_root / item).is_file():
             errors.append(f"missing required file: {item}")
+
+
+def check_rust_workspace_contract(
+    repo_root: Path,
+    errors: list[str],
+    paths: list[Path] | None = None,
+) -> None:
+    candidate_paths = paths if paths is not None else list(repo_root.rglob("Cargo.toml"))
+    manifests = sorted(
+        relative(repo_root, path)
+        for path in candidate_paths
+        if path.name == "Cargo.toml"
+        and not {".git", "target"}.intersection(path.relative_to(repo_root).parts)
+    )
+    expected_manifests = sorted(EXPECTED_CARGO_MANIFESTS)
+    if manifests != expected_manifests:
+        errors.append(
+            "Rust workspace must contain only the root manifest and the three M0 package manifests: "
+            f"found {manifests}"
+        )
+
+    for name, expected in EXPECTED_CARGO_MANIFESTS.items():
+        path = repo_root / name
+        if path.is_file() and path.read_text(encoding="utf-8") != expected:
+            errors.append(f"Rust workspace manifest differs from the M0 implementation contract: {name}")
+
+    toolchain = repo_root / "rust-toolchain.toml"
+    if toolchain.is_file() and toolchain.read_text(encoding="utf-8") != EXPECTED_RUST_TOOLCHAIN:
+        errors.append(
+            "rust-toolchain.toml must pin Rust 1.96.0 with the minimal profile, clippy, and rustfmt"
+        )
+
+    lockfile = repo_root / "Cargo.lock"
+    if not lockfile.is_file():
+        return
+    lock_text = lockfile.read_text(encoding="utf-8")
+    package_blocks = re.findall(
+        r"\[\[package\]\]\n(.*?)(?=\n\[\[package\]\]|\Z)",
+        lock_text,
+        flags=re.DOTALL,
+    )
+    resolved_packages: list[tuple[str, str]] = []
+    for block in package_blocks:
+        name_match = re.search(r'^name = "([^"]+)"$', block, flags=re.MULTILINE)
+        version_match = re.search(r'^version = "([^"]+)"$', block, flags=re.MULTILINE)
+        if name_match is None or version_match is None:
+            errors.append("Cargo.lock contains a package without a name or version")
+            continue
+        name = name_match.group(1)
+        resolved_packages.append((name, version_match.group(1)))
+        source_match = re.search(r'^source = "([^"]+)"$', block, flags=re.MULTILINE)
+        checksum_match = re.search(r'^checksum = "([^"]+)"$', block, flags=re.MULTILINE)
+        if name in FIRST_PARTY_RUST_PACKAGES:
+            if source_match is not None or checksum_match is not None:
+                errors.append(f"first-party lock package must remain a workspace path: {name}")
+        elif source_match is None or source_match.group(1) != CRATES_IO_SOURCE:
+            errors.append(f"third-party lock package must come from crates.io: {name}")
+        elif checksum_match is None:
+            errors.append(f"third-party lock package is missing a checksum: {name}")
+
+    if tuple(sorted(resolved_packages)) != EXPECTED_M0_I03_LOCK_PACKAGES:
+        errors.append("Cargo.lock differs from the reviewed M0-I03 dependency set")
+
+    entrypoint_fragments = (
+        "fmt --all --check",
+        "clippy --workspace --all-targets --all-features --locked -- -D warnings",
+        "test --workspace --all-targets --all-features --locked",
+    )
+    for name in ("scripts/check-repo.sh", "scripts/check-repo.ps1"):
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in entrypoint_fragments:
+            if fragment not in text:
+                errors.append(f"{name} is missing Rust check fragment: {fragment}")
 
 
 def check_paths_sizes_and_safety(
@@ -348,6 +611,342 @@ def check_agent_contract(repo_root: Path, errors: list[str]) -> None:
                 errors.append(f"{name} is missing startup contract fragment: {fragment}")
 
 
+def check_m0_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "M0 Local Memory Loop",
+            "SourceArtifact",
+            "MemoryDecision",
+            "DeletionEvidence",
+            "不调用云端或本地生成模型",
+            "测试观察到网络请求即失败",
+        ),
+        "docs/evaluation/m0-local-memory-loop.md": (
+            "M0-E01",
+            "M0-E12",
+            "标注 citation 可解析率",
+            "策略违规或网络外发",
+            "错误声明完全删除",
+        ),
+        "docs/status/current.md": (
+            "ADR 0002",
+            "M0 字段级 canonical schema",
+            "M0 Fixture 与指标契约",
+        ),
+        "docs/product-scope.md": (
+            "M0 Local Memory Loop",
+            "ADR 0002",
+        ),
+        "docs/architecture.md": (
+            "M0 本地架构边界",
+            "不调用 Model Adapter 或 RadishMind",
+        ),
+        "docs/memory-model.md": (
+            "SourceArtifact",
+            "MemoryDecision",
+            "DeleteRequest",
+            "ADR 0002",
+        ),
+        "docs/privacy-threat-model.md": (
+            "M0 信任边界",
+            "任何请求视为策略违规",
+        ),
+        "docs/radishmind-boundary.md": (
+            "M0 不使用 RadishMind",
+            "不得改变已冻结的记忆真相与确认边界",
+        ),
+        "docs/mvp-roadmap.md": (
+            "M0 本地记忆闭环",
+            "完整 MVP 首个可演示场景",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(f"{name} is missing M0 contract fragment: {fragment}")
+
+
+def check_m0_schema_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/schema/m0-canonical-schema.md": (
+            "radishmemory.m0/1",
+            "## SourceArtifact",
+            "## SourceFragment",
+            "## MemoryProposal",
+            "## MemoryDecision",
+            "## MemoryRecord",
+            "## MemoryStateEvent",
+            "## ContextPack",
+            "## DeleteRequest",
+            "## DeletionEvidence",
+            "UTF-8",
+            "sha256",
+            "local_only",
+            "effective_at",
+            "planned_components",
+            "component_results",
+            "processed_count = target_count",
+            "TruncationFacts",
+            "FrozenTargetClosure",
+            "retention_basis",
+            "previous_evidence_id",
+            "未知版本必须返回显式 unsupported schema 错误",
+        ),
+        "docs/status/current.md": (
+            "M0 Canonical Schema",
+            "九种顶层对象",
+            "不绑定数据库、生产 ID 编码或语言类型",
+        ),
+        "docs/memory-model.md": (
+            "schema/m0-canonical-schema.md",
+            "last_state_event_id",
+            "不使用 `updated_at` 原地改写历史",
+        ),
+        "docs/architecture.md": (
+            "M0 Canonical Schema",
+            "MemoryStateEvent",
+            "以下运行接口仍需在对应阶段冻结",
+        ),
+        "docs/evaluation/m0-local-memory-loop.md": (
+            "M0 Canonical Schema",
+            "不得另造平行字段",
+            "字段级 canonical schema、fixture 格式",
+        ),
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "M0 Canonical Schema",
+            "合成 fixture 格式与指标口径",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已冻结的 [M0 Canonical Schema]",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing M0 schema contract fragment: {fragment}"
+                )
+
+
+def check_m0_fixture_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/evaluation/m0-fixture-contract.md": (
+            "radishmemory.m0-fixture/1",
+            "radishmemory-canonical-json-v1",
+            "radishmemory-fixture-id-v1",
+            "./scripts/check-m0-fixtures.py",
+            "retrieval_recall_at_5",
+            "model_free_loop_completion_rate",
+            "目标闭包未冻结",
+            "runner 不得用默认成功",
+        ),
+        "docs/status/current.md": (
+            "12 个场景的 86 个有序操作",
+            "12 个指标 gate",
+            "真实 M0 runner 已经建立",
+        ),
+        "docs/evaluation/m0-local-memory-loop.md": (
+            "M0 Fixture 与指标契约",
+            "Retrieval Recall@5",
+            "仓库校验器可以验证契约自洽",
+        ),
+        "docs/schema/m0-canonical-schema.md": (
+            "M0 Fixture 与指标契约",
+            "production API 仍由实现阶段决策",
+            "不得自行发明第二种编码",
+        ),
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "M0 Fixture 与指标契约",
+            "首个同步信任模式",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已冻结的 [M0 Fixture 与指标契约]",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing M0 fixture contract fragment: {fragment}"
+                )
+
+
+def check_sync_trust_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0003-zero-knowledge-sync-first.md": (
+            "状态：Accepted",
+            "模式 B：零知识同步服务",
+            "服务端账号重置不能单独恢复内容解密能力",
+            "不得从零知识模式静默降级",
+            "可选可信计算节点",
+            "已接受的目标信任模式",
+        ),
+        "docs/status/current.md": (
+            "ADR 0003",
+            "可信计算节点后置为显式可选能力",
+            "不代表零知识同步已经实现",
+        ),
+        "docs/privacy-threat-model.md": (
+            "首个多设备同步已经通过 [ADR 0003]",
+            "服务端账号重置不能单独恢复内容",
+        ),
+        "docs/architecture.md": (
+            "首个多设备同步已经通过 [ADR 0003]",
+            "服务端数据库不是记忆 canonical truth",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0003]",
+            "可信计算节点后置",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing sync trust contract fragment: {fragment}"
+                )
+
+
+def check_radishmind_entry_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0004-radishmind-optional-gateway-entry.md": (
+            "状态：Accepted",
+            "完整 MVP 的阶段 3",
+            "首次接入只使用模型网关能力",
+            "不同路径之间不得隐式回退",
+            "不直接复制 RadishMind 的 Copilot、Application、Workflow 或 Session schema",
+            "只能声明“RadishMind 可选 Gateway 接入阶段已规划或正在验证”",
+        ),
+        "docs/status/current.md": (
+            "ADR 0004",
+            "显式可关闭的 Model Gateway",
+            "首次不接 Workflow、Tooling、RAG 数据 owner、Session owner 或业务写回",
+        ),
+        "docs/radishmind-boundary.md": (
+            "首次运行接入已由 [ADR 0004]",
+            "## 最小逻辑契约",
+            "retry / fallback 默认关闭",
+        ),
+        "docs/architecture.md": (
+            "根据 [ADR 0004]",
+            "M0、单机资料库和记忆生命周期不以 RadishMind 可用为前提",
+        ),
+        "docs/privacy-threat-model.md": (
+            "RadishMind 等 Gateway",
+            "Gateway 是独立接收方",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0004]",
+            "首次 RadishMind 接入不包含 Workflow、Tooling、RAG 数据 owner 或业务写回",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing RadishMind entry contract fragment: {fragment}"
+                )
+
+
+def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0005-m0-implementation-stack.md": (
+            "状态：Accepted",
+            "Rust 2024 edition",
+            "Rust `1.96.0`",
+            "crates/radishmemory-core/",
+            "crates/radishmemory-sqlite/",
+            "apps/radishmemory-m0/",
+            "bundled SQLite / FTS5",
+            "首批依赖白名单",
+            "M0 不实现静态加密",
+            "不引入 `tokio`",
+        ),
+        "docs/status/current.md": (
+            "M0 remote-validated merge candidate",
+            "ADR 0005",
+            "首个工具链固定为 Rust `1.96.0`",
+            "`M0-I01` 已建立且仅建立上述三个可编译 package",
+            "`M0-I02` 的第一个独立评审单元已实现稳定 core 错误",
+            "`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象",
+            "`M0-I02` 的第三个独立评审单元已实现跨对象不变量",
+            "`M0-I03 SQLite entry` 已实现版本化 migration",
+            "`M0-I03 SQLite storage` 的首个纵向切片已实现",
+            "`M0-I03 SQLite storage` 的第二个纵向切片已实现",
+            "`M0-I04 fixture runner` 已实现冻结 suite 摘要与向量复验",
+            "已完成：精确 Rust 工具链、三 package workspace",
+        ),
+        "docs/implementation/m0-rust-dependency-baseline.md": (
+            "lockfile format 为 `4`",
+            "40 个第三方 package",
+            "没有 Git dependency",
+            "`serde_json 1.0.151`",
+            "`rusqlite 0.40.2`",
+            "`libsqlite3-sys 0.38.2`",
+            "SQLite `3.53.2`",
+            "`SQLITE_ENABLE_FTS5`",
+            "`serde_derive` 与 `time-macros` 是实际解析的 proc macro",
+            "Linux、macOS、Windows 与 `Candidate Quality` 已通过",
+        ),
+        "docs/architecture.md": (
+            "[ADR 0005]",
+            "Rust 2024 模块化单体",
+            "数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0005]",
+            "Rust 模块化单体、SQLite / FTS5、依赖和验证基线",
+        ),
+        "docs/adr/0002-m0-local-memory-loop.md": (
+            "[ADR 0005]",
+            "实施顺序从最小 workspace 开始",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing implementation stack contract fragment: {fragment}"
+                )
+
+
+def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/check-m0-fixtures.py"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stdout + result.stderr).strip()
+        errors.append(f"M0 fixture validation failed: {detail}")
+
+
 def check_issue_and_pr_contracts(repo_root: Path, errors: list[str]) -> None:
     contracts = {
         ".github/ISSUE_TEMPLATE/config.yml": (
@@ -470,14 +1069,28 @@ def check_workflow_contract(repo_root: Path, errors: list[str]) -> None:
         "persist-credentials: false",
         "uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0",
         "name: Repo Hygiene",
+        "python scripts/check-repo.py --base-ref",
+        "name: Rust Quality (${{ matrix.platform }})",
+        "          - platform: Linux\n            os: ubuntu-latest",
+        "          - platform: macOS\n            os: macos-latest",
+        "          - platform: Windows\n            os: windows-latest",
+        "rustup toolchain install 1.96.0 --profile minimal --component clippy,rustfmt",
+        "cargo fmt --all --check",
+        "cargo clippy --workspace --all-targets --all-features --locked -- -D warnings",
+        "cargo test --workspace --all-targets --all-features --locked",
         "name: Candidate Quality",
-        "./scripts/check-repo.sh --base-ref",
+        "RUST_QUALITY_RESULT: ${{ needs.rust-quality.result }}",
     )
     for fragment in required_fragments:
         if fragment not in text:
             errors.append(f"PR workflow is missing contract fragment: {fragment.strip()}")
-    if text.count("    timeout-minutes: 10") != 2:
+    if text.count("    timeout-minutes: 10") != 3:
         errors.append("PR workflow jobs must use the 10-minute timeout baseline")
+    checkout = (
+        "uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1"
+    )
+    if text.count(checkout) != 2:
+        errors.append("PR workflow must pin checkout for Repo Hygiene and Rust Quality")
     for forbidden in ("pull_request_target:", "workflow_run:", "contents: write"):
         if forbidden in text:
             errors.append(f"PR workflow must not use privileged capability: {forbidden}")
@@ -565,17 +1178,25 @@ def main() -> int:
         return 1
 
     check_required_files(REPO_ROOT, errors)
+    check_rust_workspace_contract(REPO_ROOT, errors, paths)
     check_paths_sizes_and_safety(REPO_ROOT, paths, errors)
     check_text_files(REPO_ROOT, paths, errors)
     check_json_files(REPO_ROOT, paths, errors)
     check_markdown_links(REPO_ROOT, paths, errors)
     check_document_budgets(REPO_ROOT, errors)
     check_agent_contract(REPO_ROOT, errors)
+    check_m0_contract(REPO_ROOT, errors)
+    check_m0_schema_contract(REPO_ROOT, errors)
+    check_m0_fixture_contract(REPO_ROOT, errors)
+    check_sync_trust_contract(REPO_ROOT, errors)
+    check_radishmind_entry_contract(REPO_ROOT, errors)
+    check_implementation_stack_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)
     check_diff(REPO_ROOT, args.base_ref, errors)
     check_commit_messages(REPO_ROOT, args.base_ref, errors)
+    run_m0_fixture_check(REPO_ROOT, errors)
     run_checker_tests(REPO_ROOT, errors)
 
     if errors:

@@ -39,10 +39,48 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           if [[ -n "${BASE_SHA}" ]]; then
-            ./scripts/check-repo.sh --base-ref "${BASE_SHA}"
+            python scripts/check-repo.py --base-ref "${BASE_SHA}"
           else
-            ./scripts/check-repo.sh
+            python scripts/check-repo.py
           fi
+
+  rust-quality:
+    name: Rust Quality (${{ matrix.platform }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Linux
+            os: ubuntu-latest
+          - platform: macOS
+            os: macos-latest
+          - platform: Windows
+            os: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Install pinned Rust toolchain
+        shell: bash
+        run: rustup toolchain install 1.96.0 --profile minimal --component clippy,rustfmt
+
+      - name: Check Rust formatting
+        shell: bash
+        run: cargo fmt --all --check
+
+      - name: Lint Rust workspace
+        shell: bash
+        run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+      - name: Test Rust workspace
+        shell: bash
+        run: cargo test --workspace --all-targets --all-features --locked
 
   candidate-quality:
     name: Candidate Quality
@@ -51,12 +89,14 @@ jobs:
     if: always()
     needs:
       - repo-hygiene
+      - rust-quality
 
     steps:
       - name: Summarize candidate quality
         shell: bash
         env:
           REPO_HYGIENE_RESULT: ${{ needs.repo-hygiene.result }}
+          RUST_QUALITY_RESULT: ${{ needs.rust-quality.result }}
         run: |
           {
             echo "## Candidate Quality"
@@ -64,10 +104,11 @@ jobs:
             echo "| Check | Result |"
             echo "| --- | --- |"
             echo "| Repo Hygiene | ${REPO_HYGIENE_RESULT} |"
+            echo "| Rust Quality (Linux, macOS, Windows) | ${RUST_QUALITY_RESULT} |"
           } >> "${GITHUB_STEP_SUMMARY}"
 
-          if [[ "${REPO_HYGIENE_RESULT}" != "success" ]]; then
-            echo "Repository hygiene did not succeed." >&2
+          if [[ "${REPO_HYGIENE_RESULT}" != "success" || "${RUST_QUALITY_RESULT}" != "success" ]]; then
+            echo "One or more candidate quality components did not succeed." >&2
             exit 1
           fi
 

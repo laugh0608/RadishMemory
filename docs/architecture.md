@@ -52,6 +52,12 @@ Device A Local Store ── encrypted operation/object sync ── Self-hosted S
 Device B Local Store ◄── encrypted operation/object sync ──┘
 ```
 
+## M0 本地架构边界
+
+首个可执行切片只启用总体架构的本地最小子集：Capture Gateway 接收合成短文本与 Markdown；Source Vault 保存正文和摘要；Ingestion Pipeline 做确定性分段；Derived Indexes 只包含全文基线；Policy Engine 执行 namespace、敏感度、状态和删除过滤；Memory Engine 管理 proposal、decision、record、时间更正和删除事件；Memory Compiler 生成带 citation map 的本地 ContextPack。
+
+M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest、Provider trace 或模型用量，也不实现同步。核心验收期间任何网络请求都视为失败。这个边界不删除长期组件，只避免在来源、状态、权限和删除契约尚未成立时引入模型与分布式复杂度。完整决策见 [ADR 0002](adr/0002-m0-local-memory-loop.md)，字段与跨对象不变量见 [M0 Canonical Schema](schema/m0-canonical-schema.md)，可执行操作与指标 oracle 见 [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)。
+
 ## 核心组件
 
 ### 1. Capture Gateway
@@ -144,13 +150,13 @@ ContextPack 至少包含：
 - Token 预算、截断和覆盖说明；
 - 可供回答引用的 citation map。
 
-同时生成 `OutboundContextManifest`，记录接收 Provider、资料引用、敏感度、授权依据、摘要和时间，但审计日志不得复制完整私密正文。
+同时生成 `OutboundContextManifest`，记录接收 Gateway、调用前允许的 Provider / Profile 集合、调用后实际 Provider attempts、资料引用、敏感度、授权依据、摘要和时间，但审计日志不得复制完整私密正文。没有 Gateway 时仍直接记录目标 Provider；每个中间方和最终接收方都必须满足外发策略。
 
 ### 9. Model Adapter Layer
 
 模型适配层把 canonical 请求翻译为不同 Provider 协议。它负责能力发现、结构化输出、流式响应、错误分类、用量记录和超时取消，不负责决定哪些记忆是真实的。
 
-RadishMind 可以实现这一层或作为其上游服务。RadishMemory 必须保留直接接入和本地模型的能力，避免数据层依赖单一平台。
+RadishMind 可以实现这一层或作为其上游服务。根据 [ADR 0004](adr/0004-radishmind-optional-gateway-entry.md)，它首次在完整 MVP 阶段 3 以可选 Model Gateway 接入，且必须晚于 mock 或直接 adapter 基线；首次不接 Workflow、Tooling 或业务写回。RadishMemory 保留直接接入和本地模型能力，M0、单机资料库和记忆生命周期不以 RadishMind 可用为前提。
 
 ### 10. Companion Experience
 
@@ -188,38 +194,41 @@ sources/
 
 ## 同步架构
 
-长期目标支持两种明确的信任模式：
+长期产品可以支持两种明确的信任模式：
 
 1. **可信私有服务器**：用户信任自己的服务器解密、索引和运行后台任务。
 2. **零知识同步服务**：服务器只保存密文对象与加密操作日志，解密和语义索引在受信设备执行。
 
-两种模式必须在配置和 UI 中明确区分，不能把“自托管”自动宣传为“零知识”。首个实现模式以 [MVP 路线图](mvp-roadmap.md) 的阶段决策为准。
+首个多设备同步已经通过 [ADR 0003](adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务；可信私有服务器不进入首个同步批次。未来支持两种模式时，必须在配置、UI、密钥和部署声明中明确区分，不能静默降级，也不能把“自托管”自动宣传为“零知识”。
 
-同步事实建议采用不可变对象与追加操作日志；结构化记忆的用户修改保留版本与冲突，不简单依赖最后写入覆盖。设备撤销后必须阻止新的同步读取，并通过密钥轮换控制未来数据访问。
+首个模式中，根密钥、内容明文、语义索引、检索、ContextPack 和记忆状态计算只存在于受信设备。服务端只中继客户端加密的不可变对象、追加操作日志、密钥封装和已枚举最小元数据；服务端数据库不是记忆 canonical truth，也不运行服务端语义查询。结构化记忆的用户修改保留版本与冲突，不简单依赖最后写入覆盖。设备撤销后必须阻止新的同步读取，并通过未来密钥分发和必要轮换控制后续数据访问。
 
-## Canonical 接口草案
+客户端必须验证对象完整性、协议版本、幂等和可检测的重放 / 回滚异常。可信计算节点后置为独立、显式授权且可撤销的受信设备能力，不得作为零知识同步服务的默认组成部分。密码算法、线协议、设备授权、恢复、冲突和删除证据仍须在同步实现前另行冻结。
 
-实现前应冻结以下领域接口，而不是先绑定某个 Provider SDK：
+## Canonical 接口边界
+
+M0 已冻结 `SourceArtifact`、`SourceFragment`、`MemoryProposal`、`MemoryDecision`、`MemoryRecord`、`MemoryStateEvent`、`ContextPack`、`DeleteRequest` 和 `DeletionEvidence` 的逻辑字段。精确契约以 [M0 Canonical Schema](schema/m0-canonical-schema.md) 为准。
+
+M0 fixture 已冻结这些动作在评测中的输入与预期，但不把测试 operation 当作 production API。以下运行接口仍需在对应阶段冻结，而不是提前绑定某个 Provider SDK：
 
 - `CaptureRequest / CaptureReceipt`
-- `SourceArtifact / SourceFragment`
-- `MemoryRecord / MemoryProposal / MemoryDecision`
 - `SearchRequest / SearchCandidate`
-- `ContextPack / OutboundContextManifest`
+- `OutboundContextManifest`
 - `ModelRequest / ModelResponse / UsageRecord`
 - `SyncOperation / DeviceIdentity`
-- `DeleteRequest / DeletionEvidence`
 
-## 初始存储建议
+## M0 实现与存储基线
 
-在没有规模证据前，优先保持简单、可迁移：
+[ADR 0005](adr/0005-m0-implementation-stack.md) 已冻结 M0 为 Rust 2024 模块化单体：`radishmemory-core` 承载领域与应用边界，`radishmemory-sqlite` 实现本地持久化和 FTS5，`radishmemory-m0` 执行冻结 fixture。三个 package 在单进程内运行，不引入网络、异步运行时、Provider SDK 或服务拆分。
 
-- 本地结构化数据：SQLite；
-- 本地全文：SQLite FTS 或等价可嵌入索引；
-- 原始对象：加密的内容寻址文件存储；
-- 服务端结构化数据：PostgreSQL；
-- 服务端向量：PostgreSQL 向量扩展或可替换适配器；
-- 实体与时间关系：先用关系表与递归查询验证，不默认引入独立图数据库；
-- 后台任务：先使用数据库任务表或单进程 worker，不默认引入消息队列。
+M0 每个场景使用隔离临时 SQLite 文件：正文作为独立 BLOB 保存，metadata、九种 canonical 对象和追加事件由结构化存储承载，FTS5、ContextPack cache 和当前状态表都是可重建派生数据。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。M0 不实现静态加密；该选择只允许合成 fixture，不能被描述为加密存储或生产隐私能力。
 
-具体技术选择必须由 MVP 数据规模、延迟、离线和加密模式验证后决定。
+以下仍是后续阶段候选，不是 ADR 0005 的已接受决定：
+
+- PDF、图片和大对象进入前评审加密内容寻址文件存储及其与 SQLite metadata 的事务协调；
+- 服务端结构化数据评估 PostgreSQL，但零知识同步服务不得因此获得内容明文或语义索引；
+- 向量实现保持可替换，不把模型、维度或数据库扩展写入 canonical 格式；
+- 实体与时间关系先以关系投影验证，不默认引入独立图数据库；
+- 后台任务先评估数据库任务表或单进程 worker，不默认引入消息队列。
+
+这些选择必须由对应阶段的数据规模、延迟、离线、加密和迁移证据另行决定。

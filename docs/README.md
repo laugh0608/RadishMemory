@@ -8,10 +8,18 @@
 2. [产品范围](product-scope.md)：为什么做、为谁做、解决什么问题。
 3. [系统架构](architecture.md)：数据如何进入、组织、检索、同步和提供给模型。
 4. [记忆模型](memory-model.md)：什么是记忆，如何形成、更新、冲突、召回和遗忘。
-5. [隐私与威胁模型](privacy-threat-model.md)：用户信任谁，数据可能在哪里泄露，系统如何失败关闭。
-6. [RadishMind 边界](radishmind-boundary.md)：两个项目如何协作而不混淆数据真相。
-7. [MVP 路线图](mvp-roadmap.md)：先验证什么，哪些能力后置。
-8. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+5. [M0 Canonical Schema](schema/m0-canonical-schema.md)：首批对象的逻辑字段、类型、必填性和跨对象不变量。
+6. [隐私与威胁模型](privacy-threat-model.md)：用户信任谁，数据可能在哪里泄露，系统如何失败关闭。
+7. [RadishMind 边界](radishmind-boundary.md)：两个项目如何协作而不混淆数据真相。
+8. [MVP 路线图](mvp-roadmap.md)：先验证什么，哪些能力后置。
+9. [ADR 0002：M0 本地记忆闭环](adr/0002-m0-local-memory-loop.md)：首个可执行切片的范围、处理顺序和失败关闭规则。
+10. [M0 合成验收](evaluation/m0-local-memory-loop.md)：固定场景、指标、证据和退出条件。
+11. [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)：JSON mapping、操作序列、稳定 ID、摘要和指标聚合方法。
+12. [ADR 0003：首个同步采用零知识服务](adr/0003-zero-knowledge-sync-first.md)：服务端、受信设备、密钥、恢复、删除和可信计算节点边界。
+13. [ADR 0004：RadishMind 首次以可选 Gateway 接入](adr/0004-radishmind-optional-gateway-entry.md)：首次进入阶段、逻辑交换、外发、失败和后续 Workflow 边界。
+14. [ADR 0005：M0 实现栈与模块边界](adr/0005-m0-implementation-stack.md)：Rust workspace、SQLite / FTS5、依赖、迁移和验证入口。
+15. [M0 Rust 依赖基线](implementation/m0-rust-dependency-baseline.md)：当前 lockfile、第一方依赖图、供应链边界和三平台证据状态。
+16. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 治理入口
 

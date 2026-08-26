@@ -161,6 +161,71 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn("missing required file: SECURITY.md", errors)
 
+    def test_rust_workspace_contract_rejects_a_fourth_package(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "crates/extra/Cargo.toml"
+            target.parent.mkdir(parents=True)
+            target.write_text(
+                '[package]\nname = "extra"\nversion = "0.1.0"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertTrue(
+                any(
+                    error.startswith(
+                        "Rust workspace must contain only the root manifest and the three M0 package manifests"
+                    )
+                    for error in errors
+                )
+            )
+
+    def test_rust_workspace_contract_rejects_a_floating_toolchain(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "rust-toolchain.toml"
+            target.write_text(
+                '[toolchain]\nchannel = "stable"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertIn(
+                "rust-toolchain.toml must pin Rust 1.96.0 with the minimal profile, clippy, and rustfmt",
+                errors,
+            )
+
+    def test_rust_workspace_contract_rejects_unreviewed_lock_package(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name, content in CHECK_REPO.EXPECTED_CARGO_MANIFESTS.items():
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            lock_text = (CHECK_REPO.REPO_ROOT / "Cargo.lock").read_text(encoding="utf-8")
+            (root / "Cargo.lock").write_text(
+                lock_text
+                + '\n[[package]]\nname = "unreviewed"\nversion = "1.0.0"\n'
+                + f'source = "{CHECK_REPO.CRATES_IO_SOURCE}"\n'
+                + 'checksum = "'
+                + "0" * 64
+                + '"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertIn(
+                "Cargo.lock differs from the reviewed M0-I03 dependency set",
+                errors,
+            )
+
     def test_agent_mirrors_must_match(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -193,6 +258,117 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn(
                 "unattributed Copilot changes must require extra approval",
+                errors,
+            )
+
+    def test_workflow_contract_requires_windows_rust_quality(self) -> None:
+        source = CHECK_REPO.REPO_ROOT / ".github/workflows/pr-check.yml"
+        workflow = source.read_text(encoding="utf-8").replace(
+            "          - platform: Windows\n            os: windows-latest\n",
+            "",
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / ".github/workflows/pr-check.yml"
+            target.parent.mkdir(parents=True)
+            target.write_text(workflow, encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_workflow_contract(root, errors)
+
+            self.assertIn(
+                "PR workflow is missing contract fragment: - platform: Windows\n            os: windows-latest",
+                errors,
+            )
+
+    def test_m0_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0002-m0-local-memory-loop.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 Local Memory Loop\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_m0_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0002-m0-local-memory-loop.md is missing M0 contract fragment: SourceArtifact",
+                errors,
+            )
+
+    def test_m0_schema_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/schema/m0-canonical-schema.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 Canonical Schema\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_m0_schema_contract(root, errors)
+
+            self.assertIn(
+                "docs/schema/m0-canonical-schema.md is missing M0 schema contract fragment: radishmemory.m0/1",
+                errors,
+            )
+
+    def test_m0_fixture_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/evaluation/m0-fixture-contract.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 Fixture Contract\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_m0_fixture_contract(root, errors)
+
+            self.assertIn(
+                "docs/evaluation/m0-fixture-contract.md is missing M0 fixture contract fragment: radishmemory.m0-fixture/1",
+                errors,
+            )
+
+    def test_sync_trust_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0003-zero-knowledge-sync-first.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Sync trust\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_sync_trust_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0003-zero-knowledge-sync-first.md is missing sync trust contract fragment: 模式 B：零知识同步服务",
+                errors,
+            )
+
+    def test_radishmind_entry_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0004-radishmind-optional-gateway-entry.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Gateway entry\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_radishmind_entry_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0004-radishmind-optional-gateway-entry.md is missing RadishMind entry contract fragment: 首次接入只使用模型网关能力",
+                errors,
+            )
+
+    def test_implementation_stack_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0005-m0-implementation-stack.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# M0 stack\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_implementation_stack_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0005-m0-implementation-stack.md is missing implementation stack contract fragment: Rust 2024 edition",
                 errors,
             )
 
