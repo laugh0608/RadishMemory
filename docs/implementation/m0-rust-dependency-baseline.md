@@ -33,7 +33,7 @@
 
 `radishmemory-sqlite` 直接依赖 `rusqlite 0.40.2`，关闭 default features，只启用 `bundled`。这会同时启用 `modern_sqlite`、`libsqlite3-sys 0.38.2` 的 `bundled` 与预生成 `bundled_bindings`；`libsqlite3-sys` 自身的 default feature 还保留 `min_sqlite_version_3_34_1`、`pkg-config` 与 `vcpkg`，但构建由 bundled 分支选择内置源码。未启用 `cache`、`ffi-sqlite-wasm-rs`、`buildtime_bindgen`、SQLCipher 或 loadable-extension Rust API。
 
-adapter 的第一方 `fixture-runner` feature 只由 `radishmemory-m0` 启用，用于在冻结删除场景中显式注入一个稳定组件失败并持久化真实 failed attempt；默认 feature 为空，production `DeletionStore` port、第三方 feature 图和运行时依赖不变。该入口不能执行任意 SQL 或绕过删除计划，只能选择已冻结 component key、稳定 error code 与 retryable 状态。
+adapter 的第一方 `fixture-runner` feature 只由 `radishmemory-m0` 启用，用于建立场景隔离的内存数据库，并在冻结删除场景中显式注入一个稳定组件失败、持久化真实 failed attempt；默认 feature 为空，production `SqliteDatabase::open`、`DeletionStore` port、第三方 feature 图和运行时依赖不变。内存入口仍执行同一 capability probe、v1 → v5 migration、派生校验、`synchronous=FULL` 与真实 adapter 操作，但不把 Windows 文件系统逐事务同步成本混入 application-contract fixture；失败入口不能执行任意 SQL 或绕过删除计划，只能选择已冻结 component key、稳定 error code 与 retryable 状态。
 
 | package / 源码 | 解析版本 | 来源与许可证 | 实际用途与构建影响 |
 | --- | --- | --- | --- |

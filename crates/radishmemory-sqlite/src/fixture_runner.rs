@@ -3,9 +3,22 @@
 use radishmemory_core::{
     ComponentResult, DeletionStore, Identifier, LocalDeletionExecution, NonEmptyText,
 };
+use rusqlite::Connection;
 
 use crate::deletion_store::{execute_request_with_fixture_failure, validate_request_profile};
 use crate::{SqliteDatabase, SqliteError, SqliteStorageReason};
+
+impl SqliteDatabase {
+    /// Opens one isolated, non-persistent database for the synthetic fixture runner.
+    ///
+    /// The connection still applies the production capability, migration, integrity,
+    /// and synchronous-write policy. Keeping it in memory avoids filesystem sync cost
+    /// from becoming part of a deterministic application-contract fixture.
+    pub fn open_fixture_isolated() -> Result<Self, SqliteError> {
+        let connection = Connection::open_in_memory().map_err(SqliteError::open)?;
+        Self::initialize(connection)
+    }
+}
 
 /// One deterministic component failure injected by the synthetic fixture runner.
 ///

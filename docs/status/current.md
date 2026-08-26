@@ -36,7 +36,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `M0-I03 SQLite storage` 的第四个纵向切片已实现真实 `DeletionStore` core port，并把 adapter schema 单调升级到 v5。`DeleteRequest`、十项冻结组件、canonical 目标闭包、adapter 内部物理执行闭包、逐次执行结果和 `DeletionEvidence` 都以不可变或追加式关系持久化；计划入库与语义目标进入 `pending`、FTS / 当前投影移除位于同一 `IMMEDIATE` transaction。执行器真实处理 source body / metadata / fragment、proposal / decision / record / state event、FTS、M0 不持久化的 context cache 与最小审计；失败组件保留真实 error / retryable 结果并把目标收口为 `failed`，不会恢复 active，也不会把部分失败写成 completed。普通读取、检索和派生重建只接受 active facts；完整成功、单组件失败、幂等重试、未展开依赖拒绝、namespace 隔离、证据链和 v4 → v5 升级已由测试覆盖。该能力只证明应用可复验的本地行、索引、投影和 cache 边界，不证明 SQLite 空闲页、临时文件、备份、文件系统快照或介质已被取证级擦除。
 
-`M0-I04 fixture runner` 已实现冻结 suite 摘要与向量复验、场景隔离临时 SQLite、logical key → canonical fixture ID registry、86 个操作的显式 dispatch、确定性本地词项扩展、point-in-time 事件投影、ContextPack citation 解析、删除失败注入、实际 metric 聚合和最小 JSON 证据。失败注入只存在于显式启用的第一方 `fixture-runner` feature，不改变 production `DeletionStore` port。runner 输出不包含 fixture 正文、临时数据库路径或已删除内容；未知 operation、assertion、metric 与摘要漂移均失败关闭并保留稳定 scenario / step 上下文。
+`M0-I04 fixture runner` 已实现冻结 suite 摘要与向量复验、每场景独立内存 SQLite、logical key → canonical fixture ID registry、86 个操作的显式 dispatch、确定性本地词项扩展、point-in-time 事件投影、ContextPack citation 解析、删除失败注入、实际 metric 聚合和最小 JSON 证据。内存数据库入口与失败注入只存在于显式启用的第一方 `fixture-runner` feature：前者仍执行 production capability、migration、连接策略和 adapter 操作，但不持久化文件；后者不改变 production `DeletionStore` port。runner 输出不包含 fixture 正文、临时数据库路径或已删除内容；未知 operation、assertion、metric 与摘要漂移均失败关闭并保留稳定 scenario / step 上下文。
 
 ## 当前顺位
 
@@ -99,7 +99,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 38. 删除计划只接受冻结 `m0-local-purge` 十组件 profile 和 SourceArtifact / MemoryRecord 语义目标；源仍被 active memory 引用而未显式纳入计划时失败关闭。计划提交原子地把 source、fragment、proposal、record 置为 pending，并移除对应 FTS 和当前投影，因此执行前普通读取与搜索已经停止召回；
 39. 本地执行按外键安全顺序真实 redact proposal / record、删除来源 body / fragment、最小保留 metadata / decision / event / audit，并复验 FTS absence 与 M0 context cache 不持久化事实；每个组件使用独立 transaction，单项失败仍生成完整十项结果，最小审计将可审计目标收口为 failed，后续幂等重试可建立新的 attempt / evidence 而不改写历史；
 40. 删除测试覆盖完整 source + memory purge、计划即停止召回、十组件结果、证据 round-trip / namespace 隔离、证据链、幂等执行、重建不恢复、源依赖未展开拒绝，以及 FTS 单组件故障下其余组件真实执行、failed evidence 和目标持续关闭；migration 测试覆盖 v4 → v5，workspace 全量测试保持通过。
-41. runner 在执行前复验 suite digest、九种稳定 ID vector 和三类 digest vector，再为每个场景建立独立临时 SQLite；12 个场景不共享数据库、registry、ContextPack、查询缓存、时钟或删除副作用；
+41. runner 在执行前复验 suite digest、九种稳定 ID vector 和三类 digest vector，再为每个场景建立独立内存 SQLite；12 个场景不共享连接、registry、ContextPack、查询缓存、时钟或删除副作用，且 runner-only 入口仍复用 adapter 的 capability、migration、连接策略与派生校验；
 42. 86 个 operation 使用显式 dispatch 调用真实 `SourceVault`、`MemoryStore`、`LocalSearch` 与 `DeletionStore`；application registry 只解析 fixture logical key，不复制 canonical object 校验、SQLite 行事实或第二套 schema；
 43. 普通搜索先调用严格 FTS query，零结果时才使用与 expected key 无关的确定性本地词项变体逐次调用同一 `LocalSearch`；当前查询仍受 adapter 状态过滤，历史查询从不可变 record 与事件 effective boundary 重建 confirmed point-in-time 投影；
 44. ContextPack 由真实召回对象、来源片段和 citation 构建并调用 core resolution invariant；删除失败通过 opt-in `fixture-runner` feature 选择已冻结组件并把 fixture error / retryable 真实写入 execution attempt，不向 production port 增加测试参数；

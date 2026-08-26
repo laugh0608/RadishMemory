@@ -1,6 +1,4 @@
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use radishmemory_core::{
     ActorRef, ActorType, ComponentResult, ContextPack, DeleteRequest, DeletionEvidence,
@@ -13,48 +11,26 @@ use radishmemory_sqlite::SqliteDatabase;
 use crate::error::{RunnerError, RunnerErrorCode, RunnerResult};
 use crate::fixture::stable_fixture_id;
 
-static DATABASE_COUNTER: AtomicU64 = AtomicU64::new(0);
-
 pub struct TemporaryDatabase {
-    path: PathBuf,
     pub database: SqliteDatabase,
 }
 
 impl TemporaryDatabase {
     fn new(isolation_key: &str) -> RunnerResult<Self> {
-        let counter = DATABASE_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let path = std::env::temp_dir().join(format!(
-            "radishmemory-m0-{}-{}-{counter}.sqlite3",
-            std::process::id(),
-            isolation_key
-        ));
-        let database = SqliteDatabase::open(&path).map_err(|source| {
+        if isolation_key.is_empty() {
+            return Err(RunnerError::new(
+                RunnerErrorCode::InvalidFixture,
+                "scenario-isolation-key-empty",
+            ));
+        }
+        let database = SqliteDatabase::open_fixture_isolated().map_err(|source| {
             RunnerError::with_source(
                 RunnerErrorCode::Storage,
                 "scenario-database-open-failed",
                 source,
             )
         })?;
-        Ok(Self { path, database })
-    }
-}
-
-impl Drop for TemporaryDatabase {
-    fn drop(&mut self) {
-        remove_database_file(&self.path);
-        for suffix in ["-journal", "-wal", "-shm"] {
-            let mut adjacent = self.path.as_os_str().to_os_string();
-            adjacent.push(suffix);
-            remove_database_file(Path::new(&adjacent));
-        }
-    }
-}
-
-fn remove_database_file(path: &Path) {
-    if let Err(error) = std::fs::remove_file(path)
-        && error.kind() != std::io::ErrorKind::NotFound
-    {
-        // Cleanup failure cannot weaken a completed assertion. The path is never logged.
+        Ok(Self { database })
     }
 }
 
