@@ -829,13 +829,7 @@ fn version_three_facts_upgrade_and_rebuild_before_the_database_opens() {
     drop(database);
 
     let raw = Connection::open(synthetic.path()).expect("raw database must open");
-    raw.execute_batch(
-        "DROP TABLE radishmemory_recall_fts;
-         DROP TABLE radishmemory_memory_current_projection;
-         DELETE FROM radishmemory_schema_migrations WHERE version = 4;
-         PRAGMA user_version = 3;",
-    )
-    .expect("synthetic version three database must be restored");
+    restore_version_three_schema(&raw);
     drop(raw);
 
     let upgraded = SqliteDatabase::open(synthetic.path())
@@ -869,13 +863,7 @@ fn invalid_version_three_facts_roll_back_the_entire_recall_migration() {
     drop(database);
 
     let raw = Connection::open(synthetic.path()).expect("raw database must open");
-    raw.execute_batch(
-        "DROP TABLE radishmemory_recall_fts;
-         DROP TABLE radishmemory_memory_current_projection;
-         DELETE FROM radishmemory_schema_migrations WHERE version = 4;
-         PRAGMA user_version = 3;",
-    )
-    .expect("synthetic version three database must be restored");
+    restore_version_three_schema(&raw);
     raw.execute(
         "UPDATE radishmemory_source_bodies SET content = ?1 WHERE source_id = ?2",
         params![b"Tampered version three source.\n".as_slice(), "source-1"],
@@ -902,4 +890,23 @@ fn invalid_version_three_facts_roll_back_the_entire_recall_migration() {
         .expect("rolled-back schema must remain queryable");
     assert_eq!(version, 3);
     assert_eq!(v4_table_count, 0);
+}
+
+fn restore_version_three_schema(connection: &Connection) {
+    connection
+        .execute_batch(
+            "DROP TABLE radishmemory_deletion_evidence;
+             DROP TABLE radishmemory_deletion_execution_results;
+             DROP TABLE radishmemory_deletion_execution_attempts;
+             DROP TABLE radishmemory_delete_execution_closure;
+             DROP TABLE radishmemory_delete_component_targets;
+             DROP TABLE radishmemory_delete_request_components;
+             DROP TABLE radishmemory_delete_request_targets;
+             DROP TABLE radishmemory_delete_requests;
+             DROP TABLE radishmemory_recall_fts;
+             DROP TABLE radishmemory_memory_current_projection;
+             DELETE FROM radishmemory_schema_migrations WHERE version >= 4;
+             PRAGMA user_version = 3;",
+        )
+        .expect("synthetic version three database must be restored");
 }

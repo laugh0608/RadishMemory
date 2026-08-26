@@ -5,6 +5,8 @@
 //! adapter boundary.
 
 mod capability;
+mod deletion_actions;
+mod deletion_store;
 mod derived_index;
 mod error;
 mod memory_store;

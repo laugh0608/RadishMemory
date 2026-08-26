@@ -6,7 +6,7 @@ use rusqlite::{Connection, Transaction, TransactionBehavior, params};
 use crate::SqliteError;
 
 /// Newest on-disk schema version understood by this adapter.
-pub const SQLITE_SCHEMA_VERSION: u32 = 4;
+pub const SQLITE_SCHEMA_VERSION: u32 = 5;
 
 struct Migration {
     version: u32,
@@ -15,7 +15,7 @@ struct Migration {
     tables_created: &'static [&'static str],
 }
 
-const MIGRATIONS: [Migration; 4] = [
+const MIGRATIONS: [Migration; 5] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -63,6 +63,21 @@ const MIGRATIONS: [Migration; 4] = [
             "radishmemory_recall_fts_data",
             "radishmemory_recall_fts_docsize",
             "radishmemory_recall_fts_idx",
+        ],
+    },
+    Migration {
+        version: 5,
+        name: "0005_local_deletion",
+        sql: include_str!("../migrations/0005_local_deletion.sql"),
+        tables_created: &[
+            "radishmemory_delete_component_targets",
+            "radishmemory_delete_execution_closure",
+            "radishmemory_delete_request_components",
+            "radishmemory_delete_request_targets",
+            "radishmemory_delete_requests",
+            "radishmemory_deletion_evidence",
+            "radishmemory_deletion_execution_attempts",
+            "radishmemory_deletion_execution_results",
         ],
     },
 ];
@@ -326,6 +341,19 @@ mod tests {
         assert_eq!(version, i64::from(SQLITE_SCHEMA_VERSION));
         validate_migration_history(&connection, SQLITE_SCHEMA_VERSION)
             .expect("upgraded local recall schema must be exact");
+    }
+
+    #[test]
+    fn version_four_upgrades_to_local_deletion_atomically() {
+        let mut connection = Connection::open_in_memory().expect("in-memory SQLite must open");
+        apply_reviewed_prefix(&connection, 4);
+
+        migrate(&mut connection).expect("local deletion migration must apply");
+
+        let version = user_version(&connection).expect("schema version must be queryable");
+        assert_eq!(version, i64::from(SQLITE_SCHEMA_VERSION));
+        validate_migration_history(&connection, SQLITE_SCHEMA_VERSION)
+            .expect("upgraded local deletion schema must be exact");
     }
 
     fn apply_reviewed_prefix(connection: &Connection, count: usize) {

@@ -1,7 +1,8 @@
 use std::error::Error;
 
 use crate::{
-    Identifier, LocalSearchHit, LocalSearchRequest, MemoryDecision, MemoryProposal, MemoryRecord,
+    ComponentResult, DeleteRequest, DeletionEvidence, Identifier, LocalDeletionExecution,
+    LocalSearchHit, LocalSearchRequest, MemoryDecision, MemoryProposal, MemoryRecord,
     MemoryStateEvent, SourceArtifact, SourceFragment,
 };
 
@@ -86,4 +87,37 @@ pub trait MemoryStore {
         namespace_id: &Identifier,
         memory_id: &Identifier,
     ) -> Result<Option<Vec<MemoryStateEvent>>, Self::Error>;
+}
+
+/// Local persistence and execution boundary for the frozen M0 deletion workflow.
+pub trait DeletionStore {
+    type Error: Error + Send + Sync + 'static;
+
+    /// Persists an exact deletion plan and atomically closes all planned targets to recall.
+    fn store_delete_request(&mut self, request: &DeleteRequest) -> Result<(), Self::Error>;
+
+    /// Executes every planned component and persists the complete immutable attempt result.
+    fn execute_deletion(
+        &mut self,
+        namespace_id: &Identifier,
+        delete_request_id: &Identifier,
+        execution: &LocalDeletionExecution,
+    ) -> Result<Vec<ComponentResult>, Self::Error>;
+
+    /// Appends evidence bound to one already-persisted execution attempt.
+    fn store_deletion_evidence(&mut self, evidence: &DeletionEvidence) -> Result<(), Self::Error>;
+
+    /// Loads an immutable deletion request only when namespace and ID match.
+    fn load_delete_request(
+        &self,
+        namespace_id: &Identifier,
+        delete_request_id: &Identifier,
+    ) -> Result<Option<DeleteRequest>, Self::Error>;
+
+    /// Loads one immutable evidence snapshot and its exact component results.
+    fn load_deletion_evidence(
+        &self,
+        namespace_id: &Identifier,
+        deletion_evidence_id: &Identifier,
+    ) -> Result<Option<DeletionEvidence>, Self::Error>;
 }

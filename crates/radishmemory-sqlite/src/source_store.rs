@@ -207,7 +207,7 @@ impl SourceVault for SqliteDatabase {
                         retention_mode, retention_expires_at, retention_policy_id,
                         deletion_state, policy_basis, created_at
                  FROM radishmemory_source_fragments
-                 WHERE source_id = ?1
+                 WHERE source_id = ?1 AND deletion_state = 'active'
                  ORDER BY ordinal, fragment_id",
             )
             .map_err(SqliteError::storage)?;
@@ -360,7 +360,8 @@ pub(crate) fn load_source_artifact(
                     a.producer_version, a.created_at, b.content
              FROM radishmemory_source_artifacts AS a
              LEFT JOIN radishmemory_source_bodies AS b ON b.source_id = a.source_id
-             WHERE a.namespace_id = ?1 AND a.source_id = ?2",
+             WHERE a.namespace_id = ?1 AND a.source_id = ?2
+               AND a.deletion_state = 'active'",
             params![namespace_id.as_str(), source_id.as_str()],
             StoredSource::from_row,
         )
@@ -389,7 +390,8 @@ pub(crate) fn load_resolved_source_fragment(
                     retention_mode, retention_expires_at, retention_policy_id,
                     deletion_state, policy_basis, created_at
              FROM radishmemory_source_fragments
-             WHERE fragment_id = ?1 AND namespace_id = ?2",
+             WHERE fragment_id = ?1 AND namespace_id = ?2
+               AND deletion_state = 'active'",
             params![fragment_id.as_str(), namespace_id.as_str()],
             StoredFragment::from_row,
         )

@@ -131,9 +131,11 @@ impl Catalog {
     fn load_sources(&mut self, connection: &Connection) -> Result<(), SqliteError> {
         let mut statement = connection
             .prepare(
-                "SELECT namespace_id, fragment_id
-                 FROM radishmemory_source_fragments
-                 ORDER BY namespace_id, fragment_id",
+                "SELECT f.namespace_id, f.fragment_id
+                 FROM radishmemory_source_fragments AS f
+                 JOIN radishmemory_source_artifacts AS a ON a.source_id = f.source_id
+                 WHERE f.deletion_state = 'active' AND a.deletion_state = 'active'
+                 ORDER BY f.namespace_id, f.fragment_id",
             )
             .map_err(SqliteError::storage)?;
         let stored = statement
@@ -177,6 +179,7 @@ impl Catalog {
             .prepare(
                 "SELECT namespace_id, memory_id
                  FROM radishmemory_memory_records
+                 WHERE deletion_state = 'active'
                  ORDER BY namespace_id, memory_id",
             )
             .map_err(SqliteError::storage)?;

@@ -17,6 +17,7 @@ pub enum SqliteErrorCode {
     InvalidStoredData,
     SourceInvariant,
     MemoryInvariant,
+    DeletionInvariant,
 }
 
 /// Runtime capabilities that the adapter requires before touching schema data.
@@ -63,6 +64,11 @@ pub enum SqliteStorageReason {
     EventChain,
     UnsupportedCause,
     DerivedDataMismatch,
+    MissingDeleteTarget,
+    DeletionPlan,
+    MissingDeleteRequest,
+    DeletionExecution,
+    EvidenceChain,
 }
 
 /// SQLite adapter failure that does not display database paths or SQL text.
@@ -195,6 +201,17 @@ impl SqliteError {
         Self::with_storage_source(SqliteErrorCode::MemoryInvariant, reason, source)
     }
 
+    pub(crate) fn deletion_invariant(reason: SqliteStorageReason) -> Self {
+        Self::without_source(SqliteErrorCode::DeletionInvariant, reason)
+    }
+
+    pub(crate) fn deletion_invariant_with_core(
+        reason: SqliteStorageReason,
+        source: radishmemory_core::CoreError,
+    ) -> Self {
+        Self::with_storage_source(SqliteErrorCode::DeletionInvariant, reason, source)
+    }
+
     pub(crate) fn invalid_stored(reason: SqliteStorageReason) -> Self {
         Self::without_source(SqliteErrorCode::InvalidStoredData, reason)
     }
@@ -313,6 +330,7 @@ impl fmt::Display for SqliteError {
             SqliteErrorCode::InvalidStoredData => "stored SQLite object is invalid",
             SqliteErrorCode::SourceInvariant => "source storage invariant violation",
             SqliteErrorCode::MemoryInvariant => "memory storage invariant violation",
+            SqliteErrorCode::DeletionInvariant => "deletion storage invariant violation",
         };
         formatter.write_str(message)
     }

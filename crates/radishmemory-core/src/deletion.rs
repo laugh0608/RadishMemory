@@ -1,7 +1,8 @@
 use crate::{
     ActorRef, CanonicalObject, CanonicalObjectType, CoreError, Digest, DigestProfile, EvidenceRef,
     EvidenceType, Identifier, InvalidCanonicalObjectReason, NonEmptyText, ObjectRef, ProducerRef,
-    Timestamp, require_non_empty, require_profile, require_unique, require_unique_by,
+    Timestamp, compute_canonical_json_digest, require_non_empty, require_profile, require_unique,
+    require_unique_by,
 };
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -52,10 +53,22 @@ impl FrozenTargetClosure {
             ));
         }
         require_profile(&target_refs_digest, DigestProfile::CanonicalJsonV1)?;
+        if target_refs_digest != compute_target_refs_digest(&target_refs)? {
+            return Err(CoreError::digest_mismatch());
+        }
         Ok(Self {
             target_refs,
             target_refs_digest,
         })
+    }
+
+    /// Sorts a nonempty target set and freezes its canonical closure digest.
+    pub fn freeze(mut target_refs: Vec<ObjectRef>) -> Result<Self, CoreError> {
+        target_refs.sort();
+        require_non_empty(&target_refs)?;
+        require_unique(&target_refs)?;
+        let target_refs_digest = compute_target_refs_digest(&target_refs)?;
+        Self::new(target_refs, target_refs_digest)
     }
 
     #[must_use]
@@ -67,6 +80,22 @@ impl FrozenTargetClosure {
     pub const fn target_refs_digest(&self) -> &Digest {
         &self.target_refs_digest
     }
+}
+
+/// Computes the canonical JSON digest that binds one frozen deletion closure.
+pub fn compute_target_refs_digest(target_refs: &[ObjectRef]) -> Result<Digest, CoreError> {
+    let value = serde_json::Value::Array(
+        target_refs
+            .iter()
+            .map(|target_ref| {
+                serde_json::json!({
+                    "object_id": target_ref.object_id().as_str(),
+                    "object_type": target_ref.object_type().as_str(),
+                })
+            })
+            .collect(),
+    );
+    compute_canonical_json_digest(&value.to_string())
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -216,6 +245,37 @@ pub enum ComponentOutcome {
     RetainedMinimal,
     NotFound,
     NotApplicable,
+}
+
+/// Deterministic inputs required by one local deletion execution attempt.
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LocalDeletionExecution {
+    checked_at: Timestamp,
+    retention_basis: EvidenceRef,
+}
+
+impl LocalDeletionExecution {
+    pub fn new(checked_at: Timestamp, retention_basis: EvidenceRef) -> Result<Self, CoreError> {
+        if retention_basis.evidence_type() != EvidenceType::PolicyBasis {
+            return Err(CoreError::invalid_canonical_object(
+                InvalidCanonicalObjectReason::InvalidFieldCombination,
+            ));
+        }
+        Ok(Self {
+            checked_at,
+            retention_basis,
+        })
+    }
+
+    #[must_use]
+    pub const fn checked_at(&self) -> &Timestamp {
+        &self.checked_at
+    }
+
+    #[must_use]
+    pub const fn retention_basis(&self) -> &EvidenceRef {
+        &self.retention_basis
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

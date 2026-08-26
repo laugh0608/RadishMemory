@@ -408,7 +408,8 @@ fn load_memory_proposal(
                     policy_basis, producer_type, producer_id, producer_version, reason_code,
                     proposed_at
              FROM radishmemory_memory_proposals
-             WHERE namespace_id = ?1 AND proposal_id = ?2",
+             WHERE namespace_id = ?1 AND proposal_id = ?2
+               AND deletion_state = 'active'",
             params![namespace_id.as_str(), proposal_id.as_str()],
             StoredProposal::from_row,
         )
@@ -948,7 +949,8 @@ fn load_memory_record_closure_inner(
                     importance, sensitivity, egress_policy, retention_mode,
                     retention_expires_at, retention_policy_id, deletion_state, policy_basis,
                     created_at
-             FROM radishmemory_memory_records WHERE namespace_id = ?1 AND memory_id = ?2",
+             FROM radishmemory_memory_records
+             WHERE namespace_id = ?1 AND memory_id = ?2 AND deletion_state = 'active'",
             params![namespace_id.as_str(), memory_id.as_str()],
             StoredRecord::from_row,
         )

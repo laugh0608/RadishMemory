@@ -507,6 +507,34 @@ fn deletion_conditions_prevent_false_completion() {
         Some(InvalidCanonicalObjectReason::UnsortedTargetClosure)
     );
 
+    let sorted = vec![
+        ObjectRef::new(CanonicalObjectType::MemoryRecord, id("memory-a")),
+        ObjectRef::new(CanonicalObjectType::MemoryRecord, id("memory-z")),
+    ];
+    assert_eq!(
+        FrozenTargetClosure::new(
+            sorted.clone(),
+            compute_digest("canonical-json-v1", "[]").expect("digest must compute"),
+        )
+        .expect_err("closure digest must bind the exact sorted target list")
+        .code(),
+        CoreErrorCode::DigestMismatch
+    );
+    assert_eq!(
+        FrozenTargetClosure::freeze(sorted.clone())
+            .expect("valid closure must freeze")
+            .target_refs(),
+        sorted
+    );
+    assert!(
+        LocalDeletionExecution::new(
+            timestamp("2026-08-23T08:00:08Z"),
+            EvidenceRef::new(EvidenceType::DeleteRequest, id("delete-request-1")),
+        )
+        .is_err(),
+        "retained-minimal components require an explicit policy basis"
+    );
+
     let mut failed = component_result().params().clone();
     failed.status = ComponentStatus::Failed;
     failed.processed_count = 0;
