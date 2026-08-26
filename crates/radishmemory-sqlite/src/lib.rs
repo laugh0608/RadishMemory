@@ -9,6 +9,8 @@ mod deletion_actions;
 mod deletion_store;
 mod derived_index;
 mod error;
+#[cfg(feature = "fixture-runner")]
+mod fixture_runner;
 mod memory_store;
 mod migration;
 mod source_store;
@@ -23,6 +25,8 @@ pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
 pub use error::{
     SqliteCapability, SqliteConfigurationReason, SqliteError, SqliteErrorCode, SqliteStorageReason,
 };
+#[cfg(feature = "fixture-runner")]
+pub use fixture_runner::FixtureDeletionFailure;
 pub use migration::SQLITE_SCHEMA_VERSION;
 
 /// An initialized RadishMemory SQLite database.

@@ -2,7 +2,7 @@
 
 日期：2026-08-23
 
-范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory storage`、workspace 工具链与聚合检查入口。
+范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
@@ -12,7 +12,7 @@
 | --- | --- | --- | --- |
 | `radishmemory-core 0.1.0` | `serde_json`、`sha2`、`time`、`unicode-normalization` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-sqlite 0.1.0` | `radishmemory-core =0.1.0`、`rusqlite` | workspace path | 仓库 [LICENSE](../../LICENSE) |
-| `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`（`fixture-runner`）、`serde_json` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 
 ## Core 直接依赖
 
@@ -27,9 +27,13 @@
 
 这些版本均满足 workspace 的 Rust `1.96.0`，许可证均为 `MIT OR Apache-2.0`。manifest 使用兼容版本要求，首次受审阅解析结果由 `Cargo.lock` 精确固定；后续 lockfile 漂移必须重新审查并更新本页与检查器。
 
+`radishmemory-m0` 直接复用同一 workspace `serde_json 1.0.151` 解析冻结 fixture 并构造最小证据 JSON；这只改变第一方 package 的直接依赖边，不新增第三方 package、feature、build script 或网络能力。fixture suite、ContextPack 和 DeletionEvidence 摘要仍调用 core 的 `radishmemory-canonical-json-v1` 实现，不依赖 serializer 的默认 key 顺序。
+
 ## SQLite adapter 直接依赖与原生构建
 
 `radishmemory-sqlite` 直接依赖 `rusqlite 0.40.2`，关闭 default features，只启用 `bundled`。这会同时启用 `modern_sqlite`、`libsqlite3-sys 0.38.2` 的 `bundled` 与预生成 `bundled_bindings`；`libsqlite3-sys` 自身的 default feature 还保留 `min_sqlite_version_3_34_1`、`pkg-config` 与 `vcpkg`，但构建由 bundled 分支选择内置源码。未启用 `cache`、`ffi-sqlite-wasm-rs`、`buildtime_bindgen`、SQLCipher 或 loadable-extension Rust API。
+
+adapter 的第一方 `fixture-runner` feature 只由 `radishmemory-m0` 启用，用于在冻结删除场景中显式注入一个稳定组件失败并持久化真实 failed attempt；默认 feature 为空，production `DeletionStore` port、第三方 feature 图和运行时依赖不变。该入口不能执行任意 SQL 或绕过删除计划，只能选择已冻结 component key、稳定 error code 与 retryable 状态。
 
 | package / 源码 | 解析版本 | 来源与许可证 | 实际用途与构建影响 |
 | --- | --- | --- | --- |
@@ -60,7 +64,7 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 
 - workspace 使用 Rust 2024 edition，`rust-toolchain.toml` 精确固定 `1.96.0`，并要求 `rustfmt` 与 `clippy` component；
 - 第一方 package 继承 `rust-version = "1.96.0"`、仓库许可证，以及 workspace `unsafe_code = "forbid"` 与 `unused_crate_dependencies = "deny"` lint；
-- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 SQLite package 的格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 编译选项 / 临时虚表实探、新库初始化、v1 / v2 → v3 原子升级、未来 schema 版本拒绝、Source Vault BLOB 往返、proposal 去重、decision 链、accept / supersede 物化、事件派生状态、事务回滚、namespace 隔离、完整性失败关闭和错误脱敏均通过。本单元最终仍以全 workspace 聚合入口结果为准；
+- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 workspace 格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 capability、新库与 v1 → v5 迁移、Source Vault、MemoryStore、检索、删除、12 场景 / 86 操作 / 12 gate runner、确定性证据、未知操作失败关闭和错误脱敏均通过。本单元最终仍以正式仓库聚合入口结果为准；
 - PR workflow 已配置 Linux、macOS、Windows 三平台真实运行相同 locked 检查，并由 `Candidate Quality` 聚合；仓库内配置不等于 GitHub 执行结果，在实际 workflow run 产生前不得宣称三平台已经通过。
 
-本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量、SQLite 连接 / migration 入口、最小 Source Vault、proposal / decision / immutable record / append-only event MemoryStore、FTS5 capability probe 与当前依赖图在本机成立，不证明 FTS5 业务索引、物化当前投影、删除执行、fixture runner 或任何完整产品闭环已经实现。
+本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore、FTS5 派生索引、当前投影、本地删除执行与真实 fixture runner 的当前依赖图在本机成立；它不证明 PDF / 图片采集、向量检索、模型问答、多设备同步、三平台 CI 结果或生产可用性。

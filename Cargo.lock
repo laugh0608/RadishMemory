@@ -175,6 +175,7 @@ version = "0.1.0"
 dependencies = [
  "radishmemory-core",
  "radishmemory-sqlite",
+ "serde_json",
 ]
 
 [[package]]

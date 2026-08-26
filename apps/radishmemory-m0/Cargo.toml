@@ -11,4 +11,5 @@ workspace = true
 
 [dependencies]
 radishmemory-core.workspace = true
-radishmemory-sqlite.workspace = true
+radishmemory-sqlite = { workspace = true, features = ["fixture-runner"] }
+serde_json.workspace = true

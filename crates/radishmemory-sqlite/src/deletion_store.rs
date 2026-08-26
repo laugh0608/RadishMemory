@@ -10,7 +10,9 @@ use radishmemory_core::{
 };
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
 
-use crate::deletion_actions::{execute_component_action, failed_result, successful_result};
+use crate::deletion_actions::{
+    execute_component_action, failed_result, failed_result_with_code, successful_result,
+};
 use crate::source_store::{digest, identifier, non_empty_text, timestamp};
 use crate::{SqliteDatabase, SqliteError, SqliteStorageReason};
 
@@ -139,7 +141,7 @@ impl DeletionStore for SqliteDatabase {
     }
 }
 
-fn validate_request_profile(request: &DeleteRequest) -> Result<(), SqliteError> {
+pub(crate) fn validate_request_profile(request: &DeleteRequest) -> Result<(), SqliteError> {
     let value = request.params();
     if value.requested_guarantee != RequestedGuarantee::LocalPurge
         || value.planned_components.len() != PROFILE.len()
@@ -895,6 +897,42 @@ fn execute_request(
     request: &DeleteRequest,
     execution: &LocalDeletionExecution,
 ) -> Result<Vec<ComponentResult>, SqliteError> {
+    execute_request_inner(connection, request, execution, None)
+}
+
+#[cfg(feature = "fixture-runner")]
+pub(crate) fn execute_request_with_fixture_failure(
+    connection: &mut Connection,
+    request: &DeleteRequest,
+    execution: &LocalDeletionExecution,
+    component_key: &Identifier,
+    error_code: &NonEmptyText,
+    retryable: bool,
+) -> Result<Vec<ComponentResult>, SqliteError> {
+    execute_request_inner(
+        connection,
+        request,
+        execution,
+        Some(InjectedFailure {
+            component_key,
+            error_code,
+            retryable,
+        }),
+    )
+}
+
+struct InjectedFailure<'a> {
+    component_key: &'a Identifier,
+    error_code: &'a NonEmptyText,
+    retryable: bool,
+}
+
+fn execute_request_inner(
+    connection: &mut Connection,
+    request: &DeleteRequest,
+    execution: &LocalDeletionExecution,
+    fixture_failure: Option<InjectedFailure<'_>>,
+) -> Result<Vec<ComponentResult>, SqliteError> {
     let request_id = &request.params().delete_request_id;
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
@@ -929,7 +967,12 @@ fn execute_request(
             .find(|component| component.component_type() == component_type)
             .ok_or_else(deletion_plan)?;
 
-        let successful = {
+        let inject_failure = fixture_failure
+            .as_ref()
+            .is_some_and(|failure| failure.component_key == component.component_key());
+        let successful = if inject_failure {
+            None
+        } else {
             let transaction = connection
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(SqliteError::storage)?;
@@ -952,7 +995,17 @@ fn execute_request(
 
         if successful.is_none() {
             has_failed = true;
-            let result = failed_result(component, execution)?;
+            let result = if let Some(failure) = fixture_failure.as_ref().filter(|_| inject_failure)
+            {
+                failed_result_with_code(
+                    component,
+                    execution,
+                    failure.error_code.clone(),
+                    failure.retryable,
+                )?
+            } else {
+                failed_result(component, execution)?
+            };
             let transaction = connection
                 .transaction_with_behavior(TransactionBehavior::Immediate)
                 .map_err(SqliteError::storage)?;

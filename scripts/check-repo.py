@@ -193,7 +193,8 @@ workspace = true
 
 [dependencies]
 radishmemory-core.workspace = true
-radishmemory-sqlite.workspace = true
+radishmemory-sqlite = { workspace = true, features = ["fixture-runner"] }
+serde_json.workspace = true
 """,
     "crates/radishmemory-core/Cargo.toml": """[package]
 name = \"radishmemory-core\"
@@ -222,6 +223,9 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+fixture-runner = []
 
 [dependencies]
 radishmemory-core.workspace = true
@@ -409,7 +413,7 @@ def check_rust_workspace_contract(
     for name, expected in EXPECTED_CARGO_MANIFESTS.items():
         path = repo_root / name
         if path.is_file() and path.read_text(encoding="utf-8") != expected:
-            errors.append(f"Rust workspace manifest differs from the M0-I03 contract: {name}")
+            errors.append(f"Rust workspace manifest differs from the M0 implementation contract: {name}")
 
     toolchain = repo_root / "rust-toolchain.toml"
     if toolchain.is_file() and toolchain.read_text(encoding="utf-8") != EXPECTED_RUST_TOOLCHAIN:
@@ -747,7 +751,7 @@ def check_m0_fixture_contract(repo_root: Path, errors: list[str]) -> None:
         "docs/status/current.md": (
             "12 个场景的 86 个有序操作",
             "12 个指标 gate",
-            "真实 M0 runner 和完整 M0 闭环仍未实现",
+            "真实 M0 runner 已经建立",
         ),
         "docs/evaluation/m0-local-memory-loop.md": (
             "M0 Fixture 与指标契约",
@@ -879,7 +883,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 implementation entry",
+            "M0 local implementation exit candidate",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -889,6 +893,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "`M0-I03 SQLite entry` 已实现版本化 migration",
             "`M0-I03 SQLite storage` 的首个纵向切片已实现",
             "`M0-I03 SQLite storage` 的第二个纵向切片已实现",
+            "`M0-I04 fixture runner` 已实现冻结 suite 摘要与向量复验",
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (

@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`M0 implementation entry`
+`M0 local implementation exit candidate`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结，最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影与本地删除闭环已经建立。当前目标是按冻结 fixture 顺位实现真实 M0 runner，不扩大到 PDF、Embedding、模型、UI、同步或服务端。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate。当前目标是完成本批正式门禁与提交，并在获得外部授权后取得 Linux / macOS / Windows CI 证据；在此之前不进入 PDF、Embedding、模型、UI、同步或服务端实现。
 
 ## 已冻结的首个切片
 
@@ -14,7 +14,7 @@
 
 M0 字段级 canonical schema 已在 [M0 Canonical Schema](../schema/m0-canonical-schema.md) 冻结为九种顶层对象及共同逻辑类型。它确定字段、必填性、条件约束、时间、治理标签、事件和删除证据关系，但不绑定数据库、生产 ID 编码或语言类型。
 
-[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 已冻结合成 JSON mapping、fixture ID、摘要 profile、12 个场景的 86 个有序操作和 12 个指标 gate。仓库校验器只验证这些输入与 oracle 自洽；真实 M0 runner 和完整 M0 闭环仍未实现。
+[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md) 已冻结合成 JSON mapping、fixture ID、摘要 profile、12 个场景的 86 个有序操作和 12 个指标 gate。仓库校验器仍只验证输入与 oracle 自洽；`radishmemory-m0` 现在会把同一 suite 映射到真实 core / SQLite 操作并独立计算 assertion 与 metric。
 
 首个多设备同步信任模式已通过 [ADR 0003](../adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务：默认自部署服务端只中继密文对象、加密操作日志、密钥封装和已枚举最小元数据，不持有内容解密能力，也不运行语义索引、检索或 ContextPack 编译。可信计算节点后置为显式可选能力。该决定不把同步加入 M0，也不代表零知识同步已经实现。
 
@@ -24,7 +24,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `M0-I01` 已建立且仅建立上述三个可编译 package，提交初始第一方 lockfile，并把 fmt、Clippy 和 locked test 接入本地双平台入口与 PR 的 Linux / macOS / Windows matrix。
 
-`M0-I02` 的第一个独立评审单元已实现稳定 core 错误、RFC 3339 / UTC 时间、`ValidTime`、`exact-bytes-v1` / `utf8-nfc-text-v1` / `canonical-json-v1` SHA-256，以及拒绝重复 key 和 `null` 的 `radishmemory-canonical-json-v1` parser / writer。`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象、共同值类型与字段级条件校验。`M0-I02` 的第三个独立评审单元已实现跨对象不变量，包括同 namespace 引用、来源切片、governance 继承、accept 物化闭环、事件链投影、supersede、ContextPack citation / 召回边界与删除计划 / 证据一致性。fixture 外部 JSON mapping 与 runner application operation dispatch 尚未实现。
+`M0-I02` 的第一个独立评审单元已实现稳定 core 错误、RFC 3339 / UTC 时间、`ValidTime`、`exact-bytes-v1` / `utf8-nfc-text-v1` / `canonical-json-v1` SHA-256，以及拒绝重复 key 和 `null` 的 `radishmemory-canonical-json-v1` parser / writer。`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象、共同值类型与字段级条件校验。`M0-I02` 的第三个独立评审单元已实现跨对象不变量，包括同 namespace 引用、来源切片、governance 继承、accept 物化闭环、事件链投影、supersede、ContextPack citation / 召回边界与删除计划 / 证据一致性。fixture 外部 JSON mapping 与 application operation dispatch 已由 `M0-I04` 在 runner 层实现，不反向进入 core schema。
 
 `M0-I03 SQLite entry` 已实现版本化 migration、连接安全基线、bundled SQLite 精确版本与 FTS5 双重 capability probe，以及对未知较新版本、现有外来 schema 和 migration metadata 漂移的失败关闭。当前 lockfile 包含五个经审查的直接第三方依赖和 40 个第三方 package，没有 Git dependency 或产品网络能力；`libsqlite3-sys` build script 会通过 `cc` 编译 bundled SQLite `3.53.2` C 源码。feature、许可证与 native build 影响见 [M0 Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)。该入口提交本身没有为未来假设新增空 core port；真实 port 随下述 storage 操作进入。
 
@@ -34,27 +34,30 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `M0-I03 SQLite storage` 的第三个纵向切片已实现真实 `LocalSearch` core port，并把 adapter schema 单调升级到 v4。FTS5 只保存 active SourceFragment 与 confirmed MemoryRecord 的派生正文，当前状态表只物化事件链 tip；来源 / 记忆事实、状态事件、索引和投影在同一 `IMMEDIATE` transaction 更新。检索先形成 namespace、敏感度、删除、状态、保留期与 `as_of` 资格集合，再执行本地 FTS5 top-k；普通查询不会返回 proposal、非 active 来源或非 confirmed 记忆。每次打开和搜索都会对事实全量复算并核对派生数据，显式重建也只从已验真的 canonical facts 生成；v1 / v2 / v3 升级会在 migration transaction 内完成首次重建。
 
-`M0-I03 SQLite storage` 的第四个纵向切片已实现真实 `DeletionStore` core port，并把 adapter schema 单调升级到 v5。`DeleteRequest`、十项冻结组件、canonical 目标闭包、adapter 内部物理执行闭包、逐次执行结果和 `DeletionEvidence` 都以不可变或追加式关系持久化；计划入库与语义目标进入 `pending`、FTS / 当前投影移除位于同一 `IMMEDIATE` transaction。执行器真实处理 source body / metadata / fragment、proposal / decision / record / state event、FTS、M0 不持久化的 context cache 与最小审计；失败组件保留真实 error / retryable 结果并把目标收口为 `failed`，不会恢复 active，也不会把部分失败写成 completed。普通读取、检索和派生重建只接受 active facts；完整成功、单组件失败、幂等重试、未展开依赖拒绝、namespace 隔离、证据链和 v4 → v5 升级已由测试覆盖。该能力只证明应用可复验的本地行、索引、投影和 cache 边界，不证明 SQLite 空闲页、临时文件、备份、文件系统快照或介质已被取证级擦除。真实 fixture runner 仍未实现。
+`M0-I03 SQLite storage` 的第四个纵向切片已实现真实 `DeletionStore` core port，并把 adapter schema 单调升级到 v5。`DeleteRequest`、十项冻结组件、canonical 目标闭包、adapter 内部物理执行闭包、逐次执行结果和 `DeletionEvidence` 都以不可变或追加式关系持久化；计划入库与语义目标进入 `pending`、FTS / 当前投影移除位于同一 `IMMEDIATE` transaction。执行器真实处理 source body / metadata / fragment、proposal / decision / record / state event、FTS、M0 不持久化的 context cache 与最小审计；失败组件保留真实 error / retryable 结果并把目标收口为 `failed`，不会恢复 active，也不会把部分失败写成 completed。普通读取、检索和派生重建只接受 active facts；完整成功、单组件失败、幂等重试、未展开依赖拒绝、namespace 隔离、证据链和 v4 → v5 升级已由测试覆盖。该能力只证明应用可复验的本地行、索引、投影和 cache 边界，不证明 SQLite 空闲页、临时文件、备份、文件系统快照或介质已被取证级擦除。
+
+`M0-I04 fixture runner` 已实现冻结 suite 摘要与向量复验、场景隔离临时 SQLite、logical key → canonical fixture ID registry、86 个操作的显式 dispatch、确定性本地词项扩展、point-in-time 事件投影、ContextPack citation 解析、删除失败注入、实际 metric 聚合和最小 JSON 证据。失败注入只存在于显式启用的第一方 `fixture-runner` feature，不改变 production `DeletionStore` port。runner 输出不包含 fixture 正文、临时数据库路径或已删除内容；未知 operation、assertion、metric 与摘要漂移均失败关闭并保留稳定 scenario / step 上下文。
 
 ## 当前顺位
 
-1. `M0-I04 fixture runner`：按冻结操作顺序调用真实 core 与 adapter，执行全部 assertion / metric，输出最小 JSON 证据并报告零网络能力边界。
+1. 完成本批本地正式门禁与 Conventional Commit，保持工作区可审阅且不推送。
+2. 获得明确外部授权后推送并取得 Linux / macOS / Windows CI 的同一 locked runner 证据；远端未运行前不宣称三平台通过。
+3. M0 退出证据完整后，再冻结阶段 1“单机资料库与可追溯问答”的首个真实资料切片；先定义真实文件边界、导入 / 导出、派生数据和删除验收，不直接跳到 PDF、向量或 Provider 实现。
 
 ## 明日事项（2026-08-27）
 
-主任务进入 `M0-I04 fixture runner`，只交付冻结 fixture 到真实 core / SQLite adapter 的最小 application mapping：
+主任务收口 `M0-I04 fixture runner` 的本地退出证据，并为阶段 1 入口做窄范围准备：
 
-1. 先读取 fixture contract 与 `radishmemory-m0` 现有入口，建立 86 个有序 operation 的显式 dispatch 和 logical key → canonical stable ID registry；mapping 只做 application orchestration，不复制 core 校验或建立第二套领域 schema。
-2. 按场景隔离临时 SQLite 数据库，调用已经存在的 `SourceVault`、`MemoryStore`、`LocalSearch` 与 `DeletionStore`；fixture 的失败注入保持测试 / runner 专用且可审计，不进入 production port 或静默 fallback。
-3. 逐项执行冻结 assertion 和 12 个 metric gate，实际 numerator / denominator 必须来自运行结果；失败输出稳定场景、step、assertion / metric 标识，不复制正文、路径或删除内容。
-4. 输出最小 deterministic JSON 证据，记录 fixture suite digest、runner / adapter version、场景与 gate 结果及零网络能力事实；不把 fixture oracle 自检冒充真实 runner 通过。
-5. 增加 runner 成功、代表性失败、顺序、隔离、重复执行与证据确定性测试，再运行 fmt、Clippy、locked workspace test、fixture checker、文本 / 文档和仓库级正式门禁。
+1. 复核 runner / adapter feature、依赖边、最小输出和测试 diff，运行 workspace fmt、Clippy、locked tests、fixture checker 与仓库级正式门禁后提交。
+2. 不把本机通过等同于三平台通过；若项目所有者授权 push / PR，再观察 Linux / macOS / Windows `Candidate Quality`，保留真实失败与重试历史。
+3. 只在 M0 退出证据完整后起草阶段 1 首个切片：优先把已成立的本地文本 / Markdown 事实存储转成真实但受控的单机资料库入口，先冻结文件路径、来源身份、导入幂等、导出、删除与合成验收边界。
+4. PDF / 图片解析、向量索引和模型 adapter 分别需要可替换边界、依赖 / 许可证 / native build 审查、隐私失败关闭和独立质量指标，不合并成一个大批次。
 
-明日停止线：不进入 ContextPack 编译、向量 / 模型、UI、网络、同步或通用 workflow engine；不为 86 个固定操作预建插件系统、异步 runtime 或通用 manager。只有全部冻结 assertion、metric 和零网络边界由真实操作证明，才宣告 M0 实现退出条件成立。
+明日停止线：未经新真相源与验收冻结，不进入真实个人资料导入、PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
 
 ## 本次完成（2026-08-26）
 
-`M0-I02` 三个评审单元与 `M0-I03 SQLite entry` 保持在职责对应 package、直接测试、依赖记录和必要检查器内：
+`M0-I02` 三个评审单元、`M0-I03 SQLite entry / storage` 与 `M0-I04 fixture runner` 保持在职责对应 package、直接测试、依赖记录和必要检查器内：
 
 1. 四个 core 直接依赖与其全部传递依赖已经 lock，并记录解析版本、许可证、feature、build script / proc macro、网络与 native code 影响；
 2. 错误只暴露稳定 category / reason，解析 cause 可追溯，但不保存被拒绝的时间、JSON 或正文；
@@ -96,6 +99,12 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 38. 删除计划只接受冻结 `m0-local-purge` 十组件 profile 和 SourceArtifact / MemoryRecord 语义目标；源仍被 active memory 引用而未显式纳入计划时失败关闭。计划提交原子地把 source、fragment、proposal、record 置为 pending，并移除对应 FTS 和当前投影，因此执行前普通读取与搜索已经停止召回；
 39. 本地执行按外键安全顺序真实 redact proposal / record、删除来源 body / fragment、最小保留 metadata / decision / event / audit，并复验 FTS absence 与 M0 context cache 不持久化事实；每个组件使用独立 transaction，单项失败仍生成完整十项结果，最小审计将可审计目标收口为 failed，后续幂等重试可建立新的 attempt / evidence 而不改写历史；
 40. 删除测试覆盖完整 source + memory purge、计划即停止召回、十组件结果、证据 round-trip / namespace 隔离、证据链、幂等执行、重建不恢复、源依赖未展开拒绝，以及 FTS 单组件故障下其余组件真实执行、failed evidence 和目标持续关闭；migration 测试覆盖 v4 → v5，workspace 全量测试保持通过。
+41. runner 在执行前复验 suite digest、九种稳定 ID vector 和三类 digest vector，再为每个场景建立独立临时 SQLite；12 个场景不共享数据库、registry、ContextPack、查询缓存、时钟或删除副作用；
+42. 86 个 operation 使用显式 dispatch 调用真实 `SourceVault`、`MemoryStore`、`LocalSearch` 与 `DeletionStore`；application registry 只解析 fixture logical key，不复制 canonical object 校验、SQLite 行事实或第二套 schema；
+43. 普通搜索先调用严格 FTS query，零结果时才使用与 expected key 无关的确定性本地词项变体逐次调用同一 `LocalSearch`；当前查询仍受 adapter 状态过滤，历史查询从不可变 record 与事件 effective boundary 重建 confirmed point-in-time 投影；
+44. ContextPack 由真实召回对象、来源片段和 citation 构建并调用 core resolution invariant；删除失败通过 opt-in `fixture-runner` feature 选择已冻结组件并把 fixture error / retryable 真实写入 execution attempt，不向 production port 增加测试参数；
+45. assertion 与 metric 都从运行事实计算，suite 聚合使用整数 count 与精确有理数，不从 oracle 复制 observed value；最小 JSON 包含 runner / adapter version、步骤、稳定 ID、带 profile 摘要、状态、错误和 gate，不包含正文、临时路径或删除内容；
+46. runner 回归测试覆盖 12 场景 / 86 步 / 12 gate 成功、未知 operation / assertion 失败关闭、scenario / step 错误上下文、重复隔离运行字节级确定性、CLI JSON、预期删除失败和敏感内容缺席；本机 31 个仓库检查器单测与 `./scripts/check-repo.sh` 已通过，后者包含 fmt、Clippy 和 locked workspace all-target / all-feature tests。
 
 ## 当前门禁
 
@@ -103,7 +112,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、最小 Source Vault、MemoryStore 不可变事实 / 追加事件、FTS5 业务索引、当前投影、检索过滤、派生重建与本地删除对象 / 组件 / 证据链的格式、lint 和测试在本机成立；不证明 runner 或同步已经实现，也不等同于三平台 CI 已运行。
+- 当前仓库检查证明治理、文本、链接、配置合同、canonical core primitive、九种对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore 不可变事实 / 追加事件、FTS5 业务索引、当前投影、检索过滤、派生重建、本地删除对象 / 组件 / 证据链和真实 M0 runner 的格式、lint 与测试在本机成立；不证明 PDF / 图片、向量、模型、同步或生产能力，也不等同于三平台 CI 已运行。
 
 ## 当前不做
 
@@ -122,7 +131,6 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - 已完成：明确的记忆状态机、时间与冲突语义；
 - 已完成：首个同步信任模式决策；
 - 已完成：可测量的召回、污染、删除与隐私指标；
-- 已完成：RadishMind 首批参与方式的明确决定；
 - 已完成：记录实现栈选择、替代方案、迁移边界和风险的 ADR；
 - 已完成：精确 Rust 工具链、三 package workspace、受审阅依赖锁和三平台 Rust CI 合同；
 - 已完成：canonical core 第一 primitive 单元，包括稳定错误、时间、摘要和 canonical JSON；
@@ -133,8 +141,9 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 - 已完成：SQLite proposal / decision / immutable record / append-only event facts、accept / supersede 事务与最小 MemoryStore port；
 - 已完成：SQLite FTS5 索引、当前投影、事务维护、全量重建与本地检索 port；
 - 已完成：SQLite 删除请求 / 证据持久化、冻结组件闭包、逐组件本地执行、失败保持关闭与幂等证据链；
-- 待完成：M0 runner 真实实现；
-- 待完成：冻结 fixture 的全部 assertion、metric 和三平台运行门禁通过。
+- 已完成：M0 runner 真实实现；
+- 已完成：冻结 fixture 的全部 assertion 与 metric 在本机通过；
+- 待完成：本批提交进入远端后，Linux / macOS / Windows 三平台运行门禁通过。
 
 ## 当前验证入口
 

@@ -47,6 +47,20 @@ pub(crate) fn failed_result(
     component: &DeletionTarget,
     execution: &LocalDeletionExecution,
 ) -> Result<ComponentResult, SqliteError> {
+    failed_result_with_code(
+        component,
+        execution,
+        non_empty_text(COMPONENT_ERROR_CODE.to_owned())?,
+        true,
+    )
+}
+
+pub(crate) fn failed_result_with_code(
+    component: &DeletionTarget,
+    execution: &LocalDeletionExecution,
+    error_code: radishmemory_core::NonEmptyText,
+    retryable: bool,
+) -> Result<ComponentResult, SqliteError> {
     ComponentResult::new(ComponentResultParams {
         component_key: component.component_key().clone(),
         component_type: component.component_type(),
@@ -58,8 +72,8 @@ pub(crate) fn failed_result(
         outcome: ComponentOutcome::NotApplicable,
         verification_method: non_empty_text("sqlite-component-transaction-v1".to_owned())?,
         checked_at: execution.checked_at().clone(),
-        error_code: Some(non_empty_text(COMPONENT_ERROR_CODE.to_owned())?),
-        retryable: Some(true),
+        error_code: Some(error_code),
+        retryable: Some(retryable),
         retention_basis: None,
     })
     .map_err(deletion_core)
