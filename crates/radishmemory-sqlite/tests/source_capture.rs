@@ -12,8 +12,9 @@ use radishmemory_core::{
     SourceCaptureOutcome, SourceCaptureStore, SourceVault, Timestamp, Version, compute_digest,
 };
 use radishmemory_file_entry::{
-    FileCapturePlan, FileCaptureReceipt, FileEntryErrorReason, FileExportRequest, FileReadRequest,
-    build_source_capture, export_managed_source, read_file_snapshot,
+    FileCapturePlan, FileCaptureReceipt, FileEntryError, FileEntryErrorReason, FileExportRequest,
+    FileReadRequest, MAX_FILE_BYTES, build_source_capture, export_managed_source,
+    read_file_snapshot,
 };
 use radishmemory_sqlite::{SqliteDatabase, SqliteErrorCode, SqliteStorageReason};
 use rusqlite::{Connection, params};
@@ -263,23 +264,39 @@ fn capture_from_path_with_binding(
             .expect("read request must be valid"),
     )
     .expect("synthetic file must produce a snapshot");
-    build_source_capture(
-        snapshot,
-        FileCapturePlan {
-            namespace_id: id("namespace-1"),
-            origin_binding_id: id(origin_binding_id),
-            source_id: id(spec.source_id),
-            lineage_id: id(spec.lineage_id),
-            version: Version::new(spec.version).expect("version must be positive"),
-            supersedes_source_ids: spec.supersedes,
-            fragment_id: id(spec.fragment_id),
-            observed_at: timestamp(spec.captured_at),
-            captured_at: timestamp(spec.captured_at),
-            governance: governance(),
-            source_producer: producer(ProducerType::Parser, "file-entry-parser"),
-            segmenter: producer(ProducerType::Rule, "whole-file-segmenter"),
-        },
-    )
+    build_source_capture(snapshot, capture_plan(spec, origin_binding_id))
+}
+
+fn capture_plan(spec: CaptureSpec<'_>, origin_binding_id: &str) -> FileCapturePlan {
+    FileCapturePlan {
+        namespace_id: id("namespace-1"),
+        origin_binding_id: id(origin_binding_id),
+        source_id: id(spec.source_id),
+        lineage_id: id(spec.lineage_id),
+        version: Version::new(spec.version).expect("version must be positive"),
+        supersedes_source_ids: spec.supersedes,
+        fragment_id: id(spec.fragment_id),
+        observed_at: timestamp(spec.captured_at),
+        captured_at: timestamp(spec.captured_at),
+        governance: governance(),
+        source_producer: producer(ProducerType::Parser, "file-entry-parser"),
+        segmenter: producer(ProducerType::Rule, "whole-file-segmenter"),
+    }
+}
+
+fn capture_selected_file(
+    database: &mut SqliteDatabase,
+    request: &FileReadRequest,
+    spec: CaptureSpec<'_>,
+    origin_binding_id: &str,
+) -> Result<FileCaptureReceipt, FileEntryError> {
+    let snapshot = read_file_snapshot(request)?;
+    let capture = build_source_capture(snapshot, capture_plan(spec, origin_binding_id))
+        .expect("validated snapshot and synthetic plan must build a canonical capture");
+    let result = database
+        .capture_source(&capture)
+        .expect("canonical capture must commit before a receipt is returned");
+    FileCaptureReceipt::from_capture_result(&result)
 }
 
 fn seed_two_version_file_lineage(
@@ -342,6 +359,78 @@ fn table_count(connection: &Connection, table: &str) -> i64 {
             row.get(0)
         })
         .expect("synthetic table count must be queryable")
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct SourceEntryCounts {
+    sources: i64,
+    bodies: i64,
+    fragments: i64,
+    tips: i64,
+    bindings: i64,
+    audits: i64,
+    full_text_rows: i64,
+}
+
+fn source_entry_counts(database_path: &Path) -> SourceEntryCounts {
+    let connection = Connection::open(database_path).expect("database must open for inspection");
+    SourceEntryCounts {
+        sources: table_count(&connection, "radishmemory_source_artifacts"),
+        bodies: table_count(&connection, "radishmemory_source_bodies"),
+        fragments: table_count(&connection, "radishmemory_source_fragments"),
+        tips: table_count(&connection, "radishmemory_source_lineage_tips"),
+        bindings: table_count(&connection, "radishmemory_source_origin_bindings"),
+        audits: table_count(&connection, "radishmemory_source_capture_audit"),
+        full_text_rows: table_count(&connection, "radishmemory_recall_fts"),
+    }
+}
+
+fn seed_rejection_baseline(
+    database: &mut SqliteDatabase,
+    directory: &SyntheticDirectory,
+) -> FileCaptureReceipt {
+    let file = directory.file();
+    fs::write(&file, b"Stable rejection baseline marker.\n")
+        .expect("baseline source must be written");
+    let request = FileReadRequest::new(&file, vec![directory.path().to_path_buf()])
+        .expect("baseline request must be valid");
+    capture_selected_file(
+        database,
+        &request,
+        CaptureSpec {
+            source_id: "source-rejection-baseline",
+            lineage_id: "lineage-rejection-baseline",
+            fragment_id: "fragment-rejection-baseline",
+            version: 1,
+            supersedes: vec![],
+            captured_at: "2026-08-29T08:00:00Z",
+        },
+        "origin-binding-rejection-baseline",
+    )
+    .expect("baseline capture must return a receipt")
+}
+
+fn rejected_capture(
+    database: &mut SqliteDatabase,
+    request: &FileReadRequest,
+    expected_reason: FileEntryErrorReason,
+) -> FileEntryError {
+    let error = capture_selected_file(
+        database,
+        request,
+        CaptureSpec {
+            source_id: "source-must-not-exist",
+            lineage_id: "lineage-must-not-exist",
+            fragment_id: "fragment-must-not-exist",
+            version: 1,
+            supersedes: vec![],
+            captured_at: "2026-08-29T09:00:00Z",
+        },
+        "origin-binding-must-not-exist",
+    )
+    .expect_err("rejected file must not return a capture receipt");
+    assert_eq!(error.reason(), expected_reason);
+    error
 }
 
 #[test]
@@ -1281,6 +1370,226 @@ fn p1_f09_and_f10_lineage_purge_closes_all_versions_and_never_touches_user_files
             .load_deletion_evidence(&id("namespace-1"), &id("deletion-evidence-lineage-1"))
             .expect("lineage evidence lookup must succeed"),
         Some(evidence)
+    );
+}
+
+#[test]
+fn p1_f11_rejected_paths_and_non_files_leave_store_and_receipt_unchanged() {
+    let allowed = SyntheticDirectory::new("reject-path-allowed");
+    let outside = SyntheticDirectory::new("reject-path-outside");
+    let synthetic = SyntheticDatabase::new("reject-path");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+    let baseline_receipt = seed_rejection_baseline(&mut database, &allowed);
+    let before = source_entry_counts(synthetic.path());
+
+    let outside_file = outside.child("outside.txt");
+    fs::write(&outside_file, b"Outside root marker.\n").expect("outside file must be written");
+    let outside_request = FileReadRequest::new(&outside_file, vec![allowed.path().to_path_buf()])
+        .expect("outside request shape must be valid");
+    rejected_capture(
+        &mut database,
+        &outside_request,
+        FileEntryErrorReason::PathNotAllowed,
+    );
+    assert_eq!(source_entry_counts(synthetic.path()), before);
+
+    let outside_name = outside
+        .path()
+        .file_name()
+        .expect("outside test directory must have a name");
+    let escaped_file = allowed
+        .path()
+        .join("..")
+        .join(outside_name)
+        .join("outside.txt");
+    let escaped_request = FileReadRequest::new(&escaped_file, vec![allowed.path().to_path_buf()])
+        .expect("escape request shape must be valid");
+    rejected_capture(
+        &mut database,
+        &escaped_request,
+        FileEntryErrorReason::PathNotAllowed,
+    );
+    assert_eq!(source_entry_counts(synthetic.path()), before);
+
+    let directory_named_file = allowed.child("directory.txt");
+    fs::create_dir(&directory_named_file).expect("directory-shaped input must be created");
+    let directory_request =
+        FileReadRequest::new(&directory_named_file, vec![allowed.path().to_path_buf()])
+            .expect("directory request shape must be valid");
+    rejected_capture(
+        &mut database,
+        &directory_request,
+        FileEntryErrorReason::NotRegularFile,
+    );
+    assert_eq!(source_entry_counts(synthetic.path()), before);
+
+    assert_eq!(
+        baseline_receipt.source_id(),
+        &id("source-rejection-baseline")
+    );
+    assert_eq!(search(&database, "rejection baseline").len(), 1);
+    assert!(
+        database
+            .load_source_artifact(&id("namespace-1"), &id("source-must-not-exist"))
+            .expect("rejected source lookup must succeed")
+            .is_none()
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn p1_f12_symlink_parent_and_leaf_are_rejected_without_store_changes() {
+    use std::os::unix::fs::symlink;
+
+    let allowed = SyntheticDirectory::new("reject-symlink-allowed");
+    let outside = SyntheticDirectory::new("reject-symlink-outside");
+    let synthetic = SyntheticDatabase::new("reject-symlink");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+    seed_rejection_baseline(&mut database, &allowed);
+    let before = source_entry_counts(synthetic.path());
+
+    let outside_file = outside.child("target.txt");
+    fs::write(&outside_file, b"Symlink target marker.\n")
+        .expect("outside symlink target must be written");
+    let linked_parent = allowed.child("linked-parent");
+    symlink(outside.path(), &linked_parent).expect("directory symlink must be created");
+    let parent_request = FileReadRequest::new(
+        linked_parent.join("target.txt"),
+        vec![allowed.path().to_path_buf()],
+    )
+    .expect("symlink parent request shape must be valid");
+    let parent_error = rejected_capture(
+        &mut database,
+        &parent_request,
+        FileEntryErrorReason::SymlinkNotAllowed,
+    );
+    assert_eq!(source_entry_counts(synthetic.path()), before);
+
+    let linked_leaf = allowed.child("linked-leaf.txt");
+    symlink(&outside_file, &linked_leaf).expect("file symlink must be created");
+    let leaf_request = FileReadRequest::new(&linked_leaf, vec![allowed.path().to_path_buf()])
+        .expect("symlink leaf request shape must be valid");
+    let leaf_error = rejected_capture(
+        &mut database,
+        &leaf_request,
+        FileEntryErrorReason::SymlinkNotAllowed,
+    );
+    assert_eq!(source_entry_counts(synthetic.path()), before);
+
+    for rendered in [
+        parent_error.to_string(),
+        format!("{parent_error:?}"),
+        leaf_error.to_string(),
+        format!("{leaf_error:?}"),
+    ] {
+        assert!(!rendered.contains(outside.path().to_string_lossy().as_ref()));
+        assert!(!rendered.contains("target.txt"));
+    }
+    assert_eq!(search(&database, "rejection baseline").len(), 1);
+}
+
+#[test]
+fn p1_f13_type_and_content_rejections_leave_store_and_receipt_unchanged() {
+    let directory = SyntheticDirectory::new("reject-content");
+    let synthetic = SyntheticDatabase::new("reject-content");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+    seed_rejection_baseline(&mut database, &directory);
+    let before = source_entry_counts(synthetic.path());
+
+    let unsupported = directory.child("unsupported.markdown");
+    fs::write(&unsupported, b"Unsupported extension marker.\n")
+        .expect("unsupported file must be written");
+    let empty = directory.child("empty.txt");
+    fs::write(&empty, []).expect("empty file must be written");
+    let invalid_utf8 = directory.child("invalid-utf8.txt");
+    fs::write(&invalid_utf8, [0xff, 0xfe]).expect("invalid UTF-8 file must be written");
+    let nul = directory.child("nul.txt");
+    fs::write(&nul, b"before\0after").expect("NUL-containing file must be written");
+
+    for (path, reason) in [
+        (unsupported, FileEntryErrorReason::UnsupportedFileType),
+        (empty, FileEntryErrorReason::EmptyFile),
+        (invalid_utf8, FileEntryErrorReason::InvalidUtf8),
+        (nul, FileEntryErrorReason::NulByteNotAllowed),
+    ] {
+        let request = FileReadRequest::new(&path, vec![directory.path().to_path_buf()])
+            .expect("rejected content request shape must be valid");
+        rejected_capture(&mut database, &request, reason);
+        assert_eq!(source_entry_counts(synthetic.path()), before);
+    }
+
+    assert_eq!(search(&database, "rejection baseline").len(), 1);
+    assert!(
+        database
+            .load_source_artifact(&id("namespace-1"), &id("source-must-not-exist"))
+            .expect("rejected source lookup must succeed")
+            .is_none()
+    );
+}
+
+#[test]
+fn p1_f14_exact_size_commits_and_one_extra_byte_leaves_it_unchanged() {
+    let directory = SyntheticDirectory::new("size-capture");
+    let synthetic = SyntheticDatabase::new("size-capture");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+
+    let exact = directory.child("exact-boundary.txt");
+    fs::write(&exact, vec![b'x'; MAX_FILE_BYTES as usize])
+        .expect("exact-boundary file must be written");
+    let exact_request = FileReadRequest::new(&exact, vec![directory.path().to_path_buf()])
+        .expect("exact-boundary request must be valid");
+    let receipt = capture_selected_file(
+        &mut database,
+        &exact_request,
+        CaptureSpec {
+            source_id: "source-exact-boundary",
+            lineage_id: "lineage-exact-boundary",
+            fragment_id: "fragment-exact-boundary",
+            version: 1,
+            supersedes: vec![],
+            captured_at: "2026-08-29T08:00:00Z",
+        },
+        "origin-binding-exact-boundary",
+    )
+    .expect("exact-boundary file must commit and return a receipt");
+    assert_eq!(receipt.content_length(), MAX_FILE_BYTES);
+    assert_eq!(receipt.outcome(), SourceCaptureOutcome::Created);
+    let after_exact = source_entry_counts(synthetic.path());
+    assert_eq!(
+        after_exact,
+        SourceEntryCounts {
+            sources: 1,
+            bodies: 1,
+            fragments: 1,
+            tips: 1,
+            bindings: 1,
+            audits: 1,
+            full_text_rows: 1,
+        }
+    );
+
+    let oversized = directory.child("oversized.txt");
+    fs::write(&oversized, vec![b'y'; MAX_FILE_BYTES as usize + 1])
+        .expect("oversized file must be written");
+    let oversized_request = FileReadRequest::new(&oversized, vec![directory.path().to_path_buf()])
+        .expect("oversized request shape must be valid");
+    rejected_capture(
+        &mut database,
+        &oversized_request,
+        FileEntryErrorReason::FileTooLarge,
+    );
+    assert_eq!(source_entry_counts(synthetic.path()), after_exact);
+    assert!(
+        database
+            .load_source_artifact(&id("namespace-1"), &id("source-exact-boundary"))
+            .expect("exact-boundary source lookup must succeed")
+            .is_some()
+    );
+    assert!(
+        database
+            .load_source_artifact(&id("namespace-1"), &id("source-must-not-exist"))
+            .expect("oversized source lookup must succeed")
+            .is_none()
     );
 }
 
