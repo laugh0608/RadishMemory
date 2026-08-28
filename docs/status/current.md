@@ -1,14 +1,14 @@
 # RadishMemory 当前状态
 
-更新时间：2026-08-26
+更新时间：2026-08-28
 
 ## 当前阶段
 
-`M0 merged baseline; Phase 1 entry definition`
+`M0 merged baseline; Phase 1 file entry contract frozen`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留，下一目标是先冻结阶段 1 的首个真实文本 / Markdown 文件入口，不直接进入实现或扩大到 PDF、向量、模型、UI、网络与同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v5 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留；阶段 1 首个真实文本 / Markdown 文件入口的行为与 18 个合成场景已由 ADR 0006 冻结，下一目标是先建立临时文件 application-contract 测试和最小实现边界，不直接扩大到 PDF、向量、模型、UI、网络与同步。
 
-## 已冻结的首个切片
+## 已冻结的范围与基线
 
 `M0 Local Memory Loop` 已通过 [ADR 0002](../adr/0002-m0-local-memory-loop.md) 冻结为单用户、单设备、本地、合成文本 / Markdown、无模型和无网络的 M0 代码范围。它按固定场景验证来源、引用、proposal / decision、时间更正、失败关闭和单设备删除证据，不包含 PDF、向量、Provider、RadishMind 或同步实现。
 
@@ -21,6 +21,8 @@ M0 字段级 canonical schema 已在 [M0 Canonical Schema](../schema/m0-canonica
 RadishMind 首次运行接入已通过 [ADR 0004](../adr/0004-radishmind-optional-gateway-entry.md) 冻结在完整 MVP 阶段 3：只在 mock 或直接 adapter 基线成立后，以显式可关闭的 Model Gateway 接入。M0、阶段 1 单机资料库和阶段 2 记忆生命周期均不依赖它；首次不接 Workflow、Tooling、RAG 数据 owner、Session owner 或业务写回，也不复制兄弟项目业务 schema。
 
 M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体：`radishmemory-core`、`radishmemory-sqlite` 和 `radishmemory-m0` 三个 package，首个工具链固定为 Rust `1.96.0`，本地存储采用 bundled SQLite 与 FTS5。M0 不包含网络、异步运行时、ORM、模型 SDK 或静态加密，也不冻结未来 UI 和同步服务端语言。
+
+阶段 1 首个真实文件入口已通过 [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md) 冻结为用户显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它复用现有 SourceArtifact / SourceFragment、FTS5、citation 与删除语义，冻结路径、symlink / hardlink、来源 lineage / 幂等 / 版本、精确导出、受管副本所有权、删除 / rebuild 和 18 个合成场景；它不把 M0 fixture operation 变为 production API，也不代表 importer / exporter 已实现。
 
 `M0-I01` 已建立且仅建立上述三个可编译 package，提交初始第一方 lockfile，并把 fmt、Clippy 和 locked test 接入本地双平台入口与 PR 的 Linux / macOS / Windows matrix。
 
@@ -40,23 +42,32 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 ## 当前顺位
 
-1. 先为阶段 1 的首个文本 / Markdown 文件入口建立单一真相源；只定义用户显式选择的文件如何进入现有 Source Vault，不把 M0 fixture operation 直接升级为 production API。
-2. 在实现前冻结文件选择与目录 / symlink 边界、UTF-8 与大小限制、来源身份和版本、重复导入、原件所有权、导出 round-trip、派生重建、删除范围与失败证据。
-3. 用合成临时文件冻结 import → search / citation → export → delete / rebuild 验收后，再决定最小实现；PDF / 图片、向量索引、模型 adapter 和 UI 分别进入后续独立评审单元。
+1. 先把 ADR 0006 的 `P1-F01` 至 `P1-F18` 映射为合成临时文件 application-contract 测试，并冻结 capture receipt 最小字段与稳定错误；不修改 M0 fixture schema，也不使用真实个人资料。
+2. 根据测试需要评审最小 host / package、file importer / exporter、origin binding、lineage-tip projection 与应用级原子提交边界；只扩展真实需要的 core port，不让文件 adapter 直接写 SQLite 业务表。
+3. 实现 import → search / citation → export → delete / rebuild 的第一个纵向切片，运行 macOS / Linux / Windows locked 检查和敏感内容缺席验证后，再决定下一评审单元。
+4. PDF / 图片、加密内容寻址大对象存储、向量索引、模型 adapter 与 UI 分别进入后续独立评审单元，不并入首个文件入口实现。
 
-## 明日事项（2026-08-27）
+## 下一事项（2026-08-29）
 
-主任务只做阶段 1 首个真实文件入口的定义与评审，不立即扩大产品实现：
+主任务进入阶段 1 首个真实文件入口的 application-contract 与最小实现设计，不立即扩大产品范围：
 
-1. 开始产品改动前，先审阅并处理 2026-08-26 最后一笔文档提交的远程同步；若创建后续 PR，仍按独立授权、完整 CI、merge commit 与 `master -> dev` 回流闭环执行。
-2. 沿 [产品范围](../product-scope.md)、[系统架构](../architecture.md)、[隐私与威胁模型](../privacy-threat-model.md)和 [MVP 路线图](../mvp-roadmap.md)起草阶段 1 首个文本 / Markdown 文件入口契约；M0 schema 只复用已经稳定的来源、治理和删除语义，不为文件系统另造第二套对象。
-3. 契约必须明确：显式文件选择与允许根目录、symlink / hardlink 和路径规范化、UTF-8 / 换行 / 大小与扩展名、来源 identity / version、重复导入和变更检测、原外部文件与受管副本的所有权、导出 round-trip、删除 / 撤回 / 重建范围，以及错误如何失败关闭且不泄露正文或完整路径。
-4. 冻结合成验收：只使用临时 `.txt` / `.md`，覆盖首次导入、相同字节幂等、内容变化新增版本、全文召回与 citation、精确导出、删除后不召回、派生重建不复活、越界路径 / 非 UTF-8 / 不支持类型拒绝；评审通过前不写 production importer。
-5. PDF / 图片解析、向量索引、模型 adapter、UI 与真实个人资料试用分别需要可替换边界、依赖 / 许可证 / native build 审查、隐私失败关闭和独立质量指标，不合并进首个切片。
+1. 先复核 [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md) 与现有 SourceVault / LocalSearch / DeletionStore port 的差距，明确哪些原子性和 lineage-tip 需求不能由现有操作组合安全表达。
+2. 以合成 temp root 建立 `P1-F01` 至 `P1-F18` 的测试映射，先固定允许 / 拒绝、幂等 / 新版本、精确导出、删除 / rebuild 和日志脱敏观察值，再写 importer 实现。
+3. 冻结最小 capture receipt 与稳定错误的 Rust 类型；外部表示、CLI 和 UI 继续后置，不建立通用 Capture Gateway 协议或 workflow engine。
+4. 按测试需要选择最小 package / host 边界，复用现有 Rust workspace 和受审阅依赖；如需新增依赖或改变 lockfile，必须先独立审查并取得授权。
+5. 首个真实纵向实现通过本机完整仓库入口后，再以独立授权进入 PR、三平台 CI、merge commit 与 `master -> dev` 回流闭环。
 
-明日停止线：未经新真相源与验收冻结，不进入真实个人资料导入、PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
+下一事项停止线：在 `P1-F01` 至 `P1-F18` 真实运行通过前，不导入真实个人资料，不声明产品文件入口完成，不进入 PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
 
-## 本次完成（2026-08-26）
+## 本次完成（2026-08-28）
+
+1. [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md) 已把首个真实入口冻结为显式选择、非空允许根、root 以下 symlink 拒绝、hardlink provenance 独立、严格 UTF-8、8 MiB 上限和 `.txt` / `.md` 两种类型；目录、递归、URI、PDF、图片、网络和模型均不进入该切片。
+2. 文件路径、inode 和内容摘要均不充当 canonical identity；同 origin binding / 同字节导入幂等，内容变化建立不可变 SourceArtifact 新版本，普通召回只使用 active lineage tip，不为文件系统新增第二套对象。
+3. Source Vault 受管 exact bytes 在成功后承担原始真相；精确导出不覆盖目标，删除默认覆盖整个来源 lineage 的本地受管闭包，但不修改或声称删除外部原件、hardlink alias、用户导出、备份或其它设备。
+4. `P1-F01` 至 `P1-F18` 已冻结首次导入、字节保真、幂等、版本、hardlink、search / citation、export、rebuild、delete、路径 / symlink / 类型 / 大小拒绝、并发变化、故障原子性、无网络与诊断脱敏验收；这些仍是待实现运行契约，不是已通过产品能力。
+5. 产品入口、架构、隐私、路线图、文档索引、当前状态和仓库一致性检查已同步；未新增生产依赖、数据库 migration、产品代码、真实个人资料、网络能力或远程状态变更。
+
+## M0 基线完成（2026-08-26）
 
 `M0-I02` 三个评审单元、`M0-I03 SQLite entry / storage` 与 `M0-I04 fixture runner` 保持在职责对应 package、直接测试、依赖记录和必要检查器内：
 
@@ -112,6 +123,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 ## 当前门禁
 
 - 产品、架构、记忆或隐私语义变化必须同步更新对应真相源，不能只改入口摘要或检查器。
+- ADR 0006 只是阶段 1 文件入口的已冻结行为与验收真相源；在 `P1-F01` 至 `P1-F18` 由真实 importer / exporter 运行通过前，只能声明“入口契约已冻结”，不能声明文件导入、导出或删除产品能力已经实现。
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。

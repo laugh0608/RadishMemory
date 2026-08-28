@@ -58,6 +58,14 @@ Device B Local Store ◄── encrypted operation/object sync ──┘
 
 M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest、Provider trace 或模型用量，也不实现同步。核心验收期间任何网络请求都视为失败。这个边界不删除长期组件，只避免在来源、状态、权限和删除契约尚未成立时引入模型与分布式复杂度。完整决策见 [ADR 0002](adr/0002-m0-local-memory-loop.md)，字段与跨对象不变量见 [M0 Canonical Schema](schema/m0-canonical-schema.md)，可执行操作与指标 oracle 见 [M0 Fixture 与指标契约](evaluation/m0-fixture-contract.md)。
 
+## 阶段 1 文本 / Markdown 文件入口边界
+
+阶段 1 的首个真实入口已通过 [ADR 0006](adr/0006-phase1-text-markdown-file-entry.md) 冻结为用户显式选择的单个本地 `.txt` / `.md` 普通文件。入口在显式允许根内读取非空、最大 8 MiB 的 UTF-8 原始字节，拒绝 root 以下 symlink，不把 hardlink、路径、inode 或内容摘要当作 canonical identity；成功后由 Source Vault 受管 exact bytes 承担原始真相，外部原件不成为检索、citation、重建或导出的运行依赖。
+
+该入口继续使用现有 `SourceArtifact`、`SourceFragment`、FTS5、citation、DeleteRequest 与 DeletionEvidence，不增加文件专用 canonical object。相同 origin binding 与 exact bytes 的导入幂等，内容变化创建不可变新版本，普通召回只使用 active lineage tip；导出恢复受管副本的精确字节，删除只处理已枚举的本地受管闭包，不修改或声称删除外部原件、hardlink alias 或用户导出。
+
+ADR 0006 只冻结 application behavior 与合成验收；production API 表示、host / package、UI、平台 bookmark 和长期加密大对象存储仍由后续实现单元决定。真实验收通过前不能把该边界描述为已经可导入个人资料的产品能力。
+
 ## 核心组件
 
 ### 1. Capture Gateway

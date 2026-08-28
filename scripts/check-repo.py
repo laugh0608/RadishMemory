@@ -76,6 +76,7 @@ REQUIRED_FILES = (
     "docs/adr/0003-zero-knowledge-sync-first.md",
     "docs/adr/0004-radishmind-optional-gateway-entry.md",
     "docs/adr/0005-m0-implementation-stack.md",
+    "docs/adr/0006-phase1-text-markdown-file-entry.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -883,7 +884,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 merged baseline; Phase 1 entry definition",
+            "M0 merged baseline; Phase 1 file entry contract frozen",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -897,7 +898,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "M0 merged baseline; Phase 1 entry definition",
+            "M0 merged baseline; Phase 1 file entry contract frozen",
             "SQLite v5 connection / migration",
             "真实 M0 runner",
             "不是可导入真实个人资料的产品入口",
@@ -939,6 +940,61 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             if fragment not in text:
                 errors.append(
                     f"{name} is missing implementation stack contract fragment: {fragment}"
+                )
+
+
+def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0006-phase1-text-markdown-file-entry.md": (
+            "状态：Accepted",
+            "radishmemory.phase1-file-entry/1",
+            "用户显式选择的单个普通文件",
+            "8_388_608",
+            "symlink_not_allowed",
+            "source_changed_during_capture",
+            "普通 search、citation 与 ContextPack 只接受 active 的唯一 lineage tip",
+            "不操作外部原件或用户导出",
+            "`P1-F01`",
+            "`P1-F18`",
+            "不修改 M0 fixture schema",
+        ),
+        "README.md": (
+            "[ADR 0006]",
+            "Phase 1 file entry contract frozen",
+            "importer / exporter 尚未实现",
+        ),
+        "docs/README.md": (
+            "ADR 0006：阶段 1 文本 / Markdown 文件入口",
+        ),
+        "docs/status/current.md": (
+            "ADR 0006",
+            "`P1-F01` 至 `P1-F18`",
+            "不代表 importer / exporter 已实现",
+        ),
+        "docs/architecture.md": (
+            "阶段 1 文本 / Markdown 文件入口边界",
+            "不增加文件专用 canonical object",
+            "active lineage tip",
+        ),
+        "docs/privacy-threat-model.md": (
+            "阶段 1 文件入口信任边界",
+            "外部原件、hardlink alias、手工副本和用户导出",
+            "未实现静态加密",
+        ),
+        "docs/mvp-roadmap.md": (
+            "已通过 [ADR 0006]",
+            "18 个合成验收场景",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing Phase 1 file entry contract fragment: {fragment}"
                 )
 
 
@@ -1199,6 +1255,7 @@ def main() -> int:
     check_sync_trust_contract(REPO_ROOT, errors)
     check_radishmind_entry_contract(REPO_ROOT, errors)
     check_implementation_stack_contract(REPO_ROOT, errors)
+    check_phase1_file_entry_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)

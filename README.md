@@ -35,6 +35,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 - [记忆模型](docs/memory-model.md)
 - [M0 Canonical Schema](docs/schema/m0-canonical-schema.md)
 - [M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)
+- [阶段 1 文本 / Markdown 文件入口 ADR](docs/adr/0006-phase1-text-markdown-file-entry.md)
 - [隐私与威胁模型](docs/privacy-threat-model.md)
 - [与 RadishMind 的边界](docs/radishmind-boundary.md)
 - [MVP 路线图](docs/mvp-roadmap.md)
@@ -44,7 +45,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `M0 merged baseline; Phase 1 entry definition` 阶段：M0 本地记忆闭环已经实现、通过三平台 CI 并合入稳定主线，下一步先定义阶段 1 的真实文本 / Markdown 文件入口。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `M0 merged baseline; Phase 1 file entry contract frozen` 阶段：M0 本地记忆闭环已经实现、通过三平台 CI 并合入稳定主线；[ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md)已经冻结真实文本 / Markdown 文件入口的行为与合成验收，下一步用临时合成文件建立最小 application contract 和实现。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
 首个可执行切片 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md) 已使用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和单设备删除证据，不依赖模型、网络、RadishMind 或同步。
 
@@ -55,6 +56,8 @@ M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical
 RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional-gateway-entry.md) 后置到完整 MVP 阶段 3，并且只作为可选 Model Gateway；M0、单机资料库和记忆生命周期不依赖它，首次不接 Workflow、Tooling 或共享业务数据库。
 
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
+
+阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景，但 importer / exporter 尚未实现，不能据此导入真实个人资料或声明产品能力完成。
 
 当前已完成精确 Rust `1.96.0` 工具链、三个 package、canonical core、SQLite v5 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI。[M0 Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界。这仍只是合成、单设备、无网络的 M0 基线，不是可导入真实个人资料的产品入口。
 

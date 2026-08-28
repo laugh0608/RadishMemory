@@ -372,6 +372,21 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_phase1_file_entry_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0006-phase1-text-markdown-file-entry.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Phase 1 file entry\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0006-phase1-text-markdown-file-entry.md is missing Phase 1 file entry contract fragment: radishmemory.phase1-file-entry/1",
+                errors,
+            )
+
 
 if __name__ == "__main__":
     unittest.main()
