@@ -64,7 +64,11 @@ M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest
 
 该入口继续使用现有 `SourceArtifact`、`SourceFragment`、FTS5、citation、DeleteRequest 与 DeletionEvidence，不增加文件专用 canonical object。相同 origin binding 与 exact bytes 的导入幂等，内容变化创建不可变新版本，普通召回只使用 active lineage tip；导出恢复受管副本的精确字节，删除只处理已枚举的本地受管闭包，不修改或声称删除外部原件、hardlink alias 或用户导出。
 
-ADR 0006 只冻结 application behavior 与合成验收；production API 表示、host / package、UI、平台 bookmark 和长期加密大对象存储仍由后续实现单元决定。真实验收通过前不能把该边界描述为已经可导入个人资料的产品能力。
+ADR 0006 冻结 application behavior 与合成验收；当前 production host / UI、平台 bookmark 和长期加密大对象存储仍由后续实现单元决定。真实验收通过前不能把该边界描述为已经可导入个人资料的产品能力。
+
+`P1-I01` 使用独立第一方 `radishmemory-file-entry` package 隔离本地文件系统读取，并且只依赖 `radishmemory-core`。它返回 path-free validated snapshot；`P1-I02` 在 core 增加完整 `SourceCapture` / `SourceCaptureResult` 与最小 `SourceCaptureStore` port，由 file-entry 把快照映射为整文件单片段 capture candidate，由 SQLite v6 adapter 在一个 `IMMEDIATE` transaction 内提交 SourceArtifact body / metadata、完整 fragment、FTS、origin binding、lineage tip 与最小 audit。相同 binding / exact bytes 返回已存事实，内容变化严格推进一个版本并移除旧 tip 的普通召回，任一写入或派生校验失败均回滚到旧 tip。
+
+file-entry package 继续不知道 SQLite；SQLite adapter 也不读取外部路径。旧 `SourceVault` 两步写入口只保留 M0 synthetic source，显式用户输入必须走原子 capture port，不能通过顺序调用两个旧方法冒充完成。lineage tip 是可重建派生投影，origin binding 只保存 namespace、opaque binding ID 与 lineage，不保存路径、inode 或正文。
 
 ## 核心组件
 
@@ -229,7 +233,7 @@ M0 fixture 已冻结这些动作在评测中的输入与预期，但不把测试
 
 [ADR 0005](adr/0005-m0-implementation-stack.md) 已冻结 M0 为 Rust 2024 模块化单体：`radishmemory-core` 承载领域与应用边界，`radishmemory-sqlite` 实现本地持久化和 FTS5，`radishmemory-m0` 执行冻结 fixture。三个 package 在单进程内运行，不引入网络、异步运行时、Provider SDK 或服务拆分。
 
-M0 的 production adapter 入口 `SqliteDatabase::open(path)` 使用文件数据库：SourceArtifact 正文作为独立 BLOB 保存，source / fragment / proposal / decision / record / state event / delete request / deletion evidence 由结构化表承载；FTS5 与当前状态表是可重建派生数据，ContextPack / query cache 在 M0 不持久化。仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接；它仍执行同一 capability probe、v1 → v5 migration、连接策略、派生校验与真实 adapter 操作，但避免把文件系统逐事务同步成本混入 application-contract fixture。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。M0 不实现静态加密；文件入口不能被描述为加密存储或生产隐私能力，runner 的内存隔离也不能外推为产品存储方案。
+production adapter 入口 `SqliteDatabase::open(path)` 使用文件数据库：SourceArtifact 正文作为独立 BLOB 保存，source / fragment / proposal / decision / record / state event / delete request / deletion evidence 由结构化表承载；FTS5、当前状态与 source lineage tip 是可重建派生数据，origin binding 和 capture audit 是 path-free 本地入口状态，ContextPack / query cache 在当前阶段不持久化。仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接；它仍执行同一 capability probe、v1 → v6 migration、连接策略、派生校验与真实 adapter 操作，但避免把文件系统逐事务同步成本混入 application-contract fixture。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。当前不实现静态加密；文件入口不能被描述为加密存储或生产隐私能力，runner 的内存隔离也不能外推为产品存储方案。
 
 以下仍是后续阶段候选，不是 ADR 0005 的已接受决定：
 

@@ -50,6 +50,18 @@ struct ProjectionRow {
     last_state_event_id: String,
 }
 
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
+struct SourceLineageKey {
+    namespace_id: String,
+    lineage_id: String,
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct SourceTipRow {
+    source_id: String,
+    version: i64,
+}
+
 #[derive(Clone)]
 struct Candidate {
     hit: LocalSearchHit,
@@ -118,6 +130,7 @@ struct Catalog {
 
 impl Catalog {
     fn load(connection: &Connection) -> Result<Self, SqliteError> {
+        verify_source_tips(connection)?;
         let mut catalog = Self {
             recall_rows: BTreeMap::new(),
             projections: BTreeMap::new(),
@@ -134,6 +147,11 @@ impl Catalog {
                 "SELECT f.namespace_id, f.fragment_id
                  FROM radishmemory_source_fragments AS f
                  JOIN radishmemory_source_artifacts AS a ON a.source_id = f.source_id
+                 JOIN radishmemory_source_lineage_tips AS tip
+                   ON tip.namespace_id = a.namespace_id
+                  AND tip.lineage_id = a.lineage_id
+                  AND tip.source_id = a.source_id
+                  AND tip.version = a.version
                  WHERE f.deletion_state = 'active' AND a.deletion_state = 'active'
                  ORDER BY f.namespace_id, f.fragment_id",
             )
@@ -226,6 +244,20 @@ impl Catalog {
 }
 
 pub(crate) fn rebuild(connection: &Connection) -> Result<(), SqliteError> {
+    let source_tips = expected_source_tips(connection)?;
+    connection
+        .execute("DELETE FROM radishmemory_source_lineage_tips", [])
+        .map_err(SqliteError::storage)?;
+    for (key, row) in &source_tips {
+        connection
+            .execute(
+                "INSERT INTO radishmemory_source_lineage_tips (
+                     namespace_id, lineage_id, source_id, version
+                 ) VALUES (?1, ?2, ?3, ?4)",
+                params![key.namespace_id, key.lineage_id, row.source_id, row.version,],
+            )
+            .map_err(SqliteError::storage)?;
+    }
     let expected = Catalog::load(connection)?;
     connection
         .execute("DELETE FROM radishmemory_recall_fts", [])
@@ -257,6 +289,91 @@ pub(crate) fn rebuild(connection: &Connection) -> Result<(), SqliteError> {
 pub(crate) fn verify(connection: &Connection) -> Result<(), SqliteError> {
     let expected = Catalog::load(connection)?;
     verify_catalog(connection, &expected)
+}
+
+fn verify_source_tips(connection: &Connection) -> Result<(), SqliteError> {
+    if expected_source_tips(connection)? != actual_source_tips(connection)? {
+        return Err(derived_mismatch());
+    }
+    Ok(())
+}
+
+fn expected_source_tips(
+    connection: &Connection,
+) -> Result<BTreeMap<SourceLineageKey, SourceTipRow>, SqliteError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT source.namespace_id, source.lineage_id, source.source_id, source.version
+             FROM radishmemory_source_artifacts AS source
+             WHERE source.deletion_state = 'active'
+               AND NOT EXISTS (
+                   SELECT 1
+                   FROM radishmemory_source_artifacts AS newer
+                   WHERE newer.namespace_id = source.namespace_id
+                     AND newer.lineage_id = source.lineage_id
+                     AND newer.version > source.version
+               )
+             ORDER BY source.namespace_id, source.lineage_id",
+        )
+        .map_err(SqliteError::storage)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                SourceLineageKey {
+                    namespace_id: row.get(0)?,
+                    lineage_id: row.get(1)?,
+                },
+                SourceTipRow {
+                    source_id: row.get(2)?,
+                    version: row.get(3)?,
+                },
+            ))
+        })
+        .map_err(SqliteError::storage)?;
+    let tips = collect_unique(rows)?;
+    for (key, tip) in &tips {
+        if tip.version <= 0 {
+            return Err(derived_mismatch());
+        }
+        let namespace_id = identifier(key.namespace_id.clone())?;
+        let source_id = identifier(tip.source_id.clone())?;
+        let source =
+            crate::source_store::load_source_artifact(connection, &namespace_id, &source_id)?
+                .ok_or_else(derived_mismatch)?;
+        if source.params().lineage_id.as_str() != key.lineage_id
+            || i64::try_from(source.params().version.get()) != Ok(tip.version)
+        {
+            return Err(derived_mismatch());
+        }
+    }
+    Ok(tips)
+}
+
+fn actual_source_tips(
+    connection: &Connection,
+) -> Result<BTreeMap<SourceLineageKey, SourceTipRow>, SqliteError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT namespace_id, lineage_id, source_id, version
+             FROM radishmemory_source_lineage_tips
+             ORDER BY namespace_id, lineage_id",
+        )
+        .map_err(SqliteError::storage)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                SourceLineageKey {
+                    namespace_id: row.get(0)?,
+                    lineage_id: row.get(1)?,
+                },
+                SourceTipRow {
+                    source_id: row.get(2)?,
+                    version: row.get(3)?,
+                },
+            ))
+        })
+        .map_err(SqliteError::storage)?;
+    collect_unique(rows)
 }
 
 pub(crate) fn search(
@@ -356,6 +473,25 @@ pub(crate) fn insert_source_fragment(
     {
         return Ok(());
     }
+    let is_tip: bool = connection
+        .query_row(
+            "SELECT EXISTS (
+                 SELECT 1 FROM radishmemory_source_lineage_tips
+                 WHERE namespace_id = ?1 AND lineage_id = ?2
+                   AND source_id = ?3 AND version = ?4
+             )",
+            params![
+                source.params().namespace_id.as_str(),
+                source.params().lineage_id.as_str(),
+                source.params().source_id.as_str(),
+                i64::try_from(source.params().version.get()).map_err(|_| derived_mismatch())?,
+            ],
+            |row| row.get(0),
+        )
+        .map_err(SqliteError::storage)?;
+    if !is_tip {
+        return Ok(());
+    }
     let key = RecallKey::source(fragment);
     require_recall_row_absent(connection, &key)?;
     insert_recall_row(
@@ -367,6 +503,22 @@ pub(crate) fn insert_source_fragment(
             content: fragment.params().content.as_str().to_owned(),
         },
     )
+}
+
+pub(crate) fn remove_source_fragments(
+    connection: &Connection,
+    source_id: &Identifier,
+) -> Result<usize, SqliteError> {
+    connection
+        .execute(
+            "DELETE FROM radishmemory_recall_fts
+             WHERE object_kind = ?1
+               AND object_id IN (
+                   SELECT fragment_id FROM radishmemory_source_fragments WHERE source_id = ?2
+               )",
+            params![SOURCE_FRAGMENT_KIND, source_id.as_str()],
+        )
+        .map_err(SqliteError::storage)
 }
 
 pub(crate) fn insert_memory_record(

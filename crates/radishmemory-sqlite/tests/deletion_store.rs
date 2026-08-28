@@ -12,6 +12,7 @@ use radishmemory_core::{
     SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime, ValidTimeMode, Version,
     compute_digest, compute_exact_bytes_digest,
 };
+use radishmemory_file_entry as _;
 use radishmemory_sqlite::SqliteDatabase;
 use rusqlite::Connection;
 

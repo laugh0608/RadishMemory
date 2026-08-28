@@ -2,6 +2,7 @@
 members = [
   "apps/radishmemory-m0",
   "crates/radishmemory-core",
+  "crates/radishmemory-file-entry",
   "crates/radishmemory-sqlite",
 ]
 resolver = "3"
@@ -15,6 +16,7 @@ publish = false
 
 [workspace.dependencies]
 radishmemory-core = { path = "crates/radishmemory-core", version = "=0.1.0" }
+radishmemory-file-entry = { path = "crates/radishmemory-file-entry", version = "=0.1.0" }
 radishmemory-sqlite = { path = "crates/radishmemory-sqlite", version = "=0.1.0" }
 rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["arbitrary_precision", "std"] }

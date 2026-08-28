@@ -56,18 +56,27 @@ REQUIRED_FILES = (
     "crates/radishmemory-core/tests/m0_canonical_objects.rs",
     "crates/radishmemory-core/tests/m0_invariants.rs",
     "crates/radishmemory-core/tests/m0_primitives.rs",
+    "crates/radishmemory-file-entry/Cargo.toml",
+    "crates/radishmemory-file-entry/src/error.rs",
+    "crates/radishmemory-file-entry/src/lib.rs",
+    "crates/radishmemory-file-entry/tests/file_snapshot.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
     "crates/radishmemory-sqlite/migrations/0001_sqlite_entry.sql",
     "crates/radishmemory-sqlite/migrations/0002_source_storage.sql",
     "crates/radishmemory-sqlite/migrations/0003_memory_storage.sql",
+    "crates/radishmemory-sqlite/migrations/0004_local_recall.sql",
+    "crates/radishmemory-sqlite/migrations/0005_local_deletion.sql",
+    "crates/radishmemory-sqlite/migrations/0006_source_capture.sql",
     "crates/radishmemory-sqlite/src/capability.rs",
     "crates/radishmemory-sqlite/src/error.rs",
     "crates/radishmemory-sqlite/src/lib.rs",
     "crates/radishmemory-sqlite/src/migration.rs",
     "crates/radishmemory-sqlite/src/memory_store.rs",
     "crates/radishmemory-sqlite/src/source_store.rs",
+    "crates/radishmemory-sqlite/src/source_capture.rs",
     "crates/radishmemory-sqlite/tests/memory_store.rs",
     "crates/radishmemory-sqlite/tests/source_vault.rs",
+    "crates/radishmemory-sqlite/tests/source_capture.rs",
     "crates/radishmemory-sqlite/tests/sqlite_entry.rs",
     "crates/radishmemory-sqlite/tests/support/mod.rs",
     "docs/README.md",
@@ -157,6 +166,7 @@ EXPECTED_CARGO_MANIFESTS = {
 members = [
   \"apps/radishmemory-m0\",
   \"crates/radishmemory-core\",
+  \"crates/radishmemory-file-entry\",
   \"crates/radishmemory-sqlite\",
 ]
 resolver = \"3\"
@@ -170,6 +180,7 @@ publish = false
 
 [workspace.dependencies]
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
+radishmemory-file-entry = { path = \"crates/radishmemory-file-entry\", version = \"=0.1.0\" }
 radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
 rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
 serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
@@ -214,6 +225,20 @@ sha2.workspace = true
 time.workspace = true
 unicode-normalization.workspace = true
 """,
+    "crates/radishmemory-file-entry/Cargo.toml": """[package]
+name = \"radishmemory-file-entry\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+radishmemory-core.workspace = true
+""",
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
 name = \"radishmemory-sqlite\"
 version.workspace = true
@@ -231,6 +256,9 @@ fixture-runner = []
 [dependencies]
 radishmemory-core.workspace = true
 rusqlite.workspace = true
+
+[dev-dependencies]
+radishmemory-file-entry.workspace = true
 """,
 }
 
@@ -240,7 +268,7 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_M0_I03_LOCK_PACKAGES = (
+EXPECTED_REVIEWED_LOCK_PACKAGES = (
     ("bitflags", "2.13.1"),
     ("block-buffer", "0.12.1"),
     ("cc", "1.4.4"),
@@ -263,6 +291,7 @@ EXPECTED_M0_I03_LOCK_PACKAGES = (
     ("proc-macro2", "1.0.107"),
     ("quote", "1.0.47"),
     ("radishmemory-core", "0.1.0"),
+    ("radishmemory-file-entry", "0.1.0"),
     ("radishmemory-m0", "0.1.0"),
     ("radishmemory-sqlite", "0.1.0"),
     ("rusqlite", "0.40.2"),
@@ -287,6 +316,7 @@ EXPECTED_M0_I03_LOCK_PACKAGES = (
 )
 FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-core",
+    "radishmemory-file-entry",
     "radishmemory-m0",
     "radishmemory-sqlite",
 }
@@ -407,14 +437,16 @@ def check_rust_workspace_contract(
     expected_manifests = sorted(EXPECTED_CARGO_MANIFESTS)
     if manifests != expected_manifests:
         errors.append(
-            "Rust workspace must contain only the root manifest and the three M0 package manifests: "
+            "Rust workspace must contain only the root manifest, three M0 package manifests, and the reviewed Phase 1 file-entry manifest: "
             f"found {manifests}"
         )
 
     for name, expected in EXPECTED_CARGO_MANIFESTS.items():
         path = repo_root / name
         if path.is_file() and path.read_text(encoding="utf-8") != expected:
-            errors.append(f"Rust workspace manifest differs from the M0 implementation contract: {name}")
+            errors.append(
+                f"Rust workspace manifest differs from the reviewed implementation contract: {name}"
+            )
 
     toolchain = repo_root / "rust-toolchain.toml"
     if toolchain.is_file() and toolchain.read_text(encoding="utf-8") != EXPECTED_RUST_TOOLCHAIN:
@@ -450,8 +482,8 @@ def check_rust_workspace_contract(
         elif checksum_match is None:
             errors.append(f"third-party lock package is missing a checksum: {name}")
 
-    if tuple(sorted(resolved_packages)) != EXPECTED_M0_I03_LOCK_PACKAGES:
-        errors.append("Cargo.lock differs from the reviewed M0-I03 dependency set")
+    if tuple(sorted(resolved_packages)) != EXPECTED_REVIEWED_LOCK_PACKAGES:
+        errors.append("Cargo.lock differs from the reviewed dependency set")
 
     entrypoint_fragments = (
         "fmt --all --check",
@@ -884,7 +916,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 merged baseline; Phase 1 file entry contract frozen",
+            "M0 merged baseline; Phase 1 atomic file capture implemented locally",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -898,8 +930,8 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "M0 merged baseline; Phase 1 file entry contract frozen",
-            "SQLite v5 connection / migration",
+            "M0 merged baseline; Phase 1 atomic file capture implemented locally",
+            "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不是可导入真实个人资料的产品入口",
         ),
@@ -948,6 +980,9 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         "docs/adr/0006-phase1-text-markdown-file-entry.md": (
             "状态：Accepted",
             "radishmemory.phase1-file-entry/1",
+            "P1-I01 file snapshot contract",
+            "P1-I02 atomic source capture",
+            "crates/radishmemory-file-entry/",
             "用户显式选择的单个普通文件",
             "8_388_608",
             "symlink_not_allowed",
@@ -960,21 +995,34 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0006]",
-            "Phase 1 file entry contract frozen",
-            "importer / exporter 尚未实现",
+            "Phase 1 atomic file capture implemented locally",
+            "完整 importer / exporter 尚未实现",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
         ),
         "docs/status/current.md": (
             "ADR 0006",
+            "P1-I01 file snapshot contract",
+            "P1-I02 atomic source capture",
+            "radishmemory-file-entry",
+            "SourceCaptureStore",
             "`P1-F01` 至 `P1-F18`",
-            "不代表 importer / exporter 已实现",
+            "不代表完整 importer / exporter 已实现",
         ),
         "docs/architecture.md": (
             "阶段 1 文本 / Markdown 文件入口边界",
+            "radishmemory-file-entry",
             "不增加文件专用 canonical object",
             "active lineage tip",
+            "SQLite v6 adapter",
+        ),
+        "docs/implementation/m0-rust-dependency-baseline.md": (
+            "四个第一方 workspace package",
+            "radishmemory-file-entry 0.1.0",
+            "40 个第三方 package",
+            "没有新增 crates.io package",
+            "P1-I02 atomic source capture",
         ),
         "docs/privacy-threat-model.md": (
             "阶段 1 文件入口信任边界",

@@ -69,6 +69,9 @@ pub enum SqliteStorageReason {
     MissingDeleteRequest,
     DeletionExecution,
     EvidenceChain,
+    OriginBindingMismatch,
+    LineageTipMismatch,
+    CaptureStateMismatch,
 }
 
 /// SQLite adapter failure that does not display database paths or SQL text.

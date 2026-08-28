@@ -170,6 +170,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "radishmemory-file-entry"
+version = "0.1.0"
+dependencies = [
+ "radishmemory-core",
+]
+
+[[package]]
 name = "radishmemory-m0"
 version = "0.1.0"
 dependencies = [
@@ -183,6 +190,7 @@ name = "radishmemory-sqlite"
 version = "0.1.0"
 dependencies = [
  "radishmemory-core",
+ "radishmemory-file-entry",
  "rusqlite",
 ]
 

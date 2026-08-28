@@ -65,6 +65,33 @@ pub fn validate_source_fragment_resolution(
     Ok(())
 }
 
+/// Validates that one ordered fragment set covers the complete source body exactly once.
+pub fn validate_complete_source_fragment_set(
+    source: &SourceArtifact,
+    fragments: &[SourceFragment],
+) -> Result<(), CoreError> {
+    if fragments.is_empty() {
+        return invariant(CrossObjectInvariantReason::FragmentSetMismatch);
+    }
+    let mut fragment_ids = BTreeSet::new();
+    let mut next_byte = 0_u64;
+    for (expected_ordinal, fragment) in fragments.iter().enumerate() {
+        validate_source_fragment_resolution(fragment, source)?;
+        if fragment.governance() != source.governance()
+            || !fragment_ids.insert(&fragment.params().fragment_id)
+            || fragment.params().ordinal != expected_ordinal as u64
+            || fragment.params().byte_start != next_byte
+        {
+            return invariant(CrossObjectInvariantReason::FragmentSetMismatch);
+        }
+        next_byte = fragment.params().byte_end;
+    }
+    if next_byte != source.params().content_length {
+        return invariant(CrossObjectInvariantReason::FragmentSetMismatch);
+    }
+    Ok(())
+}
+
 /// Validates a proposal against the exact fragment/source closure used to create it.
 pub fn validate_memory_proposal_sources(
     proposal: &MemoryProposal,

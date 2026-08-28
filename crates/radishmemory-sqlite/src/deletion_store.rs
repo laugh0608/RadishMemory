@@ -614,6 +614,15 @@ fn close_targets_to_recall(
                 SqliteStorageReason::MissingDeleteTarget,
             ));
         }
+        if target.object_type() == CanonicalObjectType::SourceArtifact {
+            transaction
+                .execute(
+                    "DELETE FROM radishmemory_source_lineage_tips
+                     WHERE namespace_id = ?1 AND source_id = ?2",
+                    params![namespace, target.object_id().as_str()],
+                )
+                .map_err(SqliteError::storage)?;
+        }
     }
 
     for target in closure_refs(

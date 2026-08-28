@@ -36,6 +36,8 @@ pub enum CrossObjectInvariantReason {
     DeletionPlanMismatch,
     DeletionStateMismatch,
     TimeAlignmentMismatch,
+    OriginBindingMismatch,
+    FragmentSetMismatch,
 }
 
 /// Stable detail for rejected M0 canonical values and objects.

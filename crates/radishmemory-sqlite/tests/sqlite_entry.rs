@@ -1,4 +1,5 @@
 use radishmemory_core as _;
+use radishmemory_file_entry as _;
 use radishmemory_sqlite::{
     REVIEWED_BUNDLED_SQLITE_VERSION, SQLITE_SCHEMA_VERSION, SqliteDatabase, SqliteErrorCode,
 };

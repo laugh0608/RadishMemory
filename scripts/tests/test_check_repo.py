@@ -161,7 +161,7 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn("missing required file: SECURITY.md", errors)
 
-    def test_rust_workspace_contract_rejects_a_fourth_package(self) -> None:
+    def test_rust_workspace_contract_rejects_a_fifth_package(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             target = root / "crates/extra/Cargo.toml"
@@ -177,7 +177,7 @@ class GovernanceContractChecks(unittest.TestCase):
             self.assertTrue(
                 any(
                     error.startswith(
-                        "Rust workspace must contain only the root manifest and the three M0 package manifests"
+                        "Rust workspace must contain only the root manifest, three M0 package manifests, and the reviewed Phase 1 file-entry manifest"
                     )
                     for error in errors
                 )
@@ -222,7 +222,7 @@ class GovernanceContractChecks(unittest.TestCase):
             CHECK_REPO.check_rust_workspace_contract(root, errors)
 
             self.assertIn(
-                "Cargo.lock differs from the reviewed M0-I03 dependency set",
+                "Cargo.lock differs from the reviewed dependency set",
                 errors,
             )
 
