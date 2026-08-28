@@ -187,7 +187,7 @@ impl fmt::Debug for FileCapturePlan {
     }
 }
 
-/// Minimal path-free application receipt frozen before persistence is added.
+/// Minimal path-free application receipt mapped from a successful atomic capture result.
 pub struct FileCaptureReceipt {
     namespace_id: Identifier,
     source_id: Identifier,

@@ -916,7 +916,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 merged baseline; Phase 1 lineage deletion implemented locally",
+            "M0 merged baseline; Phase 1 P1-F01 through P1-F14 verified locally",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -930,7 +930,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "M0 merged baseline; Phase 1 lineage deletion implemented locally",
+            "M0 merged baseline; Phase 1 P1-F01 through P1-F14 verified locally",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不是可导入真实个人资料的产品入口",
@@ -997,9 +997,9 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0006]",
-            "Phase 1 lineage deletion implemented locally",
-            "`P1-F01` 至 `P1-F10`",
-            "剩余八个失败与安全场景和三平台 Phase 1 CI 尚未完成",
+            "Phase 1 P1-F01 through P1-F14 verified locally",
+            "`P1-F01` 至 `P1-F14`",
+            "剩余四个并发、故障与无副作用场景和三平台 Phase 1 CI 尚未完成",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1012,7 +1012,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "P1-I04 lineage deletion",
             "radishmemory-file-entry",
             "SourceCaptureStore",
-            "`P1-F01` 至 `P1-F10`",
+            "`P1-F01` 至 `P1-F14`",
             "`P1-F01` 至 `P1-F18`",
             "不代表完整 importer / exporter 已实现",
         ),
@@ -1025,6 +1025,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "P1-I03 exact export",
             "P1-I04 lineage deletion",
             "`P1-F02` / `P1-F05`",
+            "`P1-F11` 至 `P1-F14`",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "四个第一方 workspace package",
@@ -1035,6 +1036,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "P1-I03",
             "P1-I04",
             "hardlink provenance 独立删除",
+            "路径 / symlink / 内容拒绝原子性与 8 MiB capture 边界",
         ),
         "docs/privacy-threat-model.md": (
             "阶段 1 文件入口信任边界",

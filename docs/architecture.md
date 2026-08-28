@@ -74,6 +74,8 @@ ADR 0006 冻结 application behavior 与合成验收；当前 production host / 
 
 `P1-F02` / `P1-F05` 的跨层验收继续走上述同一数据流：exact UTF-8 bytes 从 snapshot 进入 canonical source、SQLite BLOB 与 fragment 后，在 reopen / rebuild 中保持摘要、长度和 byte range；不同 opaque binding 即使来自同一 hardlink inode 且摘要相同，也建立独立 source lineage、tip、audit 与删除闭包，adapter 不按路径、inode 或 digest 合并 provenance。
 
+`P1-F11` 至 `P1-F14` 复用相同串行提交边界并证明失败发生在 canonical / SQLite 写入之前：路径、symlink、类型、内容和超限错误不会产生 receipt，也不改变 source、body、fragment、tip、binding、audit 或 FTS；恰为 8 MiB 的合法 UTF-8 文件则必须完成同一原子 capture。该证据不引入后台补偿或第二套 staging 状态。
+
 file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入外部路径。旧 `SourceVault` 两步写入口只保留 M0 synthetic source，显式用户输入必须走原子 capture port，不能通过顺序调用两个旧方法冒充完成。lineage tip 是可重建派生投影，origin binding 只保存 namespace、opaque binding ID 与 lineage，不保存路径、inode 或正文。
 
 ## 核心组件

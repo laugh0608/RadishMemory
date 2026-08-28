@@ -179,6 +179,8 @@ DeleteRequest 持久化时，整个 lineage 及其依赖至少进入 pending，�
 
 `P1-F02` / `P1-F05` acceptance closure 没有增加 production abstraction：跨 package 测试把含 BOM、CRLF、分解 / 组合 Unicode 与尾换行的 Markdown 从 file snapshot 贯穿到 capture candidate、SQLite exact body BLOB、whole-file fragment、关闭重开和 rebuild，逐字节复验长度、摘要与 byte range；另以两个显式选择的 hardlink alias 和两个 opaque binding 建立内容摘要相同但 source / lineage / tip / audit 均独立的来源，只删除其中一条 lineage 后，另一条仍可读取、召回、重建，两个外部 hardlink 均保持原字节。
 
+`P1-F11` 至 `P1-F14` acceptance closure 同样没有增加 production abstraction。测试专用流水线只有在 `read_file_snapshot`、canonical capture 构建和 SQLite `SourceCaptureStore` 全部成功后才映射 receipt；允许根外、词法 `..` 逃逸、目录、root 以下 symlink、symlink leaf、不支持扩展名、空文件、非法 UTF-8、NUL 与 8 MiB + 1 byte 均在 receipt 前返回已冻结错误，已有 source / body / fragment / tip / binding / audit / FTS 计数保持不变。恰为 8 MiB 的 UTF-8 文本则真实提交完整 capture 与 FTS 后返回 receipt；当前 symlink 跨层证据来自本机 Unix 测试，不替代后续 Windows 平台能力验证。
+
 ## 合成验收
 
 验收只在任务专用临时目录创建合成 `.txt` / `.md`，正文、文件名与路径均不得来自真实个人资料。每个场景使用独立 namespace / store / allowed root，固定 contract 标识、时间与稳定测试 ID；失败输出必须通过敏感内容缺席检查。
@@ -232,12 +234,12 @@ fixture mapping 为确定性评测服务，不包含真实文件授权、TOCTOU�
 
 收益：真实文件入口不依赖外部路径长期存在；重复导入、版本、当前召回、精确导出和本地删除具有单一语义；文件系统攻击面、隐私日志和外部副本边界可用合成数据验证；现有 canonical truth 不被复制。
 
-代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；atomic capture、exact export 与 lineage deletion 目前只有本机证据，剩余跨层验收、三平台 Phase 1 CI 与平台 bookmark 仍需后续最小实现评审；本地明文仍依赖受信设备保护。
+代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；`P1-F01` 至 `P1-F14` 目前只有本机证据，`P1-F15` 至 `P1-F18`、三平台 Phase 1 CI 与平台 bookmark 仍需后续最小实现评审；本地明文仍依赖受信设备保护。
 
 ## 后续实施顺序与停止线
 
 1. `P1-I01` / `P1-I02` 已先固定文件快照、receipt、atomic capture、origin binding 与 lineage-tip 的最小 package / port 边界，不修改 M0 fixture schema。
-2. `P1-I03` 已实现精确 export 与不覆盖发布，`P1-I04` 已复用现有删除协议收口 lineage 删除闭包；`P1-F01` 至 `P1-F10` 已在本机跨层运行，下一单元只补齐 `P1-F11` 至 `P1-F18`，不预建通用 workflow、插件或后台队列。
+2. `P1-I03` 已实现精确 export 与不覆盖发布，`P1-I04` 已复用现有删除协议收口 lineage 删除闭包；`P1-F01` 至 `P1-F14` 已在本机跨层运行，下一单元只补齐 `P1-F15` 至 `P1-F18`，不预建通用 workflow、插件或后台队列。
 3. 继续复用现有 Source Vault、LocalSearch 和 DeletionStore；文件 adapter 不直接写 SQLite 业务表，export 不回读外部 origin file。
 4. 在 macOS、Linux 与 Windows 运行 locked 检查和合成验收；静态检查、单平台结果或内存 fixture 不能替代真实临时文件行为。
 5. 只有该入口通过后，才分别评审 PDF / 图片解析、加密内容寻址大对象存储、向量、模型 adapter 与 UI。
