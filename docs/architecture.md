@@ -70,6 +70,10 @@ ADR 0006 冻结 application behavior 与合成验收；当前 production host / 
 
 `P1-I03 exact export` 继续让 file-entry package 拥有目标允许根、symlink 拒绝、任务临时文件、字节复验与不覆盖发布；调用方必须先通过 namespace 和精确 `source_id` 从 `SourceVault` 取得 active 或历史可读的已验真 `SourceArtifact`。file-entry 复验 deletion state、长度、正文与 `exact-bytes-v1` 摘要后，在目标 parent 创建并同步任务临时文件，关闭后重新逐字节复验，以同目录 `hard_link` 原子建立不存在的目标目录项，再复验发布结果并只清理自身临时文件。目标存在、目标或 parent 为 symlink、临时写入或并发发布失败均不覆盖现有目标，也不修改 Source Vault。
 
+`P1-I04 lineage deletion` 不增加 schema 或平行删除协议，继续使用 canonical `DeleteRequest` / `DeletionEvidence` 和 SQLite `DeletionStore`。一个请求只要包含某个文件来源版本，就必须精确包含同 namespace、同 lineage 的全部 active SourceArtifact 版本及所有已展开 active memory 依赖；缺一版本或依赖时整笔拒绝。计划提交原子地把全部来源、fragment、proposal 与显式 memory 置为 pending，删除 FTS、当前投影和 lineage tip；执行阶段处理 body、fragment、metadata、origin binding 与 capture audit，并由既有最小 audit / evidence 保留真实结果。rebuild 在改写派生表前验证每个 active 文件来源的 body、完整 fragment 集、capture audit 与 binding，pending / failed / deleted lineage 不会被恢复为 active tip。
+
+`P1-F02` / `P1-F05` 的跨层验收继续走上述同一数据流：exact UTF-8 bytes 从 snapshot 进入 canonical source、SQLite BLOB 与 fragment 后，在 reopen / rebuild 中保持摘要、长度和 byte range；不同 opaque binding 即使来自同一 hardlink inode 且摘要相同，也建立独立 source lineage、tip、audit 与删除闭包，adapter 不按路径、inode 或 digest 合并 provenance。
+
 file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入外部路径。旧 `SourceVault` 两步写入口只保留 M0 synthetic source，显式用户输入必须走原子 capture port，不能通过顺序调用两个旧方法冒充完成。lineage tip 是可重建派生投影，origin binding 只保存 namespace、opaque binding ID 与 lineage，不保存路径、inode 或正文。
 
 ## 核心组件

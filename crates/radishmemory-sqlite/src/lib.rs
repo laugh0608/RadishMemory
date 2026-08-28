@@ -77,7 +77,9 @@ impl SqliteDatabase {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(SqliteError::storage)?;
+        source_capture::verify_origin_bindings(&transaction)?;
         derived_index::rebuild(&transaction)?;
+        source_capture::verify_origin_bindings(&transaction)?;
         transaction.commit().map_err(SqliteError::storage)
     }
 

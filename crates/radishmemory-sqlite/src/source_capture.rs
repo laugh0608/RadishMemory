@@ -8,7 +8,8 @@ use radishmemory_core::{
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 
 use crate::source_store::{
-    insert_source_artifact, insert_source_fragments, load_source_artifact, load_source_fragments,
+    identifier, insert_source_artifact, insert_source_fragments, load_source_artifact,
+    load_source_fragments,
 };
 use crate::{SqliteDatabase, SqliteError, SqliteStorageReason};
 
@@ -167,10 +168,80 @@ pub(crate) fn advance_lineage_tip(
 pub(crate) fn verify_origin_bindings(connection: &Connection) -> Result<(), SqliteError> {
     let expected = expected_origin_bindings(connection)?;
     let actual = actual_origin_bindings(connection)?;
-    if expected != actual {
+    if expected
+        .iter()
+        .any(|(key, lineage_id)| actual.get(key) != Some(lineage_id))
+    {
         return Err(SqliteError::invalid_stored(
             SqliteStorageReason::OriginBindingMismatch,
         ));
+    }
+    for ((namespace_id, binding_id), lineage_id) in &actual {
+        if expected.get(&(namespace_id.clone(), binding_id.clone())) == Some(lineage_id) {
+            continue;
+        }
+        let belongs_to_closed_plan: bool = connection
+            .query_row(
+                "SELECT EXISTS (
+                     SELECT 1 FROM radishmemory_source_artifacts
+                     WHERE namespace_id = ?1 AND lineage_id = ?2
+                       AND origin_kind = 'explicit_user_input'
+                       AND deletion_state IN ('pending', 'failed')
+                 )",
+                params![namespace_id, lineage_id],
+                |row| row.get(0),
+            )
+            .map_err(SqliteError::storage)?;
+        if !belongs_to_closed_plan {
+            return Err(SqliteError::invalid_stored(
+                SqliteStorageReason::OriginBindingMismatch,
+            ));
+        }
+    }
+    verify_active_file_captures(connection)
+}
+
+fn verify_active_file_captures(connection: &Connection) -> Result<(), SqliteError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT namespace_id, source_id, origin_ref
+             FROM radishmemory_source_artifacts
+             WHERE origin_kind = 'explicit_user_input' AND deletion_state = 'active'
+             ORDER BY namespace_id, source_id",
+        )
+        .map_err(SqliteError::storage)?;
+    let rows = statement
+        .query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, Option<String>>(2)?,
+            ))
+        })
+        .map_err(SqliteError::storage)?
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(SqliteError::storage)?;
+    drop(statement);
+
+    for (namespace_id, source_id, origin_binding_id) in rows {
+        let Some(origin_binding_id) = origin_binding_id else {
+            return Err(SqliteError::invalid_stored(
+                SqliteStorageReason::OriginBindingMismatch,
+            ));
+        };
+        if !source_origin_binding_id_is_valid(&origin_binding_id) {
+            return Err(SqliteError::invalid_stored(
+                SqliteStorageReason::OriginBindingMismatch,
+            ));
+        }
+        let namespace_id = identifier(namespace_id)?;
+        let source_id = identifier(source_id)?;
+        let origin_binding_id = identifier(origin_binding_id)?;
+        let source =
+            load_source_artifact(connection, &namespace_id, &source_id)?.ok_or_else(|| {
+                SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch)
+            })?;
+        validate_existing_capture(connection, &origin_binding_id, &source)?;
     }
     Ok(())
 }

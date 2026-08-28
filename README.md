@@ -45,7 +45,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `M0 merged baseline; Phase 1 exact file export implemented locally` 阶段：M0 本地记忆闭环已经实现、通过三平台 CI 并合入稳定主线；[ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md)已经冻结真实文本 / Markdown 文件入口的行为与合成验收，P1-I01 建立文件快照，P1-I02 已把快照、canonical source / fragment、FTS、origin binding、lineage tip 与最小 audit 收口为一个 SQLite 事务，P1-I03 已从精确 `source_id` 对应的已验真受管正文实现不覆盖导出。下一步扩展整个 lineage 的本地删除闭包。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `M0 merged baseline; Phase 1 lineage deletion implemented locally` 阶段：M0 本地记忆闭环已经实现、通过三平台 CI 并合入稳定主线；[ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md)已经冻结真实文本 / Markdown 文件入口的行为与合成验收，P1-I01 建立文件快照，P1-I02 实现 application-level atomic capture，P1-I03 实现精确不覆盖导出，P1-I04 已复用 canonical 删除语义收口整个来源 lineage、入口状态与受管派生闭包；`P1-F01` 至 `P1-F10` 已在本机跨 file-entry / SQLite 边界运行通过。下一步补齐 `P1-F11` 至 `P1-F18` 与三平台 Phase 1 CI。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
 首个可执行切片 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md) 已使用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和单设备删除证据，不依赖模型、网络、RadishMind 或同步。
 
@@ -57,9 +57,9 @@ RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional
 
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
 
-阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景；当前已在本机实现原子 capture 与当前 / 历史来源的精确不覆盖导出，lineage 删除、其余跨层验收和三平台 Phase 1 CI 尚未完成，不能据此导入真实个人资料或声明产品能力完成。
+阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景；当前已在本机实现原子 capture、当前 / 历史来源的精确不覆盖导出及整个来源 lineage 的本地删除闭包，并运行通过 `P1-F01` 至 `P1-F10`。剩余八个失败与安全场景和三平台 Phase 1 CI 尚未完成，不能据此导入真实个人资料或声明产品能力完成。
 
-当前已完成精确 Rust `1.96.0` 工具链、三个 M0 package、canonical core、SQLite v6 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI；Phase 1 另增加只依赖 core 的 `radishmemory-file-entry` package，由 core `SourceCaptureStore` 与 SQLite adapter 提供原子 capture，并由 file-entry 从已验真的 `SourceArtifact` 实现精确不覆盖导出。[Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界。该能力尚未完成 lineage 删除、其余跨层验收和三平台 Phase 1 CI，不是可导入真实个人资料的产品入口。
+当前已完成精确 Rust `1.96.0` 工具链、三个 M0 package、canonical core、SQLite v6 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI；Phase 1 另增加只依赖 core 的 `radishmemory-file-entry` package，由 core `SourceCaptureStore` 与 SQLite adapter 提供原子 capture，由 file-entry 从已验真的 `SourceArtifact` 实现精确不覆盖导出，并复用现有 `DeletionStore` 处理完整来源 lineage。[Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界。`P1-F01` 至 `P1-F10` 的本机通过不能替代剩余失败与安全验收及三平台 Phase 1 CI，也不是可导入真实个人资料的产品入口。
 
 当前不把以下内容声明为已实现：
 

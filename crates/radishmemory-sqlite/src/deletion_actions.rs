@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use radishmemory_core::{
     CanonicalObjectType, ComponentOutcome, ComponentResult, ComponentResultParams, ComponentStatus,
     DeleteRequest, DeletionTarget, Identifier, LocalDeletionExecution, ObjectRef,
@@ -416,9 +418,17 @@ fn retain_minimal_audit(
     attempt_ordinal: i64,
     has_failed: bool,
 ) -> Result<ActionResult, SqliteError> {
-    if targets.len() != 1
-        || targets[0].object_type() != CanonicalObjectType::DeleteRequest
-        || targets[0].object_id() != &request.params().delete_request_id
+    let request_targets = targets
+        .iter()
+        .filter(|target| target.object_type() == CanonicalObjectType::DeleteRequest)
+        .collect::<Vec<_>>();
+    let source_targets = targets
+        .iter()
+        .filter(|target| target.object_type() == CanonicalObjectType::SourceArtifact)
+        .collect::<Vec<_>>();
+    if request_targets.len() != 1
+        || request_targets[0].object_id() != &request.params().delete_request_id
+        || request_targets.len() + source_targets.len() != targets.len()
     {
         return Err(SqliteError::deletion_invariant(
             SqliteStorageReason::DeletionExecution,
@@ -437,6 +447,7 @@ fn retain_minimal_audit(
             SqliteStorageReason::DeletionExecution,
         ));
     }
+    purge_source_entry_state(transaction, request, &source_targets)?;
     let final_state = if has_failed { "failed" } else { "deleted" };
     finalize_governance_state(
         transaction,
@@ -466,6 +477,62 @@ fn retain_minimal_audit(
         outcome: ComponentOutcome::RetainedMinimal,
         verification_method: "sqlite-minimal-audit-chain-v1",
     })
+}
+
+fn purge_source_entry_state(
+    transaction: &Transaction<'_>,
+    request: &DeleteRequest,
+    source_targets: &[&ObjectRef],
+) -> Result<(), SqliteError> {
+    let namespace_id = request.params().namespace_id.as_str();
+    let mut lineages = BTreeSet::new();
+    for target in source_targets {
+        let lineage_id: String = transaction
+            .query_row(
+                "SELECT lineage_id FROM radishmemory_source_artifacts
+                 WHERE source_id = ?1 AND namespace_id = ?2",
+                params![target.object_id().as_str(), namespace_id],
+                |row| row.get(0),
+            )
+            .map_err(SqliteError::storage)?;
+        lineages.insert(lineage_id);
+    }
+
+    for lineage_id in lineages {
+        let tip_exists: bool = transaction
+            .query_row(
+                "SELECT EXISTS (
+                     SELECT 1 FROM radishmemory_source_lineage_tips
+                     WHERE namespace_id = ?1 AND lineage_id = ?2
+                 )",
+                params![namespace_id, lineage_id],
+                |row| row.get(0),
+            )
+            .map_err(SqliteError::storage)?;
+        if tip_exists {
+            return Err(SqliteError::deletion_invariant(
+                SqliteStorageReason::DeletionExecution,
+            ));
+        }
+        transaction
+            .execute(
+                "DELETE FROM radishmemory_source_capture_audit
+                 WHERE namespace_id = ?1 AND source_id IN (
+                     SELECT source_id FROM radishmemory_source_artifacts
+                     WHERE namespace_id = ?1 AND lineage_id = ?2
+                 )",
+                params![namespace_id, lineage_id],
+            )
+            .map_err(SqliteError::storage)?;
+        transaction
+            .execute(
+                "DELETE FROM radishmemory_source_origin_bindings
+                 WHERE namespace_id = ?1 AND lineage_id = ?2",
+                params![namespace_id, lineage_id],
+            )
+            .map_err(SqliteError::storage)?;
+    }
+    Ok(())
 }
 
 fn finalize_governance_state(

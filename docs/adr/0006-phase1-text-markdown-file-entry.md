@@ -175,6 +175,10 @@ DeleteRequest 持久化时，整个 lineage 及其依赖至少进入 pending，�
 
 `P1-I03 exact export` 在同一 file-entry package 增加 path-free `FileExportReceipt` 和目标文件系统边界，仍只依赖 core。调用方以 namespace 和精确 `source_id` 从 Source Vault 取得已验真 `SourceArtifact`；file-entry 拒绝非 active deletion state，复验 managed body 长度、原始字节和 `exact-bytes-v1` 摘要，在显式 allowed root 内的目标 parent 创建任务临时文件，flush / sync / close 后重新逐字节复验，再通过同目录 `hard_link` 以原子不覆盖语义发布并复验结果。目标已存在、目标或 parent 为 symlink、临时写入失败和并发发布失败均不覆盖目标、不修改 Source Vault，并清理身份仍匹配的任务临时文件。
 
+`P1-I04 lineage deletion` 复用 canonical `DeleteRequest` / `DeletionEvidence` 与现有十组件 `DeletionStore`，不增加 schema v7 或文件专用删除对象。请求显式冻结 SourceArtifact / MemoryRecord 引用；一旦包含文件来源版本，adapter 要求同 namespace、同 lineage 的全部 active 版本均在目标集合中，并继续要求所有引用这些版本的 active memory 依赖已经展开。计划提交把完整 lineage、fragments、proposals 与显式 memories 原子置为 pending，移除 FTS、当前投影和 lineage tip；pending / failed binding 只作为关闭计划的 adapter-private 状态存在。执行阶段删除受管 body / fragments、最小化 metadata / memory audit、清除 origin binding 与 capture audit，并用既有执行结果和 evidence 报告真实完成或失败。rebuild 在修改派生数据前复验每个 active 文件来源的 managed body、完整 fragment 集、capture audit 与 binding；缺失 canonical fragment 时失败关闭，deleted lineage 不复活，origin file 与用户导出始终不在执行闭包内。
+
+`P1-F02` / `P1-F05` acceptance closure 没有增加 production abstraction：跨 package 测试把含 BOM、CRLF、分解 / 组合 Unicode 与尾换行的 Markdown 从 file snapshot 贯穿到 capture candidate、SQLite exact body BLOB、whole-file fragment、关闭重开和 rebuild，逐字节复验长度、摘要与 byte range；另以两个显式选择的 hardlink alias 和两个 opaque binding 建立内容摘要相同但 source / lineage / tip / audit 均独立的来源，只删除其中一条 lineage 后，另一条仍可读取、召回、重建，两个外部 hardlink 均保持原字节。
+
 ## 合成验收
 
 验收只在任务专用临时目录创建合成 `.txt` / `.md`，正文、文件名与路径均不得来自真实个人资料。每个场景使用独立 namespace / store / allowed root，固定 contract 标识、时间与稳定测试 ID；失败输出必须通过敏感内容缺席检查。
@@ -228,12 +232,12 @@ fixture mapping 为确定性评测服务，不包含真实文件授权、TOCTOU�
 
 收益：真实文件入口不依赖外部路径长期存在；重复导入、版本、当前召回、精确导出和本地删除具有单一语义；文件系统攻击面、隐私日志和外部副本边界可用合成数据验证；现有 canonical truth 不被复制。
 
-代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；exact export 目前只有本机证据，lineage 删除、三平台 Phase 1 CI 与平台 bookmark 仍需后续最小实现评审；本地明文仍依赖受信设备保护。
+代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；atomic capture、exact export 与 lineage deletion 目前只有本机证据，剩余跨层验收、三平台 Phase 1 CI 与平台 bookmark 仍需后续最小实现评审；本地明文仍依赖受信设备保护。
 
 ## 后续实施顺序与停止线
 
 1. `P1-I01` / `P1-I02` 已先固定文件快照、receipt、atomic capture、origin binding 与 lineage-tip 的最小 package / port 边界，不修改 M0 fixture schema。
-2. `P1-I03` 已实现精确 export 与不覆盖发布；下一单元扩展 lineage 删除闭包，只增加 `P1-F08` 至 `P1-F10` 真实需要的职责，不预建通用 workflow、插件或后台队列。
+2. `P1-I03` 已实现精确 export 与不覆盖发布，`P1-I04` 已复用现有删除协议收口 lineage 删除闭包；`P1-F01` 至 `P1-F10` 已在本机跨层运行，下一单元只补齐 `P1-F11` 至 `P1-F18`，不预建通用 workflow、插件或后台队列。
 3. 继续复用现有 Source Vault、LocalSearch 和 DeletionStore；文件 adapter 不直接写 SQLite 业务表，export 不回读外部 origin file。
 4. 在 macOS、Linux 与 Windows 运行 locked 检查和合成验收；静态检查、单平台结果或内存 fixture 不能替代真实临时文件行为。
 5. 只有该入口通过后，才分别评审 PDF / 图片解析、加密内容寻址大对象存储、向量、模型 adapter 与 UI。

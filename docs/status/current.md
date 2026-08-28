@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`M0 merged baseline; Phase 1 exact file export implemented locally`
+`M0 merged baseline; Phase 1 lineage deletion implemented locally`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留；阶段 1 首个真实文本 / Markdown 文件入口的行为与 18 个合成场景已由 ADR 0006 冻结，P1-I01 已建立本地文件快照，P1-I02 已在本机实现 application-level atomic capture，P1-I03 已从精确 `source_id` 对应的已验真受管 body 实现 exact export 与原子不覆盖发布；下一目标是整个 lineage 的本地删除闭包，不直接扩大到 PDF、向量、模型、UI、网络与同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留；阶段 1 首个真实文本 / Markdown 文件入口的行为与 18 个合成场景已由 ADR 0006 冻结，P1-I01 已建立本地文件快照，P1-I02 已在本机实现 application-level atomic capture，P1-I03 已实现 exact export 与原子不覆盖发布，P1-I04 已复用 canonical 删除语义收口整个来源 lineage、入口状态与派生闭包，`P1-F01` 至 `P1-F10` 已在本机跨 file-entry / SQLite 边界运行通过；下一目标是补齐 `P1-F11` 至 `P1-F18` 和三平台 Phase 1 CI，不直接扩大到 PDF、向量、模型、UI、网络与同步。
 
 ## 已冻结的范围与基线
 
@@ -46,23 +46,26 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `P1-I03 exact export` 已在 file-entry 增加显式绝对目标与 export allowed roots、path-free receipt、目标 parent 的 symlink / root 复核、目标不存在检查、任务专用同目录临时文件和无覆盖发布。调用方先以 namespace 与精确 `source_id` 从 `SourceVault` 取得 active 或历史可读的已验真 `SourceArtifact`；file-entry 再复验 deletion state、正文长度、原始字节与 `exact-bytes-v1` 摘要，写入 flush / sync / close 后重新逐字节复验，以同目录 `hard_link` 原子建立目标目录项，复验发布结果后只清理自身临时文件。目标存在、目标 / parent symlink、临时写入或并发发布失败不会覆盖其它目标，也不会修改 Source Vault。
 
+`P1-I04 lineage deletion` 没有新增 schema v7、core object 或平行删除协议，而是继续使用 canonical `DeleteRequest` / `DeletionEvidence` 与 SQLite v6 `DeletionStore`。一个请求包含任一文件 SourceArtifact 时必须精确包含同 namespace、同 lineage 的全部 active 版本，并继续展开引用任一版本的 active memory 依赖；缺一版本或依赖整笔失败且不改变 store。计划提交原子地把全部来源、fragments、proposals 与显式 memories 置为 pending，移除 FTS、当前投影和 lineage tip；执行阶段处理 body、fragment、metadata、origin binding 与 capture audit，并由既有十组件结果和 evidence 报告真实完成 / 失败。rebuild 在修改派生表前复验每个 active 文件来源的 body、完整 fragment 集、capture audit 与 binding，缺失 canonical fragment 失败关闭；pending / failed / deleted lineage 不复活，origin file 与用户导出不进入闭包。
+
 ## 当前顺位
 
-1. 复用 DeletionStore 扩展整个 lineage、origin binding、tip、capture audit 与历史 fragments 的真实删除闭包，覆盖 `P1-F08` 至 `P1-F10`，不声称删除外部原件或用户导出。
-2. 补齐 `P1-F02`、`P1-F05`、`P1-F11` 至 `P1-F18` 的跨层合成验收与三平台 locked CI；每个单元保持任务临时文件、路径脱敏和无网络。
-3. PDF / 图片、加密内容寻址大对象存储、向量索引、模型 adapter 与 UI 分别进入后续独立评审单元，不并入首个文件入口实现。
+1. 补齐 `P1-F11` 至 `P1-F14` 的允许根、symlink、类型、内容与 8 MiB 拒绝跨层原子性，失败不得产生 Source Vault / FTS / receipt 变化。
+2. 补齐 `P1-F15` / `P1-F16` 的确定性 TOCTOU 与 capture 提交点故障注入，旧 tip / FTS / binding / audit 必须保持不变。
+3. 补齐 `P1-F17` / `P1-F18` 的不可信 Markdown 无副作用与诊断脱敏验收，不增加网络、模型、工具或记忆写入。
+4. 在完整 18 场景本机通过后运行 Linux / macOS / Windows locked CI；远程证据成立前不把 M0 三平台结果外推到 Phase 1。
+5. PDF / 图片、加密内容寻址大对象存储、向量索引、模型 adapter 与 UI 分别进入后续独立评审单元，不并入首个文件入口实现。
 
 ## 下一事项（2026-08-28）
 
-主任务下一单元进入阶段 1 首个真实文件入口的 lineage deletion application contract，不立即扩大产品范围：
+主任务下一单元进入阶段 1 首个真实文件入口的剩余跨层 acceptance closure，不立即扩大产品范围：
 
-1. 先沿用 canonical `DeleteRequest` / `DeletionEvidence` 与 SQLite `DeletionStore`，明确 lineage 作为产品语义目标时的冻结闭包，不新增平行删除协议。
-2. 先写 `P1-F08` 至 `P1-F10` 跨层测试：rebuild 保持当前 tip 与历史读取一致；删除计划立即停止整个 lineage 的读取、召回与导出；完整执行覆盖 body、metadata、历史 fragments、FTS、tip、origin binding 与 capture audit，并留下真实可复验证据。
-3. 删除闭包必须展开引用该 lineage 任一版本的 proposal / decision / memory / state event；存在未展开 active 依赖时失败关闭，不把部分执行写成 completed。
-4. 删除只处理 RadishMemory 当前设备控制的受管副本和派生数据，不读取、修改或声明删除 origin file、hardlink alias、用户导出、备份或其它设备副本。
-5. 完成本机 locked 检查后，再以独立授权进入 PR、三平台 CI、merge commit 与 `master -> dev` 回流闭环。
+1. 依次补齐 `P1-F11` 至 `P1-F14` 的允许根、symlink、类型、内容与 8 MiB 边界在失败时不产生 Source Vault / FTS / receipt 变化。
+2. 对 `P1-F15` / `P1-F16` 建立确定性并发变化和 capture 提交点故障测试，失败必须保留旧 tip / FTS / binding / audit，且只清理本任务临时状态。
+3. 对 `P1-F17` / `P1-F18` 证明不可信 Markdown 不触发网络、模型、工具或记忆写入，并集中检查正文、路径、allowed roots、目标和可逆摘要不进入错误 / Debug / evidence。
+4. 完成本机 18 场景 locked 检查后，再以独立授权进入 PR、三平台 CI、merge commit 与 `master -> dev` 回流闭环。
 
-下一事项停止线：在 `P1-F01` 至 `P1-F18` 真实运行通过前，不导入真实个人资料，不声明产品文件入口完成；lineage deletion 未形成完整冻结闭包、失败关闭与证据前不进入 PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
+下一事项停止线：在 `P1-F01` 至 `P1-F18` 全部真实运行通过前，不导入真实个人资料，不声明产品文件入口完成；剩余字节、provenance、拒绝、并发、故障、无网络与脱敏验收未收口前不进入 PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
 
 ## 本次完成（2026-08-28）
 
@@ -86,6 +89,18 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 18. `P1-F07` 跨 package 测试已从真实 SQLite Source Vault 分别读取当前 source 与历史 source，逐字节 round-trip BOM、CRLF、分解 / 组合 Unicode 和尾换行差异；目标已存在与 symlink 目标保持原字节，Source Vault facts / body / audit 计数不变。
 19. file-entry 内部故障测试覆盖临时写入失败和解析后并发占用目标导致的发布失败；两者均返回真实错误、清理任务临时文件并不覆盖目标。P1-I03 没有新增 schema、第三方 package、feature、native build、网络能力或真实个人资料。
 20. P1-I03 完成后本机 `./scripts/check-repo.sh` 再次通过 107 个仓库文件检查、workspace format、Clippy `-D warnings` 与全部 locked test；这是 macOS 本地证据，尚未运行包含该单元的 Linux / macOS / Windows 远程 CI。
+21. P1-I03 已提交为 `c686aac`；提交前后工作树边界均只包含 exact export 的 9 个文件，未 push、未创建 PR 或改变其它远程状态。
+22. P1-I04 在现有删除 plan validation 中增加完整来源 lineage 门禁：请求包含任一 active 文件来源版本时，必须精确包含同 namespace / lineage 的全部 active SourceArtifact；已有 active memory 依赖展开门禁继续生效，部分版本计划在持久化前失败关闭。
+23. P1-I04 继续把 canonical SourceArtifact / MemoryRecord 作为 DeleteRequest 语义目标，把 origin binding 与 capture audit 作为 adapter-private execution closure；计划创建即让全部来源 / fragments / proposals / memories 进入 pending 并移除 FTS / projection / tip，执行的 minimal-audit 阶段清除 binding / capture audit 并保留既有删除请求、结果与 evidence 真相。
+24. source capture 验证已扩展到每个 active explicit source 的受管 body、完整 fragment 集、binding 与 capture audit；rebuild 在改写 tip / FTS 前后调用同一验证，原始外部文件缺失不影响重建，但 canonical fragment 缺失会以 stored-integrity failure 拒绝，不能静默把缺失事实当作空集合。
+25. 新增 `P1-F08` 至 `P1-F10` 跨层测试：删除 origin file 后仍能从受管 facts 重建；单版本 deletion plan 不改变任何版本；完整两版本 lineage 在 plan、reopen、execute、evidence、rebuild 和再次 reopen 后持续关闭，body / fragments / tip / binding / capture audit 均按闭包处理，先前用户导出与外部原件字节保持不变。
+26. P1-I04 没有新增 SQLite migration、core schema、第三方 package、feature、native build、网络能力或真实个人资料。
+27. P1-I04 完成后本机 `./scripts/check-repo.sh` 通过 107 个仓库文件检查、workspace format、Clippy `-D warnings` 与全部 locked test；这是 macOS 本地证据，尚未运行包含阶段 1 文件入口的 Linux / macOS / Windows 远程 CI。
+28. `P1-F02` 已把 BOM、CRLF、分解 / 组合 Unicode 与尾换行从 `.md` snapshot 贯穿到 capture candidate、SQLite exact body BLOB、whole-file fragment、关闭重开与 rebuild，并逐字节核对正文、长度、`exact-bytes-v1` 摘要和 fragment byte range；过程中没有 Unicode 或换行规范化。
+29. `P1-F05` 已用同一外部 inode 的两个 hardlink alias、两个 opaque origin binding 建立内容摘要相同但 source / lineage / tip / audit 均独立的 canonical 来源；只删除第一条 lineage 后，第二条仍可读取、召回、reopen 和 rebuild，两个外部 hardlink 字节均未改变。
+30. 本批只新增两个跨 package 合成测试和一个复用现有入口的 path-aware 测试 helper，没有修改 production code、schema、core port、依赖、feature、native build、网络能力或真实个人资料。
+31. 定向 `cargo test --locked -p radishmemory-sqlite --test source_capture` 已通过 14 个测试；最终以本轮全仓聚合检查为准。
+32. 本批完成后本机 `./scripts/check-repo.sh` 通过 107 个仓库文件检查、workspace format、Clippy `-D warnings` 与全部 locked test；这是 macOS 本地证据，尚未运行包含 `P1-F01` 至 `P1-F10` 的 Linux / macOS / Windows 远程 CI。
 
 ## M0 基线完成（2026-08-26）
 
@@ -144,11 +159,11 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 - 产品、架构、记忆或隐私语义变化必须同步更新对应真相源，不能只改入口摘要或检查器。
 - ADR 0006 只是阶段 1 文件入口的已冻结行为与验收真相源；在 `P1-F01` 至 `P1-F18` 由真实 importer / exporter 运行通过前，只能声明“入口契约已冻结”，不能声明文件导入、导出或删除产品能力已经实现。
-- P1-I01 的 file snapshot 单独成功仍只证明一次本地读取；只有通过 P1-I02 `SourceCaptureStore` 返回的 receipt 才证明当前事务中的 managed body / canonical facts / FTS / binding / tip / audit 已共同提交。P1-I03 只证明本机从已验真 SourceArtifact 到允许根目标的 exact export contract；它仍不证明 lineage deletion、完整 `P1-F01` 至 `P1-F18`、三平台 Phase 1 CI 或面向对抗性 TOCTOU 的平台能力评审。
+- P1-I01 的 file snapshot 单独成功仍只证明一次本地读取；只有通过 P1-I02 `SourceCaptureStore` 返回的 receipt 才证明当前事务中的 managed body / canonical facts / FTS / binding / tip / audit 已共同提交。P1-I03 与 P1-I04 分别只证明本机 exact export 和 lineage deletion contract；`P1-F01` 至 `P1-F10` 的本机通过仍不证明剩余八个失败与安全场景、三平台 Phase 1 CI 或面向对抗性 TOCTOU 的平台能力评审。
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查证明上述基线与 P1-I01 / P1-I02 / P1-I03 的格式、lint 和 locked test 在本机成立；PR #1 最终 run `32979128488` 只证明已合并 M0 基线在当时 Linux / macOS / Windows locked CI 环境成立，尚未覆盖 Phase 1 file snapshot、atomic capture 或 exact export。不证明 lineage deletion、完整 Phase 1 场景、PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
+- 当前仓库检查证明上述基线与 P1-I01 / P1-I02 / P1-I03 / P1-I04 的格式、lint 和 locked test 在本机成立；PR #1 最终 run `32979128488` 只证明已合并 M0 基线在当时 Linux / macOS / Windows locked CI 环境成立，尚未覆盖 Phase 1 file snapshot、atomic capture、exact export 或 lineage deletion。不证明完整 Phase 1 场景、PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
 
 ## 当前不做
 
