@@ -116,10 +116,34 @@ impl FileEntryError {
         )
     }
 
+    pub(crate) const fn destination_not_allowed() -> Self {
+        Self::without_source(
+            FileEntryErrorCode::DestinationRejected,
+            FileEntryErrorReason::DestinationNotAllowed,
+            false,
+        )
+    }
+
+    pub(crate) const fn destination_exists() -> Self {
+        Self::without_source(
+            FileEntryErrorCode::DestinationRejected,
+            FileEntryErrorReason::DestinationExists,
+            false,
+        )
+    }
+
     pub(crate) const fn integrity_mismatch() -> Self {
         Self::without_source(
             FileEntryErrorCode::Integrity,
             FileEntryErrorReason::IntegrityMismatch,
+            false,
+        )
+    }
+
+    pub(crate) const fn canonical_conflict() -> Self {
+        Self::without_source(
+            FileEntryErrorCode::Conflict,
+            FileEntryErrorReason::CanonicalConflict,
             false,
         )
     }

@@ -9,7 +9,8 @@ use radishmemory_core::{
     Version,
 };
 use radishmemory_file_entry::{
-    FileCapturePlan, FileCaptureReceipt, FileReadRequest, build_source_capture, read_file_snapshot,
+    FileCapturePlan, FileCaptureReceipt, FileEntryErrorReason, FileExportRequest, FileReadRequest,
+    build_source_capture, export_managed_source, read_file_snapshot,
 };
 use radishmemory_sqlite::{SqliteDatabase, SqliteErrorCode, SqliteStorageReason};
 use rusqlite::{Connection, params};
@@ -41,6 +42,23 @@ impl SyntheticDirectory {
 
     fn file(&self) -> PathBuf {
         self.path.join("selected-note.txt")
+    }
+
+    fn child(&self, name: &str) -> PathBuf {
+        self.path.join(name)
+    }
+
+    fn assert_no_export_temporary(&self) {
+        let has_temporary = fs::read_dir(&self.path)
+            .expect("synthetic directory must be readable")
+            .any(|entry| {
+                entry
+                    .expect("synthetic directory entry must be readable")
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with(".radishmemory-export-")
+            });
+        assert!(!has_temporary, "export temporary file must be cleaned");
     }
 }
 
@@ -360,6 +378,195 @@ fn p1_f04_and_f06_changed_bytes_create_new_tip_and_recall_only_current_version()
         )
         .expect("tip must be queryable");
     assert_eq!(tip, ("source-2".to_owned(), 2));
+}
+
+#[test]
+fn p1_f07_current_and_historical_sources_export_exact_managed_bytes() {
+    let directory = SyntheticDirectory::new("export-round-trip");
+    let historical_bytes = "\u{feff}Legacy heading\r\nCafe\u{301}\r\n".as_bytes();
+    fs::write(directory.file(), historical_bytes).expect("version one file must be written");
+    let synthetic = SyntheticDatabase::new("export-round-trip");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+    let first = capture_from_file(
+        &directory,
+        CaptureSpec {
+            source_id: "source-1",
+            lineage_id: "lineage-1",
+            fragment_id: "fragment-1",
+            version: 1,
+            supersedes: vec![],
+            captured_at: "2026-08-29T08:00:00Z",
+        },
+    );
+    database
+        .capture_source(&first)
+        .expect("first capture must commit");
+
+    let current_bytes = "\u{feff}Current heading\r\nCaf\u{e9}\r\nFinal line".as_bytes();
+    fs::write(directory.file(), current_bytes).expect("version two file must be written");
+    let second = capture_from_file(
+        &directory,
+        CaptureSpec {
+            source_id: "source-2",
+            lineage_id: "lineage-1",
+            fragment_id: "fragment-2",
+            version: 2,
+            supersedes: vec![id("source-1")],
+            captured_at: "2026-08-29T09:00:00Z",
+        },
+    );
+    database
+        .capture_source(&second)
+        .expect("changed bytes must create a version");
+
+    let historical = database
+        .load_source_artifact(&id("namespace-1"), &id("source-1"))
+        .expect("historical lookup must succeed")
+        .expect("historical source must remain readable");
+    let current = database
+        .load_source_artifact(&id("namespace-1"), &id("source-2"))
+        .expect("current lookup must succeed")
+        .expect("current source must remain readable");
+    let historical_target = directory.child("historical-export.txt");
+    let current_target = directory.child("current-export.txt");
+    let historical_receipt = export_managed_source(
+        &historical,
+        &FileExportRequest::new(&historical_target, vec![directory.path().to_path_buf()])
+            .expect("historical export request must be valid"),
+    )
+    .expect("historical source must export");
+    let current_receipt = export_managed_source(
+        &current,
+        &FileExportRequest::new(&current_target, vec![directory.path().to_path_buf()])
+            .expect("current export request must be valid"),
+    )
+    .expect("current source must export");
+
+    assert_eq!(
+        fs::read(&historical_target).expect("historical export must be readable"),
+        historical_bytes
+    );
+    assert_eq!(
+        fs::read(&current_target).expect("current export must be readable"),
+        current_bytes
+    );
+    assert_eq!(historical_receipt.source_id(), &id("source-1"));
+    assert_eq!(current_receipt.source_id(), &id("source-2"));
+    assert_eq!(historical_receipt.version().get(), 1);
+    assert_eq!(current_receipt.version().get(), 2);
+    for rendered in [
+        format!("{historical_receipt:?}"),
+        format!("{current_receipt:?}"),
+    ] {
+        assert!(!rendered.contains("export-round-trip"));
+        assert!(!rendered.contains("heading"));
+    }
+    directory.assert_no_export_temporary();
+
+    let raw = Connection::open(synthetic.path()).expect("synthetic database must reopen");
+    assert_eq!(table_count(&raw, "radishmemory_source_artifacts"), 2);
+    assert_eq!(table_count(&raw, "radishmemory_source_bodies"), 2);
+    assert_eq!(table_count(&raw, "radishmemory_source_capture_audit"), 2);
+}
+
+#[test]
+fn p1_f07_existing_target_is_not_overwritten_or_treated_as_success() {
+    let directory = SyntheticDirectory::new("export-existing");
+    fs::write(directory.file(), b"Managed source bytes.\n").expect("source file must be written");
+    let synthetic = SyntheticDatabase::new("export-existing");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+    let capture = capture_from_file(
+        &directory,
+        CaptureSpec {
+            source_id: "source-1",
+            lineage_id: "lineage-1",
+            fragment_id: "fragment-1",
+            version: 1,
+            supersedes: vec![],
+            captured_at: "2026-08-29T08:00:00Z",
+        },
+    );
+    database
+        .capture_source(&capture)
+        .expect("source capture must commit");
+    let source = database
+        .load_source_artifact(&id("namespace-1"), &id("source-1"))
+        .expect("source lookup must succeed")
+        .expect("source must remain readable");
+    let target = directory.child("protected-target.txt");
+    fs::write(&target, b"Independent owner bytes.\n").expect("target must be precreated");
+
+    let error = export_managed_source(
+        &source,
+        &FileExportRequest::new(&target, vec![directory.path().to_path_buf()])
+            .expect("export request must be valid"),
+    )
+    .expect_err("existing target must reject export");
+
+    assert_eq!(error.reason(), FileEntryErrorReason::DestinationExists);
+    assert_eq!(
+        fs::read(&target).expect("existing target must remain readable"),
+        b"Independent owner bytes.\n"
+    );
+    assert_eq!(
+        database
+            .load_source_artifact(&id("namespace-1"), &id("source-1"))
+            .expect("source lookup after failure must succeed")
+            .expect("source must remain stored")
+            .params()
+            .content
+            .as_str()
+            .as_bytes(),
+        b"Managed source bytes.\n"
+    );
+    directory.assert_no_export_temporary();
+}
+
+#[cfg(unix)]
+#[test]
+fn p1_f07_symlink_target_is_rejected_without_following_it() {
+    use std::os::unix::fs::symlink;
+
+    let directory = SyntheticDirectory::new("export-symlink");
+    fs::write(directory.file(), b"Managed source bytes.\n").expect("source file must be written");
+    let synthetic = SyntheticDatabase::new("export-symlink");
+    let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
+    let capture = capture_from_file(
+        &directory,
+        CaptureSpec {
+            source_id: "source-1",
+            lineage_id: "lineage-1",
+            fragment_id: "fragment-1",
+            version: 1,
+            supersedes: vec![],
+            captured_at: "2026-08-29T08:00:00Z",
+        },
+    );
+    database
+        .capture_source(&capture)
+        .expect("source capture must commit");
+    let source = database
+        .load_source_artifact(&id("namespace-1"), &id("source-1"))
+        .expect("source lookup must succeed")
+        .expect("source must remain readable");
+    let outside = directory.child("symlink-owned-target.txt");
+    let target = directory.child("symlink-export.txt");
+    fs::write(&outside, b"Independent symlink target.\n").expect("symlink target must be written");
+    symlink(&outside, &target).expect("synthetic symlink must be created");
+
+    let error = export_managed_source(
+        &source,
+        &FileExportRequest::new(&target, vec![directory.path().to_path_buf()])
+            .expect("export request must be valid"),
+    )
+    .expect_err("symlink target must reject export");
+
+    assert_eq!(error.reason(), FileEntryErrorReason::DestinationNotAllowed);
+    assert_eq!(
+        fs::read(&outside).expect("symlink target must remain readable"),
+        b"Independent symlink target.\n"
+    );
+    directory.assert_no_export_temporary();
 }
 
 #[test]

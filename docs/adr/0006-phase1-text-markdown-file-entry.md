@@ -167,11 +167,13 @@ DeleteRequest 持久化时，整个 lineage 及其依赖至少进入 pending，�
 
 `P1-I01 file snapshot contract` 新增且仅新增第一方 `crates/radishmemory-file-entry/` package。它依赖 `radishmemory-core`，负责本 ADR 的 contract ID、允许根与 symlink 检查、`.txt` / `.md` 分类、8 MiB / UTF-8 / NUL 校验、读取期间可观察变化复核、path-free `ValidatedFileSnapshot`、稳定 `FileEntryError` 和最小 `FileCaptureReceipt` 类型。
 
-该 package 不依赖 SQLite，不读取或写入数据库业务表，不拥有 canonical persistence、origin binding、lineage-tip projection、export、deletion、UI 或通用 Capture Gateway。文件快照成功只证明一次本地读取通过当前校验，不代表 SourceArtifact 已持久化或 importer 已完成。首个 package 没有新增第三方依赖；workspace 的 40 个第三方 package、feature、native build 与网络能力保持不变。
+该 package 不依赖 SQLite，不读取或写入数据库业务表，也不拥有 canonical persistence、origin binding、lineage-tip projection、deletion、UI 或通用 Capture Gateway。`P1-I01` 当时还不实现 export；文件快照成功只证明一次本地读取通过当前校验，不代表 SourceArtifact 已持久化或 importer 已完成。首个 package 没有新增第三方依赖；workspace 的 40 个第三方 package、feature、native build 与网络能力保持不变。
 
 `P1-I02 atomic source capture` 在 `radishmemory-core` 增加完整 fragment-set 校验、`SourceCapture`、path-free `SourceCaptureResult` 与最小 `SourceCaptureStore` port；`radishmemory-file-entry` 通过 `FileCapturePlan` 把 validated snapshot 映射为确定性的整文件单片段 candidate，仍不依赖 SQLite。首个 opaque binding ID 必须使用 `origin-binding-` 前缀，整体不超过 128 个 ASCII 字节，后缀只允许字母、数字、`-`、`_`、`.`，因此路径分隔符不能进入 `origin_ref`。SQLite schema v6 新增 lineage-tip、opaque origin-binding 和最小 capture-audit 三张 STRICT 表，adapter 用一个 `IMMEDIATE` transaction 提交受管 body、SourceArtifact metadata、完整 fragment、FTS、binding、tip 与 audit。
 
 首次 capture 只接受 version 1 / 空 supersedes；内容变化只接受同 lineage 的下一 version 和精确前 tip；同 binding、相同 exact bytes 与治理快照返回已有 source facts，不增加 canonical / fragment / FTS / audit。事务开始和提交前都复验 canonical / derived / binding 状态，fragment 冲突等中途失败会恢复旧 tip 与旧 FTS。普通召回与 rebuild 从 canonical facts复算唯一 active tip，历史 source / fragment 保留精确读取但不进入普通 FTS。旧 `SourceVault` 写入口拒绝 `explicit_user_input`，防止绕过原子边界。
+
+`P1-I03 exact export` 在同一 file-entry package 增加 path-free `FileExportReceipt` 和目标文件系统边界，仍只依赖 core。调用方以 namespace 和精确 `source_id` 从 Source Vault 取得已验真 `SourceArtifact`；file-entry 拒绝非 active deletion state，复验 managed body 长度、原始字节和 `exact-bytes-v1` 摘要，在显式 allowed root 内的目标 parent 创建任务临时文件，flush / sync / close 后重新逐字节复验，再通过同目录 `hard_link` 以原子不覆盖语义发布并复验结果。目标已存在、目标或 parent 为 symlink、临时写入失败和并发发布失败均不覆盖目标、不修改 Source Vault，并清理身份仍匹配的任务临时文件。
 
 ## 合成验收
 
@@ -226,12 +228,12 @@ fixture mapping 为确定性评测服务，不包含真实文件授权、TOCTOU�
 
 收益：真实文件入口不依赖外部路径长期存在；重复导入、版本、当前召回、精确导出和本地删除具有单一语义；文件系统攻击面、隐私日志和外部副本边界可用合成数据验证；现有 canonical truth 不被复制。
 
-代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；精确 export、lineage 删除与平台 bookmark 仍需后续最小实现评审；本地明文仍依赖受信设备保护。
+代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；exact export 目前只有本机证据，lineage 删除、三平台 Phase 1 CI 与平台 bookmark 仍需后续最小实现评审；本地明文仍依赖受信设备保护。
 
 ## 后续实施顺序与停止线
 
 1. `P1-I01` / `P1-I02` 已先固定文件快照、receipt、atomic capture、origin binding 与 lineage-tip 的最小 package / port 边界，不修改 M0 fixture schema。
-2. 下一单元实现精确 export 与不覆盖发布，再扩展 lineage 删除闭包；只增加 `P1-F07` 至 `P1-F10` 真实需要的职责，不预建通用 workflow、插件或后台队列。
+2. `P1-I03` 已实现精确 export 与不覆盖发布；下一单元扩展 lineage 删除闭包，只增加 `P1-F08` 至 `P1-F10` 真实需要的职责，不预建通用 workflow、插件或后台队列。
 3. 继续复用现有 Source Vault、LocalSearch 和 DeletionStore；文件 adapter 不直接写 SQLite 业务表，export 不回读外部 origin file。
 4. 在 macOS、Linux 与 Windows 运行 locked 检查和合成验收；静态检查、单平台结果或内存 fixture 不能替代真实临时文件行为。
 5. 只有该入口通过后，才分别评审 PDF / 图片解析、加密内容寻址大对象存储、向量、模型 adapter 与 UI。

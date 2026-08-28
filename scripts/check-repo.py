@@ -916,7 +916,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 merged baseline; Phase 1 atomic file capture implemented locally",
+            "M0 merged baseline; Phase 1 exact file export implemented locally",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -930,7 +930,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "M0 merged baseline; Phase 1 atomic file capture implemented locally",
+            "M0 merged baseline; Phase 1 exact file export implemented locally",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不是可导入真实个人资料的产品入口",
@@ -982,6 +982,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "radishmemory.phase1-file-entry/1",
             "P1-I01 file snapshot contract",
             "P1-I02 atomic source capture",
+            "P1-I03 exact export",
             "crates/radishmemory-file-entry/",
             "用户显式选择的单个普通文件",
             "8_388_608",
@@ -995,8 +996,8 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0006]",
-            "Phase 1 atomic file capture implemented locally",
-            "完整 importer / exporter 尚未实现",
+            "Phase 1 exact file export implemented locally",
+            "lineage 删除、其余跨层验收和三平台 Phase 1 CI 尚未完成",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1005,6 +1006,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "ADR 0006",
             "P1-I01 file snapshot contract",
             "P1-I02 atomic source capture",
+            "P1-I03 exact export",
             "radishmemory-file-entry",
             "SourceCaptureStore",
             "`P1-F01` 至 `P1-F18`",
@@ -1016,6 +1018,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "不增加文件专用 canonical object",
             "active lineage tip",
             "SQLite v6 adapter",
+            "P1-I03 exact export",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "四个第一方 workspace package",
@@ -1023,6 +1026,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "40 个第三方 package",
             "没有新增 crates.io package",
             "P1-I02 atomic source capture",
+            "P1-I03",
         ),
         "docs/privacy-threat-model.md": (
             "阶段 1 文件入口信任边界",
