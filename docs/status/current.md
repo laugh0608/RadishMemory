@@ -6,7 +6,7 @@
 
 `Phase 1 macOS desktop interaction recorded; cross-platform acceptance next`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并 fast-forward 回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 已冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和 `P1-HF01` 至 `P1-HF12` 宿主验收；P1-H02 / P1-H03 与经授权的 P1-H04 desktop host 已完成本机实现，P1-H05 已取得纯合成数据的 macOS 可见窗口与 AppKit open / save picker 正向交互，以及不可读选择、canonical body 篡改和 origin binding 缺失的失败关闭证据。当前 desktop 变更的 Linux / macOS / Windows locked CI 与聚合 `Candidate Quality` 仍无证据，因此仍不导入真实个人资料，也不直接扩大到 PDF、图片、向量、模型、网络或同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并 fast-forward 回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 已冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和 `P1-HF01` 至 `P1-HF12` 宿主验收；P1-H02 / P1-H03 与经授权的 P1-H04 desktop host 已完成本机实现，P1-H05 已取得纯合成数据的 macOS 可见窗口与 AppKit open / save picker 正向交互，以及不可读选择、canonical body 篡改和 origin binding 缺失的失败关闭证据。当前 desktop 变更的 Linux / macOS / Windows locked CI 与聚合 `Candidate Quality` 仍无证据，Linux / Windows 可见 UI 与 native picker 也未实际运行，因此仍不导入真实个人资料，也不直接扩大到 PDF、图片、向量、模型、网络或同步。
 
 ## 已冻结的范围与基线
 
@@ -48,13 +48,13 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `P1-I03 exact export` 已在 file-entry 增加显式绝对目标与 export allowed roots、path-free receipt、目标 parent 的 symlink / root 复核、目标不存在检查、任务专用同目录临时文件和无覆盖发布。调用方先以 namespace 与精确 `source_id` 从 `SourceVault` 取得 active 或历史可读的已验真 `SourceArtifact`；file-entry 再复验 deletion state、正文长度、原始字节与 `exact-bytes-v1` 摘要，写入 flush / sync / close 后重新逐字节复验，以同目录 `hard_link` 原子建立目标目录项，复验发布结果后只清理自身临时文件。目标存在、目标 / parent symlink、临时写入或并发发布失败不会覆盖其它目标，也不会修改 Source Vault。
 
-`P1-I04 lineage deletion` 没有新增 schema v7、core object 或平行删除协议，而是继续使用 canonical `DeleteRequest` / `DeletionEvidence` 与 SQLite v6 `DeletionStore`。一个请求包含任一文件 SourceArtifact 时必须精确包含同 namespace、同 lineage 的全部 active 版本，并继续展开引用任一版本的 active memory 依赖；缺一版本或依赖整笔失败且不改变 store。计划提交原子地把全部来源、fragments、proposals 与显式 memories 置为 pending，移除 FTS、当前投影和 lineage tip；执行阶段处理 body、fragment、metadata、origin binding 与 capture audit，并由既有十组件结果和 evidence 报告真实完成 / 失败。rebuild 在修改派生表前复验每个 active 文件来源的 body、完整 fragment 集、capture audit 与 binding，缺失 canonical fragment 失败关闭；pending / failed / deleted lineage 不复活，origin file 与用户导出不进入闭包。
+`P1-I04 lineage deletion` 没有新增 schema v7、core object 或平行删除协议，而是继续使用 canonical `DeleteRequest` / `DeletionEvidence` 与 SQLite v6 `DeletionStore`。一个请求包含任一文件 SourceArtifact 时必须精确包含同 namespace、同 lineage 的全部 active 版本，并继续展开引用任一版本的 active memory 依赖；缺一版本或依赖整笔失败且不改变 store。计划提交原子地把全部来源、fragments、proposals 与显式 memories 置为 pending，移除 FTS、当前投影和 lineage tip；执行阶段处理 body、fragment、metadata、origin binding 与 capture audit，并由既有十组件结果和 evidence 报告真实完成 / 失败。verify 与 rebuild 都复验每个 active 文件来源的 body、完整 fragment 集、capture audit 与 binding，rebuild 只在通过后才修改派生表；缺失 canonical fragment 失败关闭，pending / failed / deleted lineage 不复活，origin file 与用户导出不进入闭包。
 
 `P1-H02 application service` 已新增第五个第一方 workspace package `radishmemory-application`，只依赖现有 core、file-entry 与 SQLite package，没有新增 crates.io package、feature、native build 或网络能力。`LocalLibrary` 是 UI-facing 单一入口，使用可替换 `ApplicationRuntime` 注入 opaque ID 与 UTC time，提供文件数据库 open、首次 import、显式 lineage update、exact export、verify / rebuild 和脱敏稳定错误；fixture mapping、路径、SQLite rowid 与 adapter-private schema 没有进入该边界。
 
 `P1-H03 source catalog` 已在 core 增加 body-free `SourceCatalog` 读取 port，由 SQLite v6 从已验真的 active facts、binding 与 lineage tip 产生稳定分页目录和连续版本历史。application service 已组合 list / get、source-only search citation、当前或历史精确导出，以及复用 canonical 十组件计划的完整 lineage deletion；删除目标解析会纳入 lineage 全部 active 版本、直接引用任一版本 fragment 的 active memory，以及这些 memory 的 active supersede 依赖，不允许 UI 或调用方手工缩小闭包。合成文件数据库测试覆盖首次启动、导入、关闭重开、幂等与变化更新、目录 / 历史、搜索 / citation、导出、两版本删除、evidence 重启读取、外部原件不变、无目录副作用与公开错误脱敏。
 
-`P1-H04 desktop UI` 已新增 `radishmemory-desktop`：使用平台应用数据目录、owner-only 目录 / profile、OS random 128-bit opaque ID、UTC RFC 3339 clock 与一次性 native picker；profile 缺失或损坏时不会以新 identity 认领既有数据库。UI 只调用 application service，覆盖启动不可用、导入 / 更新、来源 / 版本、搜索 / citation、精确导出、lineage 删除确认、十组件 evidence、verify 与 rebuild；第一方宿主不初始化普通日志 sink，也不保存路径、bookmark 或 UI cache。当前 macOS locked check、15 个 desktop 单测和严格 Clippy 已通过，最终 `./scripts/check-repo.sh` 通过 126 个仓库文件和 128 个 locked test。
+`P1-H04 desktop UI` 已新增 `radishmemory-desktop`：使用平台应用数据目录、OS random 128-bit opaque ID、UTC RFC 3339 clock 与一次性 native picker；Unix 应用目录 / profile 显式收紧为 owner-only mode，Windows 当前只使用平台数据目录的继承 ACL，尚未实现或验证额外 owner-only ACL 收紧。profile 缺失或损坏时不会以新 identity 认领既有数据库。UI 只调用 application service，覆盖启动不可用、导入 / 更新、来源 / 版本、搜索 / citation、精确导出、lineage 删除确认、十组件 evidence、verify 与 rebuild；第一方宿主不初始化普通日志 sink，也不保存路径、bookmark 或 UI cache。当前 macOS locked check、15 个 desktop 单测和严格 Clippy 已通过，最终 `./scripts/check-repo.sh` 通过 126 个仓库文件和 128 个 locked test。
 
 `P1-H05 host acceptance` 已在隔离 `HOME` 与纯合成 Markdown 上实际运行 macOS 窗口和 AppKit open / save panel，观察到首次空库、取消无副作用、107 B `v1` 导入、165 B `v2` 更新、current-tip citation、历史版本精确导出、verify / rebuild、关闭重开、经即时确认的完整 lineage 删除、10 组件 evidence、删除后 0 召回，以及外部原件 / 导出不被删除。后续负向批次实际选择权限位为 `000` 的合成 Markdown，UI 稳定拒绝且六类数据库计数保持 0；另以两个独立合成库验证 canonical body 篡改和 origin binding 缺失，Verify / Rebuild / 重启 / Retry 均失败关闭且不自愈。SQLite `verify_recall_derivations` 因此补齐 active file capture / binding 校验，并新增两项不修复损坏的测试。两批任务专用应用数据、Cargo cache、输入、导出、篡改器和临时 `.app` 均已清理。完整记录见 [Phase 1 macOS 桌面宿主交互验收](../implementation/phase1-macos-host-acceptance.md)。这些仍只是 macOS 交互子证据，尚不替代 Linux / macOS / Windows desktop CI。
 
@@ -64,18 +64,19 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 2. 已完成 `P1-H02 application service`：建立真实 open / import / update 编排、ID / clock runtime capability 与脱敏 application error，不复用 fixture mapping。
 3. 已完成 `P1-H03 source catalog`：提供当前来源 / 历史版本目录、lineage resolution、search citation、exact export、lineage deletion、verify / rebuild 应用入口。
 4. 已完成 `P1-H04 desktop UI` 的依赖授权、本机实现与合成验证。
-5. `P1-H05 host acceptance` 已完成 macOS 可见窗口、真实 open / save picker、picker 后读取失败、canonical / binding 损坏失败关闭与关闭重开的交互子证据；当前只继续补齐 Linux / macOS / Windows locked CI 和聚合证据。全部证据成立后才评审 PDF / 图片与加密内容寻址大对象存储。
+5. `P1-H05 host acceptance` 已完成 macOS 可见窗口、真实 open / save picker、picker 后读取失败、canonical / binding 损坏失败关闭与关闭重开的交互子证据；当前继续补齐 Linux / macOS / Windows locked CI 与聚合证据、Linux / Windows 可见 UI / native picker 实际证据及可分发依赖清单。全部证据成立后才评审 PDF / 图片与加密内容寻址大对象存储。
 
-## 下一事项（2026-08-30）
+## 明日事项（2026-08-31）
 
-主任务已经完成 P1-H01 至 P1-H04 的契约、application service、来源读取模型和本机 desktop host，并记录 P1-H05 的 macOS 交互子证据。下一步继续收口 [ADR 0007](../adr/0007-phase1-local-library-host.md) 冻结的 host acceptance：
+今日已以 `9bd0af5` 收口 P1-F01 至 P1-F18 的剩余验收，以 `c56f13f` 将 PR #2 合入 `master` 并回流 `dev`，又以 `a4150ce` 提交 P1-H02 至 P1-H05 的 application service、source catalog、desktop UI、失败关闭与 macOS 交互证据。本地 desktop 实现和日终文档提交尚未 push；明日继续按 [ADR 0007](../adr/0007-phase1-local-library-host.md) 收口 P1-H05：
 
-1. macOS 交互子证据已经完成：纯合成 `.md` 实际经过可见窗口、open / save picker、取消、导入、更新、搜索、历史导出、删除确认 / evidence、verify / rebuild 和关闭重开；后续不得把这份单机证据外推为其它平台成立。
-2. P1-HF09 的 picker 后读取失败无副作用与 P1-HF10 canonical / binding 损坏运行证据已经完成；UI 只显示稳定错误类别，临时篡改器和全部合成状态已清理。
-3. 当前推进现有 Linux / macOS / Windows Rust Quality matrix 构建并测试 desktop package，核对 Linux XDG Portal / Wayland / X11 与 Windows native dialog 的真实编译依赖；缺失系统库时修正文档或 CI image，不放宽 feature 掩盖失败。
-4. 生成完整 third-party notices 与目标平台 native dependency 清单，为之后的安装包 / 签名专题提供输入；本阶段仍不执行签名、发布或自动更新。
+1. 取得当前任务的远程授权后，精确 push 本地 `dev` 提交，对该 head 触发现有 `PR Checks` 的 `workflow_dispatch`；记录 head SHA、run URL、Repo Hygiene、Linux / macOS / Windows Rust Quality 和聚合 `Candidate Quality` 的真实结果。push 授权不自动扩大为 PR、merge 或发布授权。
+2. 若三平台矩阵失败，按精确失败平台核对 Linux XDG Portal / Wayland / X11 与 Windows native dialog 的编译、feature 和 native linkage；修正根因、CI image 或依赖文档，不通过关闭实际平台 feature、放宽 Clippy / test 或增加 fallback 掩盖失败。每次修正后重跑本地门禁和同一远程矩阵。
+3. 取得独立目标环境、GUI 与必要平台工具授权后，使用隔离应用数据和纯合成 `.md` 分别运行 Linux 可见 UI / XDG Portal picker（识别是否进入 Zenity fallback）与 Windows 可见 UI / native dialog；至少复验首次启动、取消无副作用、显式选择与导入、关闭重开、UI / error 路径脱敏、应用数据目录 / profile 平台保护和临时状态清理。特别核对 Windows 继承 ACL 是否满足当前隐私边界；若不满足，先建立可测的 owner-only ACL 实现，不用文档默认安全。不把 headless CI 或编译通过表述为真实 picker 运行证据。
+4. 在跨平台依赖图稳定后，生成可分发 third-party notices，并分开列出 Linux portal / Zenity、Wayland / X11、Windows native dialog、macOS AppKit、bundled SQLite、默认字体和必要 license option / attribution；记录来源、版本、目标条件、native build / IPC 表面与人工复核项。
+5. CI、Linux / Windows 实际平台证据和 notices 全部收口后，先同步验收记录与当前状态，再在独立授权下发起 `dev -> master` 阶段 PR；以最终 PR head 的 `Candidate Quality` 为准，合并后按 ADR 0001 回流 `master -> dev`。在此之前 P1-H05 保持开放。
 
-下一事项停止线：UI 不直接调用 adapter 或拼装 canonical 对象；未经单独授权不启动 GUI、不安装平台工具链、不修改系统权限、不签名或发布；`P1-HF01` 至 `P1-HF12` 和真实平台证据成立前不导入真实个人资料、不声明生产文件入口完成；不进入 PDF / OCR、Embedding、模型、网络、同步或通用 workflow engine；未经当前任务明确授权，不暂存、不提交、不 push、不创建 PR、不改变远端状态。
+明日事项停止线：UI 不直接调用 adapter 或拼装 canonical 对象；未经单独授权不启动 GUI、不安装平台工具链、不修改系统权限、不签名或发布；`P1-HF01` 至 `P1-HF12` 和真实平台证据成立前不导入真实个人资料、不声明生产文件入口完成；不进入 PDF / OCR、Embedding、模型、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不触发远程 workflow、不 merge、不改变其它远端状态。
 
 ## 本轮阶段 1 完成（2026-08-28 至 2026-08-30）
 

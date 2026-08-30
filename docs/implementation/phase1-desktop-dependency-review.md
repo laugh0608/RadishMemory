@@ -109,4 +109,4 @@ profile 不是原始资料、记忆正文、路径 bookmark 或 UI cache，但�
 
 后续已按单独 GUI 授权，用隔离应用数据目录和合成 Markdown 完成 macOS 可见窗口、AppKit open / save picker、取消、导入、更新、search citation、历史导出、verify / rebuild、关闭重开和经即时确认的 lineage 删除交互验收；还用三个独立合成状态验证了 picker 后读取失败无副作用，canonical body 篡改和 origin binding 缺失在 Verify / Rebuild / 重启 / Retry 上持续失败关闭且不自愈。应用、缓存、篡改器与合成数据临时根已清理。该证据不改变本评审的依赖版本或授权范围。
 
-后续停止线保持：未取得独立授权不再次启动真实 GUI、不修改系统权限、不安装额外平台工具链、不签名或发布；当前 desktop 变更的 Linux / macOS / Windows locked CI 与可分发依赖清单全部成立前，不导入真实个人资料、不声明 production host 完成；不进入 PDF / OCR、Embedding、模型、网络、同步或通用 workflow engine。
+后续停止线保持：未取得独立授权不再次启动真实 GUI、不修改系统权限、不安装额外平台工具链、不签名或发布；当前 desktop 变更的 Linux / macOS / Windows locked CI、Linux / Windows 可见 UI / native picker 实际证据与可分发依赖清单全部成立前，不导入真实个人资料、不声明 production host 完成；不进入 PDF / OCR、Embedding、模型、网络、同步或通用 workflow engine。

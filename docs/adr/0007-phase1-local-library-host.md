@@ -164,9 +164,9 @@ UI 无法独立正确分配 lineage / version、展开删除依赖、保持错�
 
 ## 实施状态（2026-08-30）
 
-P1-H02 / P1-H03 已由 `radishmemory-application`、core `SourceCatalog` 与 SQLite v6 adapter 实现。经项目所有者明确授权后，P1-H04 已新增 `radishmemory-desktop`，实现平台应用目录、原子 host profile、production random / UTC runtime、一次性 native picker、资料库 / 来源 / 版本 / 搜索 / citation / 导出 / lineage 删除 evidence / verify / rebuild UI；desktop package 只直接依赖 application service，不绕过本文依赖方向。
+P1-H02 / P1-H03 已由 `radishmemory-application`、core `SourceCatalog` 与 SQLite v6 adapter 实现。经项目所有者明确授权后，P1-H04 已新增 `radishmemory-desktop`，实现平台应用目录、原子 host profile、production random / UTC runtime、一次性 native picker、资料库 / 来源 / 版本 / 搜索 / citation / 导出 / lineage 删除 evidence / verify / rebuild UI；desktop package 在第一方业务 package 中只直接依赖 application service，不绕过本文依赖方向，平台与 UI crate 则以单独依赖评审为准。
 
-当前证据是本机 macOS locked compile、15 个 desktop 单测、严格 Clippy、合成文件数据库关闭重开，以及覆盖 126 个仓库文件 / 128 个 locked test 的 `./scripts/check-repo.sh`；经单独 GUI 授权，P1-H05 还已取得纯合成数据的 macOS 可见窗口、AppKit open / save picker、不可读文件无副作用拒绝与 canonical / binding 损坏失败关闭证据。当前仍没有新的 Linux / macOS / Windows desktop CI，因此 P1-H05 和本文 production host 的完成状态仍为未满足，不能导入真实个人资料或把本机实现描述为三平台产品入口。
+当前证据是本机 macOS locked compile、15 个 desktop 单测、严格 Clippy、合成文件数据库关闭重开，以及覆盖 126 个仓库文件 / 128 个 locked test 的 `./scripts/check-repo.sh`；经单独 GUI 授权，P1-H05 还已取得纯合成数据的 macOS 可见窗口、AppKit open / save picker、不可读文件无副作用拒绝与 canonical / binding 损坏失败关闭证据。当前仍没有新的 Linux / macOS / Windows desktop CI，也没有 Linux / Windows 可见 UI 与 native picker 的实际运行证据，因此 P1-H05 和本文 production host 的完成状态仍为未满足，不能导入真实个人资料或把本机实现描述为三平台产品入口。
 
 ## 后果
 

@@ -70,7 +70,7 @@ ADR 0006 冻结 application behavior 与合成验收；`P1-F01` 至 `P1-F18` 已
 
 `P1-I03 exact export` 继续让 file-entry package 拥有目标允许根、symlink 拒绝、任务临时文件、字节复验与不覆盖发布；调用方必须先通过 namespace 和精确 `source_id` 从 `SourceVault` 取得 active 或历史可读的已验真 `SourceArtifact`。file-entry 复验 deletion state、长度、正文与 `exact-bytes-v1` 摘要后，在目标 parent 创建并同步任务临时文件，关闭后重新逐字节复验，以同目录 `hard_link` 原子建立不存在的目标目录项，再复验发布结果并只清理自身临时文件。目标存在、目标或 parent 为 symlink、临时写入或并发发布失败均不覆盖现有目标，也不修改 Source Vault。
 
-`P1-I04 lineage deletion` 不增加 schema 或平行删除协议，继续使用 canonical `DeleteRequest` / `DeletionEvidence` 和 SQLite `DeletionStore`。一个请求只要包含某个文件来源版本，就必须精确包含同 namespace、同 lineage 的全部 active SourceArtifact 版本及所有已展开 active memory 依赖；缺一版本或依赖时整笔拒绝。计划提交原子地把全部来源、fragment、proposal 与显式 memory 置为 pending，删除 FTS、当前投影和 lineage tip；执行阶段处理 body、fragment、metadata、origin binding 与 capture audit，并由既有最小 audit / evidence 保留真实结果。rebuild 在改写派生表前验证每个 active 文件来源的 body、完整 fragment 集、capture audit 与 binding，pending / failed / deleted lineage 不会被恢复为 active tip。
+`P1-I04 lineage deletion` 不增加 schema 或平行删除协议，继续使用 canonical `DeleteRequest` / `DeletionEvidence` 和 SQLite `DeletionStore`。一个请求只要包含某个文件来源版本，就必须精确包含同 namespace、同 lineage 的全部 active SourceArtifact 版本及所有已展开 active memory 依赖；缺一版本或依赖时整笔拒绝。计划提交原子地把全部来源、fragment、proposal 与显式 memory 置为 pending，删除 FTS、当前投影和 lineage tip；执行阶段处理 body、fragment、metadata、origin binding 与 capture audit，并由既有最小 audit / evidence 保留真实结果。verify 与 rebuild 都复验每个 active 文件来源的 body、完整 fragment 集、capture audit 与 binding，rebuild 只在这些 canonical 与入口事实通过后才改写派生表；pending / failed / deleted lineage 不会被恢复为 active tip。
 
 `P1-F02` / `P1-F05` 的跨层验收继续走上述同一数据流：exact UTF-8 bytes 从 snapshot 进入 canonical source、SQLite BLOB 与 fragment 后，在 reopen / rebuild 中保持摘要、长度和 byte range；不同 opaque binding 即使来自同一 hardlink inode 且摘要相同，也建立独立 source lineage、tip、audit 与删除闭包，adapter 不按路径、inode 或 digest 合并 provenance。
 
@@ -90,7 +90,7 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 `P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 只定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型；`LocalLibrary` 组合 open、import / update、list / get、search citation、exact export、canonical lineage deletion evidence、verify / rebuild，并通过 `ApplicationRuntime` 隔离 production ID / clock。
 
-`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前只证明本机编译和合成关闭重开；真实 GUI / picker 与 Linux / Windows 构建仍属于 P1-H05。
+`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得本机编译、合成关闭重开以及 macOS 可见 GUI / AppKit picker 正向与失败关闭证据；Linux / Windows 实际 GUI / native picker 和当前 desktop 变更的三平台构建仍属于 P1-H05。
 
 ## 核心组件
 

@@ -56,7 +56,8 @@
 
 ## P1-H05 剩余门禁
 
-1. 让当前未提交 desktop workspace 在既有 Linux、macOS、Windows Rust Quality matrix 上完成 locked format、Clippy 和 test，并取得聚合 `Candidate Quality` 证据；当前只确认 workflow 已覆盖三个平台，没有创建远程 run。
-2. 生成可分发的 third-party notices 与 Linux portal / Zenity、Wayland / X11 和 Windows native dialog 依赖清单；在此之前不进入签名、打包或发布。
+1. 让当前本地 `dev` 上已提交的 desktop 变更在既有 Linux、macOS、Windows Rust Quality matrix 上完成 locked format、Clippy 和 test，并取得聚合 `Candidate Quality` 证据；当前只确认 workflow 已覆盖三个平台，没有推送该提交或创建远程 run。
+2. 在独立目标环境和 GUI 授权下，分别留下 Linux 可见 UI / XDG Portal（含 Zenity fallback 识别）文件选择与 Windows 可见 UI / native dialog 的实际运行证据；至少覆盖启动、取消、选择合成文件、路径脱敏与关闭重开，并核对应用数据目录与 profile 的平台保护。当前 owner-only mode 硬化只在 Unix 显式实现，Windows ACL 不得在未验证前被声明为已收紧；headless CI 不替代这些平台行为证据。
+3. 在跨平台依赖图稳定后，生成可分发的 third-party notices 与 Linux portal / Zenity、Wayland / X11 和 Windows native dialog 依赖清单；在此之前不进入签名、打包或发布。
 
 在上述门禁完成前，P1-H05 保持开放，RadishMemory 仍不是获准导入真实个人资料的生产文件入口。
