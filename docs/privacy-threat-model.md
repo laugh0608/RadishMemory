@@ -132,6 +132,16 @@ M0 删除证据只覆盖已枚举的单设备正文、片段、结构化记忆�
 
 首个入口仍把明文保存在受信本地设备，未实现静态加密、取证级擦除或备份清除。仓库、Issue、PR 和 CI 不得使用真实个人文件；运行验收通过前不能声明生产文件入口已经成立。
 
+## 阶段 1 本地宿主授权边界
+
+[ADR 0007](adr/0007-phase1-local-library-host.md) 要求首个桌面宿主只消费用户当前可见操作产生的一次性系统文件选择 capability。导入新来源、更新已有 lineage 和导出都必须重新选择；用户取消、权限撤销或选择器失败不写数据库、不产生 receipt。首批不持久化完整路径、allowed root、platform bookmark、security-scoped bookmark 或文件访问 token，也不后台监视原件。
+
+当前 `radishmemory-desktop` 已按该边界实现：picker 只在一次调用中构造精确路径与直接 parent root；应用目录拒绝最终目录 / 数据库 symlink，并在 Unix 上收紧为 owner-only；host profile 只保存 contract、随机 namespace ID 与 device ID，数据库已存在而 profile 缺失或损坏时失败关闭。公开 desktop error / Debug 只保留稳定 code / reason、retryable 和必要 OS error code，不复制路径、正文或 identity。第一方宿主没有普通日志 sink；这不代表第三方窗口、系统 dialog、图形驱动或崩溃收集天然无记录，分发前仍需按平台复核。
+
+路径只在本次本地调用链存在；application error、普通日志、UI telemetry、诊断包和 CI 不得输出路径、bookmark、数据库位置或正文。平台 adapter 不得把一次选择扩大为 home、volume 或文件系统根；如果选择器只返回路径，本次 allowed root 只取所选文件或目标的直接 parent，并继续由 file-entry 失败关闭。
+
+宿主数据库位于平台应用数据目录并保持本地明文；“使用系统选择器”“运行于平台沙箱”或“不保存路径”都不等于静态加密。`P1-HF01` 至 `P1-HF12`、真实系统选择器和人工可见 UI 证据成立前，不使用真实个人资料验收，也不声明生产授权面完成。
+
 ## 模型外发控制
 
 每次调用云端 Provider 或 RadishMind 等 Gateway 前必须：

@@ -36,6 +36,9 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 - [M0 Canonical Schema](docs/schema/m0-canonical-schema.md)
 - [M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)
 - [阶段 1 文本 / Markdown 文件入口 ADR](docs/adr/0006-phase1-text-markdown-file-entry.md)
+- [阶段 1 本地资料库宿主与显式文件授权 ADR](docs/adr/0007-phase1-local-library-host.md)
+- [阶段 1 桌面宿主依赖评审](docs/implementation/phase1-desktop-dependency-review.md)
+- [阶段 1 macOS 桌面宿主交互验收](docs/implementation/phase1-macos-host-acceptance.md)
 - [隐私与威胁模型](docs/privacy-threat-model.md)
 - [与 RadishMind 的边界](docs/radishmind-boundary.md)
 - [MVP 路线图](docs/mvp-roadmap.md)
@@ -45,7 +48,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `M0 merged baseline; Phase 1 P1-F01 through P1-F18 verified locally` 阶段：M0 本地记忆闭环已经实现、通过三平台 CI 并合入稳定主线；[ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md)已经冻结真实文本 / Markdown 文件入口的行为与合成验收，P1-I01 建立文件快照，P1-I02 实现 application-level atomic capture，P1-I03 实现精确不覆盖导出，P1-I04 已复用 canonical 删除语义收口整个来源 lineage、入口状态与受管派生闭包；`P1-F01` 至 `P1-F18` 已在本机跨 file-entry / SQLite 边界运行通过。下一步是在独立授权下形成可审阅提交并取得 Linux / macOS / Windows Phase 1 CI 证据，不直接扩大到 PDF、向量、模型、UI、网络或同步。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `Phase 1 macOS desktop interaction recorded; cross-platform acceptance next` 阶段：M0 本地记忆闭环和阶段 1 文本 / Markdown 文件入口均已通过 Linux、macOS、Windows locked CI 并合入稳定主线；[ADR 0007](docs/adr/0007-phase1-local-library-host.md)进一步冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和十二项宿主验收。`P1-H02 application service`、`P1-H03 source catalog` 与经授权的 `P1-H04 desktop UI` 已完成本机实现，P1-H05 已记录纯合成数据的真实 macOS 窗口、AppKit open / save picker 与损坏失败关闭交互；当前顺位是三平台 desktop CI 与可分发依赖清单，不直接扩大到 PDF、向量、模型、网络或同步。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
 首个可执行切片 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md) 已使用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和单设备删除证据，不依赖模型、网络、RadishMind 或同步。
 
@@ -57,9 +60,9 @@ RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional
 
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
 
-阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景；当前已在本机实现原子 capture、当前 / 历史来源的精确不覆盖导出及整个来源 lineage 的本地删除闭包，并运行通过 `P1-F01` 至 `P1-F18`，包括确定性 TOCTOU、提交故障原子性、不可信 Markdown 无网络 / 无记忆副作用与诊断脱敏。三平台 Phase 1 CI、production host / UI 和平台 bookmark 尚未完成，不能据此导入真实个人资料或声明产品能力完成。
+阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景；`P1-F01` 至 `P1-F18` 已实现并在 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并回流 `dev`。desktop host 代码、本机合成测试和 macOS 真实窗口 / AppKit picker 正向与损坏失败关闭证据已经建立，但当前 desktop 变更的三平台 CI 尚未完成，不能据此导入真实个人资料或声明产品入口完成。
 
-当前已完成精确 Rust `1.96.0` 工具链、三个 M0 package、canonical core、SQLite v6 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI；Phase 1 另增加只依赖 core 的 `radishmemory-file-entry` package，由 core `SourceCaptureStore` 与 SQLite adapter 提供原子 capture，由 file-entry 从已验真的 `SourceArtifact` 实现精确不覆盖导出，并复用现有 `DeletionStore` 处理完整来源 lineage。[Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界。`P1-F01` 至 `P1-F18` 的本机通过不能替代 Linux / macOS / Windows Phase 1 CI、production host / UI 与平台 bookmark 评审，也不是可导入真实个人资料的产品入口。
+当前已完成精确 Rust `1.96.0` 工具链、三个 M0 package、canonical core、SQLite v6 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI；Phase 1 另有 `radishmemory-file-entry`、`radishmemory-application` 与 `radishmemory-desktop`。desktop host 通过 application service 提供应用数据目录、稳定 host profile、production random / UTC runtime、一次性 native picker，以及 import / update、目录 / 历史、search citation、exact export、完整 lineage deletion evidence、verify / rebuild UI。[Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界，[macOS 交互验收](docs/implementation/phase1-macos-host-acceptance.md)记录 P1-H05 已成立的单机证据与剩余门禁；真实个人资料授权面仍未完成，当前仍不是可导入真实个人资料的产品入口。
 
 当前不把以下内容声明为已实现：
 

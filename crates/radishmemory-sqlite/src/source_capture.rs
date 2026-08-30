@@ -532,7 +532,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::SqliteErrorCode;
+    use crate::{SqliteErrorCode, SqliteStorageReason};
 
     fn id(value: &str) -> Identifier {
         Identifier::new(value).expect("synthetic identifier must be valid")
@@ -716,5 +716,115 @@ mod tests {
             .expect("rollback must preserve exact recall derivations");
         verify_origin_bindings(database.connection())
             .expect("rollback must preserve exact origin bindings and audit");
+    }
+
+    #[test]
+    fn library_verify_and_rebuild_reject_missing_origin_binding_without_repair() {
+        let connection = Connection::open_in_memory().expect("in-memory SQLite must open");
+        let mut database =
+            SqliteDatabase::initialize(connection).expect("database must initialize");
+        database
+            .capture_source(&capture(
+                "source-commit-1",
+                "fragment-commit-1",
+                1,
+                "Binding integrity marker.\n",
+                "2026-08-30T10:00:00Z",
+            ))
+            .expect("baseline capture must commit");
+
+        database
+            .connection()
+            .execute("DELETE FROM radishmemory_source_origin_bindings", [])
+            .expect("synthetic binding corruption must be applied");
+
+        let verify_error = database
+            .verify_recall_derivations()
+            .expect_err("library verification must reject a missing binding");
+        assert_eq!(verify_error.code(), SqliteErrorCode::InvalidStoredData);
+        assert_eq!(
+            verify_error.storage_reason(),
+            Some(SqliteStorageReason::OriginBindingMismatch)
+        );
+        let rebuild_error = database
+            .rebuild_recall_derivations()
+            .expect_err("rebuild must not synthesize a missing canonical binding");
+        assert_eq!(rebuild_error.code(), SqliteErrorCode::InvalidStoredData);
+        assert_eq!(
+            rebuild_error.storage_reason(),
+            Some(SqliteStorageReason::OriginBindingMismatch)
+        );
+        let binding_count: i64 = database
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM radishmemory_source_origin_bindings",
+                [],
+                |row| row.get(0),
+            )
+            .expect("binding count must remain queryable");
+        assert_eq!(binding_count, 0);
+    }
+
+    #[test]
+    fn library_verify_and_rebuild_reject_tampered_body_without_repair() {
+        let connection = Connection::open_in_memory().expect("in-memory SQLite must open");
+        let mut database =
+            SqliteDatabase::initialize(connection).expect("database must initialize");
+        database
+            .capture_source(&capture(
+                "source-commit-1",
+                "fragment-commit-1",
+                1,
+                "Canonical body integrity marker.\n",
+                "2026-08-30T10:01:00Z",
+            ))
+            .expect("baseline capture must commit");
+        let recall_before: String = database
+            .connection()
+            .query_row("SELECT content FROM radishmemory_recall_fts", [], |row| {
+                row.get(0)
+            })
+            .expect("baseline recall row must be queryable");
+        let tampered = b"Tampered managed body marker.\n";
+        database
+            .connection()
+            .execute(
+                "UPDATE radishmemory_source_bodies SET content = ?1 WHERE source_id = ?2",
+                params![tampered.as_slice(), "source-commit-1"],
+            )
+            .expect("synthetic body corruption must be applied");
+
+        let verify_error = database
+            .verify_recall_derivations()
+            .expect_err("library verification must reject tampered canonical bytes");
+        assert_eq!(verify_error.code(), SqliteErrorCode::InvalidStoredData);
+        assert_eq!(
+            verify_error.storage_reason(),
+            Some(SqliteStorageReason::InvalidCanonicalObject)
+        );
+        let rebuild_error = database
+            .rebuild_recall_derivations()
+            .expect_err("rebuild must not overwrite tampered canonical bytes");
+        assert_eq!(rebuild_error.code(), SqliteErrorCode::InvalidStoredData);
+        assert_eq!(
+            rebuild_error.storage_reason(),
+            Some(SqliteStorageReason::InvalidCanonicalObject)
+        );
+        let body_after: Vec<u8> = database
+            .connection()
+            .query_row(
+                "SELECT content FROM radishmemory_source_bodies WHERE source_id = ?1",
+                ["source-commit-1"],
+                |row| row.get(0),
+            )
+            .expect("tampered body must remain present for explicit recovery");
+        let recall_after: String = database
+            .connection()
+            .query_row("SELECT content FROM radishmemory_recall_fts", [], |row| {
+                row.get(0)
+            })
+            .expect("recall row must remain queryable after failed rebuild");
+        assert_eq!(body_after, tampered);
+        assert_eq!(recall_after, recall_before);
     }
 }

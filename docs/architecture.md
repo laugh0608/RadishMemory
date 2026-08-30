@@ -64,7 +64,7 @@ M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest
 
 该入口继续使用现有 `SourceArtifact`、`SourceFragment`、FTS5、citation、DeleteRequest 与 DeletionEvidence，不增加文件专用 canonical object。相同 origin binding 与 exact bytes 的导入幂等，内容变化创建不可变新版本，普通召回只使用 active lineage tip；导出恢复受管副本的精确字节，删除只处理已枚举的本地受管闭包，不修改或声称删除外部原件、hardlink alias 或用户导出。
 
-ADR 0006 冻结 application behavior 与合成验收；当前 production host / UI、平台 bookmark 和长期加密大对象存储仍由后续实现单元决定。本机合成验收已经通过，但三平台 CI 与真实授权面评审成立前，仍不能把该边界描述为已经可导入个人资料的产品能力。
+ADR 0006 冻结 application behavior 与合成验收；`P1-F01` 至 `P1-F18` 已通过 Linux、macOS、Windows locked CI 并合入稳定主线。该证据证明当前 file-entry / SQLite application contract，不证明后续 desktop host 的真实 UI、系统选择器或个人资料授权面。
 
 `P1-I01` 使用独立第一方 `radishmemory-file-entry` package 隔离本地文件系统读取，并且只依赖 `radishmemory-core`。它返回 path-free validated snapshot；`P1-I02` 在 core 增加完整 `SourceCapture` / `SourceCaptureResult` 与最小 `SourceCaptureStore` port，由 file-entry 把快照映射为整文件单片段 capture candidate，由 SQLite v6 adapter 在一个 `IMMEDIATE` transaction 内提交 SourceArtifact body / metadata、完整 fragment、FTS、origin binding、lineage tip 与最小 audit。相同 binding / exact bytes 返回已存事实，内容变化严格推进一个版本并移除旧 tip 的普通召回，任一写入或派生校验失败均回滚到旧 tip。
 
@@ -79,6 +79,18 @@ ADR 0006 冻结 application behavior 与合成验收；当前 production host / 
 `P1-F15` 至 `P1-F18` 继续保持相同 production 数据流。file-entry 默认 build 不包含测试操作，只有 SQLite integration test 通过第一方 `acceptance-test-support` feature 调用 private read seam，在初始文件观察后确定性替换、截短或扩展路径；失败发生在 snapshot / canonical candidate 之前，旧 tip、binding、audit 与 FTS 行投影逐项不变。SQLite capture 的最终 commit 故障通过 adapter-private callback 注入真实 SQL cause，transaction Drop 整体回滚；export 复用临时写入和 `hard_link` 发布 seam，不增加后台补偿或通用 fault framework。不可信 Markdown 仍只进入 exact body、whole-file fragment 与 FTS，loopback observer 证明当前场景没有网络连接，memory facts 保持为零；公开诊断与最小 receipt 不携带正文、路径、allowed root、导出目标或路径摘要。
 
 file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入外部路径。旧 `SourceVault` 两步写入口只保留 M0 synthetic source，显式用户输入必须走原子 capture port，不能通过顺序调用两个旧方法冒充完成。lineage tip 是可重建派生投影，origin binding 只保存 namespace、opaque binding ID 与 lineage，不保存路径、inode 或正文。
+
+## 阶段 1 本地资料库宿主边界
+
+[ADR 0007](adr/0007-phase1-local-library-host.md) 冻结首个 production host 为单用户、单 namespace、单设备的本地桌面进程。UI 只调用 production application service；application service 组合 file-entry、core port 与 SQLite adapter，负责应用目录、opaque ID / UTC time、首次导入 / 更新、来源目录、search citation、精确导出、lineage 删除、verify 与 rebuild。UI 不读取 SQLite 表、rowid、FTS 分数或 adapter-private binding，也不自行拼装删除闭包。
+
+每次导入、更新和导出只消费当前 UI 操作产生的一次性系统文件选择 capability。首批不持久化路径、allowed root、platform bookmark 或文件访问 token，不后台监视或自动重导入；更新已有来源时，用户先选择现有 lineage，再重新选择本地文件并显式复用 opaque binding。系统选择器路径只在本次调用链存在，file-entry 继续执行允许根、symlink、普通文件、TOCTOU、内容与目标不覆盖检查。
+
+宿主在平台应用数据目录的专用位置打开文件 SQLite，启动时验证 capability、migration、canonical facts、派生索引和 binding。派生漂移只有在 canonical facts 通过完整复验后才能由用户显式 rebuild；canonical 损坏不能通过扫描外部原件、建立空库或 UI cache 静默恢复。首批仍不启动本地 HTTP 服务、daemon、网络、模型、RadishMind 或同步，也不声明本地明文数据库已经加密。
+
+`P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 只定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型；`LocalLibrary` 组合 open、import / update、list / get、search citation、exact export、canonical lineage deletion evidence、verify / rebuild，并通过 `ApplicationRuntime` 隔离 production ID / clock。
+
+`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前只证明本机编译和合成关闭重开；真实 GUI / picker 与 Linux / Windows 构建仍属于 P1-H05。
 
 ## 核心组件
 

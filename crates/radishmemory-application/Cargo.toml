@@ -1,0 +1,15 @@
+[package]
+name = "radishmemory-application"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+radishmemory-core.workspace = true
+radishmemory-file-entry.workspace = true
+radishmemory-sqlite.workspace = true

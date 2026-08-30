@@ -183,7 +183,7 @@ DeleteRequest 持久化时，整个 lineage 及其依赖至少进入 pending，�
 
 `P1-F15` 至 `P1-F18` acceptance closure 只增加显式 opt-in 的第一方测试边界。file-entry 默认 build 不包含测试入口；SQLite integration test 启用 `acceptance-test-support` 后，仍通过 private read seam 在初始 open-file 观察后确定性替换、截短或扩展所选文件，三者都返回 retryable `source_changed_during_capture`，不产生 snapshot 后续提交或 receipt。SQLite adapter 以 private callback 在全部 capture facts、FTS、tip、binding 与 audit 写入并复验后、transaction commit 前注入真实 SQLite 错误，Drop rollback 保持旧事实和派生状态；该入口不增加 public port、schema 或 production fallback。export 继续复用既有临时写入与原子发布 seam，分别保留 timeout cause / retryable 和并发目标占用的稳定错误，同时只清理身份仍匹配的本任务临时文件。
 
-不可信 Markdown 验收把 front matter、链接、HTML / script、伪指令和图片 URL 原样作为 SourceArtifact / SourceFragment 正文及 FTS 输入；nonblocking loopback observer 没有收到连接，proposal、decision、record 与 state-event facts 全部为零。诊断验收集中渲染 read / export request、snapshot、capture、adapter result、source / fragment / search hit、错误、数据库 Debug 与 capture / export receipt，确认合成正文、完整路径、allowed root、导出目标、被拒绝字节标记和路径摘要均不出现。该证据来自本机合成运行，不替代三平台 CI、production host / UI、平台 bookmark 或真实个人资料授权评审。
+不可信 Markdown 验收把 front matter、链接、HTML / script、伪指令和图片 URL 原样作为 SourceArtifact / SourceFragment 正文及 FTS 输入；nonblocking loopback observer 没有收到连接，proposal、decision、record 与 state-event facts 全部为零。诊断验收集中渲染 read / export request、snapshot、capture、adapter result、source / fragment / search hit、错误、数据库 Debug 与 capture / export receipt，确认合成正文、完整路径、allowed root、导出目标、被拒绝字节标记和路径摘要均不出现。该验收已经进入三平台 locked CI，但仍不替代 production host / UI、真实系统选择器或个人资料授权评审。
 
 ## 合成验收
 
@@ -238,14 +238,14 @@ fixture mapping 为确定性评测服务，不包含真实文件授权、TOCTOU�
 
 收益：真实文件入口不依赖外部路径长期存在；重复导入、版本、当前召回、精确导出和本地删除具有单一语义；文件系统攻击面、隐私日志和外部副本边界可用合成数据验证；现有 canonical truth 不被复制。
 
-代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；`P1-F01` 至 `P1-F18` 目前都只有本机证据，三平台 Phase 1 CI、production host / UI 与平台 bookmark 仍需后续独立评审；本地明文仍依赖受信设备保护。
+代价：首个入口不递归扫描目录，不跟随 symlink，不覆盖导出目标，也不保留完整文件 metadata；8 MiB 上限、整文件单片段和 SQLite BLOB 只适合窄文本切片；`P1-F01` 至 `P1-F18` 的当前三平台证据仍不能替代 production host / UI、真实系统选择器或个人资料授权评审；本地明文仍依赖受信设备保护。
 
 ## 后续实施顺序与停止线
 
 1. `P1-I01` / `P1-I02` 已先固定文件快照、receipt、atomic capture、origin binding 与 lineage-tip 的最小 package / port 边界，不修改 M0 fixture schema。
-2. `P1-I03` 已实现精确 export 与不覆盖发布，`P1-I04` 已复用现有删除协议收口 lineage 删除闭包；`P1-F01` 至 `P1-F18` 已在本机跨层运行，不预建通用 workflow、插件或后台队列。
+2. `P1-I03` 已实现精确 export 与不覆盖发布，`P1-I04` 已复用现有删除协议收口 lineage 删除闭包；`P1-F01` 至 `P1-F18` 已在本机跨层运行并进入 Linux / macOS / Windows locked CI，不预建通用 workflow、插件或后台队列。
 3. 继续复用现有 Source Vault、LocalSearch 和 DeletionStore；文件 adapter 不直接写 SQLite 业务表，export 不回读外部 origin file。
-4. 下一步在 macOS、Linux 与 Windows 运行 locked 检查和合成验收；静态检查、单平台结果或内存 fixture 不能替代各平台真实临时文件行为。
-5. 只有该入口通过后，才分别评审 PDF / 图片解析、加密内容寻址大对象存储、向量、模型 adapter 与 UI。
+4. PR #2 的 run `33302423840` 已在 macOS、Linux 与 Windows 运行 locked 检查和合成验收，并以 merge commit `c56f13f` 合入稳定主线、回流 `dev`。
+5. 下一步按 [ADR 0007](0007-phase1-local-library-host.md) 实现 production application service、来源目录、本地 UI 与真实系统文件选择；之后才分别评审 PDF / 图片解析、加密内容寻址大对象存储、向量和模型 adapter。
 
-在真实验收通过前，不导入真实个人资料，不声明产品文件入口、加密存储、完整删除或生产可用；未经独立授权，不 push、不创建 PR、不修改远端状态。
+在宿主、UI 与真实系统选择验收通过前，不导入真实个人资料，不声明产品文件入口、加密存储、完整删除或生产可用；未经独立授权，不 push、不创建 PR、不修改远端状态。

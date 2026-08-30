@@ -1,6 +1,8 @@
 [workspace]
 members = [
+  "apps/radishmemory-desktop",
   "apps/radishmemory-m0",
+  "crates/radishmemory-application",
   "crates/radishmemory-core",
   "crates/radishmemory-file-entry",
   "crates/radishmemory-sqlite",
@@ -15,13 +17,18 @@ license-file = "LICENSE"
 publish = false
 
 [workspace.dependencies]
+directories = "=6.0.0"
+eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+getrandom = { version = "=0.4.3", default-features = false }
+radishmemory-application = { path = "crates/radishmemory-application", version = "=0.1.0" }
 radishmemory-core = { path = "crates/radishmemory-core", version = "=0.1.0" }
 radishmemory-file-entry = { path = "crates/radishmemory-file-entry", version = "=0.1.0" }
 radishmemory-sqlite = { path = "crates/radishmemory-sqlite", version = "=0.1.0" }
 rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
+rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal", "wayland"] }
 serde_json = { version = "1.0.151", default-features = false, features = ["arbitrary_precision", "std"] }
 sha2 = { version = "0.11.0", default-features = false }
-time = { version = "0.3.55", default-features = false, features = ["parsing", "std"] }
+time = { version = "0.3.55", default-features = false, features = ["formatting", "parsing", "std"] }
 unicode-normalization = { version = "0.1.25", default-features = false, features = ["std"] }
 
 [workspace.lints.rust]

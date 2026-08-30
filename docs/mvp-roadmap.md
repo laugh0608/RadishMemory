@@ -48,7 +48,7 @@ MVP 不以功能数量为目标，而要证明一个可信闭环：
 - `local_only` 内容在云端调用前失败关闭；
 - 无模型时仍能采集、浏览和搜索。
 
-阶段 1 不把上述范围一次性展开为大批次。首个评审单元已通过 [ADR 0006](adr/0006-phase1-text-markdown-file-entry.md) 冻结用户显式选择的 UTF-8 文本 / Markdown 文件入口、来源身份 / 版本、幂等导入、精确导出、派生重建、删除边界和 18 个合成验收场景；它复用 M0 已成立的 Source Vault、全文召回、citation 与删除语义。PDF / 图片解析、向量实现、模型 adapter 与 UI 分别在后续单元审查依赖、许可证、native build、隐私失败关闭和质量指标。
+阶段 1 不把上述范围一次性展开为大批次。首个评审单元已通过 [ADR 0006](adr/0006-phase1-text-markdown-file-entry.md) 冻结用户显式选择的 UTF-8 文本 / Markdown 文件入口、来源身份 / 版本、幂等导入、精确导出、派生重建、删除边界和 18 个合成验收场景；该入口已经通过 Linux、macOS、Windows locked CI 并合入稳定主线。下一评审单元由 [ADR 0007](adr/0007-phase1-local-library-host.md) 冻结本地桌面宿主、一次性文件授权、application service、来源目录、基础 UI 和十二项宿主验收；P1-H02 / P1-H03 与经独立依赖授权的 P1-H04 desktop host 已完成本机实现，P1-H05 已记录纯合成数据的 macOS 可见窗口、AppKit open / save picker 与 canonical / binding 损坏失败关闭交互，当前继续补齐 Linux / macOS / Windows desktop CI 和可分发依赖清单。PDF / 图片解析、向量实现和模型 adapter 继续分别审查依赖、许可证、native build、隐私失败关闭和质量指标。
 
 ## 阶段 2：长期记忆生命周期
 

@@ -3,7 +3,9 @@ use std::error::Error;
 use crate::{
     ComponentResult, DeleteRequest, DeletionEvidence, Identifier, LocalDeletionExecution,
     LocalSearchHit, LocalSearchRequest, MemoryDecision, MemoryProposal, MemoryRecord,
-    MemoryStateEvent, SourceArtifact, SourceCapture, SourceCaptureResult, SourceFragment,
+    MemoryStateEvent, ObjectRef, SourceArtifact, SourceCapture, SourceCaptureResult,
+    SourceCatalogRequest, SourceFragment, SourceLineageState, SourceLineageSummary,
+    SourceVersionSummary,
 };
 
 /// Minimal local retrieval boundary required by the frozen M0 search operation.
@@ -23,6 +25,31 @@ pub trait SourceCaptureStore {
         &mut self,
         capture: &SourceCapture,
     ) -> Result<SourceCaptureResult, Self::Error>;
+}
+
+/// Read-only application boundary for current source lineages and explicit history.
+pub trait SourceCatalog {
+    type Error: Error + Send + Sync + 'static;
+
+    /// Resolves one active explicit lineage to its opaque binding and current tip.
+    fn resolve_source_lineage(
+        &self,
+        namespace_id: &Identifier,
+        lineage_id: &Identifier,
+    ) -> Result<Option<SourceLineageState>, Self::Error>;
+
+    /// Lists active current lineages in stable captured-time order.
+    fn list_source_lineages(
+        &self,
+        request: &SourceCatalogRequest,
+    ) -> Result<Vec<SourceLineageSummary>, Self::Error>;
+
+    /// Lists all active versions for one lineage in ascending version order.
+    fn list_source_versions(
+        &self,
+        namespace_id: &Identifier,
+        lineage_id: &Identifier,
+    ) -> Result<Vec<SourceVersionSummary>, Self::Error>;
 }
 
 /// Minimal persistence boundary required by M0 capture and segmentation.
@@ -103,6 +130,13 @@ pub trait MemoryStore {
 /// Local persistence and execution boundary for the frozen M0 deletion workflow.
 pub trait DeletionStore {
     type Error: Error + Send + Sync + 'static;
+
+    /// Resolves one active source lineage and every active memory dependency to exact targets.
+    fn resolve_source_lineage_deletion_targets(
+        &self,
+        namespace_id: &Identifier,
+        lineage_id: &Identifier,
+    ) -> Result<Vec<ObjectRef>, Self::Error>;
 
     /// Persists an exact deletion plan and atomically closes all planned targets to recall.
     fn store_delete_request(&mut self, request: &DeleteRequest) -> Result<(), Self::Error>;

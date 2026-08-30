@@ -8,9 +8,9 @@ use radishmemory_core::{
     MemoryRecordParams, MemoryState, MemoryStateEvent, MemoryStateEventParams, MemoryStore,
     MemoryType, MemoryValue, NonEmptyText, ObjectRef, ProducerRef, ProducerType, ProposalOperation,
     RequestedGuarantee, RequiredAction, RetentionMode, RetentionRule, Sensitivity, SourceArtifact,
-    SourceArtifactParams, SourceFragment, SourceFragmentParams, SourceKind, SourceOriginKind,
-    SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime, ValidTimeMode, Version,
-    compute_digest, compute_exact_bytes_digest,
+    SourceArtifactParams, SourceCapture, SourceCaptureStore, SourceFragment, SourceFragmentParams,
+    SourceKind, SourceOriginKind, SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime,
+    ValidTimeMode, Version, compute_digest, compute_exact_bytes_digest,
 };
 use radishmemory_file_entry as _;
 use radishmemory_sqlite::SqliteDatabase;
@@ -107,6 +107,7 @@ fn actor() -> ActorRef {
 
 fn seed_source(database: &mut SqliteDatabase, source_id: &str, fragment_id: &str) {
     let content = text("offline memory deletion fixture");
+    let origin_binding_id = id(&format!("origin-binding-{source_id}"));
     let source = SourceArtifact::new(SourceArtifactParams {
         source_id: id(source_id),
         lineage_id: id(&format!("{source_id}-lineage")),
@@ -118,8 +119,8 @@ fn seed_source(database: &mut SqliteDatabase, source_id: &str, fragment_id: &str
         content_digest: compute_exact_bytes_digest(content.as_str().as_bytes()),
         content: content.clone(),
         title: Some(text("Synthetic deletion source")),
-        origin_kind: SourceOriginKind::SyntheticFixture,
-        origin_ref: Some(text("fixture://deletion-source")),
+        origin_kind: SourceOriginKind::ExplicitUserInput,
+        origin_ref: Some(text(origin_binding_id.as_str())),
         observed_at: timestamp("2026-08-26T08:00:00Z"),
         captured_at: timestamp("2026-08-26T08:00:01Z"),
         supersedes_source_ids: vec![],
@@ -144,11 +145,11 @@ fn seed_source(database: &mut SqliteDatabase, source_id: &str, fragment_id: &str
     })
     .expect("fragment must be valid");
     database
-        .store_source_artifact(&source)
-        .expect("source must persist");
-    database
-        .store_source_fragments(&[fragment])
-        .expect("fragment must persist");
+        .capture_source(
+            &SourceCapture::new(origin_binding_id, source, vec![fragment])
+                .expect("explicit source capture must be valid"),
+        )
+        .expect("source capture must persist");
 }
 
 fn seed_memory(database: &mut SqliteDatabase, fragment_id: &str, memory_id: &str) {
@@ -344,6 +345,15 @@ fn local_purge_closes_recall_executes_all_components_and_chains_idempotent_evide
             .expect("pre-delete search must work")
             .len(),
         2
+    );
+    assert_eq!(
+        database
+            .resolve_source_lineage_deletion_targets(&id("namespace-1"), &id("source-1-lineage"))
+            .expect("lineage deletion targets must resolve"),
+        vec![
+            ObjectRef::new(CanonicalObjectType::SourceArtifact, id("source-1")),
+            ObjectRef::new(CanonicalObjectType::MemoryRecord, id("memory-1")),
+        ]
     );
 
     let request = delete_request(

@@ -2,17 +2,19 @@
 
 日期：2026-08-30
 
-范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01 file snapshot contract`、`P1-I02 atomic source capture`、`P1-I03 exact export`、`P1-I04 lineage deletion`、阶段 1 `P1-F01` 至 `P1-F18` 本机验收、workspace 工具链与聚合检查入口。
+范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
-`Cargo.lock` 由 Cargo `1.96.0` 生成，lockfile format 为 `4`。当前依赖图包含四个第一方 workspace package，以及从 crates.io 解析并带 checksum 的 40 个第三方 package；没有 Git dependency。
+`Cargo.lock` 由 Cargo `1.96.0` 生成，lockfile format 为 `4`。当前依赖图包含六个第一方 workspace package，以及从 crates.io 解析并带 checksum 的 395 个第三方 package；没有 Git dependency。数量包含 Linux、macOS、Windows、Android、WASM 和可选 renderer 的条件解析全集，不等于单个产物会编译或链接全部 package。
 
 | package | 直接依赖 | 来源 | 许可证 |
 | --- | --- | --- | --- |
 | `radishmemory-core 0.1.0` | `serde_json`、`sha2`、`time`、`unicode-normalization` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-file-entry 0.1.0` | `radishmemory-core =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-sqlite 0.1.0` | runtime：`radishmemory-core =0.1.0`、`rusqlite`；test-only：`radishmemory-file-entry =0.1.0`（`acceptance-test-support`） | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-application 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-file-entry =0.1.0`、`radishmemory-sqlite =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-desktop 0.1.0` | `radishmemory-application =0.1.0`、`eframe`、`rfd`、`directories`、`getrandom`、`time` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`（`fixture-runner`）、`serde_json` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 
 ## Core 直接依赖
@@ -23,14 +25,24 @@
 | --- | --- | --- | --- | --- |
 | `serde_json` | `1.0.151` | `arbitrary_precision`、`std` | 校验 JSON string / number 语法并保留 number 原始表示；不负责 canonical writer | 自带 Rust build script；无 native code |
 | `sha2` | `0.11.0` | 无 | `SHA-256` | 纯 Rust；目标平台可通过 `cpufeatures` 选择实现 |
-| `time` | `0.3.55` | `parsing`、`std` | RFC 3339 解析、UTC 比较和外部精度事实 | 引入 `time-macros` proc macro；不读取本地时区 |
+| `time` | `0.3.55` | `formatting`、`parsing`、`std` | RFC 3339 解析、UTC 比较和 production UTC clock 格式化 | 引入 `time-macros` proc macro；不读取本地时区 |
 | `unicode-normalization` | `0.1.25` | `std` | 仅用于 `utf8-nfc-text-v1` | 纯 Rust；Unicode 表由 crate 提供 |
 
 这些版本均满足 workspace 的 Rust `1.96.0`，许可证均为 `MIT OR Apache-2.0`。manifest 使用兼容版本要求，首次受审阅解析结果由 `Cargo.lock` 精确固定；后续 lockfile 漂移必须重新审查并更新本页与检查器。
 
 `radishmemory-m0` 直接复用同一 workspace `serde_json 1.0.151` 解析冻结 fixture 并构造最小证据 JSON；这只改变第一方 package 的直接依赖边，不新增第三方 package、feature、build script 或网络能力。fixture suite、ContextPack 和 DeletionEvidence 摘要仍调用 core 的 `radishmemory-canonical-json-v1` 实现，不依赖 serializer 的默认 key 顺序。
 
-`radishmemory-file-entry` 只直接依赖第一方 `radishmemory-core`，复用 `exact-bytes-v1`、`SourceKind`、`MediaType`、稳定 Identifier / Version、`SourceCapture` 和敏感正文 Debug 边界。文件与路径操作全部使用 Rust 标准库；P1-I01 至 P1-I04 及 `P1-F01` 至 `P1-F18` 的本机验收没有新增 crates.io package、第三方 feature、build script、proc macro、native code 或产品网络能力，40 个第三方 package 的版本与 checksum 未变化。SQLite package 仅在 integration test 中引用第一方 file-entry，以合成临时文件贯通真实 snapshot、atomic store、exact export、lineage deletion、拒绝、TOCTOU、无副作用与诊断边界；production dependency 方向仍是 file-entry → core 与 sqlite → core，没有 file-entry / SQLite runtime 耦合。
+`radishmemory-file-entry` 只直接依赖第一方 `radishmemory-core`，复用 `exact-bytes-v1`、`SourceKind`、`MediaType`、稳定 Identifier / Version、`SourceCapture` 和敏感正文 Debug 边界。文件与路径操作全部使用 Rust 标准库；P1-I01 file snapshot、P1-I02 atomic source capture、P1-I03 exact export、P1-I04 lineage deletion 及 `P1-F01` 至 `P1-F18` 当时没有扩大 40 个第三方 package 的 headless 基础子图。SQLite package 仅在 integration test 中引用第一方 file-entry，以合成临时文件贯通真实 snapshot、atomic store、exact export、lineage deletion、拒绝、TOCTOU、无副作用与诊断边界；production dependency 方向仍是 file-entry → core 与 sqlite → core，没有 file-entry / SQLite runtime 耦合。
+
+`radishmemory-application` 只组合上述三个第一方 library package。它新增 file-backed `LocalLibrary`、`ApplicationRuntime`、脱敏 application error 和 body-free `SourceCatalog` 读取模型，复用既有 capture、search、export、deletion、verify / rebuild 语义；自身没有新增 crates.io package、feature、build script、proc macro、native code、平台权限或网络能力。UI 工具包、系统文件选择、应用数据目录与 production runtime 只位于下述 desktop package。
+
+## Desktop 直接依赖、平台面与当前目标
+
+`radishmemory-desktop` 的精确直接依赖与选择理由见 [Phase 1 桌面宿主依赖评审](phase1-desktop-dependency-review.md)：`eframe =0.36.1` 关闭 default features 并只启用 `accesskit`、`default_fonts`、`glow`、`wayland`、`x11`；`rfd =0.17.2` 只启用 `xdg-portal`、`wayland`；`directories =6.0.0`、`getrandom =0.4.3` 与 `time =0.3.55` 提供应用目录、系统随机与 UTC RFC 3339。
+
+当前 `aarch64-apple-darwin` desktop 目标可达 162 个唯一 package ID，其中 5 个第一方；真实编译使用 AppKit、AccessKit、`glow` / Glutin、剪贴板、系统随机与 bundled SQLite。lockfile 的 401-package 全集还保存其它 target 和可选依赖，因此出现 `wgpu`、Linux XDG Portal / D-Bus、Wayland / X11、Windows、Android 与 WASM package，不代表当前 macOS artifact 启用了这些路径。当前实际 tree 没有 `wgpu`，整份 lockfile 也没有常见 HTTP / TLS client 或 `tokio`；Linux portal 的本地 D-Bus / async 条件面、窗口系统、剪贴板和 accessibility 仍是必须承认的平台能力。
+
+新增四个第三方直接依赖的声明许可证是：`eframe`、`directories`、`getrandom` 为 `MIT OR Apache-2.0`，`rfd` 为 `MIT`；`time` 保持既有 `MIT OR Apache-2.0`。完整 offline metadata 没有缺失 license 字段，跨目标全集有 73 个 build-script package ID、27 个 proc-macro package ID 和 3 个 native `links` 声明；需要单列 `epaint_default_fonts` 的 OFL / Ubuntu Font License、`option-ext` 的 MPL-2.0 与 `unicode-ident` 的 Unicode-3.0。`self_cell` 的 GPL 和 `r-efi` 的 LGPL 都有 Apache / MIT 并列选项，不是强制 copyleft 选择。首次分发前仍须生成 third-party notices、选择适用许可证选项并人工复核原文；不得把本页摘要替代完整 notices。
 
 file-entry 的第一方 `acceptance-test-support` feature 默认关闭，只由 SQLite dev-dependency 启用。它把替换、截短和扩展三种冻结操作映射到 production `read_file_snapshot` 复用的 private 初始观察 seam；默认 build 不导出测试类型或函数，不允许任意 callback、网络、数据库或模型操作。SQLite capture commit 故障 seam 保持 adapter private 且只在 crate unit test 中调用，不是 Cargo feature 或 public port。两者均不改变 `Cargo.lock`、production feature 图、第三方编译面或运行时数据流。
 
@@ -48,9 +60,9 @@ adapter 的第一方 `fixture-runner` feature 只由 `radishmemory-m0` 启用，
 
 adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABLE_FTS5')` 与实际临时 FTS5 虚表创建；任一不符均失败关闭，不回退内存扫描。运行时版本实探只能证明所链接库报告 `3.53.2`，bundled 来源本身由 manifest feature、lockfile、crate checksum 与构建日志共同约束，不能把版本字符串单独当作供应链来源证明。
 
-## 传递依赖与供应链面
+## Headless 基础子图与供应链面
 
-40 个第三方 package 的精确解析清单为：
+不含 desktop host 的 40 个第三方 headless 基础 package 精确解析清单为：
 
 - 直接：`serde_json 1.0.151`、`sha2 0.11.0`、`time 0.3.55`、`unicode-normalization 0.1.25`；
 - SHA-256：`block-buffer 0.12.1`、`cfg-if 1.0.4`、`cpufeatures 0.3.0`、`crypto-common 0.2.2`、`digest 0.11.3`、`hybrid-array 0.4.14`、`libc 0.2.189`、`typenum 1.20.1`；
@@ -61,7 +73,7 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 
 许可证例外为 `memchr` 的 `Unlicense OR MIT`、`tinyvec` / `tinyvec_macros` 的 Zlib / Apache-2.0 / MIT 组合、`unicode-ident` 的 Unicode-3.0 数据条款、`zmij` 与 `rusqlite` / `libsqlite3-sys` 的 MIT，以及 SQLite amalgamation 的 public-domain dedication；其余新增 SQLite 传递 package 为 MIT / Apache-2.0 组合。M0 当前没有发布产物；首次分发源码或二进制前仍须生成并人工复核 third-party notices，尤其不能遗漏 Unicode-3.0 数据归属，也不能把 SQLite 的 public-domain 状态误写成项目自身许可证。
 
-`serde_derive` 与 `time-macros` 是实际解析的 proc macro。`libc`、`proc-macro2`、`quote`、`serde`、`serde_core`、`serde_json`、`zmij` 与 `libsqlite3-sys` 包含 Rust build script；其中只有 `libsqlite3-sys` 在当前 feature 图中通过 `cc` 编译并链接第三方 SQLite C 源码。`pkg-config` 与 `vcpkg` 随 `libsqlite3-sys` 锁定，但 bundled 分支不依赖宿主 SQLite 作为运行库。构建阶段会从 crates.io 获取已锁定源码并需要可用的目标平台 C 工具链；产品运行时仍没有 HTTP client、隐式联网、遥测或数据外发能力。
+`serde_derive` 与 `time-macros` 是 headless 基础子图实际解析的 proc macro。`libc`、`proc-macro2`、`quote`、`serde`、`serde_core`、`serde_json`、`zmij` 与 `libsqlite3-sys` 包含 Rust build script；其中 `libsqlite3-sys` 在当前 feature 图中通过 `cc` 编译并链接第三方 SQLite C 源码。desktop 图另包含 UI / windowing 的 proc macro、platform binding 与 native build 元数据，必须按目标平台复验，不能沿用这里的 40-package 结论。`pkg-config` 与 `vcpkg` 随 `libsqlite3-sys` 锁定，但 bundled 分支不依赖宿主 SQLite 作为运行库。
 
 选择这些依赖而非本地平行实现，是因为 ADR 0005 已冻结 JSON 表示、SHA-256、Unicode NFC、RFC 3339 与 bundled SQLite / FTS5 基线；项目仍自行实现 `radishmemory-canonical-json-v1` writer，SQLite schema、migration 和查询也仍由本项目审阅。主要剩余供应链风险是 build script / proc macro 在编译时执行、SQLite C 编译器链与未来兼容版本更新；当前通过 crates.io checksum、精确 lockfile、直接依赖白名单、运行时 capability probe 和三平台 locked checks 约束。
 
@@ -69,7 +81,8 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 
 - workspace 使用 Rust 2024 edition，`rust-toolchain.toml` 精确固定 `1.96.0`，并要求 `rustfmt` 与 `clippy` component；
 - 第一方 package 继承 `rust-version = "1.96.0"`、仓库许可证，以及 workspace `unsafe_code = "forbid"` 与 `unused_crate_dependencies = "deny"` lint；
-- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 workspace 格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 capability、新库与 v1 → v6 迁移、Source Vault、MemoryStore、atomic source capture、exact no-overwrite export、source lineage deletion、BOM / CRLF / Unicode exact-byte reload、hardlink provenance 独立删除、路径 / symlink / 内容拒绝原子性、8 MiB capture 边界、确定性 TOCTOU、capture commit rollback、export write / publish failure、不可信 Markdown 零网络 / 零 memory side effect、诊断脱敏、检索、删除、12 场景 / 86 操作 / 12 gate runner、确定性证据和未知操作失败关闭均通过。本单元最终仍以正式仓库聚合入口结果为准；
-- PR workflow 在 [PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 对相同 locked 检查进行了真实执行：首轮 run `32976944213` 的 Linux / macOS 通过，Windows 因文件数据库逐事务同步放大重复 fixture suite 而在 `10m14s` 超时；提交 `918d045` 保留 production 文件入口与连接策略，仅把 runner-only 场景切换为独立内存连接，随后 run `32978669766` 的 Linux、macOS、Windows 与 `Candidate Quality` 已通过。最终文档 head `6df0891` 又在 run `32979128488` 全部通过，并由 merge commit `fe8186a` 合入 `master`、fast-forward 回流 `dev`。该历史证明已合并 M0 基线的三平台 CI，不外推为未来版本或生产环境保证。
+- 本地 macOS 已使用 Rust / Cargo `1.96.0` 运行 workspace 格式、Clippy 与全部 target 测试；bundled SQLite `3.53.2`、FTS5 capability、新库与 v1 → v6 迁移、Source Vault、MemoryStore、atomic source capture、exact no-overwrite export、source lineage deletion、body-free catalog、application import / update / search / export / delete、文件数据库重启、BOM / CRLF / Unicode exact-byte reload、hardlink provenance 独立删除、路径 / symlink / 内容拒绝原子性、8 MiB capture 边界、确定性 TOCTOU、capture commit rollback、export write / publish failure、不可信 Markdown 零网络 / 零 memory side effect、诊断脱敏、检索、删除、12 场景 / 86 操作 / 12 gate runner、确定性证据和未知操作失败关闭均通过。本单元最终仍以正式仓库聚合入口结果为准；
+- PR workflow 在 [PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 对 M0 locked 检查进行了真实执行：首轮 run `32976944213` 的 Linux / macOS 通过，Windows 因文件数据库逐事务同步放大重复 fixture suite 而在 `10m14s` 超时；提交 `918d045` 保留 production 文件入口与连接策略，仅把 runner-only 场景切换为独立内存连接，随后 run `32978669766` 的 Linux、macOS、Windows 与 `Candidate Quality` 已通过。最终文档 head `6df0891` 又在 run `32979128488` 全部通过，并由 merge commit `fe8186a` 合入 `master`、fast-forward 回流 `dev`。
+- Phase 1 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 run `33302423840` 真实运行 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality` 并全部通过，随后由 merge commit `c56f13f` 合入 `master`、fast-forward 回流 `dev`。该结果覆盖 file snapshot、atomic capture、exact export、lineage deletion、TOCTOU、故障回滚、不可信 Markdown 无副作用和诊断脱敏的当前 locked feature graph，不外推为 production host / UI、真实个人资料或未来平台兼容保证。
 
-本基线证明 canonical core primitive、九种顶层对象、字段级校验、跨对象不变量、SQLite 连接 / migration、Source Vault、MemoryStore、FTS5 派生索引、当前投影、本地删除执行与真实 fixture runner 的已合并依赖图，并记录 P1-I01 / P1-I02 / P1-I03 / P1-I04 file snapshot、atomic capture、exact export 与 lineage deletion 没有扩大第三方供应链。`P1-F01` 至 `P1-F18` 的本机验证不能替代后续 Linux / macOS / Windows Phase 1 CI，也不证明 production host / UI、平台 bookmark、完整产品文件入口、PDF / 图片采集、向量检索、模型问答、多设备同步、未来平台兼容或生产可用性。
+本基线证明 canonical core、SQLite / FTS5、file-entry 与 application service 的已合并依赖图，也记录了 desktop UI、一次性平台选择、应用目录、host profile 与 production runtime 的当前本机依赖和构建证据。`P1-F01` 至 `P1-F18` 已通过 Linux / macOS / Windows locked CI；desktop package 当前只通过本机 macOS locked check / test / Clippy，尚无真实 GUI、真实 picker 或 Linux / Windows desktop CI 证据，因此不证明完整产品文件入口、真实个人资料授权、PDF / 图片、向量、模型、同步、未来平台兼容或生产可用性。

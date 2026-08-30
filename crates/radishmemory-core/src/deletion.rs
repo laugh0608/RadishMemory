@@ -37,6 +37,101 @@ pub enum RequiredAction {
     RetainMinimal,
 }
 
+const LOCAL_PURGE_PROFILE: [(&str, DeletionComponentType, RequiredAction); 10] = [
+    (
+        "source-body",
+        DeletionComponentType::SourceBody,
+        RequiredAction::Delete,
+    ),
+    (
+        "source-metadata",
+        DeletionComponentType::SourceMetadata,
+        RequiredAction::RetainMinimal,
+    ),
+    (
+        "source-fragment",
+        DeletionComponentType::SourceFragment,
+        RequiredAction::Delete,
+    ),
+    (
+        "memory-proposal",
+        DeletionComponentType::MemoryProposal,
+        RequiredAction::Redact,
+    ),
+    (
+        "memory-decision",
+        DeletionComponentType::MemoryDecision,
+        RequiredAction::RetainMinimal,
+    ),
+    (
+        "memory-record",
+        DeletionComponentType::MemoryRecord,
+        RequiredAction::Redact,
+    ),
+    (
+        "memory-state-event",
+        DeletionComponentType::MemoryStateEvent,
+        RequiredAction::RetainMinimal,
+    ),
+    (
+        "full-text-index",
+        DeletionComponentType::FullTextIndex,
+        RequiredAction::Delete,
+    ),
+    (
+        "context-cache",
+        DeletionComponentType::ContextCache,
+        RequiredAction::Delete,
+    ),
+    (
+        "minimal-audit",
+        DeletionComponentType::MinimalAudit,
+        RequiredAction::RetainMinimal,
+    ),
+];
+
+/// Builds the frozen ten-component M0 local-purge plan for one exact semantic closure.
+pub fn build_local_purge_targets(
+    target_refs: &[ObjectRef],
+) -> Result<Vec<DeletionTarget>, CoreError> {
+    require_non_empty(target_refs)?;
+    require_unique(target_refs)?;
+    if target_refs.iter().any(|target| {
+        !matches!(
+            target.object_type(),
+            CanonicalObjectType::SourceArtifact | CanonicalObjectType::MemoryRecord
+        )
+    }) {
+        return Err(CoreError::invalid_canonical_object(
+            InvalidCanonicalObjectReason::InvalidFieldCombination,
+        ));
+    }
+
+    let mut sorted = target_refs.to_vec();
+    sorted.sort();
+    let target_ref = if sorted.len() == 1 {
+        DeletionTargetRef::Object(sorted[0].clone())
+    } else {
+        DeletionTargetRef::FrozenClosure(FrozenTargetClosure::freeze(sorted)?)
+    };
+    let target_count = u64::try_from(target_refs.len()).map_err(|_| {
+        CoreError::invalid_canonical_object(InvalidCanonicalObjectReason::CountMismatch)
+    })?;
+
+    LOCAL_PURGE_PROFILE
+        .iter()
+        .map(|(key, component_type, action)| {
+            DeletionTarget::new(
+                Identifier::new(*key)?,
+                *component_type,
+                target_ref.clone(),
+                target_count,
+                *action,
+            )
+        })
+        .collect()
+}
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct FrozenTargetClosure {
     target_refs: Vec<ObjectRef>,
@@ -368,6 +463,49 @@ impl ComponentResult {
     #[must_use]
     pub const fn params(&self) -> &ComponentResultParams {
         &self.0
+    }
+}
+
+/// Computes the deterministic M0 evidence digest payload used by the local execution path.
+pub fn compute_deletion_evidence_digest(
+    deletion_evidence_id: &Identifier,
+    delete_request_id: &Identifier,
+    overall_status: DeletionOverallStatus,
+    component_results: &[ComponentResult],
+) -> Result<Digest, CoreError> {
+    let value = serde_json::json!({
+        "component_results": component_results
+            .iter()
+            .map(|result| serde_json::json!({
+                "component_key": result.params().component_key.as_str(),
+                "processed_count": result.params().processed_count,
+                "status": component_status_str(result.params().status),
+            }))
+            .collect::<Vec<_>>(),
+        "deletion_evidence_id": deletion_evidence_id.as_str(),
+        "delete_request_id": delete_request_id.as_str(),
+        "overall_status": deletion_overall_status_str(overall_status),
+    });
+    crate::compute_digest(
+        DigestProfile::DeletionEvidenceV1.as_str(),
+        &value.to_string(),
+    )
+}
+
+const fn component_status_str(status: ComponentStatus) -> &'static str {
+    match status {
+        ComponentStatus::Pending => "pending",
+        ComponentStatus::Succeeded => "succeeded",
+        ComponentStatus::Failed => "failed",
+    }
+}
+
+const fn deletion_overall_status_str(status: DeletionOverallStatus) -> &'static str {
+    match status {
+        DeletionOverallStatus::Pending => "pending",
+        DeletionOverallStatus::Partial => "partial",
+        DeletionOverallStatus::Failed => "failed",
+        DeletionOverallStatus::Completed => "completed",
     }
 }
 
