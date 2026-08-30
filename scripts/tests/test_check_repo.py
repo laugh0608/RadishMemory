@@ -161,7 +161,7 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn("missing required file: SECURITY.md", errors)
 
-    def test_rust_workspace_contract_rejects_a_fourth_package(self) -> None:
+    def test_rust_workspace_contract_rejects_a_fifth_package(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             target = root / "crates/extra/Cargo.toml"
@@ -177,7 +177,7 @@ class GovernanceContractChecks(unittest.TestCase):
             self.assertTrue(
                 any(
                     error.startswith(
-                        "Rust workspace must contain only the root manifest and the three M0 package manifests"
+                        "Rust workspace must contain only the root manifest, three M0 package manifests, and the reviewed Phase 1 file-entry manifest"
                     )
                     for error in errors
                 )
@@ -222,7 +222,7 @@ class GovernanceContractChecks(unittest.TestCase):
             CHECK_REPO.check_rust_workspace_contract(root, errors)
 
             self.assertIn(
-                "Cargo.lock differs from the reviewed M0-I03 dependency set",
+                "Cargo.lock differs from the reviewed dependency set",
                 errors,
             )
 
@@ -369,6 +369,21 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn(
                 "docs/adr/0005-m0-implementation-stack.md is missing implementation stack contract fragment: Rust 2024 edition",
+                errors,
+            )
+
+    def test_phase1_file_entry_contract_reports_missing_fragment(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            target = root / "docs/adr/0006-phase1-text-markdown-file-entry.md"
+            target.parent.mkdir(parents=True)
+            target.write_text("# Phase 1 file entry\n", encoding="utf-8")
+            errors: list[str] = []
+
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+
+            self.assertIn(
+                "docs/adr/0006-phase1-text-markdown-file-entry.md is missing Phase 1 file entry contract fragment: radishmemory.phase1-file-entry/1",
                 errors,
             )
 

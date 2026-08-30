@@ -4,6 +4,7 @@ use radishmemory_core::{
     SourceFragment, SourceFragmentParams, SourceKind, SourceOriginKind, SourceVault, Timestamp,
     Version, compute_exact_bytes_digest,
 };
+use radishmemory_file_entry as _;
 use radishmemory_sqlite::{SqliteDatabase, SqliteErrorCode, SqliteStorageReason};
 use rusqlite::{Connection, params};
 

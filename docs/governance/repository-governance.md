@@ -51,8 +51,8 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 ## 分支与提交
 
 - `master` 是稳定主线和 GitHub 默认分支；`dev` 是常态开发与集成分支。普通 PR 必须显式选择 `dev`，只有阶段稳定化和 hotfix 才以 `master` 为目标。
-- 普通贡献进入 `dev`，阶段性稳定化和 hotfix 才进入 `master`。
-- 主题分支使用 `feature/*`、`fix/*`、`docs/*`、`proposal/*`、`experiment/*`、`chore/*` 或 `hotfix/*`。
+- 串行推进的普通任务直接进入 `dev`；外部贡献、并行写入、风险隔离或明确评审需求通过主题分支 PR 进入 `dev`，阶段性稳定化和 hotfix 才进入 `master`。
+- 需要主题分支时，使用 `feature/*`、`fix/*`、`docs/*`、`proposal/*`、`experiment/*`、`chore/*` 或 `hotfix/*`；Agent 不自动创建 `codex/*` 分支或额外 worktree。
 - 共享分支禁止 force push 和破坏性历史重写。
 - 提交遵循 Conventional Commits；允许 Git 生成的正常 merge commit。
 - 提交使用真实贡献者身份，不加入 AI 协作者署名。

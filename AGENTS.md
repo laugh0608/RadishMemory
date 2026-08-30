@@ -90,7 +90,10 @@
 
 - 提交遵循 Conventional Commits，按可审阅主题拆分，使用当前用户身份且不添加 AI 协作者署名。
 - 未经明确要求不 amend、重写、合并或拆分既有提交，不修改用户 Git 身份，不用 reset、rebase 或 force push 处理共享历史。
-- `master` 是稳定主线，`dev` 是日常集成分支；分支、PR、Ruleset、合并和回流细节只以仓库治理专题与 ADR 0001 为准。
+- `dev` 是常态开发与集成分支；串行推进的普通任务直接在 `dev` 开发和提交，不要求主题分支、Pull Request 或额外 worktree。
+- 只有项目所有者明确要求、外部贡献、并行写入、确有隔离价值的高风险改动或 hotfix 才创建主题分支；Agent 不自动创建 `codex/*` 等临时分支。
+- `dev` 当前不启用 branch protection，普通 push 不自动触发 CI；直接开发按改动范围完成本地验证，需要评审或隔离时再通过 Pull Request 合入 `dev`。
+- `master` 是稳定主线；分支、PR、Ruleset、合并和回流细节只以仓库治理专题与 ADR 0001 为准。
 - 文档或治理改动至少运行 `./scripts/check-repo.sh`；Windows 使用 `pwsh ./scripts/check-repo.ps1`。实现开始后按风险追加格式化、静态分析、测试和运行态验证。
 - 结论不能超过实际证据。最终说明实际结果、已运行和未运行的验证、剩余风险、外部动作、工作区状态以及未提交或未推送内容。
 - 修改完成后复核 `git diff`、`git status` 和未跟踪文件，确认没有越界文件、秘密、缓存、意外换行或权限变化。

@@ -3,7 +3,7 @@ use std::error::Error;
 use crate::{
     ComponentResult, DeleteRequest, DeletionEvidence, Identifier, LocalDeletionExecution,
     LocalSearchHit, LocalSearchRequest, MemoryDecision, MemoryProposal, MemoryRecord,
-    MemoryStateEvent, SourceArtifact, SourceFragment,
+    MemoryStateEvent, SourceArtifact, SourceCapture, SourceCaptureResult, SourceFragment,
 };
 
 /// Minimal local retrieval boundary required by the frozen M0 search operation.
@@ -12,6 +12,17 @@ pub trait LocalSearch {
 
     /// Fails closed on derived-data drift, then returns deterministic local top-k hits.
     fn search(&self, request: &LocalSearchRequest) -> Result<Vec<LocalSearchHit>, Self::Error>;
+}
+
+/// Atomic application boundary for a complete, user-authorized source capture.
+pub trait SourceCaptureStore {
+    type Error: Error + Send + Sync + 'static;
+
+    /// Commits source facts, fragments, recall data, binding, tip, and audit as one result.
+    fn capture_source(
+        &mut self,
+        capture: &SourceCapture,
+    ) -> Result<SourceCaptureResult, Self::Error>;
 }
 
 /// Minimal persistence boundary required by M0 capture and segmentation.

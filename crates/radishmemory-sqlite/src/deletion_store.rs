@@ -184,6 +184,13 @@ fn validate_semantic_targets(
     request: &DeleteRequest,
 ) -> Result<(), SqliteError> {
     let namespace = request.params().namespace_id.as_str();
+    let source_targets = request
+        .params()
+        .target_refs
+        .iter()
+        .filter(|target| target.object_type() == CanonicalObjectType::SourceArtifact)
+        .map(|target| target.object_id().as_str())
+        .collect::<BTreeSet<_>>();
     let memory_targets = request
         .params()
         .target_refs
@@ -229,6 +236,29 @@ fn validate_semantic_targets(
         .iter()
         .filter(|target| target.object_type() == CanonicalObjectType::SourceArtifact)
     {
+        let lineage_id: String = connection
+            .query_row(
+                "SELECT lineage_id FROM radishmemory_source_artifacts
+                 WHERE source_id = ?1 AND namespace_id = ?2 AND deletion_state = 'active'",
+                params![target.object_id().as_str(), namespace],
+                |row| row.get(0),
+            )
+            .map_err(SqliteError::storage)?;
+        let lineage_sources = query_ids(
+            connection,
+            "SELECT source_id FROM radishmemory_source_artifacts
+             WHERE lineage_id = ?1 AND namespace_id = ?2 AND deletion_state = 'active'
+             ORDER BY source_id",
+            &lineage_id,
+            namespace,
+        )?;
+        if lineage_sources
+            .iter()
+            .any(|source_id| !source_targets.contains(source_id.as_str()))
+        {
+            return Err(deletion_plan());
+        }
+
         let mut statement = connection
             .prepare(
                 "SELECT DISTINCT r.memory_id
@@ -320,6 +350,12 @@ fn build_execution_closure(
         insert_closure_ref(
             &mut closure,
             radishmemory_core::DeletionComponentType::SourceMetadata,
+            CanonicalObjectType::SourceArtifact,
+            source_id.clone(),
+        );
+        insert_closure_ref(
+            &mut closure,
+            radishmemory_core::DeletionComponentType::MinimalAudit,
             CanonicalObjectType::SourceArtifact,
             source_id.clone(),
         );
@@ -614,6 +650,15 @@ fn close_targets_to_recall(
                 SqliteStorageReason::MissingDeleteTarget,
             ));
         }
+        if target.object_type() == CanonicalObjectType::SourceArtifact {
+            transaction
+                .execute(
+                    "DELETE FROM radishmemory_source_lineage_tips
+                     WHERE namespace_id = ?1 AND source_id = ?2",
+                    params![namespace, target.object_id().as_str()],
+                )
+                .map_err(SqliteError::storage)?;
+        }
     }
 
     for target in closure_refs(
@@ -667,6 +712,7 @@ fn close_targets_to_recall(
             )
             .map_err(SqliteError::storage)?;
     }
+    crate::source_capture::verify_origin_bindings(transaction)?;
     Ok(())
 }
 

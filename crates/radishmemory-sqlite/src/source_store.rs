@@ -15,169 +15,26 @@ impl SourceVault for SqliteDatabase {
     type Error = SqliteError;
 
     fn store_source_artifact(&mut self, source: &SourceArtifact) -> Result<(), Self::Error> {
-        let params = source.params();
-        let version = to_i64(params.version.get())?;
-        let content_length = to_i64(params.content_length)?;
-        let retention = params.governance.retention();
-
+        if source.params().origin_kind == SourceOriginKind::ExplicitUserInput {
+            return Err(SqliteError::source_invariant(
+                SqliteStorageReason::OriginBindingMismatch,
+            ));
+        }
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(SqliteError::storage)?;
-        validate_superseded_sources(&transaction, source)?;
-        transaction
-            .execute(
-                "INSERT INTO radishmemory_source_artifacts (
-                     source_id, canonical_schema_version, object_type, lineage_id, version,
-                     namespace_id, source_kind, media_type, content_length,
-                     content_digest_algorithm, content_digest_profile, content_digest_value,
-                     title, origin_kind, origin_ref, observed_at, captured_at, sensitivity,
-                     egress_policy, retention_mode, retention_expires_at, retention_policy_id,
-                     deletion_state, policy_basis, producer_type, producer_id, producer_version,
-                     created_at
-                 ) VALUES (
-                     ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
-                     ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28
-                 )",
-                params![
-                    params.source_id.as_str(),
-                    M0_SCHEMA_VERSION,
-                    CanonicalObjectType::SourceArtifact.as_str(),
-                    params.lineage_id.as_str(),
-                    version,
-                    params.namespace_id.as_str(),
-                    source_kind_str(params.source_kind),
-                    params.media_type.as_str(),
-                    content_length,
-                    params.content_digest.algorithm(),
-                    params.content_digest.profile().as_str(),
-                    params.content_digest.value(),
-                    params.title.as_ref().map(NonEmptyText::as_str),
-                    source_origin_kind_str(params.origin_kind),
-                    params.origin_ref.as_ref().map(NonEmptyText::as_str),
-                    params.observed_at.original(),
-                    params.captured_at.original(),
-                    sensitivity_str(params.governance.sensitivity()),
-                    egress_policy_str(params.governance.egress_policy()),
-                    retention_mode_str(retention.mode()),
-                    retention.expires_at().map(Timestamp::original),
-                    retention.policy_id().map(Identifier::as_str),
-                    deletion_state_str(params.governance.deletion_state()),
-                    params.governance.policy_basis().as_str(),
-                    producer_type_str(params.producer.producer_type()),
-                    params.producer.producer_id().as_str(),
-                    params.producer.producer_version().as_str(),
-                    params.created_at.original(),
-                ],
-            )
-            .map_err(SqliteError::storage)?;
-        transaction
-            .execute(
-                "INSERT INTO radishmemory_source_bodies (source_id, content) VALUES (?1, ?2)",
-                params![
-                    params.source_id.as_str(),
-                    params.content.as_str().as_bytes()
-                ],
-            )
-            .map_err(SqliteError::storage)?;
-        for (ordinal, superseded_source_id) in params.supersedes_source_ids.iter().enumerate() {
-            transaction
-                .execute(
-                    "INSERT INTO radishmemory_source_supersedes (
-                         source_id, ordinal, superseded_source_id
-                     ) VALUES (?1, ?2, ?3)",
-                    params![
-                        params.source_id.as_str(),
-                        to_i64(usize_to_u64(ordinal)?)?,
-                        superseded_source_id.as_str(),
-                    ],
-                )
-                .map_err(SqliteError::storage)?;
-        }
+        insert_source_artifact(&transaction, source)?;
+        crate::source_capture::advance_lineage_tip(&transaction, source)?;
         transaction.commit().map_err(SqliteError::storage)
     }
 
     fn store_source_fragments(&mut self, fragments: &[SourceFragment]) -> Result<(), Self::Error> {
-        let (namespace_id, source_id) = validate_fragment_batch(fragments)?;
-        for fragment in fragments {
-            validate_fragment_numbers(fragment)?;
-        }
-
         let transaction = self
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(SqliteError::storage)?;
-        let source = load_source_artifact(&transaction, namespace_id, source_id)?
-            .ok_or_else(|| SqliteError::source_invariant(SqliteStorageReason::MissingSource))?;
-        for fragment in fragments {
-            validate_source_fragment_resolution(fragment, &source).map_err(|source| {
-                SqliteError::source_invariant_with_core(
-                    SqliteStorageReason::SourceResolution,
-                    source,
-                )
-            })?;
-        }
-
-        for fragment in fragments {
-            let fragment_params = fragment.params();
-            let retention = fragment_params.governance.retention();
-            transaction
-                .execute(
-                    "INSERT INTO radishmemory_source_fragments (
-                         fragment_id, canonical_schema_version, object_type, namespace_id,
-                         source_id, ordinal, byte_start, byte_end, content_digest_algorithm,
-                         content_digest_profile, content_digest_value, segmenter_type,
-                         segmenter_id, segmenter_version, sensitivity, egress_policy,
-                         retention_mode, retention_expires_at, retention_policy_id,
-                         deletion_state, policy_basis, created_at
-                     ) VALUES (
-                         ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
-                         ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22
-                     )",
-                    params![
-                        fragment_params.fragment_id.as_str(),
-                        M0_SCHEMA_VERSION,
-                        CanonicalObjectType::SourceFragment.as_str(),
-                        fragment_params.namespace_id.as_str(),
-                        fragment_params.source_id.as_str(),
-                        to_i64(fragment_params.ordinal)?,
-                        to_i64(fragment_params.byte_start)?,
-                        to_i64(fragment_params.byte_end)?,
-                        fragment_params.content_digest.algorithm(),
-                        fragment_params.content_digest.profile().as_str(),
-                        fragment_params.content_digest.value(),
-                        producer_type_str(fragment_params.segmenter.producer_type()),
-                        fragment_params.segmenter.producer_id().as_str(),
-                        fragment_params.segmenter.producer_version().as_str(),
-                        sensitivity_str(fragment_params.governance.sensitivity()),
-                        egress_policy_str(fragment_params.governance.egress_policy()),
-                        retention_mode_str(retention.mode()),
-                        retention.expires_at().map(Timestamp::original),
-                        retention.policy_id().map(Identifier::as_str),
-                        deletion_state_str(fragment_params.governance.deletion_state()),
-                        fragment_params.governance.policy_basis().as_str(),
-                        fragment_params.created_at.original(),
-                    ],
-                )
-                .map_err(SqliteError::storage)?;
-            if let Some(headings) = &fragment_params.heading_path {
-                for (ordinal, heading) in headings.iter().enumerate() {
-                    transaction
-                        .execute(
-                            "INSERT INTO radishmemory_fragment_heading_path (
-                                 fragment_id, ordinal, heading
-                             ) VALUES (?1, ?2, ?3)",
-                            params![
-                                fragment_params.fragment_id.as_str(),
-                                to_i64(usize_to_u64(ordinal)?)?,
-                                heading.as_str(),
-                            ],
-                        )
-                        .map_err(SqliteError::storage)?;
-                }
-            }
-            crate::derived_index::insert_source_fragment(&transaction, fragment, &source)?;
-        }
+        insert_source_fragments(&transaction, fragments)?;
         transaction.commit().map_err(SqliteError::storage)
     }
 
@@ -194,45 +51,206 @@ impl SourceVault for SqliteDatabase {
         namespace_id: &Identifier,
         source_id: &Identifier,
     ) -> Result<Option<Vec<SourceFragment>>, Self::Error> {
-        let Some(source) = load_source_artifact(&self.connection, namespace_id, source_id)? else {
-            return Ok(None);
-        };
-        let mut statement = self
-            .connection
-            .prepare(
-                "SELECT fragment_id, canonical_schema_version, object_type, namespace_id,
-                        source_id, ordinal, byte_start, byte_end, content_digest_algorithm,
-                        content_digest_profile, content_digest_value, segmenter_type,
-                        segmenter_id, segmenter_version, sensitivity, egress_policy,
-                        retention_mode, retention_expires_at, retention_policy_id,
-                        deletion_state, policy_basis, created_at
-                 FROM radishmemory_source_fragments
-                 WHERE source_id = ?1 AND deletion_state = 'active'
-                 ORDER BY ordinal, fragment_id",
+        load_source_fragments(&self.connection, namespace_id, source_id)
+    }
+}
+
+pub(crate) fn insert_source_artifact(
+    connection: &Connection,
+    source: &SourceArtifact,
+) -> Result<(), SqliteError> {
+    let value = source.params();
+    let version = to_i64(value.version.get())?;
+    let content_length = to_i64(value.content_length)?;
+    let retention = value.governance.retention();
+    validate_superseded_sources(connection, source)?;
+    connection
+        .execute(
+            "INSERT INTO radishmemory_source_artifacts (
+                 source_id, canonical_schema_version, object_type, lineage_id, version,
+                 namespace_id, source_kind, media_type, content_length,
+                 content_digest_algorithm, content_digest_profile, content_digest_value,
+                 title, origin_kind, origin_ref, observed_at, captured_at, sensitivity,
+                 egress_policy, retention_mode, retention_expires_at, retention_policy_id,
+                 deletion_state, policy_basis, producer_type, producer_id, producer_version,
+                 created_at
+             ) VALUES (
+                 ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+                 ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, ?26, ?27, ?28
+             )",
+            params![
+                value.source_id.as_str(),
+                M0_SCHEMA_VERSION,
+                CanonicalObjectType::SourceArtifact.as_str(),
+                value.lineage_id.as_str(),
+                version,
+                value.namespace_id.as_str(),
+                source_kind_str(value.source_kind),
+                value.media_type.as_str(),
+                content_length,
+                value.content_digest.algorithm(),
+                value.content_digest.profile().as_str(),
+                value.content_digest.value(),
+                value.title.as_ref().map(NonEmptyText::as_str),
+                source_origin_kind_str(value.origin_kind),
+                value.origin_ref.as_ref().map(NonEmptyText::as_str),
+                value.observed_at.original(),
+                value.captured_at.original(),
+                sensitivity_str(value.governance.sensitivity()),
+                egress_policy_str(value.governance.egress_policy()),
+                retention_mode_str(retention.mode()),
+                retention.expires_at().map(Timestamp::original),
+                retention.policy_id().map(Identifier::as_str),
+                deletion_state_str(value.governance.deletion_state()),
+                value.governance.policy_basis().as_str(),
+                producer_type_str(value.producer.producer_type()),
+                value.producer.producer_id().as_str(),
+                value.producer.producer_version().as_str(),
+                value.created_at.original(),
+            ],
+        )
+        .map_err(SqliteError::storage)?;
+    connection
+        .execute(
+            "INSERT INTO radishmemory_source_bodies (source_id, content) VALUES (?1, ?2)",
+            params![value.source_id.as_str(), value.content.as_str().as_bytes()],
+        )
+        .map_err(SqliteError::storage)?;
+    for (ordinal, superseded_source_id) in value.supersedes_source_ids.iter().enumerate() {
+        connection
+            .execute(
+                "INSERT INTO radishmemory_source_supersedes (
+                     source_id, ordinal, superseded_source_id
+                 ) VALUES (?1, ?2, ?3)",
+                params![
+                    value.source_id.as_str(),
+                    to_i64(usize_to_u64(ordinal)?)?,
+                    superseded_source_id.as_str(),
+                ],
             )
             .map_err(SqliteError::storage)?;
-        let rows = statement
-            .query_map(params![source_id.as_str()], |row| {
-                StoredFragment::from_row(row)
-            })
-            .map_err(SqliteError::storage)?;
-        let stored = rows
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(SqliteError::storage)?;
-        let mut fragments = Vec::with_capacity(stored.len());
-        for stored_fragment in stored {
-            let headings = load_heading_path(&self.connection, &stored_fragment.fragment_id)?;
-            let fragment = stored_fragment.into_domain(&source, headings)?;
-            validate_source_fragment_resolution(&fragment, &source).map_err(|source| {
-                SqliteError::invalid_stored_with_source(
-                    SqliteStorageReason::StoredIntegrityMismatch,
-                    source,
-                )
-            })?;
-            fragments.push(fragment);
-        }
-        Ok(Some(fragments))
     }
+    Ok(())
+}
+
+pub(crate) fn insert_source_fragments(
+    connection: &Connection,
+    fragments: &[SourceFragment],
+) -> Result<(), SqliteError> {
+    let (namespace_id, source_id) = validate_fragment_batch(fragments)?;
+    for fragment in fragments {
+        validate_fragment_numbers(fragment)?;
+    }
+    let source = load_source_artifact(connection, namespace_id, source_id)?
+        .ok_or_else(|| SqliteError::source_invariant(SqliteStorageReason::MissingSource))?;
+    for fragment in fragments {
+        validate_source_fragment_resolution(fragment, &source).map_err(|source| {
+            SqliteError::source_invariant_with_core(SqliteStorageReason::SourceResolution, source)
+        })?;
+    }
+    for fragment in fragments {
+        let value = fragment.params();
+        let retention = value.governance.retention();
+        connection
+            .execute(
+                "INSERT INTO radishmemory_source_fragments (
+                     fragment_id, canonical_schema_version, object_type, namespace_id,
+                     source_id, ordinal, byte_start, byte_end, content_digest_algorithm,
+                     content_digest_profile, content_digest_value, segmenter_type,
+                     segmenter_id, segmenter_version, sensitivity, egress_policy,
+                     retention_mode, retention_expires_at, retention_policy_id,
+                     deletion_state, policy_basis, created_at
+                 ) VALUES (
+                     ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14,
+                     ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22
+                 )",
+                params![
+                    value.fragment_id.as_str(),
+                    M0_SCHEMA_VERSION,
+                    CanonicalObjectType::SourceFragment.as_str(),
+                    value.namespace_id.as_str(),
+                    value.source_id.as_str(),
+                    to_i64(value.ordinal)?,
+                    to_i64(value.byte_start)?,
+                    to_i64(value.byte_end)?,
+                    value.content_digest.algorithm(),
+                    value.content_digest.profile().as_str(),
+                    value.content_digest.value(),
+                    producer_type_str(value.segmenter.producer_type()),
+                    value.segmenter.producer_id().as_str(),
+                    value.segmenter.producer_version().as_str(),
+                    sensitivity_str(value.governance.sensitivity()),
+                    egress_policy_str(value.governance.egress_policy()),
+                    retention_mode_str(retention.mode()),
+                    retention.expires_at().map(Timestamp::original),
+                    retention.policy_id().map(Identifier::as_str),
+                    deletion_state_str(value.governance.deletion_state()),
+                    value.governance.policy_basis().as_str(),
+                    value.created_at.original(),
+                ],
+            )
+            .map_err(SqliteError::storage)?;
+        if let Some(headings) = &value.heading_path {
+            for (ordinal, heading) in headings.iter().enumerate() {
+                connection
+                    .execute(
+                        "INSERT INTO radishmemory_fragment_heading_path (
+                             fragment_id, ordinal, heading
+                         ) VALUES (?1, ?2, ?3)",
+                        params![
+                            value.fragment_id.as_str(),
+                            to_i64(usize_to_u64(ordinal)?)?,
+                            heading.as_str(),
+                        ],
+                    )
+                    .map_err(SqliteError::storage)?;
+            }
+        }
+        crate::derived_index::insert_source_fragment(connection, fragment, &source)?;
+    }
+    Ok(())
+}
+
+pub(crate) fn load_source_fragments(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    source_id: &Identifier,
+) -> Result<Option<Vec<SourceFragment>>, SqliteError> {
+    let Some(source) = load_source_artifact(connection, namespace_id, source_id)? else {
+        return Ok(None);
+    };
+    let mut statement = connection
+        .prepare(
+            "SELECT fragment_id, canonical_schema_version, object_type, namespace_id,
+                    source_id, ordinal, byte_start, byte_end, content_digest_algorithm,
+                    content_digest_profile, content_digest_value, segmenter_type,
+                    segmenter_id, segmenter_version, sensitivity, egress_policy,
+                    retention_mode, retention_expires_at, retention_policy_id,
+                    deletion_state, policy_basis, created_at
+             FROM radishmemory_source_fragments
+             WHERE source_id = ?1 AND deletion_state = 'active'
+             ORDER BY ordinal, fragment_id",
+        )
+        .map_err(SqliteError::storage)?;
+    let rows = statement
+        .query_map(params![source_id.as_str()], StoredFragment::from_row)
+        .map_err(SqliteError::storage)?;
+    let stored = rows
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(SqliteError::storage)?;
+    let mut fragments = Vec::with_capacity(stored.len());
+    for stored_fragment in stored {
+        let headings = load_heading_path(connection, &stored_fragment.fragment_id)?;
+        let fragment = stored_fragment.into_domain(&source, headings)?;
+        validate_source_fragment_resolution(&fragment, &source).map_err(|source| {
+            SqliteError::invalid_stored_with_source(
+                SqliteStorageReason::StoredIntegrityMismatch,
+                source,
+            )
+        })?;
+        fragments.push(fragment);
+    }
+    Ok(Some(fragments))
 }
 
 fn validate_superseded_sources(

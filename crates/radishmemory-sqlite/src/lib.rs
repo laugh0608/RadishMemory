@@ -13,12 +13,15 @@ mod error;
 mod fixture_runner;
 mod memory_store;
 mod migration;
+mod source_capture;
 mod source_store;
 
 use std::fmt;
 use std::path::Path;
 
 use radishmemory_core::{LocalSearch, LocalSearchHit, LocalSearchRequest};
+#[cfg(test)]
+use radishmemory_file_entry as _;
 use rusqlite::{Connection, TransactionBehavior};
 
 pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
@@ -48,6 +51,7 @@ impl SqliteDatabase {
         let capabilities = capability::probe(&connection)?;
         migration::migrate_from(&mut connection, schema_version)?;
         derived_index::verify(&connection)?;
+        source_capture::verify_origin_bindings(&connection)?;
 
         Ok(Self {
             connection,
@@ -73,7 +77,9 @@ impl SqliteDatabase {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(SqliteError::storage)?;
+        source_capture::verify_origin_bindings(&transaction)?;
         derived_index::rebuild(&transaction)?;
+        source_capture::verify_origin_bindings(&transaction)?;
         transaction.commit().map_err(SqliteError::storage)
     }
 

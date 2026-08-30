@@ -9,6 +9,7 @@ use radishmemory_core::{
     SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime, ValidTimeMode, Version,
     compute_exact_bytes_digest,
 };
+use radishmemory_file_entry as _;
 use radishmemory_sqlite::{SqliteDatabase, SqliteErrorCode, SqliteStorageReason};
 use rusqlite::{Connection, params};
 
@@ -895,7 +896,10 @@ fn invalid_version_three_facts_roll_back_the_entire_recall_migration() {
 fn restore_version_three_schema(connection: &Connection) {
     connection
         .execute_batch(
-            "DROP TABLE radishmemory_deletion_evidence;
+            "DROP TABLE radishmemory_source_capture_audit;
+             DROP TABLE radishmemory_source_origin_bindings;
+             DROP TABLE radishmemory_source_lineage_tips;
+             DROP TABLE radishmemory_deletion_evidence;
              DROP TABLE radishmemory_deletion_execution_results;
              DROP TABLE radishmemory_deletion_execution_attempts;
              DROP TABLE radishmemory_delete_execution_closure;

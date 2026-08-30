@@ -31,7 +31,7 @@ pub use error::{
 pub use invariants::*;
 pub use memory::*;
 pub use model::*;
-pub use ports::{DeletionStore, LocalSearch, MemoryStore, SourceVault};
+pub use ports::{DeletionStore, LocalSearch, MemoryStore, SourceCaptureStore, SourceVault};
 pub use search::{LocalSearchHit, LocalSearchRequest};
 pub use source::*;
 pub use temporal::{TimePrecision, Timestamp, TimestampPrecision, ValidTime, ValidTimeMode};

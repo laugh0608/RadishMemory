@@ -23,11 +23,12 @@ Conventional Commits 由仓库检查器校验 PR commit range，不在 Ruleset �
 
 ## `dev` 策略
 
-`master` 保持 GitHub 默认分支，`dev` 是日常集成分支。当前单人阶段不为 `dev` 启用强制 Ruleset：
+`master` 保持 GitHub 默认分支，`dev` 是常态开发与集成分支。当前单人阶段不为 `dev` 启用强制 Ruleset：
 
 - 直接 push 前执行风险匹配的本地验证；
 - 创建普通 Pull Request 时显式选择 `dev`，避免 GitHub 默认指向 `master`；
 - 目标为 `dev` 的 PR 自动运行 `PR Checks`，用于外部贡献和并行分支反馈；
+- Agent 不因默认流程自动创建 `codex/*` 主题分支或额外 worktree；
 - 每次 `master` 合并后，下一轮开发前必须把 `master` 回流到 `dev`；
 - 达到多人维护、持续外部贡献、并行自动化写入或出现实际回归时，再评估 `dev` 保护。
 
