@@ -1,12 +1,12 @@
 # RadishMemory 当前状态
 
-更新时间：2026-08-28
+更新时间：2026-08-30
 
 ## 当前阶段
 
-`M0 merged baseline; Phase 1 P1-F01 through P1-F14 verified locally`
+`M0 merged baseline; Phase 1 P1-F01 through P1-F18 verified locally`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留；阶段 1 首个真实文本 / Markdown 文件入口的行为与 18 个合成场景已由 ADR 0006 冻结，P1-I01 已建立本地文件快照，P1-I02 已在本机实现 application-level atomic capture，P1-I03 已实现 exact export 与原子不覆盖发布，P1-I04 已复用 canonical 删除语义收口整个来源 lineage、入口状态与派生闭包，`P1-F01` 至 `P1-F14` 已在本机跨 file-entry / SQLite 边界运行通过；下一目标是补齐 `P1-F15` 至 `P1-F18` 和三平台 Phase 1 CI，不直接扩大到 PDF、向量、模型、UI、网络与同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；最小 Rust workspace、canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除闭环与真实 M0 runner 已经建立。本机已由冻结 fixture 实际通过 12 个场景、86 个有序操作和 12 个指标 gate；[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 的最终 head `6df0891` 已在 [workflow run 32979128488](https://github.com/laugh0608/RadishMemory/actions/runs/32979128488) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `fe8186a` 合入 `master` 并 fast-forward 回流到 `dev`。M0 当前作为已合并基线保留；阶段 1 首个真实文本 / Markdown 文件入口的行为与 18 个合成场景已由 ADR 0006 冻结，P1-I01 已建立本地文件快照，P1-I02 已在本机实现 application-level atomic capture，P1-I03 已实现 exact export 与原子不覆盖发布，P1-I04 已复用 canonical 删除语义收口整个来源 lineage、入口状态与派生闭包，`P1-F01` 至 `P1-F18` 已在本机跨 file-entry / SQLite 边界运行通过。下一目标是在独立授权下形成可审阅提交并运行 Linux / macOS / Windows Phase 1 locked CI；远程证据、production host / UI 与平台 bookmark 成立前，不直接扩大到 PDF、向量、模型、UI、网络与同步，也不把本机合成验收表述为可导入真实个人资料的产品入口。
 
 ## 已冻结的范围与基线
 
@@ -50,28 +50,28 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 ## 当前顺位
 
-1. 补齐 `P1-F15` / `P1-F16` 的确定性 TOCTOU 与 capture 提交点故障注入，旧 tip / FTS / binding / audit 必须保持不变。
-2. 补齐 `P1-F17` / `P1-F18` 的不可信 Markdown 无副作用与诊断脱敏验收，不增加网络、模型、工具或记忆写入。
-3. 在完整 18 场景本机通过后运行 Linux / macOS / Windows locked CI；远程证据成立前不把 M0 三平台结果外推到 Phase 1。
-4. PDF / 图片、加密内容寻址大对象存储、向量索引、模型 adapter 与 UI 分别进入后续独立评审单元，不并入首个文件入口实现。
+1. 复核本轮 `P1-F15` 至 `P1-F18` 的实现、文档与本地聚合证据；获得明确授权后才精确暂存并提交，不把本地未提交工作误写为已合并状态。
+2. 获得独立远端授权后，按 `dev -> master` 阶段稳定化拓扑运行 Linux / macOS / Windows locked CI；远程证据成立前不把 M0 三平台结果外推到 Phase 1。
+3. 三平台通过并完成稳定化后，再独立评审 production host / UI 与平台 bookmark；合成路径入口不自动升级为可处理真实个人资料的产品授权面。
+4. PDF / 图片、加密内容寻址大对象存储、向量索引、模型 adapter 与 UI 分别进入后续独立评审单元，不并入首个文件入口 closure。
 
-## 明天事项（2026-08-29）
+## 下一事项（2026-08-30）
 
-主任务下一单元进入阶段 1 首个真实文件入口的剩余跨层 acceptance closure，不立即扩大产品范围：
+主任务已经完成阶段 1 首个真实文件入口的本机跨层 acceptance closure，下一步停在本地证据边界：
 
-1. 先完成 `P1-F15`：为读取前后校验建立最小、非 public、仅测试使用的确定性操作 seam，分别在初始观察后替换、截短或扩展所选文件；全部返回 retryable `SourceChangedDuringCapture`，且旧 lineage tip、FTS、binding、audit 和 receipt 边界不变。不得用 sleep 或概率性线程竞态充当证据。
-2. 再完成 `P1-F16`：先复用现有 fragment-conflict 事务回滚、export 临时写失败和并发占用目标测试，再只为尚未覆盖的 capture / export 提交点增加确定性故障；每个失败都要核对旧事实、目标文件和任务临时状态，并保留真实 error / retryable，不增加 production fallback 或通用故障框架。
-3. 若前两项收口，再完成 `P1-F17` / `P1-F18`：把含链接、HTML、front matter、伪指令和远程图片的 Markdown 仅作为正文 capture / search，证明没有网络、模型、工具授权或记忆写入；集中检查正文、完整路径、allowed roots、导出目标和可逆路径摘要不进入错误、Debug、日志或最小 evidence。
-4. `P1-F01` 至 `P1-F18` 本机全部通过后运行聚合 locked 检查；随后停在本地证据边界，只有获得独立授权才进入 PR、Linux / macOS / Windows CI、merge commit 与 `master -> dev` 回流。
+1. 由项目所有者审阅当前 diff；明确授权后按主题精确暂存和提交当前 `dev` 工作，不混入范围外文件。
+2. 若授权远端动作，先 push `dev`，再从 `dev` 向 `master` 发起阶段稳定化 PR，以真实 `Candidate Quality` 取得 Repo Hygiene 与 Linux / macOS / Windows Phase 1 证据。
+3. CI 全部通过后再决定 merge commit 与 `master -> dev` 回流；失败时修复真实跨平台问题，不放宽检查、删除场景或增加 fallback。
+4. production host / UI、平台 bookmark、真实个人资料授权面与后续 PDF / 图片单元继续保持独立，不因本机 18 场景通过而默认进入。
 
-下一事项停止线：在 `P1-F01` 至 `P1-F18` 全部真实运行通过前，不导入真实个人资料，不声明产品文件入口完成；剩余并发、故障、无网络与脱敏验收未收口前不进入 PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不改变远端状态。
+下一事项停止线：远程 Phase 1 三平台证据与 production host / UI、平台 bookmark 评审成立前，不导入真实个人资料，不声明产品文件入口完成；不进入 PDF / OCR、Embedding、模型、UI、网络、同步或通用 workflow engine；未经当前任务明确授权，不暂存、不提交、不 push、不创建 PR、不改变远端状态。
 
-## 本次完成（2026-08-28）
+## 本轮阶段 1 完成（2026-08-28 至 2026-08-30）
 
 1. [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md) 已把首个真实入口冻结为显式选择、非空允许根、root 以下 symlink 拒绝、hardlink provenance 独立、严格 UTF-8、8 MiB 上限和 `.txt` / `.md` 两种类型；目录、递归、URI、PDF、图片、网络和模型均不进入该切片。
 2. 文件路径、inode 和内容摘要均不充当 canonical identity；同 origin binding / 同字节导入幂等，内容变化建立不可变 SourceArtifact 新版本，普通召回只使用 active lineage tip，不为文件系统新增第二套对象。
 3. Source Vault 受管 exact bytes 在成功后承担原始真相；精确导出不覆盖目标，删除默认覆盖整个来源 lineage 的本地受管闭包，但不修改或声称删除外部原件、hardlink alias、用户导出、备份或其它设备。
-4. `P1-F01` 至 `P1-F18` 已冻结首次导入、字节保真、幂等、版本、hardlink、search / citation、export、rebuild、delete、路径 / symlink / 类型 / 大小拒绝、并发变化、故障原子性、无网络与诊断脱敏验收；当前只实现其中的本机子集，完整场景集仍是待实现运行契约，不是已通过产品能力。
+4. `P1-F01` 至 `P1-F18` 已冻结首次导入、字节保真、幂等、版本、hardlink、search / citation、export、rebuild、delete、路径 / symlink / 类型 / 大小拒绝、并发变化、故障原子性、无网络与诊断脱敏验收；ADR 冻结当时只实现其中的本机子集，完整场景后来由本列表第 44 至 50 项收口，但仍不是已通过三平台或 production host 的产品能力。
 5. ADR 0006 文档、专题同步与一致性守护已提交为 `6b0e7ab`；未 push、未创建 PR，也未改变其它远程状态。
 6. P1-I01 已建立第四个第一方 workspace package `radishmemory-file-entry`，实现 validated file snapshot、最小 receipt 与 14 个冻结错误 reason；文件路径和正文不进入 Debug / Display。
 7. 8 个合成临时文件测试覆盖 exact bytes / BOM / CRLF / Unicode、允许根、symlink、hardlink、类型、空文件、UTF-8、NUL、8 MiB 边界、receipt 与错误脱敏；当前只证明 file snapshot contract，不证明 SourceArtifact 持久化或完整 `P1-F01` 至 `P1-F18`。
@@ -111,6 +111,13 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 41. P1-I04、`P1-F02` / `P1-F05` 与前十项验收已提交为 `a945952`；`P1-F11` 至 `P1-F14` 的拒绝 / 大小边界测试已提交为 `a210936`。两次提交都未 push、未创建 PR 或改变其它远程状态。
 42. 日终代码—文档审阅确认产品范围、记忆语义、隐私信任模式、同步边界、RadishMind 边界和 MVP 阶段顺序没有扩大；隐私模型与路线图无需语义修改。依赖基线的范围和 file-entry 供应链说明已从 P1-I02 补齐到 P1-I04 / `P1-F14`，ADR 0006 的剩余证据边界已精确收敛为 `P1-F15` 至 `P1-F18`、三平台 CI 与平台 bookmark，`FileCaptureReceipt` 的过期“持久化前”rustdoc 也已改为从成功 atomic capture result 映射。
 43. 日终文档审阅完成后，本机 `./scripts/check-repo.sh` 再次通过 107 个仓库文件检查、workspace format、Clippy `-D warnings` 与全部 locked test；`source_capture` 18 个测试保持通过，远程 Phase 1 CI 仍未运行。
+44. `P1-F15` 新增仅由 SQLite integration test 启用的第一方 `acceptance-test-support` feature；默认 file-entry build 不包含测试入口，实际读取仍复用一个 private 操作 seam。验收在初始 open-file 观察后确定性替换、截短或扩展所选文件，不使用 sleep 或概率竞态；三种变化都返回 retryable `SourceChangedDuringCapture`。
+45. `P1-F15` 每次失败都逐项比较 source / body / fragment / tip / binding / audit / FTS 计数，以及 tip、binding、audit 和 FTS 行投影；旧来源保持可召回，候选 source 不存在且不产生 receipt。并发截短的校验顺序已修正为先比较读取前后观察，再判断读取结果是否为空，避免把捕获期间变化误报为普通 `EmptyFile`。
+46. `P1-F16` 在 source / fragment / FTS / tip / binding / audit 全部写入并完成派生与入口状态复验后、SQLite transaction commit 前注入真实缺表错误；失败保留底层 SQLite cause，事务回到 autocommit，旧 tip 与全部八类事实 / 派生行保持逐项一致。该 seam 是 adapter private 泛型操作，不增加 public port、schema、fallback 或通用故障框架。
+47. `P1-F16` 同时复验 export 临时写入 timeout 与并发占用目标：前者保留真实 `TimedOut` cause 与 retryable 状态，后者返回稳定 `DestinationExists`；两者都不发布或覆盖目标，只清理当前任务临时文件。
+48. `P1-F17` 使用含 front matter、链接、HTML / script、伪指令和图片 URL 的合成 Markdown 贯通 exact-byte capture 与 FTS recall；本地 nonblocking TCP observer 没有收到连接，proposal / decision / record / state-event 四类 memory facts 全部为零，Markdown 只形成一个 SourceArtifact、一个 SourceFragment 与一行 FTS。
+49. `P1-F18` 集中渲染 read / export request、snapshot、capture、SQLite result、SourceArtifact / SourceFragment / search hit、数据库 Debug、失败消息和 capture / export receipt；合成正文、完整路径、allowed root、导出目标、被拒绝字节标记及路径摘要均未出现，用户已有导出目标保持不变且没有遗留任务临时文件。file-entry / SQLite library manifests 没有日志依赖，production source 也没有 `println!`、`eprintln!`、`dbg!`、`log::` 或 `tracing::` sink，因此当前切片没有额外普通日志面；仓库检查器会拒绝这些 library source 新增未评审诊断 sink。
+50. 定向 file-entry / SQLite 全量 locked test 与 all-targets / all-features Clippy `-D warnings` 已通过；文档同步后 `./scripts/check-repo.sh` 通过 107 个仓库文件检查、workspace format、Clippy `-D warnings` 与全部 locked test，`source_capture` 当前为 21 个测试。`Cargo.lock`、SQLite v6 schema、第三方 package / feature、native build 与产品网络能力均未变化；本轮改动尚未暂存、提交、push 或创建 PR。
 
 ## M0 基线完成（2026-08-26）
 
@@ -168,12 +175,12 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 ## 当前门禁
 
 - 产品、架构、记忆或隐私语义变化必须同步更新对应真相源，不能只改入口摘要或检查器。
-- ADR 0006 只是阶段 1 文件入口的已冻结行为与验收真相源；在 `P1-F01` 至 `P1-F18` 由真实 importer / exporter 运行通过前，只能声明“入口契约已冻结”，不能声明文件导入、导出或删除产品能力已经实现。
-- P1-I01 的 file snapshot 单独成功仍只证明一次本地读取；只有通过 P1-I02 `SourceCaptureStore` 返回的 receipt 才证明当前事务中的 managed body / canonical facts / FTS / binding / tip / audit 已共同提交。P1-I03 与 P1-I04 分别只证明本机 exact export 和 lineage deletion contract；`P1-F01` 至 `P1-F14` 的本机通过仍不证明剩余并发、故障、无副作用场景、三平台 Phase 1 CI 或面向对抗性 TOCTOU 的平台能力评审。
+- ADR 0006 的 `P1-F01` 至 `P1-F18` 已由本机合成 importer / exporter 边界运行通过；这只证明当前 macOS 工作区的首个 application contract，不证明三平台 Phase 1、production host / UI、平台 bookmark、真实个人资料授权面或产品可用性。
+- P1-I01 的 file snapshot 单独成功仍只证明一次本地读取；只有通过 P1-I02 `SourceCaptureStore` 返回的 receipt 才证明当前事务中的 managed body / canonical facts / FTS / binding / tip / audit 已共同提交。P1-I03 与 P1-I04 分别只证明本机 exact export 和 lineage deletion contract；完整 18 场景的本机通过仍不证明对抗性文件系统能力、未来平台兼容、三平台 CI 或产品入口。
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- 当前仓库检查证明上述基线与 P1-I01 / P1-I02 / P1-I03 / P1-I04 的格式、lint 和 locked test 在本机成立；PR #1 最终 run `32979128488` 只证明已合并 M0 基线在当时 Linux / macOS / Windows locked CI 环境成立，尚未覆盖 Phase 1 file snapshot、atomic capture、exact export 或 lineage deletion。不证明完整 Phase 1 场景、PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
+- 当前仓库检查证明 P1-I01 / P1-I02 / P1-I03 / P1-I04 与 `P1-F01` 至 `P1-F18` 的格式、lint、locked test 和本机合成运行证据成立；PR #1 最终 run `32979128488` 只证明已合并 M0 基线在当时 Linux / macOS / Windows locked CI 环境成立，尚未覆盖任何 Phase 1 file snapshot、atomic capture、exact export、lineage deletion、TOCTOU 或无副作用验收。不证明 production host / UI、平台 bookmark、PDF / 图片、向量、模型、同步或生产能力，也不把一次 CI 通过外推为未来平台兼容承诺。
 
 ## 当前不做
 

@@ -9,5 +9,8 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+acceptance-test-support = []
+
 [dependencies]
 radishmemory-core.workspace = true

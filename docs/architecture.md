@@ -64,7 +64,7 @@ M0 不调用 Model Adapter 或 RadishMind，不产生已发送的外发 manifest
 
 该入口继续使用现有 `SourceArtifact`、`SourceFragment`、FTS5、citation、DeleteRequest 与 DeletionEvidence，不增加文件专用 canonical object。相同 origin binding 与 exact bytes 的导入幂等，内容变化创建不可变新版本，普通召回只使用 active lineage tip；导出恢复受管副本的精确字节，删除只处理已枚举的本地受管闭包，不修改或声称删除外部原件、hardlink alias 或用户导出。
 
-ADR 0006 冻结 application behavior 与合成验收；当前 production host / UI、平台 bookmark 和长期加密大对象存储仍由后续实现单元决定。真实验收通过前不能把该边界描述为已经可导入个人资料的产品能力。
+ADR 0006 冻结 application behavior 与合成验收；当前 production host / UI、平台 bookmark 和长期加密大对象存储仍由后续实现单元决定。本机合成验收已经通过，但三平台 CI 与真实授权面评审成立前，仍不能把该边界描述为已经可导入个人资料的产品能力。
 
 `P1-I01` 使用独立第一方 `radishmemory-file-entry` package 隔离本地文件系统读取，并且只依赖 `radishmemory-core`。它返回 path-free validated snapshot；`P1-I02` 在 core 增加完整 `SourceCapture` / `SourceCaptureResult` 与最小 `SourceCaptureStore` port，由 file-entry 把快照映射为整文件单片段 capture candidate，由 SQLite v6 adapter 在一个 `IMMEDIATE` transaction 内提交 SourceArtifact body / metadata、完整 fragment、FTS、origin binding、lineage tip 与最小 audit。相同 binding / exact bytes 返回已存事实，内容变化严格推进一个版本并移除旧 tip 的普通召回，任一写入或派生校验失败均回滚到旧 tip。
 
@@ -75,6 +75,8 @@ ADR 0006 冻结 application behavior 与合成验收；当前 production host / 
 `P1-F02` / `P1-F05` 的跨层验收继续走上述同一数据流：exact UTF-8 bytes 从 snapshot 进入 canonical source、SQLite BLOB 与 fragment 后，在 reopen / rebuild 中保持摘要、长度和 byte range；不同 opaque binding 即使来自同一 hardlink inode 且摘要相同，也建立独立 source lineage、tip、audit 与删除闭包，adapter 不按路径、inode 或 digest 合并 provenance。
 
 `P1-F11` 至 `P1-F14` 复用相同串行提交边界并证明失败发生在 canonical / SQLite 写入之前：路径、symlink、类型、内容和超限错误不会产生 receipt，也不改变 source、body、fragment、tip、binding、audit 或 FTS；恰为 8 MiB 的合法 UTF-8 文件则必须完成同一原子 capture。该证据不引入后台补偿或第二套 staging 状态。
+
+`P1-F15` 至 `P1-F18` 继续保持相同 production 数据流。file-entry 默认 build 不包含测试操作，只有 SQLite integration test 通过第一方 `acceptance-test-support` feature 调用 private read seam，在初始文件观察后确定性替换、截短或扩展路径；失败发生在 snapshot / canonical candidate 之前，旧 tip、binding、audit 与 FTS 行投影逐项不变。SQLite capture 的最终 commit 故障通过 adapter-private callback 注入真实 SQL cause，transaction Drop 整体回滚；export 复用临时写入和 `hard_link` 发布 seam，不增加后台补偿或通用 fault framework。不可信 Markdown 仍只进入 exact body、whole-file fragment 与 FTS，loopback observer 证明当前场景没有网络连接，memory facts 保持为零；公开诊断与最小 receipt 不携带正文、路径、allowed root、导出目标或路径摘要。
 
 file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入外部路径。旧 `SourceVault` 两步写入口只保留 M0 synthetic source，显式用户输入必须走原子 capture port，不能通过顺序调用两个旧方法冒充完成。lineage tip 是可重建派生投影，origin binding 只保存 namespace、opaque binding ID 与 lineage，不保存路径、inode 或正文。
 

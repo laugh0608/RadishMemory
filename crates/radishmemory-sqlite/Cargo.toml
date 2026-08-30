@@ -17,4 +17,4 @@ radishmemory-core.workspace = true
 rusqlite.workspace = true
 
 [dev-dependencies]
-radishmemory-file-entry.workspace = true
+radishmemory-file-entry = { workspace = true, features = ["acceptance-test-support"] }

@@ -236,6 +236,9 @@ publish.workspace = true
 [lints]
 workspace = true
 
+[features]
+acceptance-test-support = []
+
 [dependencies]
 radishmemory-core.workspace = true
 """,
@@ -258,7 +261,7 @@ radishmemory-core.workspace = true
 rusqlite.workspace = true
 
 [dev-dependencies]
-radishmemory-file-entry.workspace = true
+radishmemory-file-entry = { workspace = true, features = ["acceptance-test-support"] }
 """,
 }
 
@@ -916,7 +919,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 merged baseline; Phase 1 P1-F01 through P1-F14 verified locally",
+            "M0 merged baseline; Phase 1 P1-F01 through P1-F18 verified locally",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -930,7 +933,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "M0 merged baseline; Phase 1 P1-F01 through P1-F14 verified locally",
+            "M0 merged baseline; Phase 1 P1-F01 through P1-F18 verified locally",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不是可导入真实个人资料的产品入口",
@@ -997,9 +1000,9 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0006]",
-            "Phase 1 P1-F01 through P1-F14 verified locally",
-            "`P1-F01` 至 `P1-F14`",
-            "剩余四个并发、故障与无副作用场景和三平台 Phase 1 CI 尚未完成",
+            "Phase 1 P1-F01 through P1-F18 verified locally",
+            "`P1-F01` 至 `P1-F18`",
+            "三平台 Phase 1 CI、production host / UI 和平台 bookmark 尚未完成",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1012,8 +1015,8 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "P1-I04 lineage deletion",
             "radishmemory-file-entry",
             "SourceCaptureStore",
-            "`P1-F01` 至 `P1-F14`",
             "`P1-F01` 至 `P1-F18`",
+            "acceptance-test-support",
             "不代表完整 importer / exporter 已实现",
         ),
         "docs/architecture.md": (
@@ -1026,6 +1029,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "P1-I04 lineage deletion",
             "`P1-F02` / `P1-F05`",
             "`P1-F11` 至 `P1-F14`",
+            "`P1-F15` 至 `P1-F18`",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "四个第一方 workspace package",
@@ -1036,7 +1040,8 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "P1-I03",
             "P1-I04",
             "hardlink provenance 独立删除",
-            "路径 / symlink / 内容拒绝原子性与 8 MiB capture 边界",
+            "确定性 TOCTOU",
+            "acceptance-test-support",
         ),
         "docs/privacy-threat-model.md": (
             "阶段 1 文件入口信任边界",
@@ -1057,6 +1062,21 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             if fragment not in text:
                 errors.append(
                     f"{name} is missing Phase 1 file entry contract fragment: {fragment}"
+                )
+
+    diagnostic_sink = re.compile(
+        r"\b(?:log|tracing)::|(?:println|eprintln|dbg)!\s*\("
+    )
+    for source_root in (
+        repo_root / "crates/radishmemory-file-entry/src",
+        repo_root / "crates/radishmemory-sqlite/src",
+    ):
+        for path in sorted(source_root.rglob("*.rs")):
+            text = path.read_text(encoding="utf-8")
+            if diagnostic_sink.search(text):
+                errors.append(
+                    f"Phase 1 library source introduces an unreviewed diagnostic sink: "
+                    f"{path.relative_to(repo_root)}"
                 )
 
 

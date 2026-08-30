@@ -35,6 +35,39 @@ pub struct FileReadRequest {
     allowed_roots: Vec<PathBuf>,
 }
 
+/// Deterministic file mutations available only to the Phase 1 acceptance harness.
+///
+/// This type is excluded from the default build and is not part of the file-entry contract.
+#[cfg(feature = "acceptance-test-support")]
+#[doc(hidden)]
+pub enum FileReadMutationForTest {
+    ReplaceWith(PathBuf),
+    Truncate,
+    Extend(Vec<u8>),
+}
+
+#[cfg(feature = "acceptance-test-support")]
+impl FileReadMutationForTest {
+    fn apply(self, selected_path: &Path) -> std::io::Result<()> {
+        match self {
+            Self::ReplaceWith(replacement_path) => {
+                fs::remove_file(selected_path)?;
+                fs::rename(replacement_path, selected_path)
+            }
+            Self::Truncate => OpenOptions::new()
+                .write(true)
+                .truncate(true)
+                .open(selected_path)
+                .and_then(|mut file| file.flush()),
+            Self::Extend(bytes) => {
+                let mut file = OpenOptions::new().append(true).open(selected_path)?;
+                file.write_all(&bytes)?;
+                file.flush()
+            }
+        }
+    }
+}
+
 impl FileReadRequest {
     pub fn new(
         selected_path: impl Into<PathBuf>,
@@ -581,6 +614,30 @@ fn write_export_bytes(file: &mut File, bytes: &[u8]) -> std::io::Result<()> {
 pub fn read_file_snapshot(
     request: &FileReadRequest,
 ) -> Result<ValidatedFileSnapshot, FileEntryError> {
+    read_file_snapshot_with_after_initial_observation(request, |_| Ok(()))
+}
+
+/// Runs one deterministic mutation after the initial open-file observation.
+///
+/// This test-only entry is feature-gated out of default and production builds.
+#[cfg(feature = "acceptance-test-support")]
+#[doc(hidden)]
+pub fn read_file_snapshot_with_mutation_for_test(
+    request: &FileReadRequest,
+    mutation: FileReadMutationForTest,
+) -> Result<ValidatedFileSnapshot, FileEntryError> {
+    read_file_snapshot_with_after_initial_observation(request, |selected_path| {
+        mutation.apply(selected_path)
+    })
+}
+
+fn read_file_snapshot_with_after_initial_observation<AfterInitialObservation>(
+    request: &FileReadRequest,
+    after_initial_observation: AfterInitialObservation,
+) -> Result<ValidatedFileSnapshot, FileEntryError>
+where
+    AfterInitialObservation: FnOnce(&Path) -> std::io::Result<()>,
+{
     let resolved = resolve_selection(request)?;
     let (source_kind, media_type) = classify_file(&resolved.canonical_path)?;
     let mut file = File::open(&resolved.canonical_path).map_err(FileEntryError::io)?;
@@ -594,6 +651,7 @@ pub fn read_file_snapshot(
     if before != FileObservation::from_metadata(&path_before) {
         return Err(FileEntryError::source_changed());
     }
+    after_initial_observation(&resolved.selected_path).map_err(FileEntryError::io)?;
 
     let capacity = usize::try_from(before_metadata.len()).unwrap_or(0);
     let mut bytes = Vec::with_capacity(capacity.min(MAX_FILE_BYTES as usize));
@@ -603,7 +661,6 @@ pub fn read_file_snapshot(
         .map_err(FileEntryError::io)?;
     let content_length =
         u64::try_from(bytes.len()).map_err(|_| FileEntryError::file_too_large())?;
-    validate_size(content_length)?;
 
     let after_metadata = file.metadata().map_err(FileEntryError::io)?;
     let after = FileObservation::from_metadata(&after_metadata);
@@ -611,6 +668,7 @@ pub fn read_file_snapshot(
         return Err(FileEntryError::source_changed());
     }
     verify_selection_stable(&resolved, &after)?;
+    validate_size(content_length)?;
 
     let content = String::from_utf8(bytes).map_err(|_| FileEntryError::invalid_utf8())?;
     if content.as_bytes().contains(&0) {
@@ -1216,24 +1274,35 @@ mod tests {
     }
 
     #[test]
-    fn temporary_write_failure_is_explicit_and_cleans_task_file() {
+    fn p1_f16_temporary_write_failure_preserves_retryable_cause_and_cleans_task_file() {
         let directory = TestDirectory::new("write-failure");
         let source = synthetic_source(DeletionState::Active);
         let error = export_managed_source_with_operations(
             &source,
             &directory.request(),
-            |_, _| Err(std::io::Error::other("synthetic write failure")),
+            |_, _| {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::TimedOut,
+                    "synthetic write timeout",
+                ))
+            },
             |_| {},
         )
         .expect_err("temporary write failure must reject export");
 
         assert_eq!(error.reason(), FileEntryErrorReason::IoFailure);
+        assert!(error.retryable());
+        let source = std::error::Error::source(&error)
+            .and_then(|source| source.downcast_ref::<std::io::Error>())
+            .expect("real IO cause must be retained");
+        assert_eq!(source.kind(), std::io::ErrorKind::TimedOut);
+        assert!(!format!("{error:?}").contains("synthetic write timeout"));
         assert!(!directory.target().exists());
         directory.assert_no_temporary();
     }
 
     #[test]
-    fn publication_race_never_overwrites_target_and_cleans_task_file() {
+    fn p1_f16_publication_race_never_overwrites_target_and_cleans_task_file() {
         let directory = TestDirectory::new("publish-race");
         let source = synthetic_source(DeletionState::Active);
         let error = export_managed_source_with_operations(
@@ -1245,6 +1314,8 @@ mod tests {
         .expect_err("concurrent target must reject publication");
 
         assert_eq!(error.reason(), FileEntryErrorReason::DestinationExists);
+        assert!(!error.retryable());
+        assert!(std::error::Error::source(&error).is_none());
         assert_eq!(
             fs::read(directory.target()).expect("race target must remain readable"),
             b"concurrent owner bytes"

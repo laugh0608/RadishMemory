@@ -20,70 +20,82 @@ impl SourceCaptureStore for SqliteDatabase {
         &mut self,
         capture: &SourceCapture,
     ) -> Result<SourceCaptureResult, Self::Error> {
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(SqliteError::storage)?;
-        crate::derived_index::verify(&transaction)?;
-        verify_origin_bindings(&transaction)?;
+        capture_source_with_before_commit(self, capture, |_| Ok(()))
+    }
+}
 
-        let candidate = capture.source();
-        let value = candidate.params();
-        let existing_lineage = load_origin_lineage(
-            &transaction,
-            &value.namespace_id,
-            capture.origin_binding_id(),
-        )?;
+fn capture_source_with_before_commit<BeforeCommit>(
+    database: &mut SqliteDatabase,
+    capture: &SourceCapture,
+    before_commit: BeforeCommit,
+) -> Result<SourceCaptureResult, SqliteError>
+where
+    BeforeCommit: FnOnce(&Connection) -> Result<(), SqliteError>,
+{
+    let transaction = database
+        .connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(SqliteError::storage)?;
+    crate::derived_index::verify(&transaction)?;
+    verify_origin_bindings(&transaction)?;
 
-        let (result_source, outcome) = if let Some(lineage_id) = existing_lineage {
-            if lineage_id != value.lineage_id {
-                return Err(capture_mismatch(SqliteStorageReason::OriginBindingMismatch));
+    let candidate = capture.source();
+    let value = candidate.params();
+    let existing_lineage = load_origin_lineage(
+        &transaction,
+        &value.namespace_id,
+        capture.origin_binding_id(),
+    )?;
+
+    let (result_source, outcome) = if let Some(lineage_id) = existing_lineage {
+        if lineage_id != value.lineage_id {
+            return Err(capture_mismatch(SqliteStorageReason::OriginBindingMismatch));
+        }
+        let current = load_current_source(&transaction, &value.namespace_id, &lineage_id)?;
+        validate_existing_capture(&transaction, capture.origin_binding_id(), &current)?;
+        if same_capture_bytes(candidate, &current) {
+            if candidate.params().source_kind != current.params().source_kind
+                || candidate.params().media_type != current.params().media_type
+                || candidate.params().governance != current.params().governance
+            {
+                return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
             }
-            let current = load_current_source(&transaction, &value.namespace_id, &lineage_id)?;
-            validate_existing_capture(&transaction, capture.origin_binding_id(), &current)?;
-            if same_capture_bytes(candidate, &current) {
-                if candidate.params().source_kind != current.params().source_kind
-                    || candidate.params().media_type != current.params().media_type
-                    || candidate.params().governance != current.params().governance
-                {
-                    return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
-                }
-                (current, SourceCaptureOutcome::Idempotent)
-            } else {
-                if candidate.params().governance != current.params().governance {
-                    return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
-                }
-                insert_source_artifact(&transaction, candidate)?;
-                advance_lineage_tip(&transaction, candidate)?;
-                insert_source_fragments(&transaction, capture.fragments())?;
-                insert_capture_audit(
-                    &transaction,
-                    capture.origin_binding_id(),
-                    candidate,
-                    SourceCaptureOutcome::Versioned,
-                )?;
-                (candidate.clone(), SourceCaptureOutcome::Versioned)
-            }
+            (current, SourceCaptureOutcome::Idempotent)
         } else {
-            require_unused_lineage(&transaction, candidate)?;
+            if candidate.params().governance != current.params().governance {
+                return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
+            }
             insert_source_artifact(&transaction, candidate)?;
             advance_lineage_tip(&transaction, candidate)?;
-            insert_origin_binding(&transaction, capture.origin_binding_id(), candidate)?;
             insert_source_fragments(&transaction, capture.fragments())?;
             insert_capture_audit(
                 &transaction,
                 capture.origin_binding_id(),
                 candidate,
-                SourceCaptureOutcome::Created,
+                SourceCaptureOutcome::Versioned,
             )?;
-            (candidate.clone(), SourceCaptureOutcome::Created)
-        };
+            (candidate.clone(), SourceCaptureOutcome::Versioned)
+        }
+    } else {
+        require_unused_lineage(&transaction, candidate)?;
+        insert_source_artifact(&transaction, candidate)?;
+        advance_lineage_tip(&transaction, candidate)?;
+        insert_origin_binding(&transaction, capture.origin_binding_id(), candidate)?;
+        insert_source_fragments(&transaction, capture.fragments())?;
+        insert_capture_audit(
+            &transaction,
+            capture.origin_binding_id(),
+            candidate,
+            SourceCaptureOutcome::Created,
+        )?;
+        (candidate.clone(), SourceCaptureOutcome::Created)
+    };
 
-        crate::derived_index::verify(&transaction)?;
-        verify_origin_bindings(&transaction)?;
-        transaction.commit().map_err(SqliteError::storage)?;
-        Ok(SourceCaptureResult::from_source(&result_source, outcome))
-    }
+    crate::derived_index::verify(&transaction)?;
+    verify_origin_bindings(&transaction)?;
+    before_commit(&transaction)?;
+    transaction.commit().map_err(SqliteError::storage)?;
+    Ok(SourceCaptureResult::from_source(&result_source, outcome))
 }
 
 pub(crate) fn advance_lineage_tip(
@@ -506,4 +518,203 @@ fn collect_unique_bindings(
 
 fn capture_mismatch(reason: SqliteStorageReason) -> SqliteError {
     SqliteError::source_invariant(reason)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::error::Error as _;
+
+    use radishmemory_core::{
+        DeletionState, EgressPolicy, Governance, MediaType, NonEmptyText, ProducerRef,
+        ProducerType, RetentionMode, RetentionRule, Sensitivity, SourceArtifactParams,
+        SourceFragment, SourceFragmentParams, SourceKind, Timestamp, Version,
+        compute_exact_bytes_digest,
+    };
+
+    use super::*;
+    use crate::SqliteErrorCode;
+
+    fn id(value: &str) -> Identifier {
+        Identifier::new(value).expect("synthetic identifier must be valid")
+    }
+
+    fn text(value: &str) -> NonEmptyText {
+        NonEmptyText::new(value).expect("synthetic text must be nonempty")
+    }
+
+    fn timestamp(value: &str) -> Timestamp {
+        Timestamp::parse(value).expect("synthetic timestamp must be valid")
+    }
+
+    fn governance() -> Governance {
+        Governance::new(
+            Sensitivity::Personal,
+            EgressPolicy::LocalOnly,
+            RetentionRule::new(RetentionMode::UntilDeleted, None, None)
+                .expect("synthetic retention must be valid"),
+            DeletionState::Active,
+            id("policy-local-only"),
+        )
+        .expect("synthetic governance must be valid")
+    }
+
+    fn producer(producer_type: ProducerType, producer_id: &str) -> ProducerRef {
+        ProducerRef::new(producer_type, id(producer_id), text("1"))
+    }
+
+    fn capture(
+        source_id: &str,
+        fragment_id: &str,
+        version: u64,
+        content: &str,
+        captured_at: &str,
+    ) -> SourceCapture {
+        let content = text(content);
+        let content_digest = compute_exact_bytes_digest(content.as_str().as_bytes());
+        let supersedes_source_ids = if version == 1 {
+            vec![]
+        } else {
+            vec![id("source-commit-1")]
+        };
+        let source = SourceArtifact::new(SourceArtifactParams {
+            source_id: id(source_id),
+            lineage_id: id("lineage-commit-1"),
+            version: Version::new(version).expect("synthetic version must be valid"),
+            namespace_id: id("namespace-commit-1"),
+            source_kind: SourceKind::Text,
+            media_type: MediaType::TextPlain,
+            content: content.clone(),
+            content_length: content.utf8_len() as u64,
+            content_digest: content_digest.clone(),
+            title: None,
+            origin_kind: SourceOriginKind::ExplicitUserInput,
+            origin_ref: Some(text("origin-binding-commit-1")),
+            observed_at: timestamp(captured_at),
+            captured_at: timestamp(captured_at),
+            supersedes_source_ids,
+            governance: governance(),
+            producer: producer(ProducerType::Parser, "file-entry-parser"),
+            created_at: timestamp(captured_at),
+        })
+        .expect("synthetic source must be valid");
+        let fragment = SourceFragment::new(SourceFragmentParams {
+            fragment_id: id(fragment_id),
+            namespace_id: id("namespace-commit-1"),
+            source_id: id(source_id),
+            ordinal: 0,
+            byte_start: 0,
+            byte_end: content.utf8_len() as u64,
+            heading_path: None,
+            content,
+            content_digest,
+            segmenter: producer(ProducerType::Rule, "whole-file-segmenter"),
+            governance: governance(),
+            created_at: timestamp(captured_at),
+        })
+        .expect("synthetic fragment must be valid");
+        SourceCapture::new(id("origin-binding-commit-1"), source, vec![fragment])
+            .expect("synthetic capture must be valid")
+    }
+
+    fn capture_row_counts(connection: &Connection) -> [i64; 8] {
+        let mut counts = [0; 8];
+        for (index, table) in [
+            "radishmemory_source_artifacts",
+            "radishmemory_source_bodies",
+            "radishmemory_source_supersedes",
+            "radishmemory_source_fragments",
+            "radishmemory_source_lineage_tips",
+            "radishmemory_source_origin_bindings",
+            "radishmemory_source_capture_audit",
+            "radishmemory_recall_fts",
+        ]
+        .iter()
+        .enumerate()
+        {
+            counts[index] = connection
+                .query_row(&format!("SELECT COUNT(*) FROM {table}"), [], |row| {
+                    row.get(0)
+                })
+                .expect("synthetic row count must be queryable");
+        }
+        counts
+    }
+
+    #[test]
+    fn p1_f16_capture_commit_failure_rolls_back_all_facts_and_preserves_real_error() {
+        let connection = Connection::open_in_memory().expect("in-memory SQLite must open");
+        let mut database =
+            SqliteDatabase::initialize(connection).expect("database must initialize");
+        let first = capture(
+            "source-commit-1",
+            "fragment-commit-1",
+            1,
+            "Stable committed capture marker.\n",
+            "2026-08-30T08:00:00Z",
+        );
+        database
+            .capture_source(&first)
+            .expect("baseline capture must commit");
+        let counts_before = capture_row_counts(database.connection());
+        let tip_before: (String, i64) = database
+            .connection()
+            .query_row(
+                "SELECT source_id, version FROM radishmemory_source_lineage_tips",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("baseline tip must be queryable");
+
+        let second = capture(
+            "source-commit-2",
+            "fragment-commit-2",
+            2,
+            "Uncommitted replacement capture marker.\n",
+            "2026-08-30T09:00:00Z",
+        );
+        let error = capture_source_with_before_commit(&mut database, &second, |connection| {
+            connection
+                .execute(
+                    "INSERT INTO radishmemory_missing_capture_commit_point VALUES (1)",
+                    [],
+                )
+                .map(|_| ())
+                .map_err(SqliteError::storage)
+        })
+        .expect_err("commit-point failure must reject the complete capture");
+
+        assert_eq!(error.code(), SqliteErrorCode::Storage);
+        assert!(
+            error
+                .source()
+                .expect("real SQLite cause must be retained")
+                .to_string()
+                .contains("no such table")
+        );
+        assert!(!format!("{error:?}").contains("Uncommitted replacement"));
+        assert!(database.connection().is_autocommit());
+        assert_eq!(capture_row_counts(database.connection()), counts_before);
+        let tip_after: (String, i64) = database
+            .connection()
+            .query_row(
+                "SELECT source_id, version FROM radishmemory_source_lineage_tips",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .expect("tip after rollback must be queryable");
+        assert_eq!(tip_after, tip_before);
+        let rejected_source_count: i64 = database
+            .connection()
+            .query_row(
+                "SELECT COUNT(*) FROM radishmemory_source_artifacts WHERE source_id = ?1",
+                params!["source-commit-2"],
+                |row| row.get(0),
+            )
+            .expect("rejected source count must be queryable");
+        assert_eq!(rejected_source_count, 0);
+        crate::derived_index::verify(database.connection())
+            .expect("rollback must preserve exact recall derivations");
+        verify_origin_bindings(database.connection())
+            .expect("rollback must preserve exact origin bindings and audit");
+    }
 }
