@@ -157,14 +157,18 @@ fn set_owner_only_directory(_path: &Path) -> Result<(), DesktopError> {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(unix)]
     use std::sync::atomic::{AtomicU64, Ordering};
 
     use super::*;
 
+    #[cfg(unix)]
     static NEXT_DIRECTORY: AtomicU64 = AtomicU64::new(1);
 
+    #[cfg(unix)]
     struct TestDirectory(PathBuf);
 
+    #[cfg(unix)]
     impl TestDirectory {
         fn new(label: &str) -> Self {
             let sequence = NEXT_DIRECTORY.fetch_add(1, Ordering::Relaxed);
@@ -177,6 +181,7 @@ mod tests {
         }
     }
 
+    #[cfg(unix)]
     impl Drop for TestDirectory {
         fn drop(&mut self) {
             let _ = fs::remove_dir_all(&self.0);
