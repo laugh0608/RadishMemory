@@ -18,7 +18,7 @@ publish = false
 
 [workspace.dependencies]
 directories = "=6.0.0"
-eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
 getrandom = { version = "=0.4.3", default-features = false }
 radishmemory-application = { path = "crates/radishmemory-application", version = "=0.1.0" }
 radishmemory-core = { path = "crates/radishmemory-core", version = "=0.1.0" }

@@ -49,15 +49,15 @@
 | `P1-HF06` | `v1` / `v2` 搜索显示 source、fragment 和 byte range citation | 三平台 locked CI |
 | `P1-HF07` | save panel 精确导出历史 `v1`，摘要与字节数相符且不覆盖 | 当前版本和拒绝覆盖边界继续由自动化测试证明 |
 | `P1-HF08` | 经即时确认删除两版本完整 lineage，0 召回，10 组件 evidence，外部文件不变 | 三平台 locked CI |
-| `P1-HF09` | picker 取消明确无资料库变化；选择不可读合成文件后稳定拒绝，六类事实 / 派生计数仍为 0 | Linux / Windows picker 平台差异继续由对应平台证据约束 |
+| `P1-HF09` | picker 取消明确无资料库变化；选择不可读合成文件后稳定拒绝，六类事实 / 派生计数仍为 0 | Windows 无效 UTF-8 选择与取消已实际复核；Linux picker 平台差异继续由对应证据约束 |
 | `P1-HF10` | 健康库 verify / rebuild 与重启成立；canonical body 和 binding 独立损坏后，Verify、Rebuild、重启与 Retry 均持续失败关闭且不自愈 | 三平台 locked CI |
 | `P1-HF11` | 不可信 Markdown 只进入受管正文与本地搜索；未触发工具、模型或记忆写入 | 网络能力仍由依赖图、代码检查和 CI 共同约束，不把单次观察当作网络取证 |
-| `P1-HF12` | 应用 UI、状态、citation、evidence 和进程输出未出现路径；系统 picker 仅在授权调用内暂时显示合成路径 | Linux / Windows UI 与失败输出复核 |
+| `P1-HF12` | 应用 UI、状态、citation、evidence 和进程输出未出现路径；系统 picker 仅在授权调用内暂时显示合成路径 | Windows UI 与脱敏失败输出已复核；Linux UI 仍待实际运行 |
 
 ## P1-H05 剩余门禁
 
-1. 让当前本地 `dev` 上已提交的 desktop 变更在既有 Linux、macOS、Windows Rust Quality matrix 上完成 locked format、Clippy 和 test，并取得聚合 `Candidate Quality` 证据；当前只确认 workflow 已覆盖三个平台，没有推送该提交或创建远程 run。
-2. 在独立目标环境和 GUI 授权下，分别留下 Linux 可见 UI / XDG Portal（含 Zenity fallback 识别）文件选择与 Windows 可见 UI / native dialog 的实际运行证据；至少覆盖启动、取消、选择合成文件、路径脱敏与关闭重开，并核对应用数据目录与 profile 的平台保护。当前 owner-only mode 硬化只在 Unix 显式实现，Windows ACL 不得在未验证前被声明为已收紧；headless CI 不替代这些平台行为证据。
+1. desktop head `57f4f44` 的 run `33394918896` 已通过既有 Linux、macOS、Windows Rust Quality 与聚合 `Candidate Quality`；Windows 实机随后暴露的 OpenGL-only renderer 阻断已在当前工作区切换为 `wgpu`，因此仍须对新 feature graph 取得新的三平台 locked 证据。
+2. Windows 可见 UI / native dialog、取消、导入、关闭重开、脱敏与继承 ACL 已由 [Windows 交互记录](phase1-windows-host-acceptance.md) 实际复核。仍需在独立 Linux 目标环境和 GUI 授权下留下可见 UI / XDG Portal（含 Zenity fallback 识别）证据；headless CI 不替代平台行为证据。
 3. 在跨平台依赖图稳定后，生成可分发的 third-party notices 与 Linux portal / Zenity、Wayland / X11 和 Windows native dialog 依赖清单；在此之前不进入签名、打包或发布。
 
 在上述门禁完成前，P1-H05 保持开放，RadishMemory 仍不是获准导入真实个人资料的生产文件入口。

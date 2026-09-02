@@ -201,7 +201,7 @@ publish = false
 
 [workspace.dependencies]
 directories = \"=6.0.0\"
-eframe = { version = \"=0.36.1\", default-features = false, features = [\"accesskit\", \"default_fonts\", \"glow\", \"wayland\", \"x11\"] }
+eframe = { version = \"=0.36.1\", default-features = false, features = [\"accesskit\", \"default_fonts\", \"wayland\", \"wgpu\", \"x11\"] }
 getrandom = { version = \"=0.4.3\", default-features = false }
 radishmemory-application = { path = \"crates/radishmemory-application\", version = \"=0.1.0\" }
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
@@ -332,8 +332,8 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 401
-EXPECTED_REVIEWED_LOCK_DIGEST = "2fc6cd865b3d991b15f44f7c0adf3515889e0fef84a8d521258e18dc42320ef8"
+EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 418
+EXPECTED_REVIEWED_LOCK_DIGEST = "fd844233e5c95339d9f271bd138b373bb727943c229244d5694542285a162c59"
 FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-application",
     "radishmemory-core",
@@ -947,7 +947,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 macOS desktop interaction recorded; cross-platform acceptance next",
+            "Phase 1 Windows interaction recorded; Linux and refreshed CI next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -961,7 +961,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 macOS desktop interaction recorded; cross-platform acceptance next",
+            "Phase 1 Windows interaction recorded; Linux and refreshed CI next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不是可导入真实个人资料的产品入口",
@@ -969,7 +969,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
             "六个第一方 workspace package",
-            "395 个第三方 package",
+            "412 个第三方 package",
             "40 个第三方 package",
             "没有 Git dependency",
             "`serde_json 1.0.151`",
@@ -1032,7 +1032,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "[ADR 0006]",
             "`P1-F01` 至 `P1-F18`",
             "workflow run 33302423840",
-            "当前 desktop 变更的三平台 CI 尚未完成",
+            "当前 `wgpu` 变更的三平台 CI 尚未刷新",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1129,12 +1129,13 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0007]",
-            "Phase 1 macOS desktop interaction recorded",
+            "Phase 1 Windows interaction recorded",
             "application service",
         ),
         "docs/README.md": (
             "ADR 0007：阶段 1 本地资料库宿主与显式文件授权",
             "Phase 1 macOS 桌面宿主交互验收",
+            "Phase 1 Windows 桌面宿主交互验收",
         ),
         "docs/status/current.md": (
             "ADR 0007",
@@ -1164,23 +1165,30 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
             "P1-H02 application service",
             "P1-H03 source catalog",
             "P1-H04 desktop UI",
-            "395 个第三方 package",
+            "412 个第三方 package",
         ),
         "docs/implementation/phase1-desktop-dependency-review.md": (
             "状态：`Accepted",
             "eframe = { version = \"=0.36.1\"",
             "rfd = { version = \"=0.17.2\"",
-            "401 个 package",
-            "162 个唯一 package ID",
-            "真实 Linux / Windows feature 与 native linkage 仍必须由对应平台 locked CI 证明",
+            "418 个 package",
+            "180 个唯一 package ID",
+            "当前 feature graph 的三平台 locked CI 仍须刷新",
         ),
         "docs/implementation/phase1-macos-host-acceptance.md": (
             "P1-H05 remains open",
             "AppKit open / save panel",
             "`P1-HF01`",
             "`P1-HF12`",
-            "Linux、macOS、Windows Rust Quality matrix",
+            "Linux、macOS、Windows Rust Quality 与聚合 `Candidate Quality`",
             "仍不是获准导入真实个人资料的生产文件入口",
+        ),
+        "docs/implementation/phase1-windows-host-acceptance.md": (
+            "P1-H05 remains open",
+            "Windows 原生 open / save dialog",
+            "egui_glow requires opengl 2.0+",
+            "BUILTIN\\Administrators",
+            "BUILTIN\\Users",
         ),
         "crates/radishmemory-application/src/lib.rs": (
             "radishmemory.phase1-local-library-host/1",

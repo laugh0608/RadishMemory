@@ -1,8 +1,8 @@
 # Phase 1 桌面宿主依赖评审
 
-日期：2026-08-30
+日期：2026-09-02
 
-状态：`Accepted — 项目所有者已明确授权，manifest / lockfile 与本机实现已落地`
+状态：`Accepted — manifest / lockfile 已按 Windows 真实宿主证据修正并重新冻结`
 
 范围：`P1-H04 desktop UI` 的本地窗口、一次性系统文件选择、平台应用数据目录、production opaque ID 与 UTC clock。本文不授权安装平台工具链、签名、发布、网络、同步、模型或真实个人资料导入。
 
@@ -11,24 +11,24 @@
 已新增第六个第一方 workspace package `apps/radishmemory-desktop`，只通过 `radishmemory-application` 使用资料库能力。直接依赖固定为：
 
 ```toml
-eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "glow", "wayland", "x11"] }
+eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
 rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal", "wayland"] }
 directories = "=6.0.0"
 getrandom = { version = "=0.4.3", default-features = false }
 time = { version = "=0.3.55", default-features = false, features = ["formatting", "parsing", "std"] }
 ```
 
-`time 0.3.55` 原已存在；本次把 workspace feature 从 `parsing, std` 扩为 `formatting, parsing, std`，用于把 production UTC clock 格式化为 core 接受的 RFC 3339。其余四项是新增第三方直接依赖。
+`time 0.3.55` 原已存在；P1-H04 把 workspace feature 从 `parsing, std` 扩为 `formatting, parsing, std`，用于把 production UTC clock 格式化为 core 接受的 RFC 3339。其余四项是当时新增的第三方直接依赖。2026-09-02 的 Windows ARM64 真实启动证明 `glow` 在该宿主缺少 OpenGL 2.0，当前不增加 renderer fallback，而是保留同一 `eframe` 版本并把唯一 renderer feature 改为 `wgpu`。
 
 ## 已解析依赖图与证据边界
 
-- Cargo `1.96.0` 生成的 format 4 lockfile 当前包含 401 个 package：6 个第一方 workspace package 与 395 个带 crates.io source / checksum 的第三方 package，没有 Git dependency；仓库检查器以 package 数、name / version / source / checksum 的排序 SHA-256 摘要共同拒绝漂移，不在检查器里维护一份容易漏项的手抄长列表。
-- 在当前 `aarch64-apple-darwin`、已选 feature 图下，`cargo tree -p radishmemory-desktop` 可达 162 个唯一 package ID，其中 5 个是第一方；实际编译使用 `glow` / Glutin、AppKit、AccessKit、剪贴板与 bundled SQLite，没有启用 `wgpu`。
-- format 4 lockfile 仍会收录依赖 manifest 中可选或其它 target 的解析项，因此其中可见 `wgpu`、Linux XDG Portal / D-Bus、Wayland / X11、Windows、Android 与 WASM 条件 package；这不等于它们进入当前 macOS artifact。真实 Linux / Windows feature 与 native linkage 仍必须由对应平台 locked CI 证明。
+- Cargo `1.96.0` 生成的 format 4 lockfile 当前包含 418 个 package：6 个第一方 workspace package 与 412 个带 crates.io source / checksum 的第三方 package，没有 Git dependency；仓库检查器以 package 数、name / version / source / checksum 的排序 SHA-256 摘要共同拒绝漂移，不在检查器里维护一份容易漏项的手抄长列表。
+- 在当前 `aarch64-apple-darwin`、已选 feature 图下，`cargo tree -p radishmemory-desktop` 可达 180 个唯一 package ID，其中 5 个是第一方；实际编译使用 `wgpu`、Metal binding、AppKit、AccessKit、剪贴板与 bundled SQLite，不启用 `glow` renderer。
+- format 4 lockfile 仍会收录依赖 manifest 中可选或其它 target 的解析项，因此其中可见 `glow` / Glutin、Linux XDG Portal / D-Bus、Wayland / X11、Windows、Android 与 WASM 条件 package；这不等于它们进入当前 macOS artifact。Windows ARM64 已取得 `wgpu` build 与实际窗口证据，当前 feature graph 的三平台 locked CI 仍须刷新，Linux native linkage 与 picker 仍须由对应平台证明。
 - 整份 lockfile 与当前目标树都没有 `tokio`、`reqwest`、`hyper`、`rustls`、`openssl`、`ureq`、`curl`、`isahc` 或 `surf` package。Linux XDG Portal 所需的 `zbus` / async executor 是本地 D-Bus / IPC 条件面，不得据此宣称绝对“零系统通信”，但它不是产品 HTTP / TLS 外发能力。
-- `cargo metadata --locked --offline` 已读取 395 个第三方 package 的声明许可证，没有缺失 license metadata；跨目标全集包含 73 个带 build script 的 package ID、27 个 proc-macro package ID，以及 `sqlite3`、Objective-C runtime、WASM binding 三种 `links` 声明。它们是供应链上限，不是当前 macOS artifact 的执行清单。
+- `cargo metadata --locked` 已读取 412 个第三方 package 的声明许可证，没有缺失 license metadata；跨目标全集包含 75 个带 build script 的 package ID、27 个 proc-macro package ID，以及 `sqlite3`、Objective-C runtime、WASM binding 三种 `links` 声明。它们是供应链上限，不是当前 macOS artifact 的执行清单。
 - 需要在 third-party notices 中单列：`epaint_default_fonts` 的 OFL-1.1 / Ubuntu Font License 字体条款、`option-ext` 的 MPL-2.0、`unicode-ident` 的 Unicode-3.0；`self_cell` 的 GPL 与 `r-efi` 的 LGPL 都是与 Apache / MIT 并列的可选许可证，不形成强制 GPL / LGPL 选择。首次分发前仍须生成 notices、选定适用 license option 并人工复核原文。
-- 本机已通过 desktop package 的 locked check、15 个单测与 all-targets / all-features Clippy `-D warnings`；最终 `./scripts/check-repo.sh` 通过 126 个仓库文件、workspace Clippy 和 128 个 locked test。这些自动化证据覆盖 production random / UTC runtime、应用数据目录、host profile、picker request 映射、关闭重开、损坏失败关闭和 UI 状态逻辑；随后 [Phase 1 macOS 桌面宿主交互验收](phase1-macos-host-acceptance.md) 使用纯合成数据实际运行窗口、AppKit open / save panel 和负向状态。两者仍不替代 Linux / Windows picker 或三平台当前 desktop CI。
+- 原始 `glow` 图曾通过 desktop package 的 locked check、15 个单测、all-targets / all-features Clippy `-D warnings` 和仓库聚合门禁；这些自动化证据覆盖 production random / UTC runtime、应用数据目录、host profile、picker request 映射、关闭重开、损坏失败关闭和 UI 状态逻辑。随后 [macOS 验收](phase1-macos-host-acceptance.md) 使用纯合成数据实际运行窗口、AppKit open / save panel 和负向状态，[Windows 验收](phase1-windows-host-acceptance.md) 暴露 OpenGL-only 阻断并在 `wgpu` 修复后完成可见窗口、native dialog、重开、脱敏与 ACL 复验。当前 `wgpu` 图仍须以本批仓库聚合门禁和后续三平台 CI 重新收口。
 
 ## 选择与限制
 
@@ -36,9 +36,9 @@ time = { version = "=0.3.55", default-features = false, features = ["formatting"
 
 - upstream 为 Rust 2024、MSRV `1.95`、`MIT OR Apache-2.0`，满足 workspace Rust `1.96.0`；
 - 选择 immediate-mode 本地 UI，是因为现有 application service 已隔离领域与 adapter，首批界面可以保持单进程、同步、无前端构建链；
-- 关闭 default features，显式选择 `glow`，不引入默认 `wgpu` renderer；保留 `accesskit`、内置默认字体以及 Linux 的 Wayland / X11 编译面；
-- 不启用 `links`、`persistence`、`web_screen_reader`、`inspection` 或 `wgpu`：首批 UI 不能打开外部链接、建立第二份持久 UI 状态、启用 web surface、打开 inspection TCP 端口或扩大 GPU backend；
-- native 运行仍会使用窗口、OpenGL / EGL / WGL、系统事件、剪贴板和可访问性 API。剪贴板只服务用户主动复制 / 粘贴，不自动读取或持久化；第一方代码不初始化普通日志 sink。
+- 关闭 default features，显式选择唯一 `wgpu` renderer；保留 `accesskit`、内置默认字体以及 Linux 的 Wayland / X11 编译面，不同时启用 `glow` 或增加运行时 fallback；
+- 不启用 `links`、`persistence`、`web_screen_reader` 或 `inspection`：首批 UI 不能打开外部链接、建立第二份持久 UI 状态、启用 web surface 或打开 inspection TCP 端口；`wgpu` 扩大的平台 GPU backend / native binding 已计入 lockfile、metadata 与本页供应链边界；
+- native 运行仍会使用窗口、平台图形 backend、系统事件、剪贴板和可访问性 API。剪贴板只服务用户主动复制 / 粘贴，不自动读取或持久化；第一方代码不初始化普通日志 sink。
 
 官方依据：[eframe 0.36.1 crate](https://docs.rs/crate/eframe/0.36.1)、[0.36.1 workspace 元数据](https://github.com/emilk/egui/blob/0.36.1/Cargo.toml)、[eframe feature 定义](https://github.com/emilk/egui/blob/0.36.1/crates/eframe/Cargo.toml)。
 

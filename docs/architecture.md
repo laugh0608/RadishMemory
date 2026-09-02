@@ -90,7 +90,7 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 `P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 只定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型；`LocalLibrary` 组合 open、import / update、list / get、search citation、exact export、canonical lineage deletion evidence、verify / rebuild，并通过 `ApplicationRuntime` 隔离 production ID / clock。
 
-`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得本机编译、合成关闭重开以及 macOS 可见 GUI / AppKit picker 正向与失败关闭证据；Linux / Windows 实际 GUI / native picker 和当前 desktop 变更的三平台构建仍属于 P1-H05。
+`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得 macOS AppKit 与 Windows ARM64 原生 picker 的可见 GUI 正向 / 失败关闭证据；Windows 实机暴露的 OpenGL-only 阻断已通过把同版本 `eframe` renderer feature 切换为 `wgpu` 最小修复。Linux 实际 GUI / XDG Portal、当前 feature graph 的三平台 CI 与 notices 仍属于 P1-H05。
 
 ## 核心组件
 

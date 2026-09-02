@@ -1,12 +1,12 @@
 # RadishMemory 当前状态
 
-更新时间：2026-08-30
+更新时间：2026-09-02
 
 ## 当前阶段
 
-`Phase 1 macOS desktop interaction recorded; cross-platform acceptance next`
+`Phase 1 Windows interaction recorded; Linux and refreshed CI next`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并 fast-forward 回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 已冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和 `P1-HF01` 至 `P1-HF12` 宿主验收；P1-H02 / P1-H03 与经授权的 P1-H04 desktop host 已完成本机实现，P1-H05 已取得纯合成数据的 macOS 可见窗口与 AppKit open / save picker 正向交互，以及不可读选择、canonical body 篡改和 origin binding 缺失的失败关闭证据。当前 desktop 变更的 Linux / macOS / Windows locked CI 与聚合 `Candidate Quality` 仍无证据，Linux / Windows 可见 UI 与 native picker 也未实际运行，因此仍不导入真实个人资料，也不直接扩大到 PDF、图片、向量、模型、网络或同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并 fast-forward 回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 已冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和 `P1-HF01` 至 `P1-HF12` 宿主验收；desktop head `57f4f44` 已在 [workflow run 33394918896](https://github.com/laugh0608/RadishMemory/actions/runs/33394918896) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。P1-H05 现已取得纯合成数据的 macOS AppKit 与 Windows ARM64 原生 open / save dialog 实际交互证据；Windows 首次运行真实暴露 `glow` 对 OpenGL 2.0 的宿主阻断，当前工作区已把同版本 `eframe` renderer feature 最小切换为 `wgpu` 并完成 Windows ARM64 复验。该修复尚未进入远程 CI，Linux 可见 UI / picker 和 notices 仍未收口，因此仍不导入真实个人资料，也不直接扩大到 PDF、图片、向量、模型、网络或同步。
 
 ## 已冻结的范围与基线
 
@@ -30,7 +30,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `M0-I02` 的第一个独立评审单元已实现稳定 core 错误、RFC 3339 / UTC 时间、`ValidTime`、`exact-bytes-v1` / `utf8-nfc-text-v1` / `canonical-json-v1` SHA-256，以及拒绝重复 key 和 `null` 的 `radishmemory-canonical-json-v1` parser / writer。`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象、共同值类型与字段级条件校验。`M0-I02` 的第三个独立评审单元已实现跨对象不变量，包括同 namespace 引用、来源切片、governance 继承、accept 物化闭环、事件链投影、supersede、ContextPack citation / 召回边界与删除计划 / 证据一致性。fixture 外部 JSON mapping 与 application operation dispatch 已由 `M0-I04` 在 runner 层实现，不反向进入 core schema。
 
-`M0-I03 SQLite entry` 已实现版本化 migration、连接安全基线、bundled SQLite 精确版本与 FTS5 双重 capability probe，以及对未知较新版本、现有外来 schema 和 migration metadata 漂移的失败关闭。headless 基础子图仍为 40 个第三方 package；加入 desktop 条件依赖后，完整 lockfile 为 6 个第一方和 395 个 crates.io 第三方 package，没有 Git dependency 或产品 HTTP / TLS client；`libsqlite3-sys` build script 会通过 `cc` 编译 bundled SQLite `3.53.2` C 源码。feature、许可证与 native build 影响见 [Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)和[桌面依赖评审](../implementation/phase1-desktop-dependency-review.md)。
+`M0-I03 SQLite entry` 已实现版本化 migration、连接安全基线、bundled SQLite 精确版本与 FTS5 双重 capability probe，以及对未知较新版本、现有外来 schema 和 migration metadata 漂移的失败关闭。headless 基础子图仍为 40 个第三方 package；加入 desktop 条件依赖后，完整 lockfile 为 6 个第一方和 412 个 crates.io 第三方 package，没有 Git dependency 或产品 HTTP / TLS client；`libsqlite3-sys` build script 会通过 `cc` 编译 bundled SQLite `3.53.2` C 源码。feature、许可证与 native build 影响见 [Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)和[桌面依赖评审](../implementation/phase1-desktop-dependency-review.md)。
 
 `M0-I03 SQLite storage` 的首个纵向切片已实现 SourceArtifact / SourceFragment 所需的真实 `SourceVault` core port，并把 adapter schema 单调升级到 v2。来源 metadata 与 exact body BLOB 分表原子写入；片段只保存 byte range、摘要、治理和生成器 metadata，读取时从已验真的 source body 重建 exact content，不建立第二份片段正文真相。写入保持不可变，namespace 读取失败关闭，重复对象不覆盖，批量片段冲突整批回滚，损坏或非 UTF-8 body 不进入领域对象。
 
@@ -54,9 +54,9 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `P1-H03 source catalog` 已在 core 增加 body-free `SourceCatalog` 读取 port，由 SQLite v6 从已验真的 active facts、binding 与 lineage tip 产生稳定分页目录和连续版本历史。application service 已组合 list / get、source-only search citation、当前或历史精确导出，以及复用 canonical 十组件计划的完整 lineage deletion；删除目标解析会纳入 lineage 全部 active 版本、直接引用任一版本 fragment 的 active memory，以及这些 memory 的 active supersede 依赖，不允许 UI 或调用方手工缩小闭包。合成文件数据库测试覆盖首次启动、导入、关闭重开、幂等与变化更新、目录 / 历史、搜索 / citation、导出、两版本删除、evidence 重启读取、外部原件不变、无目录副作用与公开错误脱敏。
 
-`P1-H04 desktop UI` 已新增 `radishmemory-desktop`：使用平台应用数据目录、OS random 128-bit opaque ID、UTC RFC 3339 clock 与一次性 native picker；Unix 应用目录 / profile 显式收紧为 owner-only mode，Windows 当前只使用平台数据目录的继承 ACL，尚未实现或验证额外 owner-only ACL 收紧。profile 缺失或损坏时不会以新 identity 认领既有数据库。UI 只调用 application service，覆盖启动不可用、导入 / 更新、来源 / 版本、搜索 / citation、精确导出、lineage 删除确认、十组件 evidence、verify 与 rebuild；第一方宿主不初始化普通日志 sink，也不保存路径、bookmark 或 UI cache。当前 macOS locked check、15 个 desktop 单测和严格 Clippy 已通过，最终 `./scripts/check-repo.sh` 通过 126 个仓库文件和 128 个 locked test。
+`P1-H04 desktop UI` 已新增 `radishmemory-desktop`：使用平台应用数据目录、OS random 128-bit opaque ID、UTC RFC 3339 clock 与一次性 native picker；Unix 应用目录 / profile 显式收紧为 owner-only mode，Windows 使用平台数据目录继承 ACL。本次 Windows 实机 `icacls` 已确认应用目录、profile 与数据库只向当前测试账户、`SYSTEM` 和 `Administrators` 继承 full control，没有 `Everyone` 或 `BUILTIN\Users`；本批 elevated Developer Prompt 产生的 owner 为 `Administrators`，因此仍不把该证据表述为发行态非提权 owner 归属。profile 缺失或损坏时不会以新 identity 认领既有数据库。UI 只调用 application service，覆盖启动不可用、导入 / 更新、来源 / 版本、搜索 / citation、精确导出、lineage 删除确认、十组件 evidence、verify 与 rebuild；第一方宿主不初始化普通日志 sink，也不保存路径、bookmark 或 UI cache。
 
-`P1-H05 host acceptance` 已在隔离 `HOME` 与纯合成 Markdown 上实际运行 macOS 窗口和 AppKit open / save panel，观察到首次空库、取消无副作用、107 B `v1` 导入、165 B `v2` 更新、current-tip citation、历史版本精确导出、verify / rebuild、关闭重开、经即时确认的完整 lineage 删除、10 组件 evidence、删除后 0 召回，以及外部原件 / 导出不被删除。后续负向批次实际选择权限位为 `000` 的合成 Markdown，UI 稳定拒绝且六类数据库计数保持 0；另以两个独立合成库验证 canonical body 篡改和 origin binding 缺失，Verify / Rebuild / 重启 / Retry 均失败关闭且不自愈。SQLite `verify_recall_derivations` 因此补齐 active file capture / binding 校验，并新增两项不修复损坏的测试。两批任务专用应用数据、Cargo cache、输入、导出、篡改器和临时 `.app` 均已清理。完整记录见 [Phase 1 macOS 桌面宿主交互验收](../implementation/phase1-macos-host-acceptance.md)。这些仍只是 macOS 交互子证据，尚不替代 Linux / macOS / Windows desktop CI。
+`P1-H05 host acceptance` 已在隔离 `HOME` 与纯合成 Markdown 上实际运行 macOS 窗口和 AppKit open / save panel，覆盖完整正向与失败关闭批次；完整记录见 [Phase 1 macOS 桌面宿主交互验收](../implementation/phase1-macos-host-acceptance.md)。Windows ARM64 测试副本又实际覆盖可见窗口、原生 open / save dialog、两类取消、103 B `.md` 导入、关闭重开、无效 UTF-8 脱敏拒绝和应用数据 / profile / database ACL；完整记录见 [Phase 1 Windows 桌面宿主交互验收](../implementation/phase1-windows-host-acceptance.md)。Windows 运行同时暴露并最小修复 OpenGL-only renderer 阻断。两平台交互证据仍不替代当前 `wgpu` 工作区的三平台 CI、Linux 实际 picker 或 notices。
 
 ## 当前顺位
 
@@ -64,15 +64,15 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 2. 已完成 `P1-H02 application service`：建立真实 open / import / update 编排、ID / clock runtime capability 与脱敏 application error，不复用 fixture mapping。
 3. 已完成 `P1-H03 source catalog`：提供当前来源 / 历史版本目录、lineage resolution、search citation、exact export、lineage deletion、verify / rebuild 应用入口。
 4. 已完成 `P1-H04 desktop UI` 的依赖授权、本机实现与合成验证。
-5. `P1-H05 host acceptance` 已完成 macOS 可见窗口、真实 open / save picker、picker 后读取失败、canonical / binding 损坏失败关闭与关闭重开的交互子证据；当前继续补齐 Linux / macOS / Windows locked CI 与聚合证据、Linux / Windows 可见 UI / native picker 实际证据及可分发依赖清单。全部证据成立后才评审 PDF / 图片与加密内容寻址大对象存储。
+5. `P1-H05 host acceptance` 已完成 macOS 与 Windows 的真实可见窗口 / native picker 子证据；当前继续补齐 `wgpu` 修复后的 Linux / macOS / Windows locked CI 与聚合证据、Linux 可见 UI / XDG Portal 实际证据及可分发依赖清单。全部证据成立后才评审 PDF / 图片与加密内容寻址大对象存储。
 
-## 明日事项（2026-08-31）
+## 后续事项（2026-09-03）
 
-今日已以 `9bd0af5` 收口 P1-F01 至 P1-F18 的剩余验收，以 `c56f13f` 将 PR #2 合入 `master` 并回流 `dev`，又以 `a4150ce` 提交 P1-H02 至 P1-H05 的 application service、source catalog、desktop UI、失败关闭与 macOS 交互证据。本地 desktop 实现和日终文档提交尚未 push；明日继续按 [ADR 0007](../adr/0007-phase1-local-library-host.md) 收口 P1-H05：
+desktop head `57f4f44` 的 run `33394918896` 已通过原有三平台质量矩阵；Windows ARM64 实际运行随后暴露 OpenGL-only renderer 阻断，当前批次完成 `wgpu` 最小修复、真实 UI / dialog / ACL 验收与文档同步。后续继续按 [ADR 0007](../adr/0007-phase1-local-library-host.md) 收口 P1-H05：
 
-1. 取得当前任务的远程授权后，精确 push 本地 `dev` 提交，对该 head 触发现有 `PR Checks` 的 `workflow_dispatch`；记录 head SHA、run URL、Repo Hygiene、Linux / macOS / Windows Rust Quality 和聚合 `Candidate Quality` 的真实结果。push 授权不自动扩大为 PR、merge 或发布授权。
+1. 取得独立远程授权后，精确 push 当前 `wgpu` 修复提交并重新运行现有 `PR Checks`；记录新 head、run URL、Repo Hygiene、Linux / macOS / Windows Rust Quality 和聚合 `Candidate Quality` 的真实结果。旧 run `33394918896` 不外推到当前 feature graph，push 授权也不自动扩大为 PR、merge 或发布授权。
 2. 若三平台矩阵失败，按精确失败平台核对 Linux XDG Portal / Wayland / X11 与 Windows native dialog 的编译、feature 和 native linkage；修正根因、CI image 或依赖文档，不通过关闭实际平台 feature、放宽 Clippy / test 或增加 fallback 掩盖失败。每次修正后重跑本地门禁和同一远程矩阵。
-3. 取得独立目标环境、GUI 与必要平台工具授权后，使用隔离应用数据和纯合成 `.md` 分别运行 Linux 可见 UI / XDG Portal picker（识别是否进入 Zenity fallback）与 Windows 可见 UI / native dialog；至少复验首次启动、取消无副作用、显式选择与导入、关闭重开、UI / error 路径脱敏、应用数据目录 / profile 平台保护和临时状态清理。特别核对 Windows 继承 ACL 是否满足当前隐私边界；若不满足，先建立可测的 owner-only ACL 实现，不用文档默认安全。不把 headless CI 或编译通过表述为真实 picker 运行证据。
+3. Windows 可见 UI / native dialog、脱敏与继承 ACL 子证据已记录；后续在独立 Linux 目标环境和 GUI 授权下，使用隔离应用数据与纯合成 `.md` 运行可见 UI / XDG Portal picker，并识别是否进入 Zenity fallback。另在未来正式非提权 Windows 安装入口复核数据目录 owner；不把 headless CI 或编译通过表述为真实 picker 运行证据。
 4. 在跨平台依赖图稳定后，生成可分发 third-party notices，并分开列出 Linux portal / Zenity、Wayland / X11、Windows native dialog、macOS AppKit、bundled SQLite、默认字体和必要 license option / attribution；记录来源、版本、目标条件、native build / IPC 表面与人工复核项。
 5. CI、Linux / Windows 实际平台证据和 notices 全部收口后，先同步验收记录与当前状态，再在独立授权下发起 `dev -> master` 阶段 PR；以最终 PR head 的 `Candidate Quality` 为准，合并后按 ADR 0001 回流 `master -> dev`。在此之前 P1-H05 保持开放。
 
