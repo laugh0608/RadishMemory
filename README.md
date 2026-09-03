@@ -37,6 +37,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 - [M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)
 - [阶段 1 文本 / Markdown 文件入口 ADR](docs/adr/0006-phase1-text-markdown-file-entry.md)
 - [阶段 1 本地资料库宿主与显式文件授权 ADR](docs/adr/0007-phase1-local-library-host.md)
+- [阶段 1 加密内容寻址 Source Vault ADR](docs/adr/0008-phase1-encrypted-source-vault.md)
 - [阶段 1 桌面宿主依赖评审](docs/implementation/phase1-desktop-dependency-review.md)
 - [阶段 1 macOS 桌面宿主交互验收](docs/implementation/phase1-macos-host-acceptance.md)
 - [隐私与威胁模型](docs/privacy-threat-model.md)
@@ -48,7 +49,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `Phase 1 host acceptance complete; stage review next` 阶段：M0 本地记忆闭环和阶段 1 文本 / Markdown 文件入口均已通过 Linux、macOS、Windows locked CI 并合入稳定主线；[ADR 0007](docs/adr/0007-phase1-local-library-host.md)进一步冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和十二项宿主验收。`P1-H02 application service`、`P1-H03 source catalog` 与经授权的 `P1-H04 desktop UI` 已完成本机实现，P1-H05 已记录纯合成数据的 macOS AppKit、Windows ARM64 与 Debian ARM64 / GNOME Wayland 原生 open / save picker 交互；Windows 实机暴露的 OpenGL-only 阻断已最小切换为 `wgpu` 并复验，当前 head `c5dba35` 又在 [workflow run 33751048480](https://github.com/laugh0608/RadishMemory/actions/runs/33751048480) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。当前又已生成 333 个目标可达 crate 的 [third-party notices](THIRD_PARTY_NOTICES.md)，人工复核 license option、默认字体、bundled SQLite 与条件平台依赖，P1-H05 host acceptance gate 因而完成；下一步是阶段评审，不自动扩大到 PDF、向量、模型、网络或同步。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `Phase 1 encrypted Source Vault contract accepted; dependency review next` 阶段；`Phase 1 host acceptance complete` 仍是已成立的前置事实。M0 本地记忆闭环和阶段 1 文本 / Markdown 文件入口均已通过 Linux、macOS、Windows locked CI 并合入稳定主线；[ADR 0007](docs/adr/0007-phase1-local-library-host.md)进一步冻结并完成本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和十二项宿主验收。当前 `wgpu` head `c5dba35` 已在 [workflow run 33751048480](https://github.com/laugh0608/RadishMemory/actions/runs/33751048480) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，333 个目标可达 crate 的 [third-party notices](THIRD_PARTY_NOTICES.md)、license option、默认字体、bundled SQLite 与条件平台依赖也已收口。阶段评审随后接受 [ADR 0008](docs/adr/0008-phase1-encrypted-source-vault.md)，冻结原始对象认证加密、一 source version 一密文对象、设备本地 KEK 包装、文件系统 / SQLite 提交协调、v6 migration、删除和十八项合成验收；当前实现仍是 SQLite v6 inline plaintext body，下一步只评审精确 cipher suite、key-wrap、随机源和平台 key provider，不自动授权 implementation、PDF、向量、模型、网络或同步。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
 
 首个可执行切片 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md) 已使用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和单设备删除证据，不依赖模型、网络、RadishMind 或同步。
 
@@ -61,6 +62,8 @@ RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional
 M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
 
 阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景；`P1-F01` 至 `P1-F18` 已实现并在 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并回流 `dev`。desktop host 代码、本机合成测试、macOS / Windows / Linux 真实窗口与原生 picker 证据、当前 `wgpu` 图的三平台 CI，以及可复现的目标依赖 / notices 已经建立；这完成 P1-H05，但不等于已有签名发行包，也不授权本任务使用真实个人资料。
+
+阶段 1 的加密 Source Vault 已由 [ADR 0008](docs/adr/0008-phase1-encrypted-source-vault.md) 冻结为“只保护受管原始对象”的本地认证加密契约。SQLite metadata、FTS 与派生内容仍可能是明文；每个 SourceArtifact version 首批对应独立密文对象，不跨 provenance 去重；具体 cipher suite、key provider、object adapter、migration 和宿主接入尚未实现或授权，因此当前产品不能声明加密 Source Vault 已可用或整个资料库已静态加密。
 
 当前已完成精确 Rust `1.96.0` 工具链、三个 M0 package、canonical core、SQLite v6 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI；Phase 1 另有 `radishmemory-file-entry`、`radishmemory-application` 与 `radishmemory-desktop`。desktop host 通过 application service 提供应用数据目录、稳定 host profile、production random / UTC runtime、一次性 native picker，以及 import / update、目录 / 历史、search citation、exact export、完整 lineage deletion evidence、verify / rebuild UI。[Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界，[macOS 交互验收](docs/implementation/phase1-macos-host-acceptance.md)、[Windows 交互验收](docs/implementation/phase1-windows-host-acceptance.md)与 [Linux 交互验收](docs/implementation/phase1-linux-host-acceptance.md)记录单机证据，[第三方 notices 与条件平台依赖复核](docs/implementation/phase1-third-party-notices.md)完成其最后分发清单门禁。真实个人资料、签名包和发布仍须独立授权与验证。
 

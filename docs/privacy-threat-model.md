@@ -142,6 +142,18 @@ M0 删除证据只覆盖已枚举的单设备正文、片段、结构化记忆�
 
 宿主数据库位于平台应用数据目录并保持本地明文；“使用系统选择器”“运行于平台沙箱”或“不保存路径”都不等于静态加密。`P1-HF01` 至 `P1-HF12`、真实系统选择器和人工可见 UI 证据成立前，不使用真实个人资料验收，也不声明生产授权面完成。
 
+## 阶段 1 加密 Source Vault 信任边界
+
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已接受受管原始对象的本地认证加密契约，但 implementation 尚未开始。当前 SQLite v6 仍保存 inline plaintext body；文档决策本身不改变已有字节，也不授权使用真实个人资料。
+
+首批只保护 Source Vault 管理的原始对象文件。SQLite metadata、FTS、标题、摘要、media type、大小、时间、治理标签和派生内容仍可能泄露语义或使用模式，因此不能把该能力描述为整个资料库静态加密。对象解密期间的进程内明文、已解锁设备上的恶意进程、内核、交换区、休眠镜像、崩溃收集和用户导出也不在该静态对象保证内。
+
+每个 SourceArtifact version 使用独立随机 DEK，由设备本地 KEK capability 包装；不同 source 即使 exact digest 相同也不共享首批物理对象。KEK、明文 DEK、可复用 wrapped DEK、nonce、authentication tag 和对象路径不得进入普通日志、诊断、fixture、CI 或仓库。具体 cipher suite、key-wrap、随机源和平台 key provider 必须先通过 `P1-S02` 独立评审；未知 profile、认证失败、key 缺失 / 锁定 / 拒绝或 metadata 交换都失败关闭。
+
+本地 key 丢失可能使对应对象永久不可恢复。首批不提供用户口令、恢复码、key escrow、跨设备恢复或自动 rotation；应用不得生成新 key 后认领旧对象、隐藏损坏来源、建立空库或从外部原件 fallback。未来同步可以在独立协议下增加对象 DEK wrapper，但服务端仍不得获得内容解密能力。
+
+对象删除只证明本地 committed reference、密文文件和 wrapped DEK 按冻结组件范围处理。SQLite 空闲页、迁移前明文、平台临时状态、文件系统快照、备份、交换区、休眠镜像、外部原件和用户导出仍须分别报告，不能从密文文件删除推导取证级擦除或备份清除。
+
 ## 模型外发控制
 
 每次调用云端 Provider 或 RadishMind 等 Gateway 前必须：
@@ -232,4 +244,5 @@ CI runner、日志、缓存和 artifact 视为仓库信任边界之外的数据�
 - Prompt Injection 完全解决；
 - 自托管即满足全部隐私需求；
 - 本地模型天然安全；
+- 整个本地资料库已经静态加密；
 - 加密备份一定可恢复。

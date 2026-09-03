@@ -26,7 +26,8 @@
 20. [Phase 1 第三方 notices 与条件平台依赖复核](implementation/phase1-third-party-notices.md)：333 个目标可达 crate、license option、默认字体、bundled SQLite 与 OS 条件面。
 21. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
 22. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
-23. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+23. [ADR 0008：阶段 1 加密内容寻址 Source Vault](adr/0008-phase1-encrypted-source-vault.md)：原始对象认证加密、内容地址、密钥边界、SQLite 协调、迁移、删除与合成验收。
+24. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 治理入口
 

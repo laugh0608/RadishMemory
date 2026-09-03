@@ -246,6 +246,6 @@ fixture mapping 为确定性评测服务，不包含真实文件授权、TOCTOU�
 2. `P1-I03` 已实现精确 export 与不覆盖发布，`P1-I04` 已复用现有删除协议收口 lineage 删除闭包；`P1-F01` 至 `P1-F18` 已在本机跨层运行并进入 Linux / macOS / Windows locked CI，不预建通用 workflow、插件或后台队列。
 3. 继续复用现有 Source Vault、LocalSearch 和 DeletionStore；文件 adapter 不直接写 SQLite 业务表，export 不回读外部 origin file。
 4. PR #2 的 run `33302423840` 已在 macOS、Linux 与 Windows 运行 locked 检查和合成验收，并以 merge commit `c56f13f` 合入稳定主线、回流 `dev`。
-5. 下一步按 [ADR 0007](0007-phase1-local-library-host.md) 实现 production application service、来源目录、本地 UI 与真实系统文件选择；之后才分别评审 PDF / 图片解析、加密内容寻址大对象存储、向量和模型 adapter。
+5. 后续已按 [ADR 0007](0007-phase1-local-library-host.md) 完成 production application service、来源目录、本地 UI 与真实系统文件选择，并由 [ADR 0008](0008-phase1-encrypted-source-vault.md) 先冻结加密内容寻址 Source Vault；在其 dependency、adapter、migration 与 host acceptance 完成前不进入 PDF / 图片解析，向量和模型 adapter 继续独立评审。
 
 在宿主、UI 与真实系统选择验收通过前，不导入真实个人资料，不声明产品文件入口、加密存储、完整删除或生产可用；未经独立授权，不 push、不创建 PR、不修改远端状态。

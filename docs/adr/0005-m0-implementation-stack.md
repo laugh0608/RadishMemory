@@ -69,7 +69,7 @@ M0 使用单个本地 SQLite 数据库文件作为每个 fixture 场景的隔离
 
 M0 中删除组件的 `succeeded` 只证明目标行、FTS 条目、投影和缓存已按计划处理，且通过应用接口与完整性检查不再可检索；它不证明 SQLite 空闲页、临时文件、文件系统快照或底层介质已经完成取证级擦除。runner 应避免持久 WAL，关闭连接后清理整个合成场景目录，并把任何残留或清理失败报告为 pending / failed。生产物理清除、密钥销毁和备份到期仍由后续存储与加密决策承载。
 
-把小文本正文暂存为 SQLite BLOB 是 M0 的实施选择，不是长期 Source Vault 格式。阶段 1 在 PDF、图片和大对象进入前，必须重新评审加密内容寻址对象存储、SQLite metadata 的事务协调和迁移方式。
+把小文本正文暂存为 SQLite BLOB 是 M0 的实施选择，不是长期 Source Vault 格式。阶段 1 已通过 [ADR 0008](0008-phase1-encrypted-source-vault.md) 在 PDF、图片和大对象进入前冻结加密内容寻址对象存储、SQLite metadata 的事务协调和迁移边界；具体 dependency、cipher suite、key provider、adapter 与 migration 仍须独立评审和授权。
 
 M0 不实现静态加密，因此不得因使用本地 SQLite 或 bundled SQLite 宣称加密存储、零知识或生产隐私保证。fixture 只能使用合成数据。
 

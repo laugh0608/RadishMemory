@@ -92,6 +92,18 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 `P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK picker 的可见 GUI 正向 / 失败关闭证据；Windows 实机暴露的 OpenGL-only 阻断已通过把同版本 `eframe` renderer feature 切换为 `wgpu` 最小修复，当前图也已通过 Linux / macOS / Windows locked CI。333 个目标可达 crate、license option、默认字体、bundled SQLite 与条件平台依赖已由 [third-party notices 复核](implementation/phase1-third-party-notices.md)收口，P1-H05 gate 完成。
 
+## 阶段 1 加密内容寻址 Source Vault 边界
+
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约，但尚未实现。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
+
+一个不可变 SourceArtifact version 首批对应一个不可变密文对象。逻辑 lookup 使用精确 `source_id` 与 `exact-bytes-v1` digest，物理 locator 保持 adapter-private；不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重。该选择保留独立 governance、retention 和 deletion scope，不把内容摘要升级为 canonical identity。
+
+每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。精确 cipher、nonce / wrapper、random 和平台 key provider 留给 `P1-S02` 依赖与密码实现评审，当前不新增 production dependency。
+
+对象提交遵循“密文 publish → SQLite commit → read-back”三段状态：先在应用专用 staging 中直接生成密文，经 sync、关闭、认证与 no-overwrite publish 后，才能在一个 SQLite `IMMEDIATE` transaction 内提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 复验成功才返回 receipt。publish 后、metadata commit 前的对象只是可识别 orphan candidate；恢复器只能清理无 committed reference、无可恢复 attempt 且身份明确的对象，ambiguous state 使 library 失败关闭。
+
+SQLite v6 migration 在普通操作暴露前逐对象复验 inline body、发布密文、提交 reference 并 read-back；未完成或损坏时不混合返回 inline / object-backed source。迁移不改变 canonical identity、citation、governance 或 deletion state，也不证明 SQLite 空闲页、快照和备份中的历史明文已物理清除。`P1-S02` 至 `P1-S05` 完成 dependency、adapter、migration 与宿主验收前，PDF / 图片解析保持停止。
+
 ## 核心组件
 
 ### 1. Capture Gateway
@@ -255,11 +267,10 @@ M0 fixture 已冻结这些动作在评测中的输入与预期，但不把测试
 
 [ADR 0005](adr/0005-m0-implementation-stack.md) 已冻结 M0 为 Rust 2024 模块化单体：`radishmemory-core` 承载领域与应用边界，`radishmemory-sqlite` 实现本地持久化和 FTS5，`radishmemory-m0` 执行冻结 fixture。三个 package 在单进程内运行，不引入网络、异步运行时、Provider SDK 或服务拆分。
 
-production adapter 入口 `SqliteDatabase::open(path)` 使用文件数据库：SourceArtifact 正文作为独立 BLOB 保存，source / fragment / proposal / decision / record / state event / delete request / deletion evidence 由结构化表承载；FTS5、当前状态与 source lineage tip 是可重建派生数据，origin binding 和 capture audit 是 path-free 本地入口状态，ContextPack / query cache 在当前阶段不持久化。仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接；它仍执行同一 capability probe、v1 → v6 migration、连接策略、派生校验与真实 adapter 操作，但避免把文件系统逐事务同步成本混入 application-contract fixture。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。当前不实现静态加密；文件入口不能被描述为加密存储或生产隐私能力，runner 的内存隔离也不能外推为产品存储方案。
+production adapter 入口 `SqliteDatabase::open(path)` 当前使用文件数据库：SourceArtifact 正文作为独立 BLOB 保存，source / fragment / proposal / decision / record / state event / delete request / deletion evidence 由结构化表承载；FTS5、当前状态与 source lineage tip 是可重建派生数据，origin binding 和 capture audit 是 path-free 本地入口状态，ContextPack / query cache 在当前阶段不持久化。仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接；它仍执行同一 capability probe、v1 → v6 migration、连接策略、派生校验与真实 adapter 操作，但避免把文件系统逐事务同步成本混入 application-contract fixture。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。当前实现仍未静态加密；ADR 0008 只冻结后续原始对象存储契约，不能被描述为已经实现或覆盖 SQLite / FTS。
 
-以下仍是后续阶段候选，不是 ADR 0005 的已接受决定：
+加密内容寻址 Source Vault 与 SQLite metadata 协调已由 ADR 0008 接受为阶段 1 后续方向；以下仍是后续阶段候选，不是 ADR 0005 / ADR 0008 的已接受决定：
 
-- PDF、图片和大对象进入前评审加密内容寻址文件存储及其与 SQLite metadata 的事务协调；
 - 服务端结构化数据评估 PostgreSQL，但零知识同步服务不得因此获得内容明文或语义索引；
 - 向量实现保持可替换，不把模型、维度或数据库扩展写入 canonical 格式；
 - 实体与时间关系先以关系投影验证，不默认引入独立图数据库；

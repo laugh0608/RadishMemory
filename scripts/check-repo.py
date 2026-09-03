@@ -105,6 +105,7 @@ REQUIRED_FILES = (
     "docs/adr/0005-m0-implementation-stack.md",
     "docs/adr/0006-phase1-text-markdown-file-entry.md",
     "docs/adr/0007-phase1-local-library-host.md",
+    "docs/adr/0008-phase1-encrypted-source-vault.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -965,7 +966,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 host acceptance complete; stage review next",
+            "Phase 1 encrypted Source Vault contract accepted; dependency review next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -979,7 +980,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 host acceptance complete; stage review next",
+            "Phase 1 encrypted Source Vault contract accepted; dependency review next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1282,6 +1283,91 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
                 )
 
 
+def check_phase1_encrypted_source_vault_contract(
+    repo_root: Path, errors: list[str]
+) -> None:
+    contracts = {
+        "docs/adr/0008-phase1-encrypted-source-vault.md": (
+            "状态：Accepted",
+            "radishmemory.phase1-encrypted-source-vault/1",
+            "P1-S01 storage contract",
+            "P1-S02 dependency and cipher review",
+            "一个不可变 `SourceArtifact` version 对应一个不可变密文对象",
+            "不进行跨 lineage 或跨 provenance 物理去重",
+            "设备本地 key-encryption key（KEK）",
+            "经过评审的 AEAD cipher suite",
+            "SQLite `IMMEDIATE` transaction",
+            "SQLite v6 inline body 迁移",
+            "不新增 canonical 顶层对象",
+            "`P1-SF01`",
+            "`P1-SF18`",
+            "当前代码仍使用 SQLite v6 inline plaintext body",
+        ),
+        "README.md": (
+            "[ADR 0008]",
+            "Phase 1 encrypted Source Vault contract accepted; dependency review next",
+            "一 source version 一密文对象",
+            "SQLite v6 inline plaintext body",
+            "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
+        ),
+        "docs/README.md": (
+            "ADR 0008：阶段 1 加密内容寻址 Source Vault",
+        ),
+        "docs/status/current.md": (
+            "ADR 0008",
+            "P1-S01 storage contract",
+            "P1-S02 dependency and cipher review",
+            "`P1-SF01` 至 `P1-SF18`",
+            "SQLite metadata、FTS、派生数据",
+            "不跨 provenance 物理去重",
+            "当前 production code 仍是 SQLite v6 inline plaintext body",
+        ),
+        "docs/architecture.md": (
+            "阶段 1 加密内容寻址 Source Vault 边界",
+            "一个不可变 SourceArtifact version 首批对应一个不可变密文对象",
+            "不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重",
+            "密文 publish → SQLite commit → read-back",
+            "P1-S02",
+        ),
+        "docs/privacy-threat-model.md": (
+            "阶段 1 加密 Source Vault 信任边界",
+            "SQLite metadata、FTS、标题、摘要",
+            "每个 SourceArtifact version 使用独立随机 DEK",
+            "本地 key 丢失可能使对应对象永久不可恢复",
+            "整个本地资料库已经静态加密",
+        ),
+        "docs/mvp-roadmap.md": (
+            "[ADR 0008]",
+            "一 source version 一密文对象",
+            "P1-S02",
+            "PDF / 图片解析只能在 encrypted Source Vault",
+        ),
+        "docs/adr/0005-m0-implementation-stack.md": (
+            "[ADR 0008]",
+            "具体 dependency、cipher suite、key provider、adapter 与 migration 仍须独立评审和授权",
+        ),
+        "docs/adr/0006-phase1-text-markdown-file-entry.md": (
+            "[ADR 0008]",
+            "在其 dependency、adapter、migration 与 host acceptance 完成前不进入 PDF / 图片解析",
+        ),
+        "docs/adr/0007-phase1-local-library-host.md": (
+            "[ADR 0008]",
+            "不代表加密 Source Vault 已实现",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing Phase 1 encrypted Source Vault contract "
+                    f"fragment: {fragment}"
+                )
+
+
 def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
     result = subprocess.run(
         [sys.executable, "scripts/check-m0-fixtures.py"],
@@ -1554,6 +1640,7 @@ def main() -> int:
     check_implementation_stack_contract(REPO_ROOT, errors)
     check_phase1_file_entry_contract(REPO_ROOT, errors)
     check_phase1_local_host_contract(REPO_ROOT, errors)
+    check_phase1_encrypted_source_vault_contract(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)
