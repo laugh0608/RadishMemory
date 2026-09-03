@@ -20,11 +20,13 @@
 14. [ADR 0005：M0 实现栈与模块边界](adr/0005-m0-implementation-stack.md)：Rust workspace、SQLite / FTS5、依赖、迁移和验证入口。
 15. [Rust 依赖基线](implementation/m0-rust-dependency-baseline.md)：当前 lockfile、第一方依赖图、供应链边界和三平台证据状态。
 16. [Phase 1 桌面宿主依赖评审](implementation/phase1-desktop-dependency-review.md)：已授权 UI、系统文件选择、应用目录、production ID / clock 版本、解析图与平台影响。
-17. [Phase 1 macOS 桌面宿主交互验收](implementation/phase1-macos-host-acceptance.md)：纯合成数据的真实窗口、AppKit picker、重启、重建、导出与删除 evidence，以及 P1-H05 剩余门禁。
+17. [Phase 1 macOS 桌面宿主交互验收](implementation/phase1-macos-host-acceptance.md)：纯合成数据的真实窗口、AppKit picker、重启、重建、导出与删除 evidence。
 18. [Phase 1 Windows 桌面宿主交互验收](implementation/phase1-windows-host-acceptance.md)：Windows ARM64 可见窗口、原生 picker、重启、脱敏与应用数据 ACL 证据。
-19. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
-20. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
-21. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+19. [Phase 1 Linux 桌面宿主交互验收](implementation/phase1-linux-host-acceptance.md)：Debian ARM64 / GNOME Wayland 可见窗口、XDG Portal / GTK picker、重启、脱敏与 Unix ACL / mode 证据。
+20. [Phase 1 第三方 notices 与条件平台依赖复核](implementation/phase1-third-party-notices.md)：333 个目标可达 crate、license option、默认字体、bundled SQLite 与 OS 条件面。
+21. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
+22. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
+23. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 治理入口
 

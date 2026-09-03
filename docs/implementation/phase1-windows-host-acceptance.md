@@ -2,7 +2,7 @@
 
 日期：2026-09-02
 
-状态：`Windows interactive evidence recorded — P1-H05 remains open`
+状态：`Windows interactive evidence recorded — P1-H05 complete`
 
 范围：只在获准修改的 `Windows11-ARM64` 测试副本中，使用纯合成 Markdown 和专用应用数据目录，实际构建并运行 `radishmemory-desktop`。本批覆盖可见窗口、Windows 原生 open / save dialog、取消、导入、关闭重开、路径 / 错误脱敏和 ACL 边界；没有启动或修改 `Windows11-ARM64-CleanBase`，没有使用真实个人资料，也没有进入 PDF、模型、网络或同步。
 
@@ -39,8 +39,8 @@
 
 两个文件只继承同三类主体的 `(I)(F)`；没有 `Everyone`、`BUILTIN\Users` 或其它宽泛主体。因为本批从 ARM64 Developer Command Prompt 启动，`dir /q` 显示目录和两文件 owner 为 `BUILTIN\Administrators`；这不是额外 owner-only ACL 实现，但当前继承边界没有向其它普通本机账户授予读取或写入。后续正式非提权安装入口仍应单独复核 owner 归属，不能把本次 elevated test owner 外推为发行态证据。
 
-## 结论与剩余门禁
+## 结论与 P1-H05 收口
 
-本批证明 Windows ARM64 上的可见窗口、原生 open / save dialog、两类取消、合成导入、关闭重开、稳定脱敏错误和继承 ACL 边界真实成立，并暴露且修复了 OpenGL-only renderer 阻断。它不证明 Linux UI / XDG Portal、发行包、签名、真实个人资料或未来 Windows 显示驱动兼容。
+本批证明 Windows ARM64 上的可见窗口、原生 open / save dialog、两类取消、合成导入、关闭重开、稳定脱敏错误和继承 ACL 边界真实成立，并暴露且修复了 OpenGL-only renderer 阻断。它不证明 Linux UI / XDG Portal、发行包、签名、真实个人资料或未来 Windows 显示驱动兼容；后续 [Linux 交互记录](phase1-linux-host-acceptance.md) 已单独补齐 Debian ARM64 / GNOME Wayland 的 XDG Portal / GTK 证据。
 
-`P1-H05` 继续保持开放：当前 `wgpu` 修复需要在获得远程授权后重新取得 Linux / macOS / Windows locked CI 与聚合 `Candidate Quality`，并仍需 Linux 可见 UI / picker 和完整 third-party notices。完成这些门禁前，RadishMemory 仍不是获准导入真实个人资料的生产文件入口。
+当前 `wgpu` head `c5dba35` 已在 [workflow run 33751048480](https://github.com/laugh0608/RadishMemory/actions/runs/33751048480) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。[第三方 notices 与条件平台依赖复核](phase1-third-party-notices.md)又完成可复现 target inventory、license option、完整文本、字体 / SQLite 归属和 Windows native 条件面，因此 `P1-H05` gate 已完成；正式非提权 installer 的 owner、签名和包内 notices 仍属于发布验证，不由本批外推。

@@ -2,7 +2,7 @@
 
 日期：2026-08-30
 
-状态：`macOS interactive evidence recorded — P1-H05 remains open`
+状态：`macOS interactive evidence recorded — P1-H05 complete`
 
 范围：使用纯合成 Markdown 数据，在 `aarch64-apple-darwin` 上实际启动 `radishmemory-desktop`，操作人工可见窗口与 AppKit open / save panel，复验首次启动、取消、导入、更新、搜索、历史导出、关闭重开、verify / rebuild 和完整 lineage 删除。本文只记录 P1-H05 的 macOS 交互子证据，不代表 Linux / Windows picker 运行通过，不授权真实个人资料、签名、发布、网络、同步或模型。
 
@@ -39,25 +39,25 @@
 
 ## ADR 0007 场景覆盖
 
-| 场景 | 本次 macOS 交互证据 | 仍需完成 |
+| 场景 | 本次 macOS 交互证据 | 补充证据边界 |
 | --- | --- | --- |
-| `P1-HF01` | 首次启动空库、0 source、数据库 / profile 建立 | 三平台 locked CI |
-| `P1-HF02` | AppKit open panel 导入 `.md`，目录与搜索出现 current source | Linux / Windows picker 平台证据 |
-| `P1-HF03` | 正常关闭重开后来源、版本和 citation 保持 | 三平台 locked CI |
+| `P1-HF01` | 首次启动空库、0 source、数据库 / profile 建立 | 当前 `wgpu` 三平台 locked CI 已通过 |
+| `P1-HF02` | AppKit open panel 导入 `.md`，目录与搜索出现 current source | Windows native dialog 与 Linux XDG Portal / GTK picker 已分别记录 |
+| `P1-HF03` | 正常关闭重开后来源、版本和 citation 保持 | 当前 `wgpu` 三平台 locked CI 已通过 |
 | `P1-HF04` | 明确选择 lineage 并重新选择文件，建立严格 `v2`；搜索命中 current tip | 重复字节幂等继续由自动化测试证明 |
 | `P1-HF05` | UI 显示稳定来源、当前版本和 `v1` / `v2` 历史 | 分页边界继续由自动化测试证明 |
-| `P1-HF06` | `v1` / `v2` 搜索显示 source、fragment 和 byte range citation | 三平台 locked CI |
+| `P1-HF06` | `v1` / `v2` 搜索显示 source、fragment 和 byte range citation | 当前 `wgpu` 三平台 locked CI 已通过 |
 | `P1-HF07` | save panel 精确导出历史 `v1`，摘要与字节数相符且不覆盖 | 当前版本和拒绝覆盖边界继续由自动化测试证明 |
-| `P1-HF08` | 经即时确认删除两版本完整 lineage，0 召回，10 组件 evidence，外部文件不变 | 三平台 locked CI |
-| `P1-HF09` | picker 取消明确无资料库变化；选择不可读合成文件后稳定拒绝，六类事实 / 派生计数仍为 0 | Windows 无效 UTF-8 选择与取消已实际复核；Linux picker 平台差异继续由对应证据约束 |
-| `P1-HF10` | 健康库 verify / rebuild 与重启成立；canonical body 和 binding 独立损坏后，Verify、Rebuild、重启与 Retry 均持续失败关闭且不自愈 | 三平台 locked CI |
+| `P1-HF08` | 经即时确认删除两版本完整 lineage，0 召回，10 组件 evidence，外部文件不变 | 当前 `wgpu` 三平台 locked CI 已通过 |
+| `P1-HF09` | picker 取消明确无资料库变化；选择不可读合成文件后稳定拒绝，六类事实 / 派生计数仍为 0 | Windows 与 Linux 均已实际复核无效 UTF-8 选择、取消和 lineage 不变 |
+| `P1-HF10` | 健康库 verify / rebuild 与重启成立；canonical body 和 binding 独立损坏后，Verify、Rebuild、重启与 Retry 均持续失败关闭且不自愈 | 当前 `wgpu` 三平台 locked CI 已通过 |
 | `P1-HF11` | 不可信 Markdown 只进入受管正文与本地搜索；未触发工具、模型或记忆写入 | 网络能力仍由依赖图、代码检查和 CI 共同约束，不把单次观察当作网络取证 |
-| `P1-HF12` | 应用 UI、状态、citation、evidence 和进程输出未出现路径；系统 picker 仅在授权调用内暂时显示合成路径 | Windows UI 与脱敏失败输出已复核；Linux UI 仍待实际运行 |
+| `P1-HF12` | 应用 UI、状态、citation、evidence 和进程输出未出现路径；系统 picker 仅在授权调用内暂时显示合成路径 | Windows 与 Linux UI / 脱敏失败输出已分别复核 |
 
-## P1-H05 剩余门禁
+## P1-H05 收口
 
-1. desktop head `57f4f44` 的 run `33394918896` 已通过既有 Linux、macOS、Windows Rust Quality 与聚合 `Candidate Quality`；Windows 实机随后暴露的 OpenGL-only renderer 阻断已在当前工作区切换为 `wgpu`，因此仍须对新 feature graph 取得新的三平台 locked 证据。
-2. Windows 可见 UI / native dialog、取消、导入、关闭重开、脱敏与继承 ACL 已由 [Windows 交互记录](phase1-windows-host-acceptance.md) 实际复核。仍需在独立 Linux 目标环境和 GUI 授权下留下可见 UI / XDG Portal（含 Zenity fallback 识别）证据；headless CI 不替代平台行为证据。
-3. 在跨平台依赖图稳定后，生成可分发的 third-party notices 与 Linux portal / Zenity、Wayland / X11 和 Windows native dialog 依赖清单；在此之前不进入签名、打包或发布。
+1. desktop head `57f4f44` 的 run `33394918896` 已通过旧 `glow` 图的 Linux、macOS、Windows Rust Quality 与聚合 `Candidate Quality`；Windows 实机随后暴露的 OpenGL-only renderer 阻断已切换为 `wgpu`，当前 head `c5dba35` 又在 run `33751048480` 通过同一三平台 locked 矩阵与聚合门禁。
+2. Windows 可见 UI / native dialog、取消、导入、关闭重开、脱敏与继承 ACL 已由 [Windows 交互记录](phase1-windows-host-acceptance.md) 实际复核；Debian ARM64 / GNOME Wayland 可见 UI、XDG Portal / GTK picker、Zenity fallback 排除、重开、脱敏与 Unix ACL / mode 已由 [Linux 交互记录](phase1-linux-host-acceptance.md) 实际复核。
+3. [第三方 notices 与条件平台依赖复核](phase1-third-party-notices.md)已生成三个目标可达依赖的可复现清单，明确 license option、Linux portal / Zenity、Wayland / X11、Windows native dialog、macOS AppKit、bundled SQLite 和默认字体边界。
 
-在上述门禁完成前，P1-H05 保持开放，RadishMemory 仍不是获准导入真实个人资料的生产文件入口。
+上述证据共同完成 P1-H05 host acceptance gate；这不等于已有签名发行包，也不授权本任务使用真实个人资料或进入后续能力。

@@ -28,7 +28,7 @@
 | `time` | `0.3.55` | `formatting`、`parsing`、`std` | RFC 3339 解析、UTC 比较和 production UTC clock 格式化 | 引入 `time-macros` proc macro；不读取本地时区 |
 | `unicode-normalization` | `0.1.25` | `std` | 仅用于 `utf8-nfc-text-v1` | 纯 Rust；Unicode 表由 crate 提供 |
 
-这些版本均满足 workspace 的 Rust `1.96.0`，许可证均为 `MIT OR Apache-2.0`。manifest 使用兼容版本要求，首次受审阅解析结果由 `Cargo.lock` 精确固定；后续 lockfile 漂移必须重新审查并更新本页与检查器。
+这些版本均满足 workspace 的 Rust `1.96.0`，许可证均为 `MIT OR Apache-2.0`。manifest 使用兼容版本要求，首次受审阅解析结果由 `Cargo.lock` 精确固定；后续 lockfile 漂移必须重新审查并更新本页、[third-party notices](../../THIRD_PARTY_NOTICES.md)与检查器。
 
 `radishmemory-m0` 直接复用同一 workspace `serde_json 1.0.151` 解析冻结 fixture 并构造最小证据 JSON；这只改变第一方 package 的直接依赖边，不新增第三方 package、feature、build script 或网络能力。fixture suite、ContextPack 和 DeletionEvidence 摘要仍调用 core 的 `radishmemory-canonical-json-v1` 实现，不依赖 serializer 的默认 key 顺序。
 
@@ -42,7 +42,7 @@
 
 当前 `aarch64-apple-darwin` desktop 目标可达 180 个唯一 package ID，其中 5 个第一方；真实编译使用 AppKit、AccessKit、`wgpu` / Metal binding、剪贴板、系统随机与 bundled SQLite。lockfile 的 418-package 全集还保存其它 target 和可选依赖，因此出现 `glow` / Glutin、Linux XDG Portal / D-Bus、Wayland / X11、Windows、Android 与 WASM package，不代表当前 macOS artifact 启用了这些路径。整份 lockfile 与当前目标树都没有常见 HTTP / TLS client 或 `tokio`；Linux portal 的本地 D-Bus / async 条件面、窗口系统、GPU backend、剪贴板和 accessibility 仍是必须承认的平台能力。
 
-新增四个第三方直接依赖的声明许可证是：`eframe`、`directories`、`getrandom` 为 `MIT OR Apache-2.0`，`rfd` 为 `MIT`；`time` 保持既有 `MIT OR Apache-2.0`。完整 locked metadata 没有缺失 license 字段，跨目标全集有 75 个 build-script package ID、27 个 proc-macro package ID 和 3 个 native `links` 声明；需要单列 `epaint_default_fonts` 的 OFL / Ubuntu Font License、`option-ext` 的 MPL-2.0 与 `unicode-ident` 的 Unicode-3.0。`self_cell` 的 GPL 和 `r-efi` 的 LGPL 都有 Apache / MIT 并列选项，不是强制 copyleft 选择。首次分发前仍须生成 third-party notices、选择适用许可证选项并人工复核原文；不得把本页摘要替代完整 notices。
+新增四个第三方直接依赖的声明许可证是：`eframe`、`directories`、`getrandom` 为 `MIT OR Apache-2.0`，`rfd` 为 `MIT`；`time` 保持既有 `MIT OR Apache-2.0`。完整 locked metadata 没有缺失 license 字段，跨目标全集有 75 个 build-script package ID、27 个 proc-macro package ID 和 3 个 native `links` 声明；目标可达的 333 个 crate、`epaint_default_fonts` 的 OFL / Ubuntu Font License、`option-ext` 的 MPL-2.0、`unicode-ident` 的 Unicode-3.0 与每个 OR expression 的实际 distribution basis 已由 [third-party notices 与条件平台依赖复核](phase1-third-party-notices.md)逐项收口。不得把本页摘要替代完整 notices。
 
 file-entry 的第一方 `acceptance-test-support` feature 默认关闭，只由 SQLite dev-dependency 启用。它把替换、截短和扩展三种冻结操作映射到 production `read_file_snapshot` 复用的 private 初始观察 seam；默认 build 不导出测试类型或函数，不允许任意 callback、网络、数据库或模型操作。SQLite capture commit 故障 seam 保持 adapter private 且只在 crate unit test 中调用，不是 Cargo feature 或 public port。两者均不改变 `Cargo.lock`、production feature 图、第三方编译面或运行时数据流。
 
@@ -71,7 +71,7 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 - Unicode：`tinyvec 1.12.0`、`tinyvec_macros 0.1.1`；
 - SQLite：`rusqlite 0.40.2`、`libsqlite3-sys 0.38.2`、`bitflags 2.13.1`、`fallible-iterator 0.3.0`、`fallible-streaming-iterator 0.1.9`、`smallvec 1.15.2`、`cc 1.4.4`、`find-msvc-tools 0.1.11`、`shlex 2.0.1`、`pkg-config 0.3.34`、`vcpkg 0.2.15`。
 
-许可证例外为 `memchr` 的 `Unlicense OR MIT`、`tinyvec` / `tinyvec_macros` 的 Zlib / Apache-2.0 / MIT 组合、`unicode-ident` 的 Unicode-3.0 数据条款、`zmij` 与 `rusqlite` / `libsqlite3-sys` 的 MIT，以及 SQLite amalgamation 的 public-domain dedication；其余新增 SQLite 传递 package 为 MIT / Apache-2.0 组合。M0 当前没有发布产物；首次分发源码或二进制前仍须生成并人工复核 third-party notices，尤其不能遗漏 Unicode-3.0 数据归属，也不能把 SQLite 的 public-domain 状态误写成项目自身许可证。
+许可证例外为 `memchr` 的 `Unlicense OR MIT`、`tinyvec` / `tinyvec_macros` 的 Zlib / Apache-2.0 / MIT 组合、`unicode-ident` 的 Unicode-3.0 数据条款、`zmij` 与 `rusqlite` / `libsqlite3-sys` 的 MIT，以及 SQLite amalgamation 的 public-domain dedication；其余新增 SQLite 传递 package 为 MIT / Apache-2.0 组合。目标依赖 notices 已生成并人工复核，明确保留 Unicode-3.0 数据归属和 SQLite public-domain dedication；任何发行包仍须实际携带这些文件，不能把 SQLite 的状态误写成项目自身许可证。
 
 `serde_derive` 与 `time-macros` 是 headless 基础子图实际解析的 proc macro。`libc`、`proc-macro2`、`quote`、`serde`、`serde_core`、`serde_json`、`zmij` 与 `libsqlite3-sys` 包含 Rust build script；其中 `libsqlite3-sys` 在当前 feature 图中通过 `cc` 编译并链接第三方 SQLite C 源码。desktop 图另包含 UI / windowing 的 proc macro、platform binding 与 native build 元数据，必须按目标平台复验，不能沿用这里的 40-package 结论。`pkg-config` 与 `vcpkg` 随 `libsqlite3-sys` 锁定，但 bundled 分支不依赖宿主 SQLite 作为运行库。
 
@@ -85,4 +85,4 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 - PR workflow 在 [PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 对 M0 locked 检查进行了真实执行：首轮 run `32976944213` 的 Linux / macOS 通过，Windows 因文件数据库逐事务同步放大重复 fixture suite 而在 `10m14s` 超时；提交 `918d045` 保留 production 文件入口与连接策略，仅把 runner-only 场景切换为独立内存连接，随后 run `32978669766` 的 Linux、macOS、Windows 与 `Candidate Quality` 已通过。最终文档 head `6df0891` 又在 run `32979128488` 全部通过，并由 merge commit `fe8186a` 合入 `master`、fast-forward 回流 `dev`。
 - Phase 1 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 run `33302423840` 真实运行 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality` 并全部通过，随后由 merge commit `c56f13f` 合入 `master`、fast-forward 回流 `dev`。该结果覆盖 file snapshot、atomic capture、exact export、lineage deletion、TOCTOU、故障回滚、不可信 Markdown 无副作用和诊断脱敏的当前 locked feature graph，不外推为 production host / UI、真实个人资料或未来平台兼容保证。
 
-本基线证明 canonical core、SQLite / FTS5、file-entry 与 application service 的已合并依赖图，也记录了 desktop UI、一次性平台选择、应用目录、host profile 与 production runtime 的当前依赖和构建证据。`P1-F01` 至 `P1-F18` 已通过 Linux / macOS / Windows locked CI；desktop head `57f4f44` 的旧 `glow` 图也通过 run `33394918896`，但 Windows ARM64 实际启动随后暴露 OpenGL-only 阻断。当前 `wgpu` 图已在 Windows ARM64 完成 build 与真实 GUI / picker 复验，并须重新取得本地聚合门禁和后续三平台 CI；Linux 实际 GUI / XDG Portal 仍未验证。因此本页不证明完整产品文件入口、真实个人资料授权、PDF / 图片、向量、模型、同步、未来平台兼容或生产可用性。
+本基线证明 canonical core、SQLite / FTS5、file-entry 与 application service 的已合并依赖图，也记录了 desktop UI、一次性平台选择、应用目录、host profile 与 production runtime 的当前依赖和构建证据。`P1-F01` 至 `P1-F18` 已通过 Linux / macOS / Windows locked CI；desktop head `57f4f44` 的旧 `glow` 图也通过 run `33394918896`，但 Windows ARM64 实际启动随后暴露 OpenGL-only 阻断。当前 `wgpu` 图已在 Windows ARM64 与 Debian ARM64 / GNOME Wayland 完成 build 和真实 GUI / picker 复验，并由 head `c5dba35` 的 run `33751048480` 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`；三个目标可达依赖的完整 notices 又已生成并人工复核，P1-H05 gate 完成。本页仍不证明签名发行包、真实个人资料授权、PDF / 图片、向量、模型、同步、未来平台兼容或 production deployment。

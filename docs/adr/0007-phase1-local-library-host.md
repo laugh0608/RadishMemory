@@ -166,7 +166,7 @@ UI 无法独立正确分配 lineage / version、展开删除依赖、保持错�
 
 P1-H02 / P1-H03 已由 `radishmemory-application`、core `SourceCatalog` 与 SQLite v6 adapter 实现。经项目所有者明确授权后，P1-H04 已新增 `radishmemory-desktop`，实现平台应用目录、原子 host profile、production random / UTC runtime、一次性 native picker、资料库 / 来源 / 版本 / 搜索 / citation / 导出 / lineage 删除 evidence / verify / rebuild UI；desktop package 在第一方业务 package 中只直接依赖 application service，不绕过本文依赖方向，平台与 UI crate 则以单独依赖评审为准。
 
-当前证据是本机 macOS locked compile、15 个 desktop 单测、严格 Clippy、合成文件数据库关闭重开，以及覆盖 126 个仓库文件 / 128 个 locked test 的 `./scripts/check-repo.sh`；经单独 GUI 授权，P1-H05 还已取得纯合成数据的 macOS 可见窗口、AppKit open / save picker、不可读文件无副作用拒绝与 canonical / binding 损坏失败关闭证据。当前仍没有新的 Linux / macOS / Windows desktop CI，也没有 Linux / Windows 可见 UI 与 native picker 的实际运行证据，因此 P1-H05 和本文 production host 的完成状态仍为未满足，不能导入真实个人资料或把本机实现描述为三平台产品入口。
+P1-H05 已取得纯合成数据的 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK open / save picker 实际证据，覆盖可见窗口、取消、导入、关闭重开、路径 / 错误脱敏和对应应用数据保护边界；Windows 实机暴露的 OpenGL-only renderer 阻断已最小切换为 `wgpu`，当前 head `c5dba35` 又在 workflow run `33751048480` 通过 Linux / macOS / Windows locked build、Clippy、test 与聚合 `Candidate Quality`。三个目标可达的 333 个 crates.io package、license option、完整文本、默认字体、bundled SQLite 与条件平台依赖又由 [专门复核](../implementation/phase1-third-party-notices.md)收口，因此 P1-H05 gate 完成。这些证据仍不外推为其它 Linux desktop / portal backend、Zenity fallback、签名发行包或真实个人资料授权。
 
 ## 后果
 
@@ -178,6 +178,6 @@ P1-H02 / P1-H03 已由 `radishmemory-application`、core `SourceCatalog` 与 SQL
 
 - 在 `P1-H02` / `P1-H03` 完成前，不让 UI 直接拼装 `FileCapturePlan`、读取 SQLite 表或自行展开删除闭包；
 - 桌面依赖评审与授权门禁已经满足；后续新增 / 升级依赖仍须重新评审，且未经单独授权不安装平台工具链、不写入系统权限或签名配置；
-- 在 `P1-HF01` 至 `P1-HF12` 与真实平台选择证据成立前，不把宿主描述为可导入真实个人资料的产品入口；
+- `P1-HF01` 至 `P1-HF12`、真实平台选择和 notices 已成立，但签名发行包、真实个人资料与后续能力仍须独立授权和验证；
 - 不因宿主存在而进入 PDF / OCR、Embedding、模型、网络、同步、自动发布或通用 workflow engine；
 - 不把本地明文、一次性文件选择或平台沙箱描述为加密存储、零知识或完整删除。

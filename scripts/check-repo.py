@@ -37,6 +37,7 @@ REQUIRED_FILES = (
     "LICENSE",
     "README.md",
     "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md",
     "Cargo.lock",
     "Cargo.toml",
     "apps/radishmemory-desktop/Cargo.toml",
@@ -111,6 +112,10 @@ REQUIRED_FILES = (
     "docs/governance/repository-governance.md",
     "docs/implementation/m0-rust-dependency-baseline.md",
     "docs/implementation/phase1-desktop-dependency-review.md",
+    "docs/implementation/phase1-linux-host-acceptance.md",
+    "docs/implementation/phase1-macos-host-acceptance.md",
+    "docs/implementation/phase1-third-party-notices.md",
+    "docs/implementation/phase1-windows-host-acceptance.md",
     "docs/memory-model.md",
     "docs/mvp-roadmap.md",
     "docs/privacy-threat-model.md",
@@ -125,8 +130,21 @@ REQUIRED_FILES = (
     "scripts/check-repo.ps1",
     "scripts/check-repo.py",
     "scripts/check-repo.sh",
+    "scripts/generate-third-party-notices.py",
     "scripts/tests/test_check_repo.py",
     "scripts/tests/test_check_m0_fixtures.py",
+    "third_party/licenses/Apache-2.0.txt",
+    "third_party/licenses/BSL-1.0.txt",
+    "third_party/licenses/ISC.txt",
+    "third_party/licenses/MIT.txt",
+    "third_party/licenses/MPL-2.0.txt",
+    "third_party/licenses/OFL-1.1.txt",
+    "third_party/licenses/README.md",
+    "third_party/licenses/SQLite-public-domain.txt",
+    "third_party/licenses/Ubuntu-font-1.0.txt",
+    "third_party/licenses/Unicode-3.0.txt",
+    "third_party/licenses/Zlib.txt",
+    "third_party/licenses/epaint-default-fonts-notices.txt",
 )
 
 TEXT_SUFFIXES = {
@@ -947,7 +965,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Windows interaction recorded; Linux and refreshed CI next",
+            "Phase 1 host acceptance complete; stage review next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -961,10 +979,10 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Windows interaction recorded; Linux and refreshed CI next",
+            "Phase 1 host acceptance complete; stage review next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
-            "不是可导入真实个人资料的产品入口",
+            "不授权本任务使用真实个人资料",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
@@ -1032,7 +1050,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "[ADR 0006]",
             "`P1-F01` 至 `P1-F18`",
             "workflow run 33302423840",
-            "当前 `wgpu` 变更的三平台 CI 尚未刷新",
+            "workflow run 33751048480",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1129,13 +1147,16 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0007]",
-            "Phase 1 Windows interaction recorded",
+            "Phase 1 host acceptance complete",
             "application service",
+            "THIRD_PARTY_NOTICES.md",
         ),
         "docs/README.md": (
             "ADR 0007：阶段 1 本地资料库宿主与显式文件授权",
             "Phase 1 macOS 桌面宿主交互验收",
             "Phase 1 Windows 桌面宿主交互验收",
+            "Phase 1 Linux 桌面宿主交互验收",
+            "Phase 1 第三方 notices 与条件平台依赖复核",
         ),
         "docs/status/current.md": (
             "ADR 0007",
@@ -1144,6 +1165,7 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
             "P1-H04 desktop UI",
             "P1-H05 host acceptance",
             "`P1-HF01` 至 `P1-HF12`",
+            "333 个目标可达 crate",
         ),
         "docs/architecture.md": (
             "阶段 1 本地资料库宿主边界",
@@ -1173,22 +1195,40 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
             "rfd = { version = \"=0.17.2\"",
             "418 个 package",
             "180 个唯一 package ID",
-            "当前 feature graph 的三平台 locked CI 仍须刷新",
+            "workflow run `33751048480`",
         ),
         "docs/implementation/phase1-macos-host-acceptance.md": (
-            "P1-H05 remains open",
+            "P1-H05 complete",
             "AppKit open / save panel",
             "`P1-HF01`",
             "`P1-HF12`",
             "Linux、macOS、Windows Rust Quality 与聚合 `Candidate Quality`",
-            "仍不是获准导入真实个人资料的生产文件入口",
+            "第三方 notices 与条件平台依赖复核",
         ),
         "docs/implementation/phase1-windows-host-acceptance.md": (
-            "P1-H05 remains open",
+            "P1-H05 complete",
             "Windows 原生 open / save dialog",
             "egui_glow requires opengl 2.0+",
             "BUILTIN\\Administrators",
             "BUILTIN\\Users",
+        ),
+        "docs/implementation/phase1-linux-host-acceptance.md": (
+            "P1-H05 complete",
+            "XDG Portal / GTK",
+            "没有 `zenity` 进程",
+            "host-profile-v1.txt",
+            "library.sqlite3",
+            "第三方 notices 与条件平台依赖复核",
+        ),
+        "docs/implementation/phase1-third-party-notices.md": (
+            "P1-H05 distribution inventory gate complete",
+            "333 个唯一 crates.io package",
+            "17d86e4f32f4b8d4691b54a977bc9b87354db1a4c734a09b8f1dc7768622ebb3",
+            "MIT AND OFL-1.1 AND Ubuntu-font-1.0",
+            "MIT AND Unicode-3.0",
+            "XDG Desktop Portal",
+            "SQLite `3.53.2`",
+            "P1-H05 gate 完成",
         ),
         "crates/radishmemory-application/src/lib.rs": (
             "radishmemory.phase1-local-library-host/1",
@@ -1253,6 +1293,19 @@ def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
     if result.returncode != 0:
         detail = (result.stdout + result.stderr).strip()
         errors.append(f"M0 fixture validation failed: {detail}")
+
+
+def run_third_party_notice_check(repo_root: Path, errors: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/generate-third-party-notices.py", "--check"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stdout + result.stderr).strip()
+        errors.append(f"third-party notice validation failed: {detail}")
 
 
 def check_issue_and_pr_contracts(repo_root: Path, errors: list[str]) -> None:
@@ -1507,6 +1560,7 @@ def main() -> int:
     check_diff(REPO_ROOT, args.base_ref, errors)
     check_commit_messages(REPO_ROOT, args.base_ref, errors)
     run_m0_fixture_check(REPO_ROOT, errors)
+    run_third_party_notice_check(REPO_ROOT, errors)
     run_checker_tests(REPO_ROOT, errors)
 
     if errors:

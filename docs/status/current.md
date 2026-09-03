@@ -1,12 +1,12 @@
 # RadishMemory 当前状态
 
-更新时间：2026-09-02
+更新时间：2026-09-03
 
 ## 当前阶段
 
-`Phase 1 Windows interaction recorded; Linux and refreshed CI next`
+`Phase 1 host acceptance complete; stage review next`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并 fast-forward 回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 已冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和 `P1-HF01` 至 `P1-HF12` 宿主验收；desktop head `57f4f44` 已在 [workflow run 33394918896](https://github.com/laugh0608/RadishMemory/actions/runs/33394918896) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。P1-H05 现已取得纯合成数据的 macOS AppKit 与 Windows ARM64 原生 open / save dialog 实际交互证据；Windows 首次运行真实暴露 `glow` 对 OpenGL 2.0 的宿主阻断，当前工作区已把同版本 `eframe` renderer feature 最小切换为 `wgpu` 并完成 Windows ARM64 复验。该修复尚未进入远程 CI，Linux 可见 UI / picker 和 notices 仍未收口，因此仍不导入真实个人资料，也不直接扩大到 PDF、图片、向量、模型、网络或同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并 fast-forward 回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 已冻结本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和 `P1-HF01` 至 `P1-HF12` 宿主验收；desktop head `57f4f44` 已在 [workflow run 33394918896](https://github.com/laugh0608/RadishMemory/actions/runs/33394918896) 通过旧 `glow` 图的三平台质量矩阵。P1-H05 现已取得纯合成数据的 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK open / save dialog 实际交互证据；Windows 首次运行真实暴露 `glow` 对 OpenGL 2.0 的宿主阻断，提交 `c5dba35` 已把同版本 `eframe` renderer feature 最小切换为 `wgpu` 并完成 Windows ARM64 与 Linux GNOME Wayland 复验，又在 [workflow run 33751048480](https://github.com/laugh0608/RadishMemory/actions/runs/33751048480) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`。[第三方 notices 与条件平台依赖复核](../implementation/phase1-third-party-notices.md)又以三个 locked target graph 生成 333 个唯一 crate 的可分发清单，完成人工 license option、默认字体、bundled SQLite 与 OS 条件面复核，因此 P1-H05 gate 完成。下一步先做阶段评审；本任务仍不使用真实个人资料，也不自动扩大到 PDF、图片、向量、模型、网络或同步。
 
 ## 已冻结的范围与基线
 
@@ -56,7 +56,7 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 `P1-H04 desktop UI` 已新增 `radishmemory-desktop`：使用平台应用数据目录、OS random 128-bit opaque ID、UTC RFC 3339 clock 与一次性 native picker；Unix 应用目录 / profile 显式收紧为 owner-only mode，Windows 使用平台数据目录继承 ACL。本次 Windows 实机 `icacls` 已确认应用目录、profile 与数据库只向当前测试账户、`SYSTEM` 和 `Administrators` 继承 full control，没有 `Everyone` 或 `BUILTIN\Users`；本批 elevated Developer Prompt 产生的 owner 为 `Administrators`，因此仍不把该证据表述为发行态非提权 owner 归属。profile 缺失或损坏时不会以新 identity 认领既有数据库。UI 只调用 application service，覆盖启动不可用、导入 / 更新、来源 / 版本、搜索 / citation、精确导出、lineage 删除确认、十组件 evidence、verify 与 rebuild；第一方宿主不初始化普通日志 sink，也不保存路径、bookmark 或 UI cache。
 
-`P1-H05 host acceptance` 已在隔离 `HOME` 与纯合成 Markdown 上实际运行 macOS 窗口和 AppKit open / save panel，覆盖完整正向与失败关闭批次；完整记录见 [Phase 1 macOS 桌面宿主交互验收](../implementation/phase1-macos-host-acceptance.md)。Windows ARM64 测试副本又实际覆盖可见窗口、原生 open / save dialog、两类取消、103 B `.md` 导入、关闭重开、无效 UTF-8 脱敏拒绝和应用数据 / profile / database ACL；完整记录见 [Phase 1 Windows 桌面宿主交互验收](../implementation/phase1-windows-host-acceptance.md)。Windows 运行同时暴露并最小修复 OpenGL-only renderer 阻断。两平台交互证据仍不替代当前 `wgpu` 工作区的三平台 CI、Linux 实际 picker 或 notices。
+`P1-H05 host acceptance` 已在隔离 `HOME` 与纯合成 Markdown 上实际运行 macOS 窗口和 AppKit open / save panel，覆盖完整正向与失败关闭批次；完整记录见 [Phase 1 macOS 桌面宿主交互验收](../implementation/phase1-macos-host-acceptance.md)。Windows ARM64 测试副本又实际覆盖可见窗口、原生 open / save dialog、两类取消、103 B `.md` 导入、关闭重开、无效 UTF-8 脱敏拒绝和应用数据 / profile / database ACL；完整记录见 [Phase 1 Windows 桌面宿主交互验收](../implementation/phase1-windows-host-acceptance.md)。Debian ARM64 / GNOME Wayland 测试副本随后覆盖可见窗口、XDG Portal / GTK open / save dialog、Portal active / Zenity fallback 排除、两类取消、83 B `.md` 导入、关闭重开、无效 UTF-8 脱敏拒绝和应用目录 / profile 的 Unix ACL / mode；完整记录见 [Phase 1 Linux 桌面宿主交互验收](../implementation/phase1-linux-host-acceptance.md)。Windows 运行暴露并最小修复 OpenGL-only renderer 阻断，当前 `wgpu` 图的三平台 CI 已通过；可复现 notices、license option、字体 / SQLite 和条件平台依赖也已收口，P1-H05 gate 完成。
 
 ## 当前顺位
 
@@ -64,19 +64,18 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 2. 已完成 `P1-H02 application service`：建立真实 open / import / update 编排、ID / clock runtime capability 与脱敏 application error，不复用 fixture mapping。
 3. 已完成 `P1-H03 source catalog`：提供当前来源 / 历史版本目录、lineage resolution、search citation、exact export、lineage deletion、verify / rebuild 应用入口。
 4. 已完成 `P1-H04 desktop UI` 的依赖授权、本机实现与合成验证。
-5. `P1-H05 host acceptance` 已完成 macOS 与 Windows 的真实可见窗口 / native picker 子证据；当前继续补齐 `wgpu` 修复后的 Linux / macOS / Windows locked CI 与聚合证据、Linux 可见 UI / XDG Portal 实际证据及可分发依赖清单。全部证据成立后才评审 PDF / 图片与加密内容寻址大对象存储。
+5. 已完成 `P1-H05 host acceptance`：macOS、Windows 与 Linux 的真实可见窗口 / native picker、`wgpu` 修复后的三平台 locked CI，以及 333 个目标可达 crate 的完整 notices / 条件平台依赖均已收口。下一步先做阶段评审，再决定是否独立授权 PDF / 图片与加密内容寻址大对象存储。
 
 ## 后续事项（2026-09-03）
 
-desktop head `57f4f44` 的 run `33394918896` 已通过原有三平台质量矩阵；Windows ARM64 实际运行随后暴露 OpenGL-only renderer 阻断，当前批次完成 `wgpu` 最小修复、真实 UI / dialog / ACL 验收与文档同步。后续继续按 [ADR 0007](../adr/0007-phase1-local-library-host.md) 收口 P1-H05：
+desktop head `57f4f44` 的 run `33394918896` 已通过原有三平台质量矩阵；Windows ARM64 实际运行随后暴露 OpenGL-only renderer 阻断，提交 `c5dba35` 完成 `wgpu` 最小修复、真实 UI / dialog / ACL 验收，并由 run `33751048480` 重新取得三平台质量矩阵。Debian ARM64 / GNOME Wayland 又完成 XDG Portal / GTK picker 与 Unix ACL / mode 验收；当前 notices 批次完成 [ADR 0007](../adr/0007-phase1-local-library-host.md) 的 P1-H05 收口：
 
-1. 取得独立远程授权后，精确 push 当前 `wgpu` 修复提交并重新运行现有 `PR Checks`；记录新 head、run URL、Repo Hygiene、Linux / macOS / Windows Rust Quality 和聚合 `Candidate Quality` 的真实结果。旧 run `33394918896` 不外推到当前 feature graph，push 授权也不自动扩大为 PR、merge 或发布授权。
-2. 若三平台矩阵失败，按精确失败平台核对 Linux XDG Portal / Wayland / X11 与 Windows native dialog 的编译、feature 和 native linkage；修正根因、CI image 或依赖文档，不通过关闭实际平台 feature、放宽 Clippy / test 或增加 fallback 掩盖失败。每次修正后重跑本地门禁和同一远程矩阵。
-3. Windows 可见 UI / native dialog、脱敏与继承 ACL 子证据已记录；后续在独立 Linux 目标环境和 GUI 授权下，使用隔离应用数据与纯合成 `.md` 运行可见 UI / XDG Portal picker，并识别是否进入 Zenity fallback。另在未来正式非提权 Windows 安装入口复核数据目录 owner；不把 headless CI 或编译通过表述为真实 picker 运行证据。
-4. 在跨平台依赖图稳定后，生成可分发 third-party notices，并分开列出 Linux portal / Zenity、Wayland / X11、Windows native dialog、macOS AppKit、bundled SQLite、默认字体和必要 license option / attribution；记录来源、版本、目标条件、native build / IPC 表面与人工复核项。
-5. CI、Linux / Windows 实际平台证据和 notices 全部收口后，先同步验收记录与当前状态，再在独立授权下发起 `dev -> master` 阶段 PR；以最终 PR head 的 `Candidate Quality` 为准，合并后按 ADR 0001 回流 `master -> dev`。在此之前 P1-H05 保持开放。
+1. 当前 `wgpu` head `c5dba35` 的 run `33751048480` 已通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 和聚合 `Candidate Quality`；该证据覆盖 locked 构建、Clippy 与测试，不替代三份独立平台交互记录。
+2. macOS AppKit、Windows native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK 的可见 UI、取消、导入、重开和脱敏证据已记录；Linux 实测没有进入 Zenity fallback。另在未来正式非提权 Windows 安装入口复核数据目录 owner；不把本轮 elevated test owner 外推为发行态证据，也不把单个 Linux desktop / portal backend 外推为全部发行环境。
+3. 333 个目标可达 crate 的可分发 third-party notices 已生成并由检查器拒绝漂移；Linux portal / Zenity、Wayland / X11、Windows native dialog、macOS AppKit、bundled SQLite、默认字体和必要 license option / attribution 已逐项记录。
+4. 本批 `./scripts/check-repo.sh` 已通过 143 个仓库文件检查、notices 再生成校验、format、Clippy `-D warnings` 与 128 个 locked test。下一步是阶段评审；是否提交、push、发起 `dev -> master` 阶段 PR 或进入 PDF / 图片评审，均等待独立授权。未来 PR 仍以最终 head 的 `Candidate Quality` 为准，合并后按 ADR 0001 回流 `master -> dev`。
 
-明日事项停止线：UI 不直接调用 adapter 或拼装 canonical 对象；未经单独授权不启动 GUI、不安装平台工具链、不修改系统权限、不签名或发布；`P1-HF01` 至 `P1-HF12` 和真实平台证据成立前不导入真实个人资料、不声明生产文件入口完成；不进入 PDF / OCR、Embedding、模型、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不触发远程 workflow、不 merge、不改变其它远端状态。
+当前停止线：UI 不直接调用 adapter 或拼装 canonical 对象；未经单独授权不启动 GUI、不安装平台工具链、不修改系统权限、不签名或发布；P1-H05 gate 完成不自动授权真实个人资料或 production deployment；阶段评审前不进入 PDF / OCR、Embedding、模型、网络、同步或通用 workflow engine；未经当前任务明确授权，不 push、不创建 PR、不触发远程 workflow、不 merge、不改变其它远端状态。
 
 ## 本轮阶段 1 完成（2026-08-28 至 2026-08-30）
 
@@ -187,12 +186,12 @@ desktop head `57f4f44` 的 run `33394918896` 已通过原有三平台质量矩�
 ## 当前门禁
 
 - 产品、架构、记忆或隐私语义变化必须同步更新对应真相源，不能只改入口摘要或检查器。
-- ADR 0006 的 `P1-F01` 至 `P1-F18` 已由本机合成 importer / exporter 边界运行并通过当前 Linux / macOS / Windows locked CI；这证明 file-entry application contract 在该 feature graph 与 runner 环境成立。新增 desktop host 已有本机编译 / 合成证据和纯合成数据的 macOS 真实 UI / AppKit picker 子证据，但不证明 Linux / Windows picker、真实个人资料授权面或未来平台兼容。
+- ADR 0006 的 `P1-F01` 至 `P1-F18` 已由本机合成 importer / exporter 边界运行并通过当前 Linux / macOS / Windows locked CI；这证明 file-entry application contract 在该 feature graph 与 runner 环境成立。新增 desktop host 已有本机编译 / 合成证据、纯合成数据的 macOS AppKit、Windows native dialog 与 Linux XDG Portal / GTK picker，以及完整目标 notices；这些仍不证明真实个人资料授权面、签名发行包或未来平台兼容。
 - P1-I01 的 file snapshot 单独成功仍只证明一次本地读取；只有通过 P1-I02 `SourceCaptureStore` 返回的 receipt 才证明当前事务中的 managed body / canonical facts / FTS / binding / tip / audit 已共同提交。P1-I03 与 P1-I04 分别证明 exact export 和 lineage deletion contract；完整 18 场景与三平台 CI 仍不替代 `P1-HF01` 至 `P1-HF12`、关闭重开、UI 和真实授权证据。
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
-- PR #2 run `33302423840` 证明 P1-I01 / P1-I02 / P1-I03 / P1-I04 与 `P1-F01` 至 `P1-F18` 的格式、lint、locked test 和 Linux / macOS / Windows 合成运行证据成立；本轮 desktop 变更尚未进入远端 CI。新增 macOS 交互记录只证明该次隔离合成操作，不证明 Linux / Windows picker、个人资料授权面、PDF / 图片、向量、模型、同步或生产能力，也不把一次单机运行或 CI 通过外推为未来平台兼容承诺。
+- PR #2 run `33302423840` 证明 P1-I01 / P1-I02 / P1-I03 / P1-I04 与 `P1-F01` 至 `P1-F18` 的格式、lint、locked test 和 Linux / macOS / Windows 合成运行证据成立；desktop `wgpu` head `c5dba35` 又由 run `33751048480` 通过三平台质量矩阵。三份平台交互记录只证明各自隔离合成操作，不证明个人资料授权面、PDF / 图片、向量、模型、同步、发行包或生产能力，也不把一次宿主运行或 CI 通过外推为未来平台兼容承诺。
 
 ## 当前不做
 
