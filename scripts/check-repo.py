@@ -106,6 +106,7 @@ REQUIRED_FILES = (
     "docs/adr/0006-phase1-text-markdown-file-entry.md",
     "docs/adr/0007-phase1-local-library-host.md",
     "docs/adr/0008-phase1-encrypted-source-vault.md",
+    "docs/implementation/phase1-encrypted-source-vault-dependency-review.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -966,7 +967,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 encrypted Source Vault contract accepted; dependency review next",
+            "Phase 1 encrypted Source Vault cipher profile accepted; portable dependency landing next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
@@ -980,7 +981,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 encrypted Source Vault contract accepted; dependency review next",
+            "Phase 1 encrypted Source Vault cipher profile accepted; portable dependency landing next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1305,7 +1306,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 encrypted Source Vault contract accepted; dependency review next",
+            "Phase 1 encrypted Source Vault cipher profile accepted; portable dependency landing next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1344,7 +1345,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "docs/adr/0005-m0-implementation-stack.md": (
             "[ADR 0008]",
-            "具体 dependency、cipher suite、key provider、adapter 与 migration 仍须独立评审和授权",
+            "manifest / lockfile landing、adapter 与 migration 仍须独立评审和授权",
         ),
         "docs/adr/0006-phase1-text-markdown-file-entry.md": (
             "[ADR 0008]",
@@ -1352,7 +1353,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "docs/adr/0007-phase1-local-library-host.md": (
             "[ADR 0008]",
-            "不代表加密 Source Vault 已实现",
+            "不代表依赖已落地或加密 Source Vault 已实现",
         ),
     }
     for name, fragments in contracts.items():
@@ -1365,6 +1366,85 @@ def check_phase1_encrypted_source_vault_contract(
                 errors.append(
                     f"{name} is missing Phase 1 encrypted Source Vault contract "
                     f"fragment: {fragment}"
+                )
+
+
+def check_phase1_encrypted_source_vault_dependency_review(
+    repo_root: Path, errors: list[str]
+) -> None:
+    contracts = {
+        "docs/implementation/phase1-encrypted-source-vault-dependency-review.md": (
+            "状态：`Accepted — profile 与精确直接依赖已冻结；manifest / lockfile 尚未落地`",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            'aead-stream = { version = "=0.6.0"',
+            'chacha20poly1305 = { version = "=0.11.0"',
+            'zeroize = { version = "=1.9.0"',
+            'keyring-core = { version = "=1.0.0"',
+            'apple-native-keyring-store = { version = "=1.0.2"',
+            'windows-native-keyring-store = { version = "=1.1.0"',
+            'zbus-secret-service-keyring-store = { version = "=1.0.1"',
+            "`Local`",
+            "`crypto-rust`",
+            "`rmkek1:`",
+            "`create_if_absent_for_bootstrap`",
+            "SQLite `IMMEDIATE` transaction",
+            "P1-S03a portable crypto dependency landing",
+            "production manifest / lockfile / code 保持不变",
+        ),
+        "README.md": (
+            "Phase 1 encrypted Source Vault cipher profile accepted; portable dependency landing next",
+            "XChaCha20-Poly1305 + STREAM-BE32",
+            "portable crypto dependency / known-answer tests",
+        ),
+        "docs/README.md": (
+            "Phase 1 加密 Source Vault 依赖与密码套件评审",
+        ),
+        "docs/status/current.md": (
+            "P1-S02 dependency and cipher review",
+            "P1-S03a portable crypto dependency landing",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            "manifest / lockfile / code 保持不变",
+        ),
+        "docs/architecture.md": (
+            "XChaCha20-Poly1305 + STREAM-BE32",
+            "macOS Keychain、Windows Credential Manager 或 Linux Secret Service",
+            "这些依赖尚未进入 manifest / lockfile",
+        ),
+        "docs/privacy-threat-model.md": (
+            "XChaCha20-Poly1305 + STREAM-BE32",
+            "不回退 file-stored key、sample store 或其它 provider",
+        ),
+        "docs/mvp-roadmap.md": (
+            "P1-S03a portable crypto dependency landing",
+            "manifest / lockfile / notices 变化",
+        ),
+        "docs/adr/0008-phase1-encrypted-source-vault.md": (
+            "P1-S02 依赖与密码套件评审",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            "P1-S03a portable crypto dependency landing",
+        ),
+        "docs/adr/0005-m0-implementation-stack.md": (
+            "P1-S02",
+            "manifest / lockfile landing",
+        ),
+        "docs/adr/0007-phase1-local-library-host.md": (
+            "P1-S02",
+            "不代表依赖已落地或加密 Source Vault 已实现",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing Phase 1 encrypted Source Vault "
+                    f"dependency review fragment: {fragment}"
                 )
 
 
@@ -1641,6 +1721,7 @@ def main() -> int:
     check_phase1_file_entry_contract(REPO_ROOT, errors)
     check_phase1_local_host_contract(REPO_ROOT, errors)
     check_phase1_encrypted_source_vault_contract(REPO_ROOT, errors)
+    check_phase1_encrypted_source_vault_dependency_review(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)

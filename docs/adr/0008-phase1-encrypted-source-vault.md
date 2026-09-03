@@ -58,7 +58,7 @@
 
 namespace、`source_id`、摘要、长度、media type 与 envelope version 必须作为 AEAD associated data 或受等价认证保护，防止在不同来源或 metadata 之间交换合法密文。未知 version、cipher suite、key-wrap profile、缺失字段、重复字段、认证失败或 metadata 不匹配都必须失败关闭；不允许尝试其它算法、旧 key、明文 BLOB 或外部原件作为静默 fallback。
 
-本文冻结密钥层级和必须满足的行为，不自行发明 cipher。首个精确 cipher suite、nonce 规则、key-wrap 实现、随机源和平台 key provider 必须在 `P1-S02` 依赖与密码实现评审中选定成熟实现、固定版本并给出公开 test vector；在该评审通过前不得开始 production encryption code。
+本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。该评审只冻结精确版本、feature 和公开 test vector 门禁；manifest / lockfile 仍未落地，production encryption code 仍未开始。
 
 未来零知识同步可以为同一对象 DEK 增加经过独立协议评审的设备或空间 wrapper，但不得要求服务端获得明文 DEK，也不得把本文的设备本地 KEK 直接升级为同步根密钥。同步密钥、恢复、撤销和轮换继续由 ADR 0003 及后续同步协议负责。
 
@@ -120,17 +120,17 @@ FTS5 和未来 PDF 文本、OCR、缩略图、Embedding 都是可重建派生数
 
 KEK 缺失、锁定、拒绝授权、wrapper 损坏或错误 key 都是显式失败状态。应用不得生成新 KEK 后认领既有对象，不得跳过无法解密的来源、建立空库或从外部原件静默重导入。
 
-首批不实现用户口令恢复、恢复码、跨设备恢复、key escrow、自动 rotation 或远程解锁。key provider 的可用性、用户取消、永久丢失和迁移提示必须在 `P1-S02` / 后续宿主验收中分别定义；在恢复路径真实成立前，文档必须明确本地 key 丢失会使对应对象不可恢复。
+首批不实现用户口令恢复、恢复码、跨设备恢复、key escrow、自动 rotation 或远程解锁。P1-S02 已冻结 key provider 缺失、锁定、用户取消、ambiguity、bootstrap eligibility 与永久丢失语义；后续实现和宿主验收必须分别证明这些行为。在恢复路径真实成立前，文档必须明确本地 key 丢失会使对应对象不可恢复。
 
 ## 实施单元
 
 1. `P1-S01 storage contract`：接受本文，冻结声明、identity、envelope、密钥、提交、迁移、删除和合成验收；不改 production code；
-2. `P1-S02 dependency and cipher review`：选择精确 AEAD / key-wrap / random / platform key provider，实现前复核版本、test vector、许可证、native build、系统授权、维护和三平台影响；
-3. `P1-S03 encrypted object adapter`：实现应用专用目录、streaming envelope、immutable publish、认证读取和稳定脱敏错误；
+2. `P1-S02 dependency and cipher review`：已由[专项评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)选择精确 AEAD / key-wrap / random / platform key provider，并冻结版本、test vector、许可证、native build、系统授权、维护和三平台影响；
+3. `P1-S03 encrypted object adapter`：先以 `P1-S03a portable crypto dependency landing` 落地 portable cipher / wrap、AAD codec 与合成测试，再独立评审应用专用目录、streaming envelope、immutable publish、认证读取和稳定脱敏错误；
 4. `P1-S04 SQLite coordination and migration`：实现 object reference、capture attempt、v6 migration、orphan reconciliation、verify / rebuild 与 deletion execution；
 5. `P1-S05 application and host acceptance`：接入 application service / UI，完成合成迁移、重启、key failure、故障注入和三平台 locked / 真实宿主证据。
 
-只有 `P1-S02` 至 `P1-S05` 独立授权并通过后，才评审 PDF / 图片的 media type、parser sandbox、页码 / 区域 citation、质量指标和派生数据治理。
+只有已经接受的 `P1-S02` 与后续 `P1-S03` 至 `P1-S05` 分别通过后，才评审 PDF / 图片的 media type、parser sandbox、页码 / 区域 citation、质量指标和派生数据治理。
 
 ## 合成验收
 
@@ -199,10 +199,10 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 ## 当前实施状态与停止线
 
-`P1-S01 storage contract` 已接受；production encryption、object directory、key provider、SQLite migration 与 host integration 均未实现。当前代码仍使用 SQLite v6 inline plaintext body，不能因为本文已接受而宣称加密 Source Vault 已经可用。
+`P1-S01 storage contract` 与 `P1-S02 dependency and cipher review` 已接受；精确 crypto / key-provider profile 已冻结，但 production dependency、encryption、object directory、key provider、SQLite migration 与 host integration 均未落地。当前代码仍使用 SQLite v6 inline plaintext body，不能因为两项评审已接受而宣称加密 Source Vault 已经可用。
 
-- 未经独立依赖授权，不新增 crypto、keychain、OS security framework 或其它 production dependency，不修改 `Cargo.lock`；
-- `P1-S02` 必须先冻结精确 cipher suite、nonce / wrapper profile、随机源、平台 key provider、许可证、native build 和真实授权面；
+- 未经 `P1-S03a` 独立授权，不新增 crypto 或其它 production dependency，不修改 manifest、`Cargo.lock`、notices 或第一方 package；
+- 下一最小单元只允许落地 portable cipher / wrap dependency、AAD codec、合成 provider / random seam 和 known-answer / tamper tests；不得加入或访问 keychain / platform security provider；
 - 未经独立实现授权，不修改 core port、SQLite schema、application service 或 UI；
 - 未经独立平台授权，不启动 GUI / VM、不访问系统 key store、不修改权限或签名配置；
 - 不使用真实个人资料、真实密钥或生产数据库；不进入 PDF / OCR、图片解析、Embedding、模型、网络、同步、发布或部署；

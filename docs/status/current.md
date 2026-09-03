@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`Phase 1 encrypted Source Vault contract accepted; dependency review next`
+`Phase 1 encrypted Source Vault cipher profile accepted; portable dependency landing next`
 
-产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过三平台质量矩阵并合入 `master`、回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 的 P1-H01 至 P1-H05 已建立 production application service、本地桌面 UI、一次性系统文件授权、十二项宿主场景、macOS / Windows / Linux 实际 picker、当前 `wgpu` 三平台 locked CI，以及 333 个目标可达 crate 的 notices / 条件平台依赖。阶段评审现已接受 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)：首批只保护受管原始对象，一 SourceArtifact version 对应一个认证密文对象，不跨 provenance 物理去重；每对象随机 DEK 由设备本地 KEK capability 包装，并冻结文件系统 / SQLite 提交协调、v6 inline body migration、删除边界和 `P1-SF01` 至 `P1-SF18`。当前 production code 仍是 SQLite v6 inline plaintext body，下一步仅评审精确 cipher suite、key-wrap、随机源、平台 key provider、依赖与许可证；不自动授权实现、真实个人资料、PDF / 图片、向量、模型、网络或同步。
+产品、记忆、隐私、评测、同步信任、RadishMind 接入和 M0 实现栈基线已经冻结；canonical core、SQLite v6 事实存储、FTS5 派生索引、当前状态投影、本地删除与真实 M0 runner 已经建立。[PR #1](https://github.com/laugh0608/RadishMemory/pull/1) 已证明 M0 的三平台 locked 基线；阶段 1 文本 / Markdown 文件入口的 P1-I01 至 P1-I04 与 `P1-F01` 至 `P1-F18` 已由 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的最终 head `9bd0af5` 在 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过三平台质量矩阵并合入 `master`、回流 `dev`。[ADR 0007](../adr/0007-phase1-local-library-host.md) 的 P1-H01 至 P1-H05 已建立 production application service、本地桌面 UI、一次性系统文件授权、十二项宿主场景、macOS / Windows / Linux 实际 picker、当前 `wgpu` 三平台 locked CI，以及 333 个目标可达 crate 的 notices / 条件平台依赖。阶段评审现已接受 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)：首批只保护受管原始对象，一 SourceArtifact version 对应一个认证密文对象，不跨 provenance 物理去重；每对象随机 DEK 由设备本地 KEK capability 包装，并冻结文件系统 / SQLite 提交协调、v6 inline body migration、删除边界和 `P1-SF01` 至 `P1-SF18`。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)又冻结 XChaCha20-Poly1305 + STREAM-BE32、独立 AEAD DEK wrap、系统随机、secret zeroization 与三平台精确 key provider。当前 production code 仍是 SQLite v6 inline plaintext body；下一步 `P1-S03a` 只允许在独立授权下落地 portable crypto dependency、AAD codec 与 known-answer tests，不自动授权对象目录、真实 key store、migration、真实个人资料、PDF / 图片、向量、模型、网络或同步。
 
 ## 已冻结的范围与基线
 
@@ -27,6 +27,8 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 阶段 1 首个本地资料库宿主已通过 [ADR 0007](../adr/0007-phase1-local-library-host.md) 冻结为单进程桌面应用、一次性系统文件选择授权和 in-process Rust application service。首批不持久化路径或 platform bookmark，不启动 HTTP / daemon / 网络，不后台监视原件；新导入分配新 provenance，更新已有来源必须先选择 lineage 并重新选择文件。application service 负责应用目录、ID / clock、import / update、来源目录、search citation、export、lineage deletion、verify 与 rebuild；UI 不直接读取 SQLite 或拼装 canonical / 删除对象。该 ADR 不冻结 UI 工具包，新增桌面依赖仍须独立供应链评审。
 
 阶段 1 加密内容寻址 Source Vault 已通过 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md) 冻结为 adapter-private、版本化的原始对象存储契约。首批只加密受管原始对象，不加密整个 SQLite / FTS；一个 SourceArtifact version 对应一个独立密文对象，逻辑 lookup 绑定 `source_id` 与 `exact-bytes-v1` digest，不把摘要、物理 locator 或 key ID 变成 canonical identity。每对象随机 DEK 由设备本地 KEK capability 包装；密文必须 durable publish 后才能在 SQLite `IMMEDIATE` transaction 提交 reference 与 canonical / derived facts，commit 后 read-back 成功才返回 receipt。该 ADR 不新增 canonical 顶层对象、不选择具体 crypto dependency，也不代表 object adapter、migration 或 key provider 已实现。
+
+`P1-S02 dependency and cipher review` 已接受且仅冻结实现 profile：对象使用 `radishmemory.xchacha20poly1305-stream-be32/1`，DEK wrap 使用 `radishmemory.xchacha20poly1305-dek-wrap/1`，随机源复用 `getrandom =0.4.3`，并精确选择 macOS legacy Keychain、Windows Credential Manager `Local` persistence 与 Linux Secret Service default collection。provider bootstrap 只允许在已验真的新库或健康 v6 首次迁移中创建 KEK；已有对象、key reference 或 migration state 而 key 缺失时失败关闭。production manifest、`Cargo.lock`、notices 和实现均尚未因此改变。
 
 `M0-I01` 已建立且仅建立上述三个可编译 package，提交初始第一方 lockfile，并把 fmt、Clippy 和 locked test 接入本地双平台入口与 PR 的 Linux / macOS / Windows matrix。
 
@@ -69,19 +71,32 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 3. 已完成 `P1-H03 source catalog`：提供当前来源 / 历史版本目录、lineage resolution、search citation、exact export、lineage deletion、verify / rebuild 应用入口。
 4. 已完成 `P1-H04 desktop UI` 的依赖授权、本机实现与合成验证。
 5. 已完成 `P1-H05 host acceptance`：macOS、Windows 与 Linux 的真实可见窗口 / native picker、`wgpu` 修复后的三平台 locked CI，以及 333 个目标可达 crate 的完整 notices / 条件平台依赖均已收口。
-6. 已完成 `P1-S01 storage contract`：接受 ADR 0008，冻结加密 Source Vault 的范围、identity、key hierarchy、commit / recovery、migration、删除和验收。下一步是 `P1-S02 dependency and cipher review`，不自动进入实现或 PDF / 图片解析。
+6. 已完成 `P1-S01 storage contract`：接受 ADR 0008，冻结加密 Source Vault 的范围、identity、key hierarchy、commit / recovery、migration、删除和验收。
+7. 已完成 `P1-S02 dependency and cipher review`：冻结精确 portable crypto、随机源、zeroization、三平台 key provider、bootstrap / key-loss 语义与实现测试门禁。下一步是 `P1-S03a portable crypto dependency landing`，不自动进入对象文件系统、真实 key store、migration、宿主接入或 PDF / 图片解析。
+
+## P1-S02 dependency and cipher review（2026-09-03）
+
+1. 对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`：每对象随机 256-bit DEK，`XChaCha20Poly1305` + `aead-stream::StreamBE32`，19-byte 随机 stream prefix、32-bit big-endian counter、final flag 与固定 1 MiB segment；对象完整认证、长度和 `exact-bytes-v1` 摘要复验完成前不向 parser、FTS、citation、UI 或导出暴露明文。
+2. DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`：设备本地 256-bit KEK 使用独立 XChaCha20-Poly1305 invocation、随机 24-byte nonce 和 domain-separated AAD 包装 32-byte DEK；随机继续使用 `getrandom =0.4.3`，secret buffer 使用 `zeroize =1.9.0`，失败不回退弱随机或其它 key。
+3. 共同 provider API 使用 `keyring-core =1.0.0`；macOS 选择 `apple-native-keyring-store =1.0.2` legacy `keychain`，Windows 选择 `windows-native-keyring-store =1.1.0` 且显式使用 `Local` persistence，Linux 选择 `zbus-secret-service-keyring-store =1.0.1`、`crypto-rust` 与 Secret Service default collection。平台缺失、锁定、取消、多个匹配或损坏值均失败关闭，不回退 file store、sample store 或其它 provider。
+4. key identity 冻结为 service `io.github.laugh0608.RadishMemory.source-vault` 与 account `v1:<namespace_id>:<device_id>`；值编码为 `rmkek1:` 加 64 个 lowercase hexadecimal characters。`KeyProvider` 必须区分 `load_existing` 与 `create_if_absent_for_bootstrap`；创建资格由 SQLite `IMMEDIATE` transaction 串行化，已有 encrypted object / key reference / migration state 而 key 缺失时不得生成 replacement。
+5. 实现门禁包括 CFRG XChaCha Appendix A.1 公开 vector、repository-owned STREAM / wrap 固定 vector，以及 truncation、reorder、duplicate、final flag、AAD / metadata、nonce、ciphertext 和 tag 篡改负例；roundtrip 不能单独充当 known-answer evidence。
+6. 当前最大剩余风险是三项 keyring provider 1.x package 较新且最终 target graph 尚未解析。本轮不声称不存在 advisory，也没有验证最终 checksum、传递 feature、native surface 或真实 store 行为；后续 lockfile、三目标依赖清单、notices 与真实宿主证据不符时必须重新打开评审。
+7. 本轮文档与一致性检查完成后，`./scripts/check-repo.sh` 通过 145 个仓库文件检查、notices 再生成校验、format、Clippy `-D warnings` 与 128 个 locked test；production manifest / lockfile / code 保持不变，没有访问系统 key store 或触发远程状态。
+
+当前停止线：未经 `P1-S03a` 独立授权不新增第一方 package，不修改 manifest、`Cargo.lock` 或 notices，不解析 / 下载 crates.io 依赖；不加入或访问真实平台 key provider，不实现 object directory、SQLite migration、application / UI 接入；不启动 GUI / VM，不使用真实个人资料 / 密钥，不 push、不创建 PR、不触发远程 CI。`P1-S03a` 的范围只允许 portable dependency graph、AAD codec、synthetic provider / random seam 与 known-answer / tamper tests。
 
 ## P1-S01 contract review（2026-09-03）
 
 1. 首批声明限定为“受管原始对象采用本地认证加密”；SQLite metadata、FTS、派生数据、进程内明文、交换区、休眠镜像、导出、快照和备份不因该声明自动受保护。
 2. 一个 SourceArtifact version 对应一个密文对象；相同摘要的不同 source / lineage / governance 不跨 provenance 物理去重，内容摘要不承担 identity 或授权。
-3. 每对象随机 DEK 由设备本地 KEK capability 包装；envelope 必须认证 namespace、source、digest、length、media type 与精确 profile。具体 cipher、nonce / wrapper、random 和平台 key provider 留给 P1-S02 独立依赖评审。
+3. 每对象随机 DEK 由设备本地 KEK capability 包装；envelope 必须认证 namespace、source、digest、length、media type 与精确 profile。具体 cipher、nonce / wrapper、random 和平台 key provider 随后由 P1-S02 独立依赖评审冻结。
 4. 密文先在应用专用 staging 中 durable publish，再由一个 SQLite transaction 提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 成功才返回 receipt。orphan 只能在无 committed reference、无可恢复 attempt 且身份明确时清理。
 5. v6 migration 不混合暴露 inline / object-backed source；每个 BLOB 必须先复验、加密、发布、提交 reference 并 read-back 后才能移除 active inline body。迁移不证明 SQLite 空闲页、快照或备份中的历史明文已清除。
 6. `P1-SF01` 至 `P1-SF18` 已冻结 capture、幂等、独立 provenance、重开、导出、篡改、缺 key、crash cut、磁盘 / 权限、migration、删除、零网络和诊断脱敏验收；当前只定义标准，没有实现或通过这些场景。
 7. 本轮文档与一致性检查完成后，`./scripts/check-repo.sh` 通过 144 个仓库文件检查、notices 再生成校验、format、Clippy `-D warnings` 与 128 个 locked test；没有新增依赖、修改 lockfile、启动宿主或触发远程状态。
 
-当前停止线：未经独立授权不选择或新增 crypto / keychain dependency、不修改 `Cargo.lock`、core port、SQLite schema、application service 或 UI；不访问系统 key store、不启动 GUI / VM；不使用真实个人资料或真实密钥；不进入 PDF / OCR、图片解析、Embedding、模型、网络、同步、发布或部署；不 push、不创建 PR、不触发远程 CI、不 merge。
+当前停止线：P1-S02 已完成选择，但未经 `P1-S03a` 独立授权不新增 crypto / keychain dependency、不修改 manifest、`Cargo.lock`、core port、SQLite schema、application service 或 UI；不访问系统 key store、不启动 GUI / VM；不使用真实个人资料或真实密钥；不进入 PDF / OCR、图片解析、Embedding、模型、网络、同步、发布或部署；不 push、不创建 PR、不触发远程 CI、不 merge。
 
 ## P1-H05 收口（2026-09-03）
 
@@ -90,7 +105,7 @@ desktop head `57f4f44` 的 run `33394918896` 已通过原有三平台质量矩�
 1. 当前 `wgpu` head `c5dba35` 的 run `33751048480` 已通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 和聚合 `Candidate Quality`；该证据覆盖 locked 构建、Clippy 与测试，不替代三份独立平台交互记录。
 2. macOS AppKit、Windows native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK 的可见 UI、取消、导入、重开和脱敏证据已记录；Linux 实测没有进入 Zenity fallback。另在未来正式非提权 Windows 安装入口复核数据目录 owner；不把本轮 elevated test owner 外推为发行态证据，也不把单个 Linux desktop / portal backend 外推为全部发行环境。
 3. 333 个目标可达 crate 的可分发 third-party notices 已生成并由检查器拒绝漂移；Linux portal / Zenity、Wayland / X11、Windows native dialog、macOS AppKit、bundled SQLite、默认字体和必要 license option / attribution 已逐项记录。
-4. 本批 `./scripts/check-repo.sh` 已通过 143 个仓库文件检查、notices 再生成校验、format、Clippy `-D warnings` 与 128 个 locked test。后续阶段评审已由 P1-S01 收口；是否提交、push、发起 `dev -> master` 阶段 PR 仍等待独立授权。未来 PR 仍以最终 head 的 `Candidate Quality` 为准，合并后按 ADR 0001 回流 `master -> dev`。
+4. P1-H05 批次的 `./scripts/check-repo.sh` 已通过当时 143 个仓库文件检查、notices 再生成校验、format、Clippy `-D warnings` 与 128 个 locked test；该数字只记录 P1-H05 当时的证据，后续 P1-S01 提交与当前顺位以上文为准。未来 PR 仍以最终 head 的 `Candidate Quality` 为准，合并后按 ADR 0001 回流 `master -> dev`。
 
 P1-H05 停止线继续有效：UI 不直接调用 adapter 或拼装 canonical 对象；未经单独授权不启动 GUI、不安装平台工具链、不修改系统权限、不签名或发布；host gate 完成不自动授权真实个人资料或 production deployment，也不把单一平台证据外推为全部发行环境。
 
@@ -206,7 +221,7 @@ P1-H05 停止线继续有效：UI 不直接调用 adapter 或拼装 canonical �
 - ADR 0006 的 `P1-F01` 至 `P1-F18` 已由本机合成 importer / exporter 边界运行并通过当前 Linux / macOS / Windows locked CI；这证明 file-entry application contract 在该 feature graph 与 runner 环境成立。新增 desktop host 已有本机编译 / 合成证据、纯合成数据的 macOS AppKit、Windows native dialog 与 Linux XDG Portal / GTK picker，以及完整目标 notices；这些仍不证明真实个人资料授权面、签名发行包或未来平台兼容。
 - P1-I01 的 file snapshot 单独成功仍只证明一次本地读取；只有通过 P1-I02 `SourceCaptureStore` 返回的 receipt 才证明当前事务中的 managed body / canonical facts / FTS / binding / tip / audit 已共同提交。P1-I03 与 P1-I04 分别证明 exact export 和 lineage deletion contract；完整 18 场景与三平台 CI 仍不替代 `P1-HF01` 至 `P1-HF12`、关闭重开、UI 和真实授权证据。
 - M0 语言、首批直接依赖范围和 SQLite / FTS5 已冻结；新增依赖必须审查许可证、原生构建、网络与数据影响并更新 lockfile。UI、服务端、向量实现和 Provider SDK 仍未冻结。
-- ADR 0008 只冻结加密 Source Vault 契约，不证明实现。P1-S02 前不得选择或新增 cipher、key-wrap、random、keychain / platform security dependency；未知 envelope / key profile、认证失败、key 不可用、object / metadata 漂移和 migration ambiguous state 都必须失败关闭，不能回退到 inline plaintext 或外部原件。
+- ADR 0008 与 P1-S02 只冻结加密 Source Vault 契约和精确 profile，不证明依赖或实现已落地。`P1-S03a` 授权前不得新增 cipher、key-wrap、random、keychain / platform security dependency 或修改 lockfile；未知 envelope / key profile、认证失败、key 不可用、object / metadata 漂移和 migration ambiguous state 都必须失败关闭，不能回退到 inline plaintext 或外部原件。
 - 首批对象加密不覆盖 SQLite metadata、FTS、派生数据、进程内明文、历史 SQLite 空闲页、交换区、休眠镜像、外部导出、快照或备份；不得宣称整个资料库静态加密、取证级擦除或 key recovery 已成立。
 - 仓库只允许代码、规范、治理资产和合成 / 明确脱敏的 fixture；真实个人资料、记忆库、ContextPack、Embedding 输入和密钥不得进入 Git、Issue、PR 或 CI。
 - GitHub 远端以 `master` 为默认稳定分支、`dev` 为常态开发分支，启用 merge commit 与 rebase merge，并禁用 squash merge；Private vulnerability reporting、Secret scanning 和 push protection 已启用。Ruleset 与 required check 必须以 API、workflow run 和目标分支有效规则复核，不能把仓库模板本身当作已生效证据。
@@ -218,7 +233,7 @@ P1-H05 停止线继续有效：UI 不直接调用 adapter 或拼装 canonical �
 - 不发明新的长期记忆算法或直接引入图数据库、消息队列和微服务；
 - 不把模型推断自动写成已确认记忆；
 - 不宣称零知识同步、端到端加密、可证明永久删除或生产可用；
-- 不在 P1-S02 至 P1-S05 完成前实现或宣称加密 Source Vault，不进入 PDF / 图片解析；
+- 不在 P1-S03 至 P1-S05 完成前宣称加密 Source Vault 已实现，不进入 PDF / 图片解析；
 - 不建立自动发布、tag Ruleset、装饰性 CODEOWNERS 或无真实评审人的审批门禁；
 - 不复制兄弟项目的技术栈、业务清单、CI 组件或目录结构。
 

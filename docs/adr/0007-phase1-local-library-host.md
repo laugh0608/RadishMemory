@@ -168,7 +168,7 @@ P1-H02 / P1-H03 已由 `radishmemory-application`、core `SourceCatalog` 与 SQL
 
 P1-H05 已取得纯合成数据的 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK open / save picker 实际证据，覆盖可见窗口、取消、导入、关闭重开、路径 / 错误脱敏和对应应用数据保护边界；Windows 实机暴露的 OpenGL-only renderer 阻断已最小切换为 `wgpu`，当前 head `c5dba35` 又在 workflow run `33751048480` 通过 Linux / macOS / Windows locked build、Clippy、test 与聚合 `Candidate Quality`。三个目标可达的 333 个 crates.io package、license option、完整文本、默认字体、bundled SQLite 与条件平台依赖又由 [专门复核](../implementation/phase1-third-party-notices.md)收口，因此 P1-H05 gate 完成。这些证据仍不外推为其它 Linux desktop / portal backend、Zenity fallback、签名发行包或真实个人资料授权。
 
-后续阶段评审已通过 [ADR 0008](0008-phase1-encrypted-source-vault.md) 冻结受管原始对象认证加密、内容地址、设备本地 KEK 包装、文件系统 / SQLite 协调、v6 migration 和删除边界；这不改变本文的一次性文件授权，也不代表加密 Source Vault 已实现。
+后续阶段评审已通过 [ADR 0008](0008-phase1-encrypted-source-vault.md) 冻结受管原始对象认证加密、内容地址、设备本地 KEK 包装、文件系统 / SQLite 协调、v6 migration 和删除边界，并由 [P1-S02](../implementation/phase1-encrypted-source-vault-dependency-review.md)选定精确 cipher / key-provider profile；这不改变本文的一次性文件授权，也不代表依赖已落地或加密 Source Vault 已实现。
 
 ## 后果
 
