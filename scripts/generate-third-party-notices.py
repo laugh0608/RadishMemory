@@ -17,7 +17,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = REPO_ROOT / "THIRD_PARTY_NOTICES.md"
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
-ROOT_PACKAGE = "radishmemory-desktop"
+ROOT_PACKAGES = ("radishmemory-desktop", "radishmemory-source-vault")
 TARGETS = (
     ("macOS", "aarch64-apple-darwin"),
     ("Linux", "aarch64-unknown-linux-gnu"),
@@ -118,21 +118,21 @@ def cargo_metadata(target: str) -> dict[str, object]:
 def reachable_package_ids(metadata: dict[str, object]) -> set[str]:
     packages = metadata["packages"]
     workspace_members = set(metadata["workspace_members"])
-    roots = [
-        package["id"]
+    roots = {
+        package["name"]: package["id"]
         for package in packages
-        if package["id"] in workspace_members and package["name"] == ROOT_PACKAGE
-    ]
-    if len(roots) != 1:
+        if package["id"] in workspace_members and package["name"] in ROOT_PACKAGES
+    }
+    if set(roots) != set(ROOT_PACKAGES):
         raise RuntimeError(
-            f"expected one {ROOT_PACKAGE} workspace root, found {len(roots)}"
+            "expected reviewed workspace roots: " + ", ".join(ROOT_PACKAGES)
         )
 
     resolve = metadata.get("resolve")
     if not isinstance(resolve, dict):
         raise RuntimeError("cargo metadata did not return a resolve graph")
     nodes = {node["id"]: node for node in resolve["nodes"]}
-    pending = deque(roots)
+    pending = deque(roots.values())
     reachable: set[str] = set()
     while pending:
         package_id = pending.popleft()
@@ -263,9 +263,10 @@ def render(packages: list[NoticePackage]) -> str:
         "# RadishMemory third-party notices",
         "",
         "This inventory covers the locked normal and build dependency graph reachable from",
-        "`radishmemory-desktop` for the reviewed ARM64 desktop targets. First-party workspace",
-        "packages are excluded. It is a distribution supplement to the RadishMemory",
-        "[source-available license](LICENSE), not a change to that license.",
+        "`radishmemory-desktop` and `radishmemory-source-vault` for the reviewed ARM64",
+        "desktop targets. First-party workspace packages are excluded.",
+        "It supplements the RadishMemory [source-available license](LICENSE); it does not",
+        "change that license.",
         "",
         f"- Inventory entries: **{len(packages)}** unique crates",
         f"- Target entries: macOS **{counts['macOS']}**, Linux **{counts['Linux']}**, Windows **{counts['Windows']}**",
@@ -376,7 +377,7 @@ def main() -> int:
     if args.check:
         if not OUTPUT_PATH.is_file() or OUTPUT_PATH.read_text(encoding="utf-8") != rendered:
             print(
-                "THIRD_PARTY_NOTICES.md is missing or differs from the locked desktop target graphs; "
+                "THIRD_PARTY_NOTICES.md is missing or differs from the locked reviewed target graphs; "
                 "run scripts/generate-third-party-notices.py",
                 file=sys.stderr,
             )

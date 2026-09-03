@@ -2,9 +2,9 @@
 
 日期：2026-09-03
 
-状态：`Accepted — P1-H05 distribution inventory gate complete`
+状态：`Accepted — P1-H05 distribution inventory gate complete; P1-S03a expansion reviewed`
 
-范围：复核 `radishmemory-desktop` 在三个已验收 ARM64 目标上的 locked normal / build 依赖、可分发许可证文本、默认字体、bundled SQLite 和操作系统条件依赖。本文不授权签名、打包、发布、真实个人资料、PDF / OCR、向量、模型、网络或同步，也不把单个测试环境外推为所有平台版本和驱动组合。
+范围：复核 `radishmemory-desktop` 与独立 `radishmemory-source-vault` 在三个 ARM64 目标上的 locked normal / build 依赖、可分发许可证文本、默认字体、bundled SQLite 和操作系统条件依赖。desktop 根已有三平台真实宿主证据；P1-S03a 只增加 portable crypto 静态依赖图和本地合成测试，不把该证据外推为新的远程 CI 或平台 key-store 行为。本文不授权签名、打包、发布、真实个人资料、PDF / OCR、向量、模型、网络或同步，也不把单个测试环境外推为所有平台版本和驱动组合。
 
 ## 可复现清单
 
@@ -12,13 +12,13 @@
 
 | 目标 | 清单条目 | 已有运行证据 |
 | --- | ---: | --- |
-| `aarch64-apple-darwin` | 204 | macOS AppKit 可见窗口与 open / save panel |
-| `aarch64-unknown-linux-gnu` | 274 | Debian ARM64 / GNOME Wayland 的 XDG Portal / GTK picker |
-| `aarch64-pc-windows-msvc` | 198 | Windows 11 ARM64 的 native dialog、重开与 ACL |
+| `aarch64-apple-darwin` | 215 | desktop：macOS AppKit 可见窗口与 open / save panel；Source Vault：portable graph only |
+| `aarch64-unknown-linux-gnu` | 285 | desktop：Debian ARM64 / GNOME Wayland 的 XDG Portal / GTK picker；Source Vault：portable graph only |
+| `aarch64-pc-windows-msvc` | 209 | desktop：Windows 11 ARM64 的 native dialog、重开与 ACL；Source Vault：portable graph only |
 
-三个图合并后为 333 个唯一 crates.io package；全部有 `Cargo.lock` checksum 和上游声明许可证，没有 Git dependency、缺失许可证、未审查 source 或需要另行合并的 top-level `NOTICE` 文件。清单记录完整 checksum、平台成员关系、upstream / author attribution、原始 license expression 与选定 distribution basis；当前 inventory SHA-256 为 `17d86e4f32f4b8d4691b54a977bc9b87354db1a4c734a09b8f1dc7768622ebb3`。
+三个图合并后为 344 个唯一 crates.io package；全部有 `Cargo.lock` checksum 和上游声明许可证，没有 Git dependency、缺失许可证、未审查 source 或需要另行合并的 top-level `NOTICE` 文件。清单记录完整 checksum、平台成员关系、upstream / author attribution、原始 license expression 与选定 distribution basis；当前 inventory SHA-256 为 `67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a`。
 
-生成器只从第一方 `radishmemory-desktop` 根沿 normal / build edge 遍历，排除纯 dev dependency 和不可达的其它 lockfile 条目。`--check` 会重新解析三个目标图并逐字节比较生成物；新增 source、缺失 checksum / license、未知 license expression 或清单漂移均失败关闭。完整 lockfile 仍是 412 个第三方 package 的供应链上限，不应与 333 个当前桌面目标并集混写。
+生成器从第一方 `radishmemory-desktop` 与 `radishmemory-source-vault` 两个分发根沿 normal / build edge 取并集，排除纯 dev dependency 和不可达的其它 lockfile 条目。`--check` 会重新解析三个目标图并逐字节比较生成物；新增 source、缺失 checksum / license、未知 license expression 或清单漂移均失败关闭。完整 lockfile 当前是 423 个第三方 package 的供应链上限，不应与 344 个三目标可达并集混写。P1-H05 收口时只有 desktop 根，历史并集为 333；P1-S03a 的 11 个新 package 使当前分发清单扩大到 344，但不改变既有宿主交互结论。
 
 ## License option 与人工复核
 
@@ -26,6 +26,7 @@
 - `dpi` 明确声明 `Apache-2.0 AND MIT`，两份文本均保留；`option-ext` 保持 MPL-2.0，未来 binary package 还必须告知接收者如何按 MPL-2.0 以合理方式取得该 Covered Software 的对应 Source Code Form；`unicode-ident` 使用 `MIT AND Unicode-3.0`；`clipboard-win` / `error-code` 保持 BSL-1.0；`libloading` 保持 ISC；`foldhash` / `zlib-rs` 保持 Zlib。
 - `epaint_default_fonts` 使用 `MIT AND OFL-1.1 AND Ubuntu-font-1.0`。除通用文本外，[字体专用 notices](../../third_party/licenses/epaint-default-fonts-notices.txt)保留 Hack / Source Foundry、DejaVu public-domain、Bitstream Vera reserved font names 和 John Slegers emoji font notice；Noto Emoji 与 Ubuntu Light 分别对应 OFL-1.1 和 Ubuntu Font Licence 1.0。
 - `libsqlite3-sys 0.38.2` Rust wrapper 依清单使用 MIT；启用 `bundled` feature 编译的 SQLite `3.53.2` 是独立 public-domain material，[dedication](../../third_party/licenses/SQLite-public-domain.txt)没有被误写成 RadishMemory 自身许可证。
+- P1-S03a 新增的 `aead`、`aead-stream`、`chacha20`、`chacha20poly1305`、`cipher`、`cmov`、`ctutils`、`inout`、`poly1305`、`universal-hash` 与 `zeroize` 均声明 `MIT OR Apache-2.0` 或等价顺序，本项目沿用 MIT distribution basis。它们没有新增 license identifier、专用 NOTICE、build script、proc macro、native `links`、OpenSSL、FFI、网络 client 或 async runtime。
 - [许可证文本目录](../../third_party/licenses/README.md)包含实际选中的 Apache-2.0、MIT、MPL-2.0、OFL-1.1、Ubuntu-font-1.0、Unicode-3.0、BSL-1.0、ISC 与 Zlib 全文。表中 author / upstream attribution 与专用 notices 一起承载对应版权来源；选项选择不重新许可上游代码，也不改变根 `LICENSE` 的 source-available 条款。
 
 ## 条件平台依赖清单
@@ -46,6 +47,6 @@ Windows 当前证据来自 elevated ARM64 Developer Prompt，确认测试数据�
 
 ## 结论与持续门禁
 
-P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。
+P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory 也已复核并由生成器守护；这只覆盖 portable crypto 的分发依赖，不证明平台 key-store 或 object adapter 已实现。
 
 这不等于已有发行包或 production deployment：任何 installer / DMG / archive 必须实际携带 `THIRD_PARTY_NOTICES.md` 与 `third_party/licenses/`，并在发布前验证包内容、目标架构、签名链、非提权数据 owner、平台最低版本和对应 native backend。后续依赖、feature、target 或 `Cargo.lock` 发生变化时，必须重新生成、人工复核并更新本页；检查器不会把未知表达式自动归为宽松许可证。

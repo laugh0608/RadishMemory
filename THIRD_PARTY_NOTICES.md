@@ -2,14 +2,15 @@
 # RadishMemory third-party notices
 
 This inventory covers the locked normal and build dependency graph reachable from
-`radishmemory-desktop` for the reviewed ARM64 desktop targets. First-party workspace
-packages are excluded. It is a distribution supplement to the RadishMemory
-[source-available license](LICENSE), not a change to that license.
+`radishmemory-desktop` and `radishmemory-source-vault` for the reviewed ARM64
+desktop targets. First-party workspace packages are excluded.
+It supplements the RadishMemory [source-available license](LICENSE); it does not
+change that license.
 
-- Inventory entries: **333** unique crates
-- Target entries: macOS **204**, Linux **274**, Windows **198**
-- Cargo.lock SHA-256: `0a13da455f8b63bb8a88668efdaad6926bf78c650977f903ec98888a4418a70a`
-- Reviewed inventory SHA-256: `17d86e4f32f4b8d4691b54a977bc9b87354db1a4c734a09b8f1dc7768622ebb3`
+- Inventory entries: **344** unique crates
+- Target entries: macOS **215**, Linux **285**, Windows **209**
+- Cargo.lock SHA-256: `fa8ca6b9a79ff49bd426124b83deef430b5f419334baa721eea40c02110d1463`
+- Reviewed inventory SHA-256: `67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a`
 - Reproduce: `python3 scripts/generate-third-party-notices.py --check`
 
 The “distribution basis” column records the license branch selected when an
@@ -32,6 +33,8 @@ upstream project link provide the corresponding attribution and source location.
 | `accesskit_windows 0.32.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [The AccessKit contributors](https://github.com/AccessKit/accesskit) | `eff7009f1a532e917d66970a1e80c965140c6cfbbabbdde3d64e5431e6c78e21` |
 | `accesskit_winit 0.32.2` | `Apache-2.0` | `Apache-2.0` | macOS, Linux, Windows | [The AccessKit contributors](https://github.com/AccessKit/accesskit) | `1fe9a94394896352cc4660ca2288bd4ef883d83238853c038b44070c8f134313` |
 | `adler2 2.0.1` | `0BSD OR MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Jonas Schievink <jonasschievink@gmail.com>, oyvindln <oyvindln@users.noreply.github.com>](https://github.com/oyvindln/adler2) | `320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa` |
+| `aead 0.6.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/traits) | `1973cfbc1a2daf9cf550e74e1f088c28e7f7d8c1e1418fb6c9dc5184b7e84c99` |
+| `aead-stream 0.6.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/AEADs) | `a901e5bcd15b4a9555a8f17a608d28ef92cf77bc4aa3b4a0c1a3fce1a9cc0bac` |
 | `ahash 0.8.12` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Tom Kaitchuck <Tom.Kaitchuck@gmail.com>](https://github.com/tkaitchuck/ahash) | `5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75` |
 | `allocator-api2 0.2.21` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Zakarum <zaq.dev@icloud.com>](https://github.com/zakarumych/allocator-api2) | `683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923` |
 | `arboard 3.6.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/1Password/arboard) | `0348a1c054491f4bfe6ab86a7b6ab1e44e45d899005de92f58b3df180b36ddaf` |
@@ -72,7 +75,11 @@ upstream project link provide the corresponding attribution and source location.
 | `cfg-if 1.0.4` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Alex Crichton <alex@alexcrichton.com>](https://github.com/rust-lang/cfg-if) | `9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801` |
 | `cfg_aliases 0.2.2` | `MIT` | `MIT` | macOS, Linux, Windows | [Zicklag <zicklag@katharostech.com>](https://github.com/katharostech/cfg_aliases) | `f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527` |
 | `cgl 0.3.2` | `MIT / Apache-2.0` | `MIT` | macOS | [The Servo Project Developers](https://github.com/servo/cgl-rs) | `0ced0551234e87afee12411d535648dd89d2e7f34c78b753395567aff3d447ff` |
+| `chacha20 0.10.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/stream-ciphers) | `65c35e4b699c7e15ccbe7ee35c005e4fc0a278d22238a2857e6ce2dadeda1b06` |
+| `chacha20poly1305 0.11.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/AEADs) | `9b89e1c441e926b9c82a8d023f6e1b7ae0adcfaa7d621814e4d60789bac751cb` |
+| `cipher 0.5.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/traits) | `e8cf2a2c93cd704877c0858356ed03480ff301ee950b43f1cbe4573b088bfa6c` |
 | `clipboard-win 5.4.1` | `BSL-1.0` | `BSL-1.0` | Windows | [Douman <douman@gmx.se>](https://github.com/DoumanAsh/clipboard-win) | `bde03770d3df201d4fb868f2c9c59e66a3e4e2bd06692a0fe701e7103c7e84d4` |
+| `cmov 0.5.4` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `0c9ea0ac24bc397ab3c98583a3c9ba74fa56b09a4449bbe172b9b1ddb016027a` |
 | `codespan-reporting 0.13.1` | `Apache-2.0` | `Apache-2.0` | macOS, Linux, Windows | [Brendan Zabarauskas <bjzaba@yahoo.com.au>](https://github.com/brendanzab/codespan) | `af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681` |
 | `color 0.3.3` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/linebender/color) | `2ec7c5eb7a16992b1904d76c517d170ab353b0e0b3d5a0c81a8a0cd1037893cf` |
 | `concurrent-queue 2.5.0` | `Apache-2.0 OR MIT` | `MIT` | Linux | [Stjepan Glavina <stjepang@gmail.com>, Taiki Endo <te316e89@gmail.com>, John Nunley <dev@notgull.net>](https://github.com/smol-rs/concurrent-queue) | `4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973` |
@@ -84,6 +91,7 @@ upstream project link provide the corresponding attribution and source location.
 | `crc32fast 1.5.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Sam Rijs <srijs@airpost.net>, Alex Crichton <alex@alexcrichton.com>](https://github.com/srijs/rust-crc32fast) | `8498c871161e1742aaa9d52551b2d6ebdd4c3d45a3be423e3728f33b955be550` |
 | `crossbeam-utils 0.8.22` | `MIT OR Apache-2.0` | `MIT` | Linux | [Upstream project](https://github.com/crossbeam-rs/crossbeam) | `61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17` |
 | `crypto-common 0.2.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/traits) | `ce6e4c961d6cd6c9a86db418387425e8bdeaf05b3c8bc1411e6dca4c252f1453` |
+| `ctutils 0.4.2` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `7d5515a3834141de9eafb9717ad39eea8247b5674e6066c404e8c4b365d2a29e` |
 | `cursor-icon 1.2.0` | `MIT OR Apache-2.0 OR Zlib` | `MIT` | macOS, Linux, Windows | [Kirill Chibisov <contact@kchibisov.com>](https://github.com/rust-windowing/cursor-icon) | `f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f` |
 | `deranged 0.5.8` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Jacob Pratt <jacob@jhpratt.dev>](https://github.com/jhpratt/deranged) | `7cd812cc2bc1d69d4764bd80df88b4317eaef9e773c75226407d9bc0876b211c` |
 | `digest 0.11.3` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/traits) | `f1dd6dbb5841937940781866fa1281a1ff7bd3bf827091440879f9994983d5c2` |
@@ -154,6 +162,7 @@ upstream project link provide the corresponding attribution and source location.
 | `hybrid-array 0.4.14` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/hybrid-array) | `707114b52a152fa7bdb290cd7cd5912d9467273b6d74e21b8d81aca1f8533f6b` |
 | `image 0.25.10` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [The image-rs Developers](https://github.com/image-rs/image) | `85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104` |
 | `indexmap 2.14.1` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/indexmap-rs/indexmap) | `07aa2048142242915a31d35844fb311e0e53fcca590c3a0a40dcf1b841fa09eb` |
+| `inout 0.2.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `4250ce6452e92010fdf7268ccc5d14faa80bb12fc741938534c58f16804e03c7` |
 | `itertools 0.15.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [bluss](https://github.com/rust-itertools/itertools) | `8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc` |
 | `itoa 1.0.18` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [David Tolnay <dtolnay@gmail.com>](https://github.com/dtolnay/itoa) | `8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682` |
 | `jobserver 0.1.35` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Alex Crichton <alex@alexcrichton.com>](https://github.com/rust-lang/jobserver-rs) | `1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3` |
@@ -217,6 +226,7 @@ upstream project link provide the corresponding attribution and source location.
 | `polling 3.11.0` | `Apache-2.0 OR MIT` | `MIT` | Linux | [Stjepan Glavina <stjepang@gmail.com>, John Nunley <dev@notgull.net>](https://github.com/smol-rs/polling) | `5d0e4f59085d47d8241c88ead0f274e8a0cb551f3625263c05eb8dd897c34218` |
 | `pollster 0.4.0` | `Apache-2.0/MIT` | `MIT` | Linux | [Joshua Barretto <joshua.s.barretto@gmail.com>](https://github.com/zesterer/pollster) | `2f3a9f18d041e6d0e102a0a46750538147e5e8992d3b4873aaafee2520b00ce3` |
 | `pollster 1.0.1` | `Apache-2.0/MIT` | `MIT` | macOS, Linux, Windows | [Joshua Barretto <joshua@jsbarretto.com>](https://github.com/zesterer/pollster) | `bc6355899e1c9462875b6757c79f3caa011a1fdae12bbb1a2e72dd1f234f8336` |
+| `poly1305 0.9.1` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/universal-hashes) | `6e2d0073b297041425c7c3df6eb4792d598a15323fe63346852b092eca02904c` |
 | `polycool 0.4.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/linebender/kurbo) | `50596ddc09eb5ad5f75cacd40209568e66df71baf86e1499a0e99c4cff12a5a6` |
 | `powerfmt 0.2.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Jacob Pratt <jacob@jhpratt.dev>](https://github.com/jhpratt/powerfmt) | `439ee305def115ba05938db6eb1644ff94165c5ab5e9420d1c1bcedbba909391` |
 | `presser 0.3.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Embark <opensource@embark-studios.com>, Gray Olson <gray@grayolson.com](https://github.com/EmbarkStudios/presser) | `e8cf8e6a8aa66ce33f63993ffc4ea4271eb5b0530a9002db8455ea6050c77bfa` |
@@ -286,6 +296,7 @@ upstream project link provide the corresponding attribution and source location.
 | `unicode-normalization 0.1.25` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [kwantam <kwantam@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>](https://github.com/unicode-rs/unicode-normalization) | `5fd4f6878c9cb28d874b009da9e8d183b5abc80117c40bbd187a1fde336be6e8` |
 | `unicode-segmentation 1.13.3` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [kwantam <kwantam@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>](https://github.com/unicode-rs/unicode-segmentation) | `c6f5d3c3b1bf09027a88a6bc961fc00497d651009560b5463668dc81b0fa87a8` |
 | `unicode-width 0.2.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [kwantam <kwantam@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>](https://github.com/unicode-rs/unicode-width) | `b4ac048d71ede7ee76d585517add45da530660ef4390e49b098733c6e897f254` |
+| `universal-hash 0.6.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/traits) | `f4987bdc12753382e0bec4a65c50738ffaabc998b9cdd1f952fb5f39b0048a96` |
 | `uuid 1.26.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Ashley Mannix<ashleymannix@live.com.au>, Dylan DPC<dylan.dpc@gmail.com>, Hunar Roop Kahlon<hunar.roop@gmail.com>](https://github.com/uuid-rs/uuid) | `b5772d71c9be8a8a6ac2117d949c5b224c1b72241bb611d9a3012edcf8af7812` |
 | `vcpkg 0.2.15` | `MIT/Apache-2.0` | `MIT` | macOS, Linux, Windows | [Jim McGrath <jimmc2@gmail.com>](https://github.com/mcgoo/vcpkg-rs) | `accd4ea62f7bb7a82fe23066fb0957d48ef677f6eeb8215f372f52e48bb32426` |
 | `vello_common 0.1.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/linebender/vello) | `b2e9aed918117e8152c9eddfd8362d73c465c23f26c44786aa331707b8a64fa2` |
@@ -348,6 +359,7 @@ upstream project link provide the corresponding attribution and source location.
 | `zcheapstr 1.1.0` | `MIT` | `MIT` | Linux | [Zeeshan Ali Khan <zeeshanak@gnome.org>](https://github.com/z-galaxy/zcheapstr/) | `d1afec51604565183aeb5c54c20aeab286120d4e4460f7f76e3e8bb8c0d99473` |
 | `zerocopy 0.8.56` | `BSD-2-Clause OR Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/google/zerocopy) | `556764e583adb45a9f8d413c2a147fa7e8d821e48e12b14fd560b607998b75eb` |
 | `zerocopy-derive 0.8.56` | `BSD-2-Clause OR Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/google/zerocopy) | `f2ab42fc20575779bd240faa45f94a74256f755c0fa9e89f0ede20d91d0cdfc1` |
+| `zeroize 1.9.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [The RustCrypto Project Developers](https://github.com/RustCrypto/utils) | `e13c156562582aa81c60cb29407084cdb54c4164760106ab78e6c5b0858cf64e` |
 | `zlib-rs 0.6.7` | `Zlib` | `Zlib` | macOS, Linux, Windows | [Upstream project](https://github.com/trifectatechfoundation/zlib-rs) | `34b31d188d9d685a4f9c7b46d6e36631b07058d2cfe190267adce54dc230bf12` |
 | `zmij 1.0.23` | `MIT` | `MIT` | macOS, Linux, Windows | [David Tolnay <dtolnay@gmail.com>](https://github.com/dtolnay/zmij) | `29666d0abbfad1e3dc4dcf6144730dd3a3ab225bbbdac83319345b1b44ccfc1b` |
 | `zune-core 0.5.3` | `MIT OR Apache-2.0 OR Zlib` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/etemesi254/zune-image) | `d56377fd46368984a170bc5aac5567e52ca5da874caa60bea39fcbca78fb658b` |

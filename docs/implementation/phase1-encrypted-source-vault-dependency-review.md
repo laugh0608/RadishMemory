@@ -2,7 +2,7 @@
 
 日期：2026-09-03
 
-状态：`Accepted — profile 与精确直接依赖已冻结；manifest / lockfile 尚未落地`
+状态：`Accepted — profile 已冻结；P1-S03a portable graph 已落地，platform providers 待后续单元`
 
 范围：`P1-S02 dependency and cipher review`。本文选择 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md) 所需的对象 AEAD、streaming construction、DEK wrap、随机源、secret memory 边界和 macOS / Windows / Linux key provider，并冻结实现前门禁。本文不修改 production manifest、`Cargo.lock`、SQLite schema、application service 或 UI，不访问真实系统 key store，也不证明加密 Source Vault 已实现。
 
@@ -12,7 +12,7 @@
 
 随机字节继续来自 workspace 已固定的 `getrandom =0.4.3`；secret-bearing byte / string buffer 使用 `zeroize =1.9.0` 的 `Zeroizing` 或等价 drop zeroization。production platform key store 使用 `keyring-core =1.0.0` 的共同 error / entry model，但不链接 all-in-one `keyring`：macOS 精确选择 `apple-native-keyring-store =1.0.2` 的 legacy `keychain` feature，Windows 选择 `windows-native-keyring-store =1.1.0` 并关闭默认 `search`，Linux 选择 `zbus-secret-service-keyring-store =1.0.1` 的 `crypto-rust` feature。
 
-这些选择只冻结后续授权允许加入的直接依赖，不代表 crate 已下载、checksum 已进入 lockfile、目标依赖图已解析或许可证 notices 已再生成。下一实现前必须先完成 lockfile-only 供应链落地和 portable known-answer tests；任何解析版本、feature、许可证、native build 或 advisory 与本文不符都会重新打开 P1-S02。
+这些选择中 portable crypto 部分已由 [P1-S03a 落地记录](phase1-source-vault-portable-crypto.md)完成 crate 下载、checksum / lockfile、三目标图、许可证 / notices、advisory 复核与 known-answer / tamper tests。三个 platform key-store provider 仍只冻结精确选择，尚未进入 manifest / lockfile，也没有访问真实系统 store；其最终解析版本、feature、许可证、native surface 或 advisory 与本文不符时仍会重新打开 P1-S02。
 
 ## Object cipher profile
 
@@ -168,7 +168,7 @@ workspace Rust `1.96.0` 高于上述 direct crates 声明的 MSRV。crypto crate
 
 RustCrypto 依赖有公开 specification / test vectors 和 audit lineage；keyring provider 是从既有 keyring ecosystem 拆分出的较新 1.x package，文档覆盖和独立 adoption 仍有限。这是当前最大供应链剩余风险，因此必须精确 pin、target-gate、禁止 provider fallback，并用三平台真实 key-store behavior 补足。未来 patch / minor upgrade 都重新执行 advisory、license、source / checksum、feature 和 host evidence 评审。
 
-本轮只依据 upstream manifest / API 文档和 OS specification 做选择，没有运行 registry resolution 或 advisory scanner。下一授权必须：
+P1-S02 评审当时只依据 upstream manifest / API 文档和 OS specification 做选择，没有运行 registry resolution 或 advisory scanner。随后 P1-S03a 已对 portable 11-package 增量执行下列供应链落地并记录在专项证据中；以下要求继续适用于尚未落地的 platform provider graph：
 
 - 只从 crates.io 解析并记录 source / checksum，无 Git dependency；
 - 更新 dependency baseline、目标依赖清单、`THIRD_PARTY_NOTICES.md`、许可证文本和仓库检查器；
@@ -202,17 +202,18 @@ AES-GCM 的 96-bit nonce 与硬件差异没有为当前跨平台软件基线提�
 
 当前 macOS app 没有 provisioning profile，protected store 会引入 entitlement 与潜在 sync 语义；Windows provider 默认 Enterprise 可能 roaming。首版设备本地 KEK 必须分别使用 legacy Keychain 与 Local persistence，未来迁移另行评审。
 
-## P1-S02 退出条件与下一最小单元
+## P1-S02 退出条件与后续落地状态
 
 P1-S02 在以下条件同时成立时完成：精确 primitive / STREAM / wrap / random / zeroization profile 已冻结；三平台 store、identity、persistence、prompt、bootstrap / key-loss 语义已冻结；direct versions / features / licenses / expected native surface 已记录；公开 vector、project vectors 和负向 tests 已列为实现门禁；状态、路线图、ADR 与检查器一致；production manifest / lockfile / code 保持不变。
 
-下一最小评审单元建议拆为 `P1-S03a portable crypto dependency landing`，不要立即把 object filesystem、SQLite migration 和真实 key store 合成一个大批次：
+`P1-S03a portable crypto dependency landing` 已按下列原定最小范围完成，没有把 object filesystem、SQLite migration 和真实 key store 合成一个大批次：
 
 - 范围：新增第一方 `radishmemory-source-vault` package 的 portable cipher / wrap profile；加入 `chacha20poly1305`、`aead-stream`、`zeroize` 与既有 `getrandom`，生成精确 lockfile；实现 deterministic AAD codec、synthetic key provider / random seam、known-answer / tamper / truncation tests；更新完整 dependency / notices 证据；
 - 非目标：不加入或调用三平台 key-store provider，不创建 object directory，不修改 SQLite schema / source body、application service 或 UI，不迁移任何数据库，不启动 GUI / VM，不使用真实资料 / 密钥，不 push / PR / remote CI；
 - 前置决策：项目所有者须授权 manifest / `Cargo.lock` / notices 变化、crates.io 依赖解析与新第一方 package；若最终 graph 与本文预期不符先停下；
 - 验收：公开 XChaCha vector、repository-owned STREAM / wrap vectors 和所有负向场景通过；resolved source / checksum / license / feature / build-script / proc-macro / `links` / advisory inventory 完整；`./scripts/check-repo.sh` 与 portable package locked tests 通过；工作树只含该单元文件；
-- 后续授权：`P1-S03b immutable object filesystem adapter`、平台 provider landing / 真实 key-store 交互、`P1-S04` SQLite coordination / migration 与 `P1-S05` host acceptance 分别授权，前一单元证据不能替代后一单元。
+- 实际结果：新增独立 package 与 11 个 crates.io package，完成 CFRG / repository vectors、AAD byte fixture、tamper / truncation / reorder / final-flag、random failure、secret / diagnostic 边界、三目标 portable graph、344 项 notices 和当前 RustSec database 静态复核；没有加入 platform provider、对象目录、SQLite 或 application dependency edge；
+- 后续授权：下一最小单元为 `P1-S03b immutable object filesystem adapter`；平台 provider landing / 真实 key-store 交互、`P1-S04` SQLite coordination / migration 与 `P1-S05` host acceptance 继续分别授权，前一单元证据不能替代后一单元。
 
 ## 官方依据
 
