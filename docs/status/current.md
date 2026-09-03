@@ -88,6 +88,25 @@ M0 实现栈已通过 [ADR 0005](../adr/0005-m0-implementation-stack.md) 冻结�
 
 当前停止线：未经 `P1-S03b` 独立授权不实现 versioned envelope、object / staging capability、create-new write、durable no-overwrite publish、filesystem parser 或认证 read-back；若需要新增第三方依赖、改变已冻结 AAD / crypto profile 或扩大数据目录权限，先重新评审。不加入或访问真实平台 key provider，不修改 SQLite schema / source body、application service 或 UI，不迁移数据库；不启动 GUI / VM，不使用真实个人资料 / 密钥，不 push、不创建 PR、不触发远程 CI。
 
+## 今日提交回顾（2026-09-03）
+
+1. `d25e315 docs(host): 完成 P1-H05 宿主验收`：收口 macOS、Windows ARM64、Linux ARM64 真实 picker / UI 证据、`wgpu` 三平台 CI、333 项历史目标依赖与分发 notices；没有把测试宿主外推为签名发行或真实个人资料授权。
+2. `70cf439 docs(storage): 冻结 P1-S01 加密 Source Vault 契约`：接受 ADR 0008，冻结一 source version 一密文对象、identity / locator 分离、DEK / KEK 层级、publish → SQLite commit → read-back、migration、删除和失败关闭边界；只做设计，不修改运行时。
+3. `262dd65 docs(storage): 冻结 P1-S02 密码与密钥依赖`：选择 XChaCha20-Poly1305 + STREAM-BE32、独立 AEAD DEK wrap、系统随机、zeroization 与三个精确 platform provider；provider 只冻结选择，没有进入依赖图或访问系统 store。
+4. `c1ffd74 feat(storage): 落地 P1-S03a portable crypto`：新增独立 `radishmemory-source-vault`、11 个 crates.io package、AAD codec、seal / open、公开与项目固定向量、负向测试、供应链 / notices 证据；本机全仓门禁通过 152 个文件和 140 个 locked test。
+
+代码与相关文档复核结论：根 manifest、lockfile、notices 和依赖基线一致为 7 个第一方、423 个 crates.io、430 项总 package，两个分发根的三目标并集为 344；新 package 没有 platform key-store dependency，也没有 application、SQLite 或 desktop production dependency edge。`SealedObject` 当前只有内存表示和只读 accessors，没有 versioned parser、filesystem locator 或 publish API；production 正文仍是 SQLite v6 inline plaintext BLOB。README、ADR 0005 / 0007 / 0008、架构、隐私、路线图、依赖评审和 notices 已与上述边界一致；产品范围、canonical memory、RadishMind 与同步语义不受今天提交影响，无需改写。
+
+## 明日事项（2026-09-04）
+
+首要建议：在新的明确授权下推进 `P1-S03b immutable object filesystem adapter`，先冻结 envelope byte layout / parser，再实现 filesystem write / publish，避免把不可信反序列化与崩溃一致性混成一个不可定位的问题。
+
+- 范围：versioned envelope serialization / parser；应用专用 object / staging capability；create-new immutable write；write / flush / sync / close；no-overwrite publish；认证 read-back；单次 capture attempt 可识别的 orphan identity；稳定脱敏错误。
+- 非目标：不加入或访问 macOS Keychain、Windows Credential Manager、Linux Secret Service；不修改 SQLite schema / source body、core port、application service 或 UI；不迁移数据库；不处理真实资料；不启动 GUI / VM；不 push、创建 PR 或触发远程 CI。
+- 前置决策：优先只用标准库和现有 `radishmemory-source-vault` 依赖；先固定 envelope magic / version、字段顺序与长度上限、segment framing、canonical locator 和 parser failure taxonomy。若需要新增第三方依赖、改变已冻结 AAD / crypto profile、使用平台专属原子发布语义或扩大应用目录权限，停止并重新评审。
+- 验收：empty、1 MiB、cross-segment、8 MiB 对象 publish → reopen → exact bytes；未知版本、字段 / 长度 / segment count、object / envelope / locator 篡改失败关闭；目标已存在、symlink、部分写、flush / sync / close / publish 故障不覆盖目标；重启 read-back、任务 orphan 识别与诊断脱敏可复验；完整本地仓库门禁通过。
+- 启动条件：明日先确认工作树干净、HEAD 与本节记录一致，再单独授权 P1-S03b；今天的实现授权不自动延续到 filesystem、platform provider 或 migration。
+
 ## P1-S02 dependency and cipher review（2026-09-03）
 
 1. 对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`：每对象随机 256-bit DEK，`XChaCha20Poly1305` + `aead-stream::StreamBE32`，19-byte 随机 stream prefix、32-bit big-endian counter、final flag 与固定 1 MiB segment；对象完整认证、长度和 `exact-bytes-v1` 摘要复验完成前不向 parser、FTS、citation、UI 或导出暴露明文。

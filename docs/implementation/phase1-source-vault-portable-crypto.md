@@ -4,6 +4,8 @@
 
 状态：`Accepted — P1-S03a portable crypto dependency landing complete`
 
+提交：`c1ffd74 feat(storage): 落地 P1-S03a portable crypto`
+
 范围：落实 [P1-S02 依赖与密码套件评审](phase1-encrypted-source-vault-dependency-review.md)冻结的 portable object cipher、DEK wrap、AAD、random 与 secret-memory profile。本文只覆盖第一方 `radishmemory-source-vault` package、精确 lockfile、合成密码测试和供应链证据；不加入或访问平台 key store，不创建对象目录，不修改 SQLite、application service 或 UI，也不证明 encrypted Source Vault 已接入 production data flow。
 
 ## 实现边界
