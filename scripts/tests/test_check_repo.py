@@ -398,6 +398,61 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_implementation_history_is_checked_in_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name in (
+                "README.md",
+                "docs/status/current.md",
+                "docs/status/2026-09-03-baseline.md",
+            ):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((CHECK_REPO.REPO_ROOT / name).read_bytes())
+            errors: list[str] = []
+            CHECK_REPO.check_implementation_stack_contract(root, errors)
+            self.assertEqual([], errors)
+
+            archive = root / "docs/status/2026-09-03-baseline.md"
+            fragment = "`M0-I01` 已建立且仅建立上述三个可编译 package"
+            archive.write_text(
+                archive.read_text(encoding="utf-8").replace(fragment, ""),
+                encoding="utf-8",
+            )
+            CHECK_REPO.check_implementation_stack_contract(root, errors)
+            self.assertIn(
+                "docs/status/2026-09-03-baseline.md is missing implementation "
+                f"stack contract fragment: {fragment}",
+                errors,
+            )
+
+    def test_archive_cannot_replace_current_storage_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name in (
+                "docs/status/current.md",
+                "docs/status/2026-09-03-baseline.md",
+            ):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((CHECK_REPO.REPO_ROOT / name).read_bytes())
+            errors: list[str] = []
+            CHECK_REPO.check_phase1_encrypted_source_vault_contract(root, errors)
+            self.assertEqual([], errors)
+
+            current = root / "docs/status/current.md"
+            fragment = "当前 production code 仍是 SQLite v6 inline plaintext body"
+            current.write_text(
+                current.read_text(encoding="utf-8").replace(fragment, ""),
+                encoding="utf-8",
+            )
+            CHECK_REPO.check_phase1_encrypted_source_vault_contract(root, errors)
+            self.assertIn(
+                "docs/status/current.md is missing Phase 1 encrypted Source Vault "
+                f"contract fragment: {fragment}",
+                errors,
+            )
+
     def test_phase1_file_entry_contract_reports_missing_fragment(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

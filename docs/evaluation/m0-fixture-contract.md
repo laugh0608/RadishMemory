@@ -208,3 +208,11 @@ error_code / retryable
 - 改变 JSON 字段、op 顺序、ID profile、digest profile、metric 公式或 gate 必须更新 fixture contract 版本或明确证明向后兼容。
 - fixture 内容变化必须重算 `suite_digest`；校验器拒绝陈旧摘要。
 - fixture 暴露 canonical schema 缺口时，先修订 schema 与真相源，再更新 fixture，不能只在 runner 中增加 fallback。
+
+## 当前实现的证据边界
+
+2026-09-05 审阅在 `3c10cd2` 确认：来源、记忆和删除操作调用真实 core / SQLite，但 runner 还承担词项扩展、历史投影与 ContextPack 编排。suite 通过证明当前组合路径在固定合成输入上满足已执行断言，不自动证明 production application 具备对应历史查询、查询扩展或上下文编译接口。
+
+特别是 `context_search.rs` 中 `policy-filter-ran-first` 当前返回常量 `true`，该项自身没有观察过滤顺序；`query_at` 遍历 runner 内存记录并构造历史投影；零结果词项扩展不在 production application 中。这些是待修复的实现 / 证据缺口，不符合以实际结果证明断言的目标，也不代表已经发现权限泄露。
+
+原有禁止默认成功、隐藏错误及改变 oracle 掩盖问题的要求继续有效。后续须以实际可观察的拒绝证据和正式历史 / 检索路径收口，不通过放宽断言或修改预期使缺口消失。新增 production 质量场景见[本地资料库质量验收计划](phase1-local-library-quality.md)，不修改当前 fixture schema、摘要、86 个操作或指标公式。

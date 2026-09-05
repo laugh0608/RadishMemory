@@ -2,7 +2,7 @@
 
 `RadishMemory` 是一个用户拥有、模型无关、隐私优先的个人长期记忆与上下文系统。
 
-它允许用户持续保存短语、灵感、文件、对话、网页、图片、音频和其它个人资料，通过可追溯的记忆生命周期、混合检索与上下文编译，为 GPT、Gemini、Claude、Grok、DeepSeek、本地模型及未来模型提供长期记忆。
+长期目标是允许用户持续保存短语、灵感、文件、对话、网页、图片、音频和其它个人资料，通过可追溯的记忆生命周期、混合检索与上下文编译，为 GPT、Gemini、Claude、Grok、DeepSeek、本地模型及未来模型提供长期记忆。
 
 本项目只有一个产品名称：`RadishMemory`。个人伴侣、虚拟形象、聊天、写作和编程助手都是它之上的产品体验，不拆成独立项目。
 
@@ -51,37 +51,16 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `Phase 1 Source Vault portable crypto complete; immutable object adapter next` 阶段；`Phase 1 host acceptance complete` 仍是已成立的前置事实。M0 本地记忆闭环和阶段 1 文本 / Markdown 文件入口均已通过 Linux、macOS、Windows locked CI 并合入稳定主线；[ADR 0007](docs/adr/0007-phase1-local-library-host.md)进一步冻结并完成本地桌面宿主、一次性文件选择授权、production application service、来源目录、UI 和十二项宿主验收。当前 `wgpu` head `c5dba35` 已在 [workflow run 33751048480](https://github.com/laugh0608/RadishMemory/actions/runs/33751048480) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，P1-H05 当时 333 个目标可达 crate 的 notices / 条件平台依赖已收口。[ADR 0008](docs/adr/0008-phase1-encrypted-source-vault.md) 已冻结原始对象认证加密、一 source version 一密文对象、设备本地 KEK 包装、文件系统 / SQLite 提交协调、v6 migration、删除和十八项合成验收；[P1-S02 依赖与密码套件评审](docs/implementation/phase1-encrypted-source-vault-dependency-review.md)进一步冻结 XChaCha20-Poly1305 + STREAM-BE32、AEAD DEK wrap、系统随机、secret zeroization 与三平台精确 key provider。[P1-S03a 落地记录](docs/implementation/phase1-source-vault-portable-crypto.md)现已证明独立 portable crypto package、AAD byte codec、公开 / 项目固定向量、负向测试、精确 lockfile 和扩大到 344 项的 [third-party notices](THIRD_PARTY_NOTICES.md)；三个 platform provider、object filesystem、SQLite migration 与 application data flow 仍未实现。当前 production 路径仍是 SQLite v6 inline plaintext body，下一步 `P1-S03b` 只允许在独立授权下实现 immutable object filesystem adapter，不自动授权系统 key store、migration、PDF、向量、模型、网络或同步。阶段顺位、停止线和当前验证入口以[当前状态](docs/status/current.md)为准。
+当前处于 `Phase 1 Source Vault portable crypto complete; immutable object adapter next`；`Phase 1 host acceptance complete` 是已有合成宿主验收事实，具体能力与近期缺口见[当前状态](docs/status/current.md)。
 
-首个可执行切片 [M0 Local Memory Loop](docs/adr/0002-m0-local-memory-loop.md) 已使用合成文本 / Markdown、本地全文基线和确定性 proposal / decision 流程验证来源、引用、时间更正、失败关闭和单设备删除证据，不依赖模型、网络、RadishMind 或同步。
+- 已有 canonical core、SQLite v6 connection / migration、来源与记忆事件、FTS5、本地删除证据和真实 M0 runner；runner 的词项扩展、历史投影与部分断言存在[证据限制](docs/evaluation/m0-fixture-contract.md#当前实现的证据边界)。
+- [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md)的文本入口与 [ADR 0007](docs/adr/0007-phase1-local-library-host.md)的 application service / 桌面宿主已落地，支持合成 UTF-8 `.txt` / `.md` 导入、更新、搜索、版本导出与本地删除。已有系统 picker 和合成测试证据不授权本任务使用真实个人资料，也不等于日常资料库或签名发行包已经完整可用。
+- [ADR 0008](docs/adr/0008-phase1-encrypted-source-vault.md)冻结一 source version 一密文对象；当前产品仍使用 SQLite v6 inline plaintext body，不能声明加密 Source Vault 已可用或整个资料库已静态加密。FTS 当前保存整文件片段的完整可读正文，未来仅加密原始对象仍不保护这份正文副本。
+- P1-S02 选择 XChaCha20-Poly1305 + STREAM-BE32；P1-S03a 已完成 portable manifest / `Cargo.lock`、cipher / wrap / AAD 与合成测试。[P1-S03a 落地记录](docs/implementation/phase1-source-vault-portable-crypto.md)记录扩大到 344 项的 notices；三个 platform provider、object filesystem、SQLite migration 与宿主加密数据流尚未实现。
 
-M0 的九种顶层对象已经在 [M0 Canonical Schema](docs/schema/m0-canonical-schema.md) 中冻结为实现中立的字段级契约；[M0 Fixture 与指标契约](docs/evaluation/m0-fixture-contract.md)进一步冻结 JSON mapping、稳定 ID、摘要向量、12 个场景的 86 个操作和指标 oracle。契约本身不证明实现，但真实 runner 已在同一 core 与 SQLite adapter 上执行全部步骤和门禁；证据边界以[当前状态](docs/status/current.md)为准。
+2026-09-05 审阅发现中文词语搜索不命中、桌面目录只取前 200 条、启动失败后无法进入派生重建等问题，详见[审阅记录](docs/implementation/2026-09-05-project-review.md)和[质量验收计划](docs/evaluation/phase1-local-library-quality.md)。这些问题尚未因文档更新而修复。
 
-首个多设备同步信任模式已由 [ADR 0003](docs/adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务：默认服务端只中继密文和最小元数据，解密、索引、检索和记忆计算留在受信设备；这仍是待实现、待密码协议评审和待验证的目标边界。
-
-RadishMind 首次运行接入已由 [ADR 0004](docs/adr/0004-radishmind-optional-gateway-entry.md) 后置到完整 MVP 阶段 3，并且只作为可选 Model Gateway；M0、单机资料库和记忆生命周期不依赖它，首次不接 Workflow、Tooling 或共享业务数据库。
-
-M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-stack.md) 冻结为 Rust 2024 模块化单体，使用独立 core、SQLite adapter 和 runner package；本地小文本与结构化事实使用 SQLite，全文基线使用 FTS5。该决定不冻结未来 UI 或服务端语言，也不代表加密存储已经实现。
-
-阶段 1 的首个真实文件入口已由 [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md) 冻结为显式选择、允许根内、最大 8 MiB 的 UTF-8 `.txt` / `.md`。它定义来源版本、幂等、当前 lineage tip、精确导出、受管副本删除和 18 个合成场景；`P1-F01` 至 `P1-F18` 已实现并在 [PR #2](https://github.com/laugh0608/RadishMemory/pull/2) 的 [workflow run 33302423840](https://github.com/laugh0608/RadishMemory/actions/runs/33302423840) 通过 Repo Hygiene、Linux / macOS / Windows Rust Quality 与聚合 `Candidate Quality`，随后以 merge commit `c56f13f` 合入 `master` 并回流 `dev`。desktop host 代码、本机合成测试、macOS / Windows / Linux 真实窗口与原生 picker 证据、当前 `wgpu` 图的三平台 CI，以及可复现的目标依赖 / notices 已经建立；这完成 P1-H05，但不等于已有签名发行包，也不授权本任务使用真实个人资料。
-
-阶段 1 的加密 Source Vault 已由 [ADR 0008](docs/adr/0008-phase1-encrypted-source-vault.md) 冻结为“只保护受管原始对象”的本地认证加密契约。SQLite metadata、FTS 与派生内容仍可能是明文；每个 SourceArtifact version 首批对应独立密文对象，不跨 provenance 去重；portable cipher suite 已进入独立 package 和依赖图，但 key-provider、object adapter、migration 和宿主接入尚未实现或授权，因此当前产品不能声明加密 Source Vault 已可用或整个资料库已静态加密。
-
-`P1-S02` 已选定 `radishmemory.xchacha20poly1305-stream-be32/1` 与 `radishmemory.xchacha20poly1305-dek-wrap/1`，继续复用 `getrandom =0.4.3`，并按 target 选择 macOS Keychain、Windows Credential Manager 与 Linux Secret Service。P1-S03a 已完成 portable manifest / `Cargo.lock`、resolved graph、checksums、notices 与 known-answer / tamper tests；尚未加入或访问真实 key store，filesystem adapter、migration 与三平台 key-store 宿主行为仍需后续独立授权和证据。
-
-当前已完成精确 Rust `1.96.0` 工具链、三个 M0 package、canonical core、SQLite v6 connection / migration、Source Vault、MemoryStore、FTS5 业务索引、可重建当前投影、本地删除组件 / 证据链、真实 M0 runner、受审阅 lockfile 和 Linux / macOS / Windows locked CI；Phase 1 另有 `radishmemory-file-entry`、`radishmemory-application`、`radishmemory-desktop` 与尚未接入 production data flow 的 `radishmemory-source-vault`。desktop host 通过 application service 提供应用数据目录、稳定 host profile、production random / UTC runtime、一次性 native picker，以及 import / update、目录 / 历史、search citation、exact export、完整 lineage deletion evidence、verify / rebuild UI。[Rust 依赖基线](docs/implementation/m0-rust-dependency-baseline.md)记录当前依赖图、原生构建和证据边界，[macOS 交互验收](docs/implementation/phase1-macos-host-acceptance.md)、[Windows 交互验收](docs/implementation/phase1-windows-host-acceptance.md)与 [Linux 交互验收](docs/implementation/phase1-linux-host-acceptance.md)记录单机证据，[第三方 notices 与条件平台依赖复核](docs/implementation/phase1-third-party-notices.md)完成其最后分发清单门禁。真实个人资料、签名包和发布仍须独立授权与验证。
-
-当前不把以下内容声明为已实现：
-
-- 真实个人文件导入、导出与可用产品入口；
-- PDF / 图片解析、向量检索或带引用模型问答；
-- 长期记忆算法；
-- 加密多端同步；
-- 生产可用部署；
-- 多模型兼容；
-- 虚拟形象或主动陪伴；
-- 可证明删除；
-- 零知识服务端。
+首个重点验证场景是围绕一个长期项目保存资料、找回依据、确认和更正事实，再提供受控上下文。它是产品验证方向；完整记忆控制台、模型问答、PDF / 图片、向量、多模型、同步、恢复和个人伴侣均不在当前已实现能力中。阶段依赖以[MVP 路线图](docs/mvp-roadmap.md)为准，历史 CI / 批次证据见[阶段基线归档](docs/status/2026-09-03-baseline.md)。
 
 ## 仓库数据边界
 
@@ -96,5 +75,7 @@ M0 的首个产品实现栈已由 [ADR 0005](docs/adr/0005-m0-implementation-sta
 ## 许可证
 
 本仓库采用 [RadishMemory Source-Available License](LICENSE)，不是开放源码许可证。未经版权所有者书面许可，不授予复制、修改、再分发或商业使用权。
+
+用户自部署是产品目标，不等于本仓库已授予安装、复制或修改等使用授权。外部试用与发行前需明确授权渠道、分发形式和维护范围；本轮文档不改变 `LICENSE`。
 
 桌面目标的第三方 crates、选定 license option、checksum、默认字体与 bundled SQLite 归属见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) 和 [第三方许可证文本](third_party/licenses/README.md)；这些第三方条款不改变 RadishMemory 自身许可证。

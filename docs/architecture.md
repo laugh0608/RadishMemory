@@ -104,6 +104,22 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 SQLite v6 migration 在普通操作暴露前逐对象复验 inline body、发布密文、提交 reference 并 read-back；未完成或损坏时不混合返回 inline / object-backed source。迁移不改变 canonical identity、citation、governance 或 deletion state，也不证明 SQLite 空闲页、快照和备份中的历史明文已物理清除。`P1-S03b` 至 `P1-S05` 完成 filesystem adapter、platform provider、migration 与宿主验收前，PDF / 图片解析保持停止。
 
+## 当前模块与读取维护边界
+
+| Package | 职责 | 依赖约束 |
+| --- | --- | --- |
+| `radishmemory-core` | canonical 类型、领域校验与 ports | 不持有 SQLite、UI、模型或文件路径 |
+| `radishmemory-sqlite` | 事实持久化、迁移、事件与派生索引 | 事务和 adapter-private schema 留在本层 |
+| `radishmemory-file-entry` | 显式文件 snapshot 与 exact export | 只依赖 core，不读取 SQLite |
+| `radishmemory-application` | 组合本地资料库用例 | production 业务入口，不承担桌面 toolkit 或 fixture mapping |
+| `radishmemory-desktop` | 平台目录、profile、runtime、picker 与 UI | 第一方业务依赖只到 application |
+| `radishmemory-m0` | 合成 suite 映射与证据编排 | 不将 runner 专用逻辑表述为 production API |
+| `radishmemory-source-vault` | 当前独立 portable crypto | object filesystem、key provider 与 application 数据流尚未接入 |
+
+当前搜索与目录实现包含全量正文读取、事实复验和内存排序 / 分页，桌面同步执行相关操作。后续优化应先取得数据量、正文大小和版本分布对应的性能证据，再决定增量校验、SQL 分页、top-k 或 UI 执行方式；不能通过省略权限、时间、删除或完整性检查降低成本。
+
+ADR 0007 要求派生损坏时可在 canonical 完整的前提下显式 rebuild。维护入口必须在普通启动失败时仍可安全到达，并限制允许操作；canonical / binding 损坏不能被重建、空库或外部原件 fallback 掩盖。当前实现存在启动后重建不可达等缺口，观察见[审阅记录](implementation/2026-09-05-project-review.md)，修复验收见[质量计划](evaluation/phase1-local-library-quality.md)。本文记录架构要求，不表示维护模式或性能优化已经实现。
+
 ## 核心组件
 
 ### 1. Capture Gateway

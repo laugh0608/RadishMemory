@@ -133,6 +133,9 @@ REQUIRED_FILES = (
     "docs/references.md",
     "docs/schema/m0-canonical-schema.md",
     "docs/status/current.md",
+    "docs/status/2026-09-03-baseline.md",
+    "docs/implementation/2026-09-05-project-review.md",
+    "docs/evaluation/phase1-local-library-quality.md",
     "fixtures/m0/local-memory-loop.v1.json",
     "rust-toolchain.toml",
     "scripts/check-m0-fixtures.py",
@@ -1001,6 +1004,9 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
+        ),
+        # Completed batch evidence belongs to the dated record, not current policy.
+        "docs/status/2026-09-03-baseline.md": (
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
             "`M0-I02` 的第一个独立评审单元已实现稳定 core 错误",
             "`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象",
@@ -1081,9 +1087,11 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0006]",
+        ),
+        "docs/status/2026-09-03-baseline.md": (
             "`P1-F01` 至 `P1-F18`",
             "workflow run 33302423840",
-            "workflow run 33751048480",
+            "run `33751048480`",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1199,6 +1207,8 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
             "P1-H04 desktop UI",
             "P1-H05 host acceptance",
             "`P1-HF01` 至 `P1-HF12`",
+        ),
+        "docs/status/2026-09-03-baseline.md": (
             "333 个目标可达 crate",
         ),
         "docs/architecture.md": (
@@ -1508,6 +1518,8 @@ def check_phase1_source_vault_portable_crypto(
         "docs/status/current.md": (
             "P1-S03a portable crypto dependency landing",
             "P1-S03b immutable object filesystem adapter",
+        ),
+        "docs/status/2026-09-03-baseline.md": (
             "7 个第一方和 423 个 crates.io 第三方 package",
             "macOS / Linux / Windows 分别为 215 / 285 / 209 项",
         ),

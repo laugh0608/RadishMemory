@@ -31,6 +31,12 @@
 25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
 26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
+## 质量与历史记录
+
+- [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
+- [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。
+- [2026-09-03 阶段基线归档](status/2026-09-03-baseline.md)：M0 至 P1-S03a 的历史批次、CI 与依赖证据，不作为当前任务授权或顺位。
+
 ## 治理入口
 
 - [Agent 协作与执行规则](governance/agent-collaboration.md)：工作区、授权、数据边界、验证和交接细则。
@@ -44,4 +50,4 @@
 - 阶段状态、近期顺位、临时门禁和“当前不做”只更新 `status/current.md`，不复制回 Agent 根入口或长期专题。
 - 架构、协议、存储、加密和删除语义发生变化时，必须更新对应文档并记录决策理由。
 - 仓库、协作、分支、PR、CI 或 Ruleset 变化时，同步检查治理专题、ADR、模板、workflow 和检查器。
-- 历史推演、实验结果和完整验证流水进入未来的记录或归档，不堆入索引、根入口或当前状态。
+- 历史推演、实验结果和完整验证流水进入带日期的记录或归档，不堆入索引、根入口或当前状态。

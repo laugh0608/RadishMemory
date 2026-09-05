@@ -50,6 +50,16 @@ MVP 不以功能数量为目标，而要证明一个可信闭环：
 
 阶段 1 不把上述范围一次性展开为大批次。首个评审单元已通过 [ADR 0006](adr/0006-phase1-text-markdown-file-entry.md) 冻结用户显式选择的 UTF-8 文本 / Markdown 文件入口、来源身份 / 版本、幂等导入、精确导出、派生重建、删除边界和 18 个合成验收场景；该入口已经通过 Linux、macOS、Windows locked CI 并合入稳定主线。下一评审单元由 [ADR 0007](adr/0007-phase1-local-library-host.md) 冻结本地桌面宿主、一次性文件授权、application service、来源目录、基础 UI 和十二项宿主验收；P1-H02 至 P1-H05 已完成本机实现、三平台真实 picker、当前 `wgpu` locked CI 和 [third-party notices 与条件平台依赖](implementation/phase1-third-party-notices.md)。阶段评审随后通过 [ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 冻结受管原始对象认证加密、一 source version 一密文对象、设备本地 KEK 包装、文件系统 / SQLite 提交协调、v6 inline body migration、删除边界和十八项合成验收；`P1-S02 dependency and cipher review` 又由[专项评审](implementation/phase1-encrypted-source-vault-dependency-review.md)选定 XChaCha20-Poly1305 + STREAM-BE32、AEAD DEK wrap、系统随机、secret zeroization 和 macOS Keychain / Windows Credential Manager / Linux Secret Service 精确 provider。[P1-S03a portable crypto dependency landing](implementation/phase1-source-vault-portable-crypto.md)现已完成 manifest / lockfile / notices 变化、portable dependency graph、AAD codec、known-answer / tamper tests 和合成 random / key seam；下一最小单元 `P1-S03b immutable object filesystem adapter` 只实现 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish 与认证 read-back。真实 key store、SQLite migration 与宿主验收仍须分别批准。PDF / 图片解析只能在 encrypted Source Vault 的 adapter、migration 和 host acceptance 完成后另行评审；向量实现和模型 adapter 继续分别审查隐私失败关闭和质量指标。
 
+### 阶段 1 的用户路径与质量补齐
+
+阶段 1 不以格式数量或模型数量证明完成。当前文本能力应先能通过 production 入口完成保存、中文找回、完整目录访问、回源、版本更新、导出与删除，并能在派生损坏后进入受限修复。具体计划见[本地资料库质量验收](evaluation/phase1-local-library-quality.md)，这些场景尚未因文档加入而通过。
+
+扩大资料规模前先建立启动、搜索、导入、重建和内存基线；原始对象加密接入后分别报告对象文件、SQLite / FTS 正文与恢复能力。既有文件 / 宿主合成证据仍按各自实际场景解释，不替代新增质量验收。
+
+第一次真实云端模型调用就必须满足[隐私模型](privacy-threat-model.md#模型外发控制)要求的权限与外发过滤、最小 ContextPack、OutboundContextManifest、接收方 / 用途和实际 attempts 记录。阶段 3 扩展多模型及完整 Context Compiler；不能把最小外发清单推迟到阶段 3。此处澄清既有安全依赖，不授权当前接入模型。
+
+围绕长期项目的窄文本价值路径可以作为阶段 1 至 3 的连续验证主线。提前实现阶段 2 / 3 能力或改变 PDF / 图片的既有依赖属于待决策事项，需在修改 ADR 0004、ADR 0008 或阶段顺位前确认范围。
+
 ## 阶段 2：长期记忆生命周期
 
 目标：从“资料搜索”进入“长期记忆”。
@@ -149,6 +159,14 @@ MVP 不以功能数量为目标，而要证明一个可信闭环：
 | Delete completeness | 删除传播到各存储、索引和设备的比例 |
 | Retrieval latency | 不同数据量下的本地与服务端延迟 |
 | Provider cost | 不同编译策略的模型调用成本 |
+
+## 可持续使用与交付验证
+
+记忆控制台除污染、错误个人化和时间一致性外，记录候选接受 / 拒绝率、重复候选率、确认耗时及持续维护时间，避免用候选数量代替用户收益。检索同时覆盖中文 / 混合语言、高相似干扰和无答案场景；性能阈值须在代表性数据和环境下确定。
+
+原件精确导出、完整资产迁移、备份恢复分别验收。迁移契约应明确来源与记忆关系、版本、决定、策略和必要证据；恢复方案应明确密钥保管、设备 / 系统重装和损坏后的真实结果。具体格式、恢复方式和所在交付批次仍待独立决策，不自动扩展阶段 1 加密范围。
+
+外部试用与发行前须明确可用功能、已知限制、分发 / 自部署授权及维护范围；可公开阅读源码和允许用户部署是不同问题，现行许可证保持不变。
 
 ## 完整 MVP 首个可演示场景
 
