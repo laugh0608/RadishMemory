@@ -132,6 +132,36 @@ M0 删除证据只覆盖已枚举的单设备正文、片段、结构化记忆�
 
 首个入口仍把明文保存在受信本地设备，未实现静态加密、取证级擦除或备份清除。仓库、Issue、PR 和 CI 不得使用真实个人文件；运行验收通过前不能声明生产文件入口已经成立。
 
+## 阶段 1 本地宿主授权边界
+
+[ADR 0007](adr/0007-phase1-local-library-host.md) 要求首个桌面宿主只消费用户当前可见操作产生的一次性系统文件选择 capability。导入新来源、更新已有 lineage 和导出都必须重新选择；用户取消、权限撤销或选择器失败不写数据库、不产生 receipt。首批不持久化完整路径、allowed root、platform bookmark、security-scoped bookmark 或文件访问 token，也不后台监视原件。
+
+当前 `radishmemory-desktop` 已按该边界实现：picker 只在一次调用中构造精确路径与直接 parent root；应用目录拒绝最终目录 / 数据库 symlink，并在 Unix 上收紧为 owner-only；host profile 只保存 contract、随机 namespace ID 与 device ID，数据库已存在而 profile 缺失或损坏时失败关闭。公开 desktop error / Debug 只保留稳定 code / reason、retryable 和必要 OS error code，不复制路径、正文或 identity。第一方宿主没有普通日志 sink；这不代表第三方窗口、系统 dialog、图形驱动或崩溃收集天然无记录，分发前仍需按平台复核。
+
+路径只在本次本地调用链存在；application error、普通日志、UI telemetry、诊断包和 CI 不得输出路径、bookmark、数据库位置或正文。平台 adapter 不得把一次选择扩大为 home、volume 或文件系统根；如果选择器只返回路径，本次 allowed root 只取所选文件或目标的直接 parent，并继续由 file-entry 失败关闭。
+
+宿主数据库位于平台应用数据目录并保持本地明文；“使用系统选择器”“运行于平台沙箱”或“不保存路径”都不等于静态加密。`P1-HF01` 至 `P1-HF12`、真实系统选择器和人工可见 UI 证据成立前，不使用真实个人资料验收，也不声明生产授权面完成。
+
+## 阶段 1 加密 Source Vault 信任边界
+
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已接受受管原始对象的本地认证加密契约，[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)冻结精确 crypto / key-provider profile，[P1-S03a](implementation/phase1-source-vault-portable-crypto.md)又落地 portable cipher / wrap / AAD 与合成测试。filesystem、platform key provider、SQLite migration 和 application integration 尚未开始；当前 SQLite v6 仍保存 inline plaintext body，独立 crypto package 不改变已有字节，也不授权使用真实个人资料。
+
+首批只保护 Source Vault 管理的原始对象文件。SQLite metadata、FTS、标题、摘要、media type、大小、时间、治理标签和派生内容仍可能泄露语义或使用模式，因此不能把该能力描述为整个资料库静态加密。对象解密期间的进程内明文、已解锁设备上的恶意进程、内核、交换区、休眠镜像、崩溃收集和用户导出也不在该静态对象保证内。
+
+每个 SourceArtifact version 使用独立随机 DEK，由设备本地 KEK capability 包装；不同 source 即使 exact digest 相同也不共享首批物理对象。KEK、明文 DEK、可复用 wrapped DEK、nonce、authentication tag 和对象路径不得进入普通日志、诊断、fixture、CI 或仓库。P1-S02 已选择 XChaCha20-Poly1305 + STREAM-BE32、独立 AEAD DEK wrap、系统随机与 secret zeroization，并按 target 选择 macOS Keychain、Windows Credential Manager 或 Linux Secret Service；P1-S03a 只实现前半部分并以全对象认证、length / digest 复验及失败缓冲 zeroization 约束明文交付。系统 store 缺失 / 锁定 / 拒绝 / ambiguity、未知 profile、认证失败或 metadata 交换都失败关闭，不回退 file-stored key、sample store 或其它 provider。
+
+本地 key 丢失可能使对应对象永久不可恢复。首批不提供用户口令、恢复码、key escrow、跨设备恢复或自动 rotation；应用不得生成新 key 后认领旧对象、隐藏损坏来源、建立空库或从外部原件 fallback。未来同步可以在独立协议下增加对象 DEK wrapper，但服务端仍不得获得内容解密能力。
+
+对象删除只证明本地 committed reference、密文文件和 wrapped DEK 按冻结组件范围处理。SQLite 空闲页、迁移前明文、平台临时状态、文件系统快照、备份、交换区、休眠镜像、外部原件和用户导出仍须分别报告，不能从密文文件删除推导取证级擦除或备份清除。
+
+### 完整正文副本与恢复声明
+
+当前文本入口采用 whole-file fragment，FTS `content` 保存该片段的完整可读正文。因此这里的“FTS 未加密”可能意味着全文仍可从 SQLite 直接读取，不能简写为“只有少量元数据未加密”。ADR 0008 完成原始对象加密后，也不能从密文对象不可读推导这份派生正文已受保护。
+
+保护效果应按攻击者取得对象目录、SQLite、备份或已解锁设备的不同情形分别说明。是否扩大静态加密范围仍需独立威胁模型与技术决策；移除 FTS content 副本也不能自动证明索引词项不泄露语义。
+
+原件导出、整体迁移与备份恢复必须分别报告实际范围。后续试用 / 发行方案需要明确备份包含哪些事实、密钥由谁保管、系统重装和 key 丢失后的结果，并在所选恢复范围内演练；首批无恢复能力时必须明示不可恢复风险。这里不选择口令、恢复码、escrow、rotation 或新的 key provider，也不改变 ADR 0008 的首批停止线。
+
 ## 模型外发控制
 
 每次调用云端 Provider 或 RadishMind 等 Gateway 前必须：
@@ -222,4 +252,5 @@ CI runner、日志、缓存和 artifact 视为仓库信任边界之外的数据�
 - Prompt Injection 完全解决；
 - 自托管即满足全部隐私需求；
 - 本地模型天然安全；
+- 整个本地资料库已经静态加密；
 - 加密备份一定可恢复。

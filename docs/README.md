@@ -19,8 +19,23 @@
 13. [ADR 0004：RadishMind 首次以可选 Gateway 接入](adr/0004-radishmind-optional-gateway-entry.md)：首次进入阶段、逻辑交换、外发、失败和后续 Workflow 边界。
 14. [ADR 0005：M0 实现栈与模块边界](adr/0005-m0-implementation-stack.md)：Rust workspace、SQLite / FTS5、依赖、迁移和验证入口。
 15. [Rust 依赖基线](implementation/m0-rust-dependency-baseline.md)：当前 lockfile、第一方依赖图、供应链边界和三平台证据状态。
-16. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
-17. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+16. [Phase 1 桌面宿主依赖评审](implementation/phase1-desktop-dependency-review.md)：已授权 UI、系统文件选择、应用目录、production ID / clock 版本、解析图与平台影响。
+17. [Phase 1 macOS 桌面宿主交互验收](implementation/phase1-macos-host-acceptance.md)：纯合成数据的真实窗口、AppKit picker、重启、重建、导出与删除 evidence。
+18. [Phase 1 Windows 桌面宿主交互验收](implementation/phase1-windows-host-acceptance.md)：Windows ARM64 可见窗口、原生 picker、重启、脱敏与应用数据 ACL 证据。
+19. [Phase 1 Linux 桌面宿主交互验收](implementation/phase1-linux-host-acceptance.md)：Debian ARM64 / GNOME Wayland 可见窗口、XDG Portal / GTK picker、重启、脱敏与 Unix ACL / mode 证据。
+20. [Phase 1 第三方 notices 与条件平台依赖复核](implementation/phase1-third-party-notices.md)：P1-H05 的 333 项历史基线及 P1-S03a 后两个分发根的 344 项当前清单、license option、默认字体、bundled SQLite 与 OS 条件面。
+21. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
+22. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
+23. [ADR 0008：阶段 1 加密内容寻址 Source Vault](adr/0008-phase1-encrypted-source-vault.md)：原始对象认证加密、内容地址、密钥边界、SQLite 协调、迁移、删除与合成验收。
+24. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
+25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
+26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
+
+## 质量与历史记录
+
+- [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
+- [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。
+- [2026-09-03 阶段基线归档](status/2026-09-03-baseline.md)：M0 至 P1-S03a 的历史批次、CI 与依赖证据，不作为当前任务授权或顺位。
 
 ## 治理入口
 
@@ -35,4 +50,4 @@
 - 阶段状态、近期顺位、临时门禁和“当前不做”只更新 `status/current.md`，不复制回 Agent 根入口或长期专题。
 - 架构、协议、存储、加密和删除语义发生变化时，必须更新对应文档并记录决策理由。
 - 仓库、协作、分支、PR、CI 或 Ruleset 变化时，同步检查治理专题、ADR、模板、workflow 和检查器。
-- 历史推演、实验结果和完整验证流水进入未来的记录或归档，不堆入索引、根入口或当前状态。
+- 历史推演、实验结果和完整验证流水进入带日期的记录或归档，不堆入索引、根入口或当前状态。

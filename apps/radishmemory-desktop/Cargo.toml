@@ -1,0 +1,18 @@
+[package]
+name = "radishmemory-desktop"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[dependencies]
+directories.workspace = true
+eframe.workspace = true
+getrandom.workspace = true
+radishmemory-application.workspace = true
+rfd.workspace = true
+time.workspace = true
+
+[lints]
+workspace = true

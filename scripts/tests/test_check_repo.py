@@ -161,7 +161,7 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn("missing required file: SECURITY.md", errors)
 
-    def test_rust_workspace_contract_rejects_a_fifth_package(self) -> None:
+    def test_rust_workspace_contract_rejects_an_unreviewed_package(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             target = root / "crates/extra/Cargo.toml"
@@ -177,7 +177,7 @@ class GovernanceContractChecks(unittest.TestCase):
             self.assertTrue(
                 any(
                     error.startswith(
-                        "Rust workspace must contain only the root manifest, three M0 package manifests, and the reviewed Phase 1 file-entry manifest"
+                        "Rust workspace must contain only the reviewed root, M0, Phase 1 library, application, and desktop manifests"
                     )
                     for error in errors
                 )
@@ -215,6 +215,32 @@ class GovernanceContractChecks(unittest.TestCase):
                 + 'checksum = "'
                 + "0" * 64
                 + '"\n',
+                encoding="utf-8",
+            )
+            errors: list[str] = []
+
+            CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+            self.assertIn(
+                "Cargo.lock differs from the reviewed dependency set",
+                errors,
+            )
+
+    def test_rust_workspace_contract_rejects_reviewed_package_checksum_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name, content in CHECK_REPO.EXPECTED_CARGO_MANIFESTS.items():
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(content, encoding="utf-8")
+            lock_text = (CHECK_REPO.REPO_ROOT / "Cargo.lock").read_text(encoding="utf-8")
+            prefix = 'checksum = "'
+            start = lock_text.index(prefix) + len(prefix)
+            end = lock_text.index('"', start)
+            replacement = "0" * (end - start)
+            self.assertNotEqual(lock_text[start:end], replacement)
+            (root / "Cargo.lock").write_text(
+                lock_text[:start] + replacement + lock_text[end:],
                 encoding="utf-8",
             )
             errors: list[str] = []
@@ -369,6 +395,61 @@ class GovernanceContractChecks(unittest.TestCase):
 
             self.assertIn(
                 "docs/adr/0005-m0-implementation-stack.md is missing implementation stack contract fragment: Rust 2024 edition",
+                errors,
+            )
+
+    def test_implementation_history_is_checked_in_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name in (
+                "README.md",
+                "docs/status/current.md",
+                "docs/status/2026-09-03-baseline.md",
+            ):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((CHECK_REPO.REPO_ROOT / name).read_bytes())
+            errors: list[str] = []
+            CHECK_REPO.check_implementation_stack_contract(root, errors)
+            self.assertEqual([], errors)
+
+            archive = root / "docs/status/2026-09-03-baseline.md"
+            fragment = "`M0-I01` 已建立且仅建立上述三个可编译 package"
+            archive.write_text(
+                archive.read_text(encoding="utf-8").replace(fragment, ""),
+                encoding="utf-8",
+            )
+            CHECK_REPO.check_implementation_stack_contract(root, errors)
+            self.assertIn(
+                "docs/status/2026-09-03-baseline.md is missing implementation "
+                f"stack contract fragment: {fragment}",
+                errors,
+            )
+
+    def test_archive_cannot_replace_current_storage_boundary(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            for name in (
+                "docs/status/current.md",
+                "docs/status/2026-09-03-baseline.md",
+            ):
+                target = root / name
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes((CHECK_REPO.REPO_ROOT / name).read_bytes())
+            errors: list[str] = []
+            CHECK_REPO.check_phase1_encrypted_source_vault_contract(root, errors)
+            self.assertEqual([], errors)
+
+            current = root / "docs/status/current.md"
+            fragment = "当前 production code 仍是 SQLite v6 inline plaintext body"
+            current.write_text(
+                current.read_text(encoding="utf-8").replace(fragment, ""),
+                encoding="utf-8",
+            )
+            CHECK_REPO.check_phase1_encrypted_source_vault_contract(root, errors)
+            self.assertIn(
+                "docs/status/current.md is missing Phase 1 encrypted Source Vault "
+                f"contract fragment: {fragment}",
                 errors,
             )
 

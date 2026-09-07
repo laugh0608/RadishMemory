@@ -10,6 +10,7 @@ mod deletion;
 mod digest;
 mod error;
 mod invariants;
+mod library;
 mod memory;
 mod model;
 mod ports;
@@ -29,9 +30,12 @@ pub use error::{
     InvalidTimeReason, NonCanonicalJsonReason,
 };
 pub use invariants::*;
+pub use library::*;
 pub use memory::*;
 pub use model::*;
-pub use ports::{DeletionStore, LocalSearch, MemoryStore, SourceCaptureStore, SourceVault};
+pub use ports::{
+    DeletionStore, LocalSearch, MemoryStore, SourceCaptureStore, SourceCatalog, SourceVault,
+};
 pub use search::{LocalSearchHit, LocalSearchRequest};
 pub use source::*;
 pub use temporal::{TimePrecision, Timestamp, TimestampPrecision, ValidTime, ValidTimeMode};

@@ -14,6 +14,7 @@ mod fixture_runner;
 mod memory_store;
 mod migration;
 mod source_capture;
+mod source_catalog;
 mod source_store;
 
 use std::fmt;
@@ -83,8 +84,9 @@ impl SqliteDatabase {
         transaction.commit().map_err(SqliteError::storage)
     }
 
-    /// Verifies current projection and FTS rows against validated canonical facts.
+    /// Verifies active file-capture facts, bindings, current projection, and FTS rows.
     pub fn verify_recall_derivations(&self) -> Result<(), SqliteError> {
+        source_capture::verify_origin_bindings(&self.connection)?;
         derived_index::verify(&self.connection)
     }
 

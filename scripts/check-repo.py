@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -36,10 +37,25 @@ REQUIRED_FILES = (
     "LICENSE",
     "README.md",
     "SECURITY.md",
+    "THIRD_PARTY_NOTICES.md",
     "Cargo.lock",
     "Cargo.toml",
+    "apps/radishmemory-desktop/Cargo.toml",
+    "apps/radishmemory-desktop/src/controller.rs",
+    "apps/radishmemory-desktop/src/error.rs",
+    "apps/radishmemory-desktop/src/lib.rs",
+    "apps/radishmemory-desktop/src/main.rs",
+    "apps/radishmemory-desktop/src/paths.rs",
+    "apps/radishmemory-desktop/src/picker.rs",
+    "apps/radishmemory-desktop/src/profile.rs",
+    "apps/radishmemory-desktop/src/runtime.rs",
+    "apps/radishmemory-desktop/src/ui.rs",
     "apps/radishmemory-m0/Cargo.toml",
     "apps/radishmemory-m0/src/main.rs",
+    "crates/radishmemory-application/Cargo.toml",
+    "crates/radishmemory-application/src/error.rs",
+    "crates/radishmemory-application/src/lib.rs",
+    "crates/radishmemory-application/tests/local_library.rs",
     "crates/radishmemory-core/Cargo.toml",
     "crates/radishmemory-core/src/canonical_json.rs",
     "crates/radishmemory-core/src/context.rs",
@@ -47,6 +63,7 @@ REQUIRED_FILES = (
     "crates/radishmemory-core/src/digest.rs",
     "crates/radishmemory-core/src/error.rs",
     "crates/radishmemory-core/src/invariants.rs",
+    "crates/radishmemory-core/src/library.rs",
     "crates/radishmemory-core/src/lib.rs",
     "crates/radishmemory-core/src/memory.rs",
     "crates/radishmemory-core/src/model.rs",
@@ -60,6 +77,12 @@ REQUIRED_FILES = (
     "crates/radishmemory-file-entry/src/error.rs",
     "crates/radishmemory-file-entry/src/lib.rs",
     "crates/radishmemory-file-entry/tests/file_snapshot.rs",
+    "crates/radishmemory-source-vault/Cargo.toml",
+    "crates/radishmemory-source-vault/src/aad.rs",
+    "crates/radishmemory-source-vault/src/crypto.rs",
+    "crates/radishmemory-source-vault/src/error.rs",
+    "crates/radishmemory-source-vault/src/lib.rs",
+    "crates/radishmemory-source-vault/src/random.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
     "crates/radishmemory-sqlite/migrations/0001_sqlite_entry.sql",
     "crates/radishmemory-sqlite/migrations/0002_source_storage.sql",
@@ -74,6 +97,7 @@ REQUIRED_FILES = (
     "crates/radishmemory-sqlite/src/memory_store.rs",
     "crates/radishmemory-sqlite/src/source_store.rs",
     "crates/radishmemory-sqlite/src/source_capture.rs",
+    "crates/radishmemory-sqlite/src/source_catalog.rs",
     "crates/radishmemory-sqlite/tests/memory_store.rs",
     "crates/radishmemory-sqlite/tests/source_vault.rs",
     "crates/radishmemory-sqlite/tests/source_capture.rs",
@@ -86,12 +110,21 @@ REQUIRED_FILES = (
     "docs/adr/0004-radishmind-optional-gateway-entry.md",
     "docs/adr/0005-m0-implementation-stack.md",
     "docs/adr/0006-phase1-text-markdown-file-entry.md",
+    "docs/adr/0007-phase1-local-library-host.md",
+    "docs/adr/0008-phase1-encrypted-source-vault.md",
+    "docs/implementation/phase1-encrypted-source-vault-dependency-review.md",
+    "docs/implementation/phase1-source-vault-portable-crypto.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
     "docs/governance/agent-collaboration.md",
     "docs/governance/repository-governance.md",
     "docs/implementation/m0-rust-dependency-baseline.md",
+    "docs/implementation/phase1-desktop-dependency-review.md",
+    "docs/implementation/phase1-linux-host-acceptance.md",
+    "docs/implementation/phase1-macos-host-acceptance.md",
+    "docs/implementation/phase1-third-party-notices.md",
+    "docs/implementation/phase1-windows-host-acceptance.md",
     "docs/memory-model.md",
     "docs/mvp-roadmap.md",
     "docs/privacy-threat-model.md",
@@ -100,14 +133,30 @@ REQUIRED_FILES = (
     "docs/references.md",
     "docs/schema/m0-canonical-schema.md",
     "docs/status/current.md",
+    "docs/status/2026-09-03-baseline.md",
+    "docs/implementation/2026-09-05-project-review.md",
+    "docs/evaluation/phase1-local-library-quality.md",
     "fixtures/m0/local-memory-loop.v1.json",
     "rust-toolchain.toml",
     "scripts/check-m0-fixtures.py",
     "scripts/check-repo.ps1",
     "scripts/check-repo.py",
     "scripts/check-repo.sh",
+    "scripts/generate-third-party-notices.py",
     "scripts/tests/test_check_repo.py",
     "scripts/tests/test_check_m0_fixtures.py",
+    "third_party/licenses/Apache-2.0.txt",
+    "third_party/licenses/BSL-1.0.txt",
+    "third_party/licenses/ISC.txt",
+    "third_party/licenses/MIT.txt",
+    "third_party/licenses/MPL-2.0.txt",
+    "third_party/licenses/OFL-1.1.txt",
+    "third_party/licenses/README.md",
+    "third_party/licenses/SQLite-public-domain.txt",
+    "third_party/licenses/Ubuntu-font-1.0.txt",
+    "third_party/licenses/Unicode-3.0.txt",
+    "third_party/licenses/Zlib.txt",
+    "third_party/licenses/epaint-default-fonts-notices.txt",
 )
 
 TEXT_SUFFIXES = {
@@ -164,9 +213,12 @@ TEXT_NAMES = {
 EXPECTED_CARGO_MANIFESTS = {
     "Cargo.toml": """[workspace]
 members = [
+  \"apps/radishmemory-desktop\",
   \"apps/radishmemory-m0\",
+  \"crates/radishmemory-application\",
   \"crates/radishmemory-core\",
   \"crates/radishmemory-file-entry\",
+  \"crates/radishmemory-source-vault\",
   \"crates/radishmemory-sqlite\",
 ]
 resolver = \"3\"
@@ -179,18 +231,46 @@ license-file = \"LICENSE\"
 publish = false
 
 [workspace.dependencies]
+aead-stream = { version = \"=0.6.0\", default-features = false, features = [\"alloc\"] }
+chacha20poly1305 = { version = \"=0.11.0\", default-features = false, features = [\"alloc\", \"zeroize\"] }
+directories = \"=6.0.0\"
+eframe = { version = \"=0.36.1\", default-features = false, features = [\"accesskit\", \"default_fonts\", \"wayland\", \"wgpu\", \"x11\"] }
+getrandom = { version = \"=0.4.3\", default-features = false }
+radishmemory-application = { path = \"crates/radishmemory-application\", version = \"=0.1.0\" }
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
 radishmemory-file-entry = { path = \"crates/radishmemory-file-entry\", version = \"=0.1.0\" }
+radishmemory-source-vault = { path = \"crates/radishmemory-source-vault\", version = \"=0.1.0\" }
 radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
 rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
+rfd = { version = \"=0.17.2\", default-features = false, features = [\"xdg-portal\", \"wayland\"] }
 serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
 sha2 = { version = \"0.11.0\", default-features = false }
-time = { version = \"0.3.55\", default-features = false, features = [\"parsing\", \"std\"] }
+time = { version = \"0.3.55\", default-features = false, features = [\"formatting\", \"parsing\", \"std\"] }
 unicode-normalization = { version = \"0.1.25\", default-features = false, features = [\"std\"] }
+zeroize = { version = \"=1.9.0\", default-features = false, features = [\"alloc\"] }
 
 [workspace.lints.rust]
 unsafe_code = \"forbid\"
 unused_crate_dependencies = \"deny\"
+""",
+    "apps/radishmemory-desktop/Cargo.toml": """[package]
+name = \"radishmemory-desktop\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[dependencies]
+directories.workspace = true
+eframe.workspace = true
+getrandom.workspace = true
+radishmemory-application.workspace = true
+rfd.workspace = true
+time.workspace = true
+
+[lints]
+workspace = true
 """,
     "apps/radishmemory-m0/Cargo.toml": """[package]
 name = \"radishmemory-m0\"
@@ -207,6 +287,22 @@ workspace = true
 radishmemory-core.workspace = true
 radishmemory-sqlite = { workspace = true, features = ["fixture-runner"] }
 serde_json.workspace = true
+""",
+    "crates/radishmemory-application/Cargo.toml": """[package]
+name = \"radishmemory-application\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+radishmemory-core.workspace = true
+radishmemory-file-entry.workspace = true
+radishmemory-sqlite.workspace = true
 """,
     "crates/radishmemory-core/Cargo.toml": """[package]
 name = \"radishmemory-core\"
@@ -242,6 +338,24 @@ acceptance-test-support = []
 [dependencies]
 radishmemory-core.workspace = true
 """,
+    "crates/radishmemory-source-vault/Cargo.toml": """[package]
+name = "radishmemory-source-vault"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+aead-stream.workspace = true
+chacha20poly1305.workspace = true
+getrandom.workspace = true
+sha2.workspace = true
+zeroize.workspace = true
+""",
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
 name = \"radishmemory-sqlite\"
 version.workspace = true
@@ -271,56 +385,15 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_REVIEWED_LOCK_PACKAGES = (
-    ("bitflags", "2.13.1"),
-    ("block-buffer", "0.12.1"),
-    ("cc", "1.4.4"),
-    ("cfg-if", "1.0.4"),
-    ("cpufeatures", "0.3.0"),
-    ("crypto-common", "0.2.2"),
-    ("deranged", "0.5.8"),
-    ("digest", "0.11.3"),
-    ("fallible-iterator", "0.3.0"),
-    ("fallible-streaming-iterator", "0.1.9"),
-    ("find-msvc-tools", "0.1.11"),
-    ("hybrid-array", "0.4.14"),
-    ("itoa", "1.0.18"),
-    ("libc", "0.2.189"),
-    ("libsqlite3-sys", "0.38.2"),
-    ("memchr", "2.8.3"),
-    ("num-conv", "0.2.2"),
-    ("pkg-config", "0.3.34"),
-    ("powerfmt", "0.2.0"),
-    ("proc-macro2", "1.0.107"),
-    ("quote", "1.0.47"),
-    ("radishmemory-core", "0.1.0"),
-    ("radishmemory-file-entry", "0.1.0"),
-    ("radishmemory-m0", "0.1.0"),
-    ("radishmemory-sqlite", "0.1.0"),
-    ("rusqlite", "0.40.2"),
-    ("serde", "1.0.229"),
-    ("serde_core", "1.0.229"),
-    ("serde_derive", "1.0.229"),
-    ("serde_json", "1.0.151"),
-    ("sha2", "0.11.0"),
-    ("shlex", "2.0.1"),
-    ("smallvec", "1.15.2"),
-    ("syn", "3.0.3"),
-    ("time", "0.3.55"),
-    ("time-core", "0.1.9"),
-    ("time-macros", "0.2.32"),
-    ("tinyvec", "1.12.0"),
-    ("tinyvec_macros", "0.1.1"),
-    ("typenum", "1.20.1"),
-    ("unicode-ident", "1.0.24"),
-    ("unicode-normalization", "0.1.25"),
-    ("vcpkg", "0.2.15"),
-    ("zmij", "1.0.23"),
-)
+EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 430
+EXPECTED_REVIEWED_LOCK_DIGEST = "c8d2e33f72694eedf0a2c44ac21d059826fc8ea039215225f3d70ea68903f80e"
 FIRST_PARTY_RUST_PACKAGES = {
+    "radishmemory-application",
     "radishmemory-core",
+    "radishmemory-desktop",
     "radishmemory-file-entry",
     "radishmemory-m0",
+    "radishmemory-source-vault",
     "radishmemory-sqlite",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
@@ -440,7 +513,7 @@ def check_rust_workspace_contract(
     expected_manifests = sorted(EXPECTED_CARGO_MANIFESTS)
     if manifests != expected_manifests:
         errors.append(
-            "Rust workspace must contain only the root manifest, three M0 package manifests, and the reviewed Phase 1 file-entry manifest: "
+            "Rust workspace must contain only the reviewed root, M0, Phase 1 library, application, and desktop manifests: "
             f"found {manifests}"
         )
 
@@ -466,7 +539,7 @@ def check_rust_workspace_contract(
         lock_text,
         flags=re.DOTALL,
     )
-    resolved_packages: list[tuple[str, str]] = []
+    resolved_packages: list[tuple[str, str, str, str]] = []
     for block in package_blocks:
         name_match = re.search(r'^name = "([^"]+)"$', block, flags=re.MULTILINE)
         version_match = re.search(r'^version = "([^"]+)"$', block, flags=re.MULTILINE)
@@ -474,9 +547,11 @@ def check_rust_workspace_contract(
             errors.append("Cargo.lock contains a package without a name or version")
             continue
         name = name_match.group(1)
-        resolved_packages.append((name, version_match.group(1)))
         source_match = re.search(r'^source = "([^"]+)"$', block, flags=re.MULTILINE)
         checksum_match = re.search(r'^checksum = "([^"]+)"$', block, flags=re.MULTILINE)
+        source = source_match.group(1) if source_match is not None else ""
+        checksum = checksum_match.group(1) if checksum_match is not None else ""
+        resolved_packages.append((name, version_match.group(1), source, checksum))
         if name in FIRST_PARTY_RUST_PACKAGES:
             if source_match is not None or checksum_match is not None:
                 errors.append(f"first-party lock package must remain a workspace path: {name}")
@@ -485,7 +560,14 @@ def check_rust_workspace_contract(
         elif checksum_match is None:
             errors.append(f"third-party lock package is missing a checksum: {name}")
 
-    if tuple(sorted(resolved_packages)) != EXPECTED_REVIEWED_LOCK_PACKAGES:
+    lock_digest_payload = "\n".join(
+        "\t".join(package) for package in sorted(resolved_packages)
+    ).encode("utf-8")
+    lock_digest = hashlib.sha256(lock_digest_payload).hexdigest()
+    if (
+        len(resolved_packages) != EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT
+        or lock_digest != EXPECTED_REVIEWED_LOCK_DIGEST
+    ):
         errors.append("Cargo.lock differs from the reviewed dependency set")
 
     entrypoint_fragments = (
@@ -919,9 +1001,12 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "M0 merged baseline; Phase 1 P1-F01 through P1-F18 verified locally",
+            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
+        ),
+        # Completed batch evidence belongs to the dated record, not current policy.
+        "docs/status/2026-09-03-baseline.md": (
             "`M0-I01` 已建立且仅建立上述三个可编译 package",
             "`M0-I02` 的第一个独立评审单元已实现稳定 core 错误",
             "`M0-I02` 的第二个独立评审单元已实现九种 canonical 顶层对象",
@@ -933,13 +1018,15 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "M0 merged baseline; Phase 1 P1-F01 through P1-F18 verified locally",
+            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
-            "不是可导入真实个人资料的产品入口",
+            "不授权本任务使用真实个人资料",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
+            "七个第一方 workspace package",
+            "423 个第三方 package",
             "40 个第三方 package",
             "没有 Git dependency",
             "`serde_json 1.0.151`",
@@ -947,7 +1034,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "`libsqlite3-sys 0.38.2`",
             "SQLite `3.53.2`",
             "`SQLITE_ENABLE_FTS5`",
-            "`serde_derive` 与 `time-macros` 是实际解析的 proc macro",
+            "`serde_derive` 与 `time-macros` 是 headless 基础子图实际解析的 proc macro",
             "Linux、macOS、Windows 与 `Candidate Quality` 已通过",
         ),
         "docs/architecture.md": (
@@ -1000,9 +1087,11 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         ),
         "README.md": (
             "[ADR 0006]",
-            "Phase 1 P1-F01 through P1-F18 verified locally",
+        ),
+        "docs/status/2026-09-03-baseline.md": (
             "`P1-F01` 至 `P1-F18`",
-            "三平台 Phase 1 CI、production host / UI 和平台 bookmark 尚未完成",
+            "workflow run 33302423840",
+            "run `33751048480`",
         ),
         "docs/README.md": (
             "ADR 0006：阶段 1 文本 / Markdown 文件入口",
@@ -1032,10 +1121,10 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "`P1-F15` 至 `P1-F18`",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
-            "四个第一方 workspace package",
+            "七个第一方 workspace package",
             "radishmemory-file-entry 0.1.0",
             "40 个第三方 package",
-            "没有新增 crates.io package",
+            "当时没有扩大 40 个第三方 package 的 headless 基础子图",
             "P1-I02 atomic source capture",
             "P1-I03",
             "P1-I04",
@@ -1068,15 +1157,460 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         r"\b(?:log|tracing)::|(?:println|eprintln|dbg)!\s*\("
     )
     for source_root in (
+        repo_root / "apps/radishmemory-desktop/src",
+        repo_root / "crates/radishmemory-application/src",
         repo_root / "crates/radishmemory-file-entry/src",
+        repo_root / "crates/radishmemory-source-vault/src",
         repo_root / "crates/radishmemory-sqlite/src",
     ):
         for path in sorted(source_root.rglob("*.rs")):
             text = path.read_text(encoding="utf-8")
             if diagnostic_sink.search(text):
                 errors.append(
-                    f"Phase 1 library source introduces an unreviewed diagnostic sink: "
+                    f"Phase 1 source introduces an unreviewed diagnostic sink: "
                     f"{path.relative_to(repo_root)}"
+                )
+
+
+def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None:
+    contracts = {
+        "docs/adr/0007-phase1-local-library-host.md": (
+            "状态：Accepted",
+            "radishmemory.phase1-local-library-host/1",
+            "P1-H02 application service",
+            "P1-H03 source catalog",
+            "P1-H04 desktop UI",
+            "P1-H05 host acceptance",
+            "不持久化 platform bookmark",
+            "不启动本地 HTTP 服务",
+            "`P1-HF01`",
+            "`P1-HF12`",
+            "不新增 canonical 顶层对象",
+        ),
+        "README.md": (
+            "[ADR 0007]",
+            "Phase 1 host acceptance complete",
+            "application service",
+            "THIRD_PARTY_NOTICES.md",
+        ),
+        "docs/README.md": (
+            "ADR 0007：阶段 1 本地资料库宿主与显式文件授权",
+            "Phase 1 macOS 桌面宿主交互验收",
+            "Phase 1 Windows 桌面宿主交互验收",
+            "Phase 1 Linux 桌面宿主交互验收",
+            "Phase 1 第三方 notices 与条件平台依赖复核",
+        ),
+        "docs/status/current.md": (
+            "ADR 0007",
+            "P1-H02 application service",
+            "P1-H03 source catalog",
+            "P1-H04 desktop UI",
+            "P1-H05 host acceptance",
+            "`P1-HF01` 至 `P1-HF12`",
+        ),
+        "docs/status/2026-09-03-baseline.md": (
+            "333 个目标可达 crate",
+        ),
+        "docs/architecture.md": (
+            "阶段 1 本地资料库宿主边界",
+            "一次性系统文件选择 capability",
+            "不启动本地 HTTP 服务",
+        ),
+        "docs/privacy-threat-model.md": (
+            "阶段 1 本地宿主授权边界",
+            "不持久化完整路径",
+            "真实系统选择器",
+        ),
+        "docs/mvp-roadmap.md": (
+            "[ADR 0007]",
+            "十二项宿主验收",
+        ),
+        "docs/implementation/m0-rust-dependency-baseline.md": (
+            "radishmemory-application 0.1.0",
+            "radishmemory-desktop 0.1.0",
+            "P1-H02 application service",
+            "P1-H03 source catalog",
+            "P1-H04 desktop UI",
+            "423 个第三方 package",
+        ),
+        "docs/implementation/phase1-desktop-dependency-review.md": (
+            "状态：`Accepted",
+            "eframe = { version = \"=0.36.1\"",
+            "rfd = { version = \"=0.17.2\"",
+            "418 个 package",
+            "180 个唯一 package ID",
+            "workflow run `33751048480`",
+        ),
+        "docs/implementation/phase1-macos-host-acceptance.md": (
+            "P1-H05 complete",
+            "AppKit open / save panel",
+            "`P1-HF01`",
+            "`P1-HF12`",
+            "Linux、macOS、Windows Rust Quality 与聚合 `Candidate Quality`",
+            "第三方 notices 与条件平台依赖复核",
+        ),
+        "docs/implementation/phase1-windows-host-acceptance.md": (
+            "P1-H05 complete",
+            "Windows 原生 open / save dialog",
+            "egui_glow requires opengl 2.0+",
+            "BUILTIN\\Administrators",
+            "BUILTIN\\Users",
+        ),
+        "docs/implementation/phase1-linux-host-acceptance.md": (
+            "P1-H05 complete",
+            "XDG Portal / GTK",
+            "没有 `zenity` 进程",
+            "host-profile-v1.txt",
+            "library.sqlite3",
+            "第三方 notices 与条件平台依赖复核",
+        ),
+        "docs/implementation/phase1-third-party-notices.md": (
+            "P1-H05 distribution inventory gate complete",
+            "344 个唯一 crates.io package",
+            "67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a",
+            "MIT AND OFL-1.1 AND Ubuntu-font-1.0",
+            "MIT AND Unicode-3.0",
+            "XDG Desktop Portal",
+            "SQLite `3.53.2`",
+            "P1-H05 gate 完成",
+        ),
+        "crates/radishmemory-application/src/lib.rs": (
+            "radishmemory.phase1-local-library-host/1",
+            "pub struct LocalLibrary",
+            "pub fn import_new_source",
+            "pub fn update_source",
+            "pub fn search_sources",
+            "pub fn delete_source_lineage",
+        ),
+        "crates/radishmemory-core/src/ports.rs": (
+            "pub trait SourceCatalog",
+            "fn resolve_source_lineage",
+            "fn list_source_lineages",
+            "fn list_source_versions",
+            "fn resolve_source_lineage_deletion_targets",
+        ),
+        "crates/radishmemory-sqlite/src/source_catalog.rs": (
+            "impl SourceCatalog for SqliteDatabase",
+            "verify_origin_bindings",
+        ),
+        "apps/radishmemory-desktop/src/profile.rs": (
+            "radishmemory.phase1-host-profile/1",
+            "ProfileMissingForExistingDatabase",
+            "fs::hard_link",
+        ),
+        "apps/radishmemory-desktop/src/controller.rs": (
+            "LocalLibraryConfig::phase1_local",
+            "LibraryController::bootstrap",
+            "delete_selected_lineage",
+        ),
+        "apps/radishmemory-desktop/src/picker.rs": (
+            "rfd::FileDialog",
+            "FileReadRequest::new",
+            "FileExportRequest::new",
+        ),
+        "apps/radishmemory-desktop/src/ui.rs": (
+            "impl eframe::App for RadishMemoryApp",
+            "Latest deletion evidence",
+            "The original selected file and prior exports are not deleted.",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing Phase 1 local host contract fragment: {fragment}"
+                )
+
+
+def check_phase1_encrypted_source_vault_contract(
+    repo_root: Path, errors: list[str]
+) -> None:
+    contracts = {
+        "docs/adr/0008-phase1-encrypted-source-vault.md": (
+            "状态：Accepted",
+            "radishmemory.phase1-encrypted-source-vault/1",
+            "P1-S01 storage contract",
+            "P1-S02 dependency and cipher review",
+            "一个不可变 `SourceArtifact` version 对应一个不可变密文对象",
+            "不进行跨 lineage 或跨 provenance 物理去重",
+            "设备本地 key-encryption key（KEK）",
+            "经过评审的 AEAD cipher suite",
+            "SQLite `IMMEDIATE` transaction",
+            "SQLite v6 inline body 迁移",
+            "不新增 canonical 顶层对象",
+            "`P1-SF01`",
+            "`P1-SF18`",
+            "当前代码仍使用 SQLite v6 inline plaintext body",
+        ),
+        "README.md": (
+            "[ADR 0008]",
+            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "一 source version 一密文对象",
+            "SQLite v6 inline plaintext body",
+            "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
+        ),
+        "docs/README.md": (
+            "ADR 0008：阶段 1 加密内容寻址 Source Vault",
+        ),
+        "docs/status/current.md": (
+            "ADR 0008",
+            "P1-S01 storage contract",
+            "P1-S02 dependency and cipher review",
+            "`P1-SF01` 至 `P1-SF18`",
+            "SQLite metadata、FTS、派生数据",
+            "不跨 provenance 物理去重",
+            "当前 production code 仍是 SQLite v6 inline plaintext body",
+        ),
+        "docs/architecture.md": (
+            "阶段 1 加密内容寻址 Source Vault 边界",
+            "一个不可变 SourceArtifact version 首批对应一个不可变密文对象",
+            "不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重",
+            "密文 publish → SQLite commit → read-back",
+            "P1-S02",
+        ),
+        "docs/privacy-threat-model.md": (
+            "阶段 1 加密 Source Vault 信任边界",
+            "SQLite metadata、FTS、标题、摘要",
+            "每个 SourceArtifact version 使用独立随机 DEK",
+            "本地 key 丢失可能使对应对象永久不可恢复",
+            "整个本地资料库已经静态加密",
+        ),
+        "docs/mvp-roadmap.md": (
+            "[ADR 0008]",
+            "一 source version 一密文对象",
+            "P1-S02",
+            "PDF / 图片解析只能在 encrypted Source Vault",
+        ),
+        "docs/adr/0005-m0-implementation-stack.md": (
+            "[ADR 0008]",
+            "P1-S03a portable manifest / lockfile landing 已完成",
+        ),
+        "docs/adr/0006-phase1-text-markdown-file-entry.md": (
+            "[ADR 0008]",
+            "在其 dependency、adapter、migration 与 host acceptance 完成前不进入 PDF / 图片解析",
+        ),
+        "docs/adr/0007-phase1-local-library-host.md": (
+            "[ADR 0008]",
+            "不代表 object adapter、platform provider 或加密 Source Vault 已实现",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing Phase 1 encrypted Source Vault contract "
+                    f"fragment: {fragment}"
+                )
+
+
+def check_phase1_encrypted_source_vault_dependency_review(
+    repo_root: Path, errors: list[str]
+) -> None:
+    contracts = {
+        "docs/implementation/phase1-encrypted-source-vault-dependency-review.md": (
+            "状态：`Accepted — profile 已冻结；P1-S03a portable graph 已落地，platform providers 待后续单元`",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            'aead-stream = { version = "=0.6.0"',
+            'chacha20poly1305 = { version = "=0.11.0"',
+            'zeroize = { version = "=1.9.0"',
+            'keyring-core = { version = "=1.0.0"',
+            'apple-native-keyring-store = { version = "=1.0.2"',
+            'windows-native-keyring-store = { version = "=1.1.0"',
+            'zbus-secret-service-keyring-store = { version = "=1.0.1"',
+            "`Local`",
+            "`crypto-rust`",
+            "`rmkek1:`",
+            "`create_if_absent_for_bootstrap`",
+            "SQLite `IMMEDIATE` transaction",
+            "P1-S03a portable crypto dependency landing",
+            "P1-S03b immutable object filesystem adapter",
+        ),
+        "README.md": (
+            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "XChaCha20-Poly1305 + STREAM-BE32",
+            "P1-S03a 已完成 portable manifest / `Cargo.lock`",
+        ),
+        "docs/README.md": (
+            "Phase 1 加密 Source Vault 依赖与密码套件评审",
+        ),
+        "docs/status/current.md": (
+            "P1-S02 dependency and cipher review",
+            "P1-S03a portable crypto dependency landing",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            "portable manifest / `Cargo.lock` / notices 和 cipher 实现落地",
+        ),
+        "docs/architecture.md": (
+            "XChaCha20-Poly1305 + STREAM-BE32",
+            "macOS Keychain、Windows Credential Manager 或 Linux Secret Service",
+            "三个 platform provider 尚未进入依赖图",
+        ),
+        "docs/privacy-threat-model.md": (
+            "XChaCha20-Poly1305 + STREAM-BE32",
+            "不回退 file-stored key、sample store 或其它 provider",
+        ),
+        "docs/mvp-roadmap.md": (
+            "P1-S03a portable crypto dependency landing",
+            "manifest / lockfile / notices 变化",
+        ),
+        "docs/adr/0008-phase1-encrypted-source-vault.md": (
+            "P1-S02 依赖与密码套件评审",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            "P1-S03a portable crypto dependency landing",
+        ),
+        "docs/adr/0005-m0-implementation-stack.md": (
+            "P1-S02",
+            "manifest / lockfile landing",
+        ),
+        "docs/adr/0007-phase1-local-library-host.md": (
+            "P1-S02",
+            "不代表 object adapter、platform provider 或加密 Source Vault 已实现",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing Phase 1 encrypted Source Vault "
+                    f"dependency review fragment: {fragment}"
+                )
+
+
+def check_phase1_source_vault_portable_crypto(
+    repo_root: Path, errors: list[str]
+) -> None:
+    contracts = {
+        "docs/implementation/phase1-source-vault-portable-crypto.md": (
+            "P1-S03a portable crypto dependency landing complete",
+            "radishmemory-source-vault",
+            "radishmemory.xchacha20poly1305-stream-be32/1",
+            "radishmemory.xchacha20poly1305-dek-wrap/1",
+            "当前 12 个 package unit test",
+            "430 个 package",
+            "423 个 crates.io package",
+            "并集 344",
+            "67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a",
+            "5a0ebedfe8bdd2e295b171f4162f8c977bcad9a5",
+            "RUSTSEC-2026-0003",
+            "RUSTSEC-2019-0029",
+            "P1-S03b immutable object filesystem adapter",
+        ),
+        "README.md": (
+            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "P1-S03a 落地记录",
+            "扩大到 344 项",
+            "三个 platform provider、object filesystem、SQLite migration",
+        ),
+        "docs/status/current.md": (
+            "P1-S03a portable crypto dependency landing",
+            "P1-S03b immutable object filesystem adapter",
+        ),
+        "docs/status/2026-09-03-baseline.md": (
+            "7 个第一方和 423 个 crates.io 第三方 package",
+            "macOS / Linux / Windows 分别为 215 / 285 / 209 项",
+        ),
+        "docs/architecture.md": (
+            "P1-S03a",
+            "独立 portable crypto package",
+            "三个 platform provider 尚未进入依赖图",
+            "P1-S03b` 至 `P1-S05",
+        ),
+        "docs/privacy-threat-model.md": (
+            "P1-S03a",
+            "portable cipher / wrap / AAD 与合成测试",
+            "filesystem、platform key provider、SQLite migration",
+        ),
+        "docs/mvp-roadmap.md": (
+            "P1-S03a portable crypto dependency landing",
+            "P1-S03b immutable object filesystem adapter",
+            "durable no-overwrite publish",
+        ),
+        "docs/adr/0008-phase1-encrypted-source-vault.md": (
+            "P1-S03a portable crypto 落地",
+            "P1-S03b immutable object filesystem adapter",
+            "portable dependency / cipher / wrap / AAD / 合成测试已落地",
+        ),
+        "docs/implementation/m0-rust-dependency-baseline.md": (
+            "七个第一方 workspace package",
+            "423 个第三方 package",
+            "Source Vault portable crypto 直接依赖",
+            "P1-S03a 的 11 个新增 package",
+            "两个分发根的三目标可达依赖 notices",
+        ),
+        "docs/implementation/phase1-third-party-notices.md": (
+            "P1-S03a expansion reviewed",
+            "344 个唯一 crates.io package",
+            "两个分发根",
+            "aead-stream",
+        ),
+        "scripts/generate-third-party-notices.py": (
+            'ROOT_PACKAGES = ("radishmemory-desktop", "radishmemory-source-vault")',
+        ),
+        "crates/radishmemory-source-vault/src/lib.rs": (
+            "#![forbid(unsafe_code)]",
+            'OBJECT_CIPHER_PROFILE: &str = "radishmemory.xchacha20poly1305-stream-be32/1"',
+            'DEK_WRAP_PROFILE: &str = "radishmemory.xchacha20poly1305-dek-wrap/1"',
+            "MAX_OBJECT_PLAINTEXT_BYTES: usize = 8 * 1024 * 1024",
+        ),
+        "crates/radishmemory-source-vault/src/aad.rs": (
+            'AAD_CODEC_PREFIX: &[u8] = b"RMAAD\\x01"',
+            "aad_codec_matches_frozen_byte_level_vectors",
+            "every_caller_supplied_metadata_field_changes_both_aad_domains",
+        ),
+        "crates/radishmemory-source-vault/src/crypto.rs": (
+            "EncryptorBE32::<XChaCha20Poly1305>",
+            "Zeroizing<[u8; KEY_BYTES]>",
+            "seal_object_with_random",
+            "cfrg_xchacha20poly1305_appendix_a1_vector_matches",
+            "project_owned_stream_vectors_cover_phase1_size_boundaries",
+            "tampering_truncation_reordering_and_metadata_changes_fail_closed",
+        ),
+        "crates/radishmemory-source-vault/src/random.rs": (
+            "pub(crate) trait RandomSource",
+            "getrandom::fill(destination)",
+        ),
+    }
+    for name, fragments in contracts.items():
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for fragment in fragments:
+            if fragment not in text:
+                errors.append(
+                    f"{name} is missing P1-S03a portable crypto fragment: {fragment}"
+                )
+
+    forbidden_platform_dependencies = (
+        "keyring-core",
+        "apple-native-keyring-store",
+        "windows-native-keyring-store",
+        "zbus-secret-service-keyring-store",
+    )
+    for name in ("Cargo.toml", "Cargo.lock"):
+        path = repo_root / name
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        for dependency in forbidden_platform_dependencies:
+            if dependency in text:
+                errors.append(
+                    f"{name} includes platform key-store dependency before its authorized unit: "
+                    f"{dependency}"
                 )
 
 
@@ -1091,6 +1625,19 @@ def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:
     if result.returncode != 0:
         detail = (result.stdout + result.stderr).strip()
         errors.append(f"M0 fixture validation failed: {detail}")
+
+
+def run_third_party_notice_check(repo_root: Path, errors: list[str]) -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/generate-third-party-notices.py", "--check"],
+        cwd=repo_root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        detail = (result.stdout + result.stderr).strip()
+        errors.append(f"third-party notice validation failed: {detail}")
 
 
 def check_issue_and_pr_contracts(repo_root: Path, errors: list[str]) -> None:
@@ -1338,12 +1885,17 @@ def main() -> int:
     check_radishmind_entry_contract(REPO_ROOT, errors)
     check_implementation_stack_contract(REPO_ROOT, errors)
     check_phase1_file_entry_contract(REPO_ROOT, errors)
+    check_phase1_local_host_contract(REPO_ROOT, errors)
+    check_phase1_encrypted_source_vault_contract(REPO_ROOT, errors)
+    check_phase1_encrypted_source_vault_dependency_review(REPO_ROOT, errors)
+    check_phase1_source_vault_portable_crypto(REPO_ROOT, errors)
     check_issue_and_pr_contracts(REPO_ROOT, errors)
     check_ruleset_contract(REPO_ROOT, errors)
     check_workflow_contract(REPO_ROOT, errors)
     check_diff(REPO_ROOT, args.base_ref, errors)
     check_commit_messages(REPO_ROOT, args.base_ref, errors)
     run_m0_fixture_check(REPO_ROOT, errors)
+    run_third_party_notice_check(REPO_ROOT, errors)
     run_checker_tests(REPO_ROOT, errors)
 
     if errors:

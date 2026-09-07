@@ -111,6 +111,8 @@ RadishMind 已有或适合继续发展的能力包括：
 
 M0 不使用 RadishMind、直接模型适配器或生成模型，只以确定性本地流程验证采集、检索、ContextPack 和记忆治理。M0 完成后，阶段 1 与阶段 2 可以使用 mock 或一个直接模型适配器验证模型调用，但不得把 RadishMind 变成资料库和记忆生命周期的启动依赖，也不得改变已冻结的记忆真相与确认边界。
 
+阶段 1 / 2 若实际使用直接云端 adapter，首次调用就必须具备最小 ContextPack、OutboundContextManifest、授权接收方 / 用途与实际 attempts 记录；阶段 3 扩展能力而不是首次补外发治理。该要求复用现有[模型外发控制](privacy-threat-model.md#模型外发控制)，不产生另一套 adapter 协议。
+
 ### 接入批次 2：可选 Gateway
 
 在完整 MVP 阶段 3，通过稳定请求契约接入 RadishMind Model Gateway，比较直接 adapter 与 Gateway adapter 的返回结构、引用、usage 和失败。首次只接 Gateway，不接 Workflow、Tooling、RAG 数据 owner、Session owner 或业务写回。
