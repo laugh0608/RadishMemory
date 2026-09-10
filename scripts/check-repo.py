@@ -81,6 +81,12 @@ REQUIRED_FILES = (
     "crates/radishmemory-source-vault/src/aad.rs",
     "crates/radishmemory-source-vault/src/crypto.rs",
     "crates/radishmemory-source-vault/src/error.rs",
+    "crates/radishmemory-source-vault/src/envelope.rs",
+    "crates/radishmemory-source-vault/src/envelope_tests.rs",
+    "crates/radishmemory-source-vault/src/filesystem.rs",
+    "crates/radishmemory-source-vault/src/filesystem_support.rs",
+    "crates/radishmemory-source-vault/src/filesystem_tests.rs",
+    "crates/radishmemory-source-vault/src/test_support.rs",
     "crates/radishmemory-source-vault/src/lib.rs",
     "crates/radishmemory-source-vault/src/random.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
@@ -114,6 +120,7 @@ REQUIRED_FILES = (
     "docs/adr/0008-phase1-encrypted-source-vault.md",
     "docs/implementation/phase1-encrypted-source-vault-dependency-review.md",
     "docs/implementation/phase1-source-vault-portable-crypto.md",
+    "docs/implementation/phase1-source-vault-filesystem.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -1001,7 +1008,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1018,7 +1025,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1348,7 +1355,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1435,7 +1442,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1510,10 +1517,10 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
-            "三个 platform provider、object filesystem、SQLite migration",
+            "三个 platform provider、SQLite migration 与宿主加密数据流尚未实现",
         ),
         "docs/status/current.md": (
             "P1-S03a portable crypto dependency landing",
@@ -1532,7 +1539,7 @@ def check_phase1_source_vault_portable_crypto(
         "docs/privacy-threat-model.md": (
             "P1-S03a",
             "portable cipher / wrap / AAD 与合成测试",
-            "filesystem、platform key provider、SQLite migration",
+            "filesystem envelope、不可覆盖发布与认证读取",
         ),
         "docs/mvp-roadmap.md": (
             "P1-S03a portable crypto dependency landing",
@@ -1559,6 +1566,14 @@ def check_phase1_source_vault_portable_crypto(
         ),
         "scripts/generate-third-party-notices.py": (
             'ROOT_PACKAGES = ("radishmemory-desktop", "radishmemory-source-vault")',
+        ),
+        "docs/implementation/phase1-source-vault-filesystem.md": (
+            "P1-S03b implemented and locally validated — platform runtime validation pending",
+            "RMOBJ\\x01",
+            "PublishedObject",
+            "不是 canonical capture receipt",
+            "目录枚举、未知文件策略、业务重试、orphan reconciliation",
+            "Linux / Windows 尚未编译或运行本批",
         ),
         "crates/radishmemory-source-vault/src/lib.rs": (
             "#![forbid(unsafe_code)]",

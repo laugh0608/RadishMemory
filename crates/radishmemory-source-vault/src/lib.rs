@@ -2,12 +2,21 @@
 
 mod aad;
 mod crypto;
+mod envelope;
 mod error;
+mod filesystem;
+mod filesystem_support;
 mod random;
+
+#[cfg(test)]
+mod test_support;
 
 pub use aad::ObjectMetadata;
 pub use crypto::{KeyEncryptionKey, SealedObject, open_object, seal_object};
 pub use error::{SourceVaultError, SourceVaultErrorCode};
+pub use filesystem::{
+    AttemptId, AttemptState, ObjectDirectory, ObjectLocator, ObjectWrite, PublishedObject,
+};
 
 pub const ENVELOPE_PROFILE: &str = "radishmemory.phase1-encrypted-source-vault/1";
 pub const OBJECT_CIPHER_PROFILE: &str = "radishmemory.xchacha20poly1305-stream-be32/1";

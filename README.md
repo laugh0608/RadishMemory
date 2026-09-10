@@ -40,6 +40,7 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 - [阶段 1 加密内容寻址 Source Vault ADR](docs/adr/0008-phase1-encrypted-source-vault.md)
 - [阶段 1 加密 Source Vault 依赖与密码套件评审](docs/implementation/phase1-encrypted-source-vault-dependency-review.md)
 - [阶段 1 Source Vault portable crypto 落地记录](docs/implementation/phase1-source-vault-portable-crypto.md)
+- [阶段 1 Source Vault filesystem adapter 落地记录](docs/implementation/phase1-source-vault-filesystem.md)
 - [阶段 1 桌面宿主依赖评审](docs/implementation/phase1-desktop-dependency-review.md)
 - [阶段 1 macOS 桌面宿主交互验收](docs/implementation/phase1-macos-host-acceptance.md)
 - [隐私与威胁模型](docs/privacy-threat-model.md)
@@ -51,12 +52,12 @@ RadishMemory 不是“无限聊天记录”，也不只是向量数据库或传�
 
 ## 当前状态
 
-当前处于 `Phase 1 Source Vault portable crypto complete; immutable object adapter next`；`Phase 1 host acceptance complete` 是已有合成宿主验收事实，具体能力与近期缺口见[当前状态](docs/status/current.md)。
+当前处于 `Phase 1 Source Vault immutable object adapter locally validated; platform validation next`；`Phase 1 host acceptance complete` 是已有合成宿主验收事实，具体能力与近期缺口见[当前状态](docs/status/current.md)。
 
 - 已有 canonical core、SQLite v6 connection / migration、来源与记忆事件、FTS5、本地删除证据和真实 M0 runner；runner 的词项扩展、历史投影与部分断言存在[证据限制](docs/evaluation/m0-fixture-contract.md#当前实现的证据边界)。
 - [ADR 0006](docs/adr/0006-phase1-text-markdown-file-entry.md)的文本入口与 [ADR 0007](docs/adr/0007-phase1-local-library-host.md)的 application service / 桌面宿主已落地，支持合成 UTF-8 `.txt` / `.md` 导入、更新、搜索、版本导出与本地删除。已有系统 picker 和合成测试证据不授权本任务使用真实个人资料，也不等于日常资料库或签名发行包已经完整可用。
 - [ADR 0008](docs/adr/0008-phase1-encrypted-source-vault.md)冻结一 source version 一密文对象；当前产品仍使用 SQLite v6 inline plaintext body，不能声明加密 Source Vault 已可用或整个资料库已静态加密。FTS 当前保存整文件片段的完整可读正文，未来仅加密原始对象仍不保护这份正文副本。
-- P1-S02 选择 XChaCha20-Poly1305 + STREAM-BE32；P1-S03a 已完成 portable manifest / `Cargo.lock`、cipher / wrap / AAD 与合成测试。[P1-S03a 落地记录](docs/implementation/phase1-source-vault-portable-crypto.md)记录扩大到 344 项的 notices；三个 platform provider、object filesystem、SQLite migration 与宿主加密数据流尚未实现。
+- P1-S02 选择 XChaCha20-Poly1305 + STREAM-BE32；P1-S03a 已完成 portable manifest / `Cargo.lock`、cipher / wrap / AAD 与合成测试。[P1-S03a 落地记录](docs/implementation/phase1-source-vault-portable-crypto.md)记录扩大到 344 项的 notices；[P1-S03b](docs/implementation/phase1-source-vault-filesystem.md)已实现 versioned envelope、immutable object filesystem 与认证回读，通过 macOS 合成测试；Linux / Windows 文件系统运行证据待补，三个 platform provider、SQLite migration 与宿主加密数据流尚未实现。
 
 2026-09-05 审阅发现中文词语搜索不命中、桌面目录只取前 200 条、启动失败后无法进入派生重建等问题，详见[审阅记录](docs/implementation/2026-09-05-project-review.md)和[质量验收计划](docs/evaluation/phase1-local-library-quality.md)。这些问题尚未因文档更新而修复。
 

@@ -29,6 +29,7 @@
 23. [ADR 0008：阶段 1 加密内容寻址 Source Vault](adr/0008-phase1-encrypted-source-vault.md)：原始对象认证加密、内容地址、密钥边界、SQLite 协调、迁移、删除与合成验收。
 24. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
 25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
+    - [Phase 1 Source Vault filesystem adapter 落地记录](implementation/phase1-source-vault-filesystem.md)：P1-S03b envelope、目录 capability、不可覆盖发布、认证回读、attempt 状态与平台证据限制。
 26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 质量与历史记录

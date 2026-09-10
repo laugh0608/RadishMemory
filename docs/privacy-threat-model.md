@@ -144,7 +144,9 @@ M0 删除证据只覆盖已枚举的单设备正文、片段、结构化记忆�
 
 ## 阶段 1 加密 Source Vault 信任边界
 
-[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已接受受管原始对象的本地认证加密契约，[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)冻结精确 crypto / key-provider profile，[P1-S03a](implementation/phase1-source-vault-portable-crypto.md)又落地 portable cipher / wrap / AAD 与合成测试。filesystem、platform key provider、SQLite migration 和 application integration 尚未开始；当前 SQLite v6 仍保存 inline plaintext body，独立 crypto package 不改变已有字节，也不授权使用真实个人资料。
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已接受受管原始对象的本地认证加密契约，[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)冻结精确 crypto / key-provider profile，[P1-S03a](implementation/phase1-source-vault-portable-crypto.md)又落地 portable cipher / wrap / AAD 与合成测试。[P1-S03b](implementation/phase1-source-vault-filesystem.md)已在独立 package 实现 filesystem envelope、不可覆盖发布与认证读取，只有 macOS 本机合成证据；platform key provider、SQLite migration 和 application integration 尚未开始；当前 SQLite v6 仍保存 inline plaintext body，独立 crypto package 不改变已有字节，也不授权使用真实个人资料。
+
+P1-S03b 不新增持久化明文 staging；目录与对象替换、未知 envelope、错误 key、locator / metadata 不匹配均拒绝。失败残留保留供后续精确协调，不能从 `inspect_attempt` 推导 orphan 删除授权。私有 locator / attempt 仅供 adapter 持久化，不进入普通诊断；现有目录权限不会被该 adapter 自动修改，目录持久化失败不执行兼容降级。该本机能力不证明跨平台持久化、数据库提交或生产隐私验收。
 
 首批只保护 Source Vault 管理的原始对象文件。SQLite metadata、FTS、标题、摘要、media type、大小、时间、治理标签和派生内容仍可能泄露语义或使用模式，因此不能把该能力描述为整个资料库静态加密。对象解密期间的进程内明文、已解锁设备上的恶意进程、内核、交换区、休眠镜像、崩溃收集和用户导出也不在该静态对象保证内。
 

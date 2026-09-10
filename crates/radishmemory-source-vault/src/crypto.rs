@@ -31,10 +31,10 @@ impl fmt::Debug for KeyEncryptionKey {
 }
 
 pub struct SealedObject {
-    stream_nonce_prefix: [u8; STREAM_NONCE_PREFIX_BYTES],
-    wrap_nonce: [u8; WRAP_NONCE_BYTES],
-    wrapped_dek: [u8; KEY_BYTES + AEAD_TAG_BYTES],
-    segments: Vec<Vec<u8>>,
+    pub(crate) stream_nonce_prefix: [u8; STREAM_NONCE_PREFIX_BYTES],
+    pub(crate) wrap_nonce: [u8; WRAP_NONCE_BYTES],
+    pub(crate) wrapped_dek: [u8; KEY_BYTES + AEAD_TAG_BYTES],
+    pub(crate) segments: Vec<Vec<u8>>,
 }
 
 impl SealedObject {
@@ -115,7 +115,7 @@ pub fn open_object(
     Ok(plaintext)
 }
 
-fn seal_object_with_random<R: RandomSource>(
+pub(crate) fn seal_object_with_random<R: RandomSource>(
     key_encryption_key: &KeyEncryptionKey,
     metadata: &ObjectMetadata,
     plaintext: &[u8],

@@ -94,11 +94,13 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 ## 阶段 1 加密内容寻址 Source Vault 边界
 
-[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package，但 filesystem / SQLite production data flow 尚未实现。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter 并通过 macOS 合成验证，但 SQLite production data flow 尚未实现。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
 
 一个不可变 SourceArtifact version 首批对应一个不可变密文对象。逻辑 lookup 使用精确 `source_id` 与 `exact-bytes-v1` digest，物理 locator 保持 adapter-private；不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重。该选择保留独立 governance、retention 和 deletion scope，不把内容摘要升级为 canonical identity。
 
 每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)已将精确 profile 冻结为 XChaCha20-Poly1305 + STREAM-BE32 与独立 XChaCha20-Poly1305 DEK wrap，随机源复用 `getrandom =0.4.3`，设备 KEK 按 target 使用 macOS Keychain、Windows Credential Manager 或 Linux Secret Service。P1-S03a 已使 portable crypto 依赖进入 manifest / lockfile 并实现 deterministic AAD、seal / open 与合成验证；三个 platform provider 尚未进入依赖图，filesystem adapter 也未接入 production。
+
+P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`ObjectDirectory` 只向专用目录发布并认证回读，`PublishedObject` 不代表 canonical source 已提交。`inspect_attempt` 只报告精确候选状态，不自动清理或认定 orphan；跨平台验证、业务幂等和引用协调仍待后续。
 
 对象提交遵循“密文 publish → SQLite commit → read-back”三段状态：先在应用专用 staging 中直接生成密文，经 sync、关闭、认证与 no-overwrite publish 后，才能在一个 SQLite `IMMEDIATE` transaction 内提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 复验成功才返回 receipt。publish 后、metadata commit 前的对象只是可识别 orphan candidate；恢复器只能清理无 committed reference、无可恢复 attempt 且身份明确的对象，ambiguous state 使 library 失败关闭。
 
@@ -114,7 +116,7 @@ SQLite v6 migration 在普通操作暴露前逐对象复验 inline body、发布
 | `radishmemory-application` | 组合本地资料库用例 | production 业务入口，不承担桌面 toolkit 或 fixture mapping |
 | `radishmemory-desktop` | 平台目录、profile、runtime、picker 与 UI | 第一方业务依赖只到 application |
 | `radishmemory-m0` | 合成 suite 映射与证据编排 | 不将 runner 专用逻辑表述为 production API |
-| `radishmemory-source-vault` | 当前独立 portable crypto | object filesystem、key provider 与 application 数据流尚未接入 |
+| `radishmemory-source-vault` | 独立 portable crypto 与 immutable object filesystem adapter | filesystem 仅有本机验证；key provider 与 application 数据流尚未接入 |
 
 当前搜索与目录实现包含全量正文读取、事实复验和内存排序 / 分页，桌面同步执行相关操作。后续优化应先取得数据量、正文大小和版本分布对应的性能证据，再决定增量校验、SQL 分页、top-k 或 UI 执行方式；不能通过省略权限、时间、删除或完整性检查降低成本。
 

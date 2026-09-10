@@ -20,6 +20,18 @@ pub struct ObjectMetadata {
 }
 
 impl ObjectMetadata {
+    pub fn namespace_id(&self) -> &str {
+        &self.namespace_id
+    }
+
+    pub fn source_id(&self) -> &str {
+        &self.source_id
+    }
+
+    pub fn media_type(&self) -> &str {
+        &self.media_type
+    }
+
     pub fn new(
         namespace_id: impl Into<String>,
         source_id: impl Into<String>,
