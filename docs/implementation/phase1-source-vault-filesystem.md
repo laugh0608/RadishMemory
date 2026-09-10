@@ -4,7 +4,7 @@
 
 状态：`P1-S03b Windows file-identity and ordinary-user acceptance validated — Linux pending`
 
-基线：`6581b59`，在 `dev` 上实施；本记录与本批实现一同提交。
+初始基线：`6581b59`，在 `dev` 上实施；实现提交依次为 `66dc1aa`、`6a6b611`、`2971fc9`。下文按批次保留当时测试数量与环境事实，日终汇总和明日事项见[2026-09-10 收尾记录](../status/2026-09-10-source-vault.md)。
 
 范围：落实 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)及 [P1-S03a](phase1-source-vault-portable-crypto.md)定义的 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish、认证 read-back 与单次 attempt identity。初始实现只扩展 `radishmemory-source-vault`，未改变 manifest、`Cargo.lock` 或 notices；后续 Windows 身份修复按单独授权新增最小原生 adapter 与依赖边，见下文。各批次均不改变 frozen cipher / AAD profile、canonical schema，不接真实 key store、SQLite、application / UI，不处理真实资料。
 
@@ -49,13 +49,13 @@
 顺序为：
 
 1. 在磁盘变更前认证内存 envelope，拒绝错误 key；调用方已经可以取得本次 locator / attempt，以便未来 P1-S04 先持久化关系。
-2. `create_new` staging，直接写 envelope / ciphertext，`flush`、文件 `sync_all`、关闭并同步 staging 目录；没有持久化明文临时文件。
+2. `create_new` staging，直接写 envelope / ciphertext，`flush`、文件 `sync_all`、关闭写句柄并同步 staging 目录；没有持久化明文临时文件。
 3. 独立打开 staging，核对写入后的文件身份、完整 bytes、envelope、AEAD 与 length / digest。
 4. 再验证目录与 staging 身份，使用 `fs::hard_link` 原子建立最终名字，不覆盖已有目标；随后同步 objects 目录。
 5. 从最终名字重新读取，核对与 staging 相同的文件身份和完整 bytes，并再次认证。
 6. 只删除本次已验证 staging link，同步 staging 目录，再复核目录和最终对象身份，返回 `PublishedObject`。
 
-文件关闭前显式 `sync_all`，关闭后独立回读；Rust `File` 的 `Drop` 不报告 close 错误，不能把 drop 当作持久化证据。参考：[Rust File](https://doc.rust-lang.org/std/fs/struct.File.html)、[Rust hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html)。
+写句柄关闭前显式 `sync_all`，关闭后独立回读；身份引用句柄仍保留到比较结束以防 ID 重用。Rust `File` 的 `Drop` 不报告 close 错误，不能把 drop 当作持久化证据。参考：[Rust File](https://doc.rust-lang.org/std/fs/struct.File.html)、[Rust hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html)。
 
 `PublishedObject` 仅证明本次 filesystem publish 的验证结果，不是 canonical capture receipt；SQLite reference commit、commit 后从正式 reference read-back、binding / audit / 幂等结果均留给 P1-S04 / P1-S05。同一目标再次 publish 返回 `ObjectExists`，不覆盖、不重新加密旧对象，也不假装完成业务层幂等。
 
@@ -122,7 +122,7 @@ cargo test -p radishmemory-source-vault --test windows_filesystem --locked --off
 
 在 `6a6b611` 加一条合成回归的隔离源码副本中，使用同一 Windows 11 ARM64 / NTFS 测试环境及 Rust `1.96.0` 执行 `metadata_preserving_replacement_cannot_authorize_staging_cleanup`。在删除 staging 的 checkpoint 保留原文件，另建内容相同的文件，并将修改时间与创建时间设置为原值；长度与两个时间相等的前置断言全部通过。预期返回 `FilesystemChanged` 并保留替换文件，实际返回 `Ok(PublishedObject([REDACTED]))`，测试失败，退出码 `101`；原始日志 SHA-256 为 `06b6a893f8cf357f3642b6325574a3fc3dee8b0ef38789279846763efc7621fa`。这次是真实文件操作，未使用模拟返回值；不是普通用户验收。
 
-根因是 Windows `Identity` 仅比较可修改的 creation time，`Observation` 再比较长度和修改时间，三者相等不能证明是原文件。当前清理检查因此会接受这个替换，违反精确 staging 身份要求。该用例在 macOS 通过，因为 Unix 比较 device / inode。该复现批次新增回归保持失败可见，未加 ignore、未放宽断言，当时尚未修复 production code；随后修复见下节。此前 28 个 Windows 基线测试通过的历史事实不覆盖这个新场景。
+根因是 Windows `Identity` 仅比较可修改的 creation time，`Observation` 再比较长度和修改时间，三者相等不能证明是原文件。当时的清理检查因此会接受这个替换，违反精确 staging 身份要求。该用例在 macOS 通过，因为 Unix 比较 device / inode。该复现批次新增回归保持失败可见，未加 ignore、未放宽断言，当时尚未修复 production code；随后修复见下节。此前 28 个 Windows 基线测试通过的历史事实不覆盖这个新场景。
 
 本次使用任务专用 `CARGO_HOME`，从本机已有缓存复制并核对 20 个锁定依赖，离线编译；未修改共享缓存、manifest、lockfile、工具链、UAC、账户或系统权限。普通用户 / ACL 验收环境调整仍未授权执行。收尾已移除任务专用源码、缓存、传输文件及清理脚本，脚本核对临时前缀零残留后正常关机，VM 状态确认 `stopped`；本机临时诊断日志与待审批方案保留供审阅。
 
@@ -158,7 +158,7 @@ ACL 用例由普通测试账户真实设置并还原合成 fixture 的 DACL：�
 
 环境还原已完成：确认任务及测试子进程退出后移除一次性任务，撤销仅授予合成 SID 的 `SeBatchLogonRight`，导出核验 user-rights policy 已无该 SID。系统仍将 profile 标记为 loaded 时没有强制删除；先禁用临时账户、恢复 `EnableLUA` 为原 DWORD `0` 并正常重启，确认 profile 卸载后通过对应 SID 删除账户及 OS profile，再核验账户 / profile / 任务 / 用户权利均无残留。随后清理隔离源码、22 项专用缓存、二进制、合成 fixture、传输包和脚本；临时前缀零残留检查通过后正常关机，VM 状态确认 `stopped`。还原结果 SHA-256 为 `c7931d48bedbe11a1208ae213f1827f6e5780e5189646242ed377d82b985104f`。本机保留合成证据与源码输入包供审阅；没有清除事件日志，也不承诺虚拟机磁盘逐字节还原。
 
-最终 `python3 scripts/check-repo.py` 与 `git diff --check` 通过，检查器 27 个 unit tests 通过；实际源代码与前述 Windows 验收及本机完整仓库门禁相同。没有运行 Linux、ReFS、网络盘、真实断电、Windows 全 workspace、远程 CI 或产品 GUI / key-store / migration 验收，没有提交或 push。
+最终 `python3 scripts/check-repo.py` 与 `git diff --check` 通过，检查器 27 个 unit tests 通过；实际源代码与前述 Windows 验收及本机完整仓库门禁相同。没有运行 Linux、ReFS、网络盘、真实断电、Windows 全 workspace、远程 CI 或产品 GUI / key-store / migration 验收；修复随后提交为 `2971fc9`，没有 push。
 
 ## 平台限制与下一步
 

@@ -35,6 +35,7 @@
 ## 质量与历史记录
 
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
+- [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。
 - [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。
 - [2026-09-03 阶段基线归档](status/2026-09-03-baseline.md)：M0 至 P1-S03a 的历史批次、CI 与依赖证据，不作为当前任务授权或顺位。
 

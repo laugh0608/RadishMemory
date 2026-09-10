@@ -8,7 +8,7 @@
 
 M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 的本机实现和合成验证，尚未接入产品数据流。当前 production code 仍是 SQLite v6 inline plaintext body。项目具备受约束的工程原型，但中文找回、完整目录访问、启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
 
-本批 P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；仅修改独立 Source Vault package，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
+本批 P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；实现范围为独立 Source Vault package 与 Windows 文件身份 adapter，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
 
 ## 能力与证据
 
@@ -30,8 +30,8 @@ M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象
 
 ## 已接受的边界
 
-- [ADR 0005](../adr/0005-m0-implementation-stack.md)冻结 Rust 2024 模块化单体，首个工具链固定为 Rust `1.96.0`。当前依赖、manifest / lockfile 和 notices 以[Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)及[P1-S03a 落地记录](../implementation/phase1-source-vault-portable-crypto.md)为准。
-- P1-S02 已选择 `radishmemory.xchacha20poly1305-stream-be32/1` 与 `radishmemory.xchacha20poly1305-dek-wrap/1`；P1-S03a 已使 portable manifest / `Cargo.lock` / notices 和 cipher 实现落地；P1-S03b 复用该依赖与 AAD，新增严格 envelope、不可覆盖发布及精确 attempt 检查，尚未访问真实系统 key store。
+- [ADR 0005](../adr/0005-m0-implementation-stack.md)冻结 Rust 2024 模块化单体，首个工具链固定为 Rust `1.96.0`。当前依赖、manifest / lockfile 和 notices 以[Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)及[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)为准。
+- P1-S02 已选择 `radishmemory.xchacha20poly1305-stream-be32/1` 与 `radishmemory.xchacha20poly1305-dek-wrap/1`；P1-S03a 已使 portable manifest / `Cargo.lock` / notices 和 cipher 实现落地；P1-S03b 复用该依赖与 AAD，新增严格 envelope、不可覆盖发布及精确 attempt 检查；Windows 使用单独审阅的最小文件身份 adapter，尚未访问真实系统 key store。
 - 原始对象按 source version 独立认证加密，不跨 provenance 物理去重；publish → SQLite commit → read-back 必须完整成立。未知 profile、缺 key、认证失败或 ambiguous state 失败关闭，不回退旧 BLOB 或外部原件。
 - 首批对象加密不覆盖 SQLite metadata、FTS、派生数据；当前整文件片段使 FTS 保存完整可读正文，不能简化为“只有少量元数据未加密”。历史明文、进程内明文、交换区、快照、备份和用户导出仍在该保证之外。
 - [ADR 0003](../adr/0003-zero-knowledge-sync-first.md)选择零知识同步服务，可信计算节点后置为显式可选能力；不代表零知识同步已经实现。
@@ -39,7 +39,7 @@ M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象
 
 ## 当前停止线
 
-- 不将独立 adapter 或文档更新视为产品缺陷已修复，不扩大 P1-H05、M0 fixture 或 portable crypto 的证据范围；P1-S03b 本机证据不替代 Linux / Windows、SQLite / host 验收。
+- 不将独立 adapter 或文档更新视为产品缺陷已修复，不扩大 P1-H05、M0 fixture 或 portable crypto 的证据范围；P1-S03b 已有平台证据不替代 Linux、其它 Windows 文件系统、SQLite / host 验收。
 - 不在 `P1-S03b` 至 `P1-S05` 完成前声明加密 Source Vault 可用，不进入 PDF / 图片解析；真实 key store、migration 与宿主接入须分别授权和验证。
 - 不将原始对象加密表述为整个资料库静态加密；不声明零知识同步、取证级永久删除、备份可恢复或生产可用。
 - 不使用真实个人资料进行仓库 / CI 验收；不自动接入模型、网络、同步或兄弟项目，不增加虚拟形象、图数据库或微服务。
@@ -60,4 +60,8 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
-2026-09-05 审阅时，`./scripts/check-repo.sh` 在解除合成测试 loopback 端口限制后通过，包含 140 个 Rust 测试；默认 features 的 `cargo check --workspace --all-targets --locked --offline` 通过。中文检索、FTS 完整正文副本和派生损坏后打开失败已用实际 application / SQLite 3.53.2 复现；没有重跑三平台 GUI、远程 CI、性能基准或独立密码学审计。该记录是审阅基线；2026-09-10 P1-S03b 的 32 个 package tests、本地完整仓库门禁（160 个 Rust tests）和默认 features workspace check 均通过；门禁同样在解除合成 loopback 限制后完成。完整验证与未覆盖范围以[落地记录](../implementation/phase1-source-vault-filesystem.md)和本批交接为准。
+2026-09-10 最终代码已通过 macOS 完整仓库门禁及 Windows ARM64 / NTFS 的 Source Vault、native adapter 和分身份 integration 验收；Linux filesystem 尚无运行证据，Windows 全 workspace 与远程 CI 未重跑。批次测试数量、环境还原和提交复核见[日终记录](2026-09-10-source-vault.md)，详细场景见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)。
+
+## 明日事项（2026-09-11）
+
+首项补 Linux filesystem 运行证据及差异处置；按[明日验收清单](2026-09-10-source-vault.md#明日事项2026-09-11)核对代码、环境、权限、发布与失败路径。完成后再安排 platform provider；SQLite migration、宿主接入和产品质量项继续遵循上述顺位与停止线。本节只记录建议；VM / 系统变更按明日具体范围授权。

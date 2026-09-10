@@ -69,7 +69,7 @@ M0 使用单个本地 SQLite 数据库文件作为每个 fixture 场景的隔离
 
 M0 中删除组件的 `succeeded` 只证明目标行、FTS 条目、投影和缓存已按计划处理，且通过应用接口与完整性检查不再可检索；它不证明 SQLite 空闲页、临时文件、文件系统快照或底层介质已经完成取证级擦除。runner 应避免持久 WAL，关闭连接后清理整个合成场景目录，并把任何残留或清理失败报告为 pending / failed。生产物理清除、密钥销毁和备份到期仍由后续存储与加密决策承载。
 
-把小文本正文暂存为 SQLite BLOB 是 M0 的实施选择，不是长期 Source Vault 格式。阶段 1 已通过 [ADR 0008](0008-phase1-encrypted-source-vault.md) 在 PDF、图片和大对象进入前冻结加密内容寻址对象存储、SQLite metadata 的事务协调和迁移边界，并由 [P1-S02](../implementation/phase1-encrypted-source-vault-dependency-review.md)冻结具体 cipher / key-provider dependency 选择；P1-S03a portable manifest / lockfile landing 已完成，filesystem adapter、platform providers 与 migration 仍须独立评审和授权。
+把小文本正文暂存为 SQLite BLOB 是 M0 的实施选择，不是长期 Source Vault 格式。阶段 1 已通过 [ADR 0008](0008-phase1-encrypted-source-vault.md) 在 PDF、图片和大对象进入前冻结加密内容寻址对象存储、SQLite metadata 的事务协调和迁移边界，并由 [P1-S02](../implementation/phase1-encrypted-source-vault-dependency-review.md)冻结具体 cipher / key-provider dependency 选择；P1-S03a portable manifest / lockfile landing 已完成；经后续独立授权，P1-S03b filesystem adapter 已实现，其平台证据见[落地记录](../implementation/phase1-source-vault-filesystem.md)。platform providers 与 migration 仍须分别评审和授权。
 
 M0 不实现静态加密，因此不得因使用本地 SQLite 或 bundled SQLite 宣称加密存储、零知识或生产隐私保证。fixture 只能使用合成数据。
 
@@ -80,7 +80,7 @@ M0 不实现静态加密，因此不得因使用本地 SQLite 或 bundled SQLite
 - RFC 3339 时间解析为带 offset 的绝对时刻并比较 UTC 值，同时保留外部表示所表达的精度事实；不使用本机 locale 或隐式系统时区。
 - fixture ID 由冻结输入确定；M0 不引入随机 ID、UUID、随机排序或把系统时钟作为测试事实。
 - 搜索、引用、状态转换、删除和指标聚合返回类型化错误；未知版本、枚举、operation、assertion、metric、悬空引用和摘要不一致均失败关闭。
-- 第一方 `radishmemory-core`、`radishmemory-sqlite` 和 `radishmemory-m0` 源码禁止 `unsafe`。未来 FFI 或平台特化若需要 `unsafe`，必须隔离到新 adapter 并单独说明安全不变量。
+- 第一方 `radishmemory-core`、`radishmemory-sqlite` 和 `radishmemory-m0` 源码禁止 `unsafe`。未来 FFI 或平台特化若需要 `unsafe`，必须隔离到新 adapter 并单独说明安全不变量。P1-S03b 已按该规则新增 `radishmemory-windows-filesystem`，唯一原生入口从借用的 `File` 查询完整文件身份；Source Vault 与 workspace 默认仍禁止 unsafe，批准范围和安全不变量见[Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)。
 
 ### 首批依赖白名单
 

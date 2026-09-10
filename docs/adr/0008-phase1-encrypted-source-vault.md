@@ -58,7 +58,7 @@
 
 namespace、`source_id`、摘要、长度、media type 与 envelope version 必须作为 AEAD associated data 或受等价认证保护，防止在不同来源或 metadata 之间交换合法密文。未知 version、cipher suite、key-wrap profile、缺失字段、重复字段、认证失败或 metadata 不匹配都必须失败关闭；不允许尝试其它算法、旧 key、明文 BLOB 或外部原件作为静默 fallback。
 
-本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。[P1-S03a portable crypto 落地](../implementation/phase1-source-vault-portable-crypto.md)随后把 portable manifest / lockfile、AAD codec、cipher / wrap 与合成向量落入独立第一方 package；[P1-S03b filesystem adapter](../implementation/phase1-source-vault-filesystem.md)已实现 filesystem envelope、不可覆盖发布与认证回读并通过 macOS 合成验证；三个 platform provider、SQLite coordination 与 production data flow 仍未落地。
+本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。[P1-S03a portable crypto 落地](../implementation/phase1-source-vault-portable-crypto.md)随后把 portable manifest / lockfile、AAD codec、cipher / wrap 与合成向量落入独立第一方 package；[P1-S03b filesystem adapter](../implementation/phase1-source-vault-filesystem.md)已实现 filesystem envelope、不可覆盖发布与认证回读并通过 macOS 合成验证及 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux 运行证据待补，三个 platform provider、SQLite coordination 与 production data flow 仍未落地。
 
 未来零知识同步可以为同一对象 DEK 增加经过独立协议评审的设备或空间 wrapper，但不得要求服务端获得明文 DEK，也不得把本文的设备本地 KEK 直接升级为同步根密钥。同步密钥、恢复、撤销和轮换继续由 ADR 0003 及后续同步协议负责。
 
@@ -126,7 +126,7 @@ KEK 缺失、锁定、拒绝授权、wrapper 损坏或错误 key 都是显式失
 
 1. `P1-S01 storage contract`：接受本文，冻结声明、identity、envelope、密钥、提交、迁移、删除和合成验收；不改 production code；
 2. `P1-S02 dependency and cipher review`：已由[专项评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)选择精确 AEAD / key-wrap / random / platform key provider，并冻结版本、test vector、许可证、native build、系统授权、维护和三平台影响；
-3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Windows ARM64 提升权限基线已通过，Windows 普通用户 / 专属边界、Linux filesystem 运行验证与 platform provider landing 仍待后续；
+3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Windows ARM64 / NTFS 提升权限、普通用户与 ACL 验收已通过，文件身份替换缺陷已修复；Linux filesystem 运行验证与 platform provider landing 仍待后续；
 4. `P1-S04 SQLite coordination and migration`：实现 object reference、capture attempt、v6 migration、orphan reconciliation、verify / rebuild 与 deletion execution；
 5. `P1-S05 application and host acceptance`：接入 application service / UI，完成合成迁移、重启、key failure、故障注入和三平台 locked / 真实宿主证据。
 
@@ -199,9 +199,9 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 ## 当前实施状态与停止线
 
-`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，仅有 macOS 本机运行证据；key provider、SQLite migration 与 host integration 均未落地。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
+`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，Linux 待测；key provider、SQLite migration 与 host integration 均未落地。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
 
-- `P1-S03b` 本机实现和验证不代表 Linux / Windows durable publish 已通过，平台差异必须保留真实失败；若后续需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
+- `P1-S03b` 当前证据不代表 Linux、其它 Windows 文件系统或真实断电持久化已通过，平台差异必须保留真实失败；若后续需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
 - filesystem adapter 继续使用 synthetic key / random test seam 验收；未经独立 platform provider 授权，不加入或访问 keychain / platform security provider；
 - 未经独立实现授权，不修改 core port、SQLite schema、application service 或 UI；
 - 未经独立平台授权，不启动 GUI / VM、不访问系统 key store、不修改权限或签名配置；

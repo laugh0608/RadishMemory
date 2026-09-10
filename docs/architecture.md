@@ -94,15 +94,15 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 ## 阶段 1 加密内容寻址 Source Vault 边界
 
-[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter 并通过 macOS 合成验证，但 SQLite production data flow 尚未实现。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter，通过 macOS 合成验证与 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux 运行证据待补，SQLite production data flow 尚未实现。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
 
 一个不可变 SourceArtifact version 首批对应一个不可变密文对象。逻辑 lookup 使用精确 `source_id` 与 `exact-bytes-v1` digest，物理 locator 保持 adapter-private；不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重。该选择保留独立 governance、retention 和 deletion scope，不把内容摘要升级为 canonical identity。
 
 每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)已将精确 profile 冻结为 XChaCha20-Poly1305 + STREAM-BE32 与独立 XChaCha20-Poly1305 DEK wrap，随机源复用 `getrandom =0.4.3`，设备 KEK 按 target 使用 macOS Keychain、Windows Credential Manager 或 Linux Secret Service。P1-S03a 已使 portable crypto 依赖进入 manifest / lockfile 并实现 deterministic AAD、seal / open 与合成验证；三个 platform provider 尚未进入依赖图，filesystem adapter 也未接入 production。
 
-P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`ObjectDirectory` 只向专用目录发布并认证回读，`PublishedObject` 不代表 canonical source 已提交。`inspect_attempt` 只报告精确候选状态，不自动清理或认定 orphan；跨平台验证、业务幂等和引用协调仍待后续。
+P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`ObjectDirectory` 只向专用目录发布并认证回读，`PublishedObject` 不代表 canonical source 已提交。`inspect_attempt` 只报告精确候选状态，不自动清理或认定 orphan；Linux 运行验证、业务幂等和引用协调仍待后续。
 
-对象提交遵循“密文 publish → SQLite commit → read-back”三段状态：先在应用专用 staging 中直接生成密文，经 sync、关闭、认证与 no-overwrite publish 后，才能在一个 SQLite `IMMEDIATE` transaction 内提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 复验成功才返回 receipt。publish 后、metadata commit 前的对象只是可识别 orphan candidate；恢复器只能清理无 committed reference、无可恢复 attempt 且身份明确的对象，ambiguous state 使 library 失败关闭。
+对象提交遵循“密文 publish → SQLite commit → read-back”三段状态：先在内存中生成 envelope / 密文，再直接写入应用专用 staging，经 sync、关闭写句柄、认证与 no-overwrite publish 后，才能在一个 SQLite `IMMEDIATE` transaction 内提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 复验成功才返回 receipt。publish 后、metadata commit 前的对象只是可识别 orphan candidate；恢复器只能清理无 committed reference、无可恢复 attempt 且身份明确的对象，ambiguous state 使 library 失败关闭。
 
 SQLite v6 migration 在普通操作暴露前逐对象复验 inline body、发布密文、提交 reference 并 read-back；未完成或损坏时不混合返回 inline / object-backed source。迁移不改变 canonical identity、citation、governance 或 deletion state，也不证明 SQLite 空闲页、快照和备份中的历史明文已物理清除。`P1-S03b` 至 `P1-S05` 完成 filesystem adapter、platform provider、migration 与宿主验收前，PDF / 图片解析保持停止。
 
