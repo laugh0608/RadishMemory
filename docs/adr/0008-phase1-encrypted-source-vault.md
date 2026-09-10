@@ -126,7 +126,7 @@ KEK 缺失、锁定、拒绝授权、wrapper 损坏或错误 key 都是显式失
 
 1. `P1-S01 storage contract`：接受本文，冻结声明、identity、envelope、密钥、提交、迁移、删除和合成验收；不改 production code；
 2. `P1-S02 dependency and cipher review`：已由[专项评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)选择精确 AEAD / key-wrap / random / platform key provider，并冻结版本、test vector、许可证、native build、系统授权、维护和三平台影响；
-3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Linux / Windows filesystem 运行验证与 platform provider landing 仍待后续；
+3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Windows ARM64 提升权限基线已通过，Windows 普通用户 / 专属边界、Linux filesystem 运行验证与 platform provider landing 仍待后续；
 4. `P1-S04 SQLite coordination and migration`：实现 object reference、capture attempt、v6 migration、orphan reconciliation、verify / rebuild 与 deletion execution；
 5. `P1-S05 application and host acceptance`：接入 application service / UI，完成合成迁移、重启、key failure、故障注入和三平台 locked / 真实宿主证据。
 

@@ -2,7 +2,7 @@
 
 日期：2026-09-10
 
-状态：`P1-S03b implemented and locally validated — platform runtime validation pending`
+状态：`P1-S03b macOS and elevated Windows baseline validated — platform acceptance incomplete`
 
 基线：`6581b59`，在 `dev` 上实施；本记录与本批实现一同提交。
 
@@ -87,8 +87,39 @@
 
 ADR 场景对应的是 `P1-SF04`、`P1-SF06`、`P1-SF07`、`P1-SF10`、`P1-SF13`、`P1-SF18` 的 filesystem 子路径及 `P1-SF02` 的物理独立性，不宣称这些完整 production 场景已经全部通过；SQLite commit、中断协调、key provider、migration、删除和 host 行为均未由本批证明。
 
+## Windows ARM64 基线运行补证（2026-09-10）
+
+在既有 Windows 11 ARM64 测试 VM 的隔离副本运行提交 `66dc1aa`，没有修改该副本中的 production code。系统报告 `10.0.26200.0`，Rust / Cargo `1.96.0`，Rust host 为 `aarch64-pc-windows-msvc`，使用既有 MSVC ARM64 linker。执行通道的进程环境报告 `AMD64`，不能据此把 Rust target 记为 x64。guest agent 启动的进程明确报告 `elevated=true`，本节只建立提升权限环境的基线证据。
+
+首次 `--locked --offline` 构建在解析依赖时因缺少 `aead-stream` 的 registry 缓存停止，尚未编译。取得当前任务授权后，将本机已存在的 20 个精确锁定依赖缓存离线传入测试账户，逐项核对 `.crate` 的 SHA-256 与 `Cargo.lock` 一致；缓存包为 667812 bytes，SHA-256 为 `53e7ad7439314afe4f3b358e482935a87bf9c09f0406a6f8bc5d3269639c901a`。现有相关索引在修改前备份；没有联网下载、工具链安装、依赖版本变更或 lockfile 更新。
+
+原始基线结果：
+
+- `cargo check -p radishmemory-source-vault --all-targets --locked --offline`：通过；
+- `cargo test -p radishmemory-source-vault --locked --offline`：28 个测试通过，0 failed、0 ignored；
+- `cargo clippy -p radishmemory-source-vault --all-targets --locked --offline -- -D warnings`：通过。
+
+28 个测试包含真实目录同步、不可覆盖发布、hard-link 竞争、关闭重开后的认证读取、11 个中断 checkpoint、partial write 与失败关闭；它们使用合成材料，不能替代真实断电实验。与 macOS 的 32 个测试相比，4 个 `cfg(unix)` 测试未进入 Windows 二进制：symlink / 非普通文件、目录替换、staging / final 替换、私有权限及撤权。未执行不等于通过。
+
+UTM 命令接口一度返回空输出和零退出码，实际成功以客体脚本写出的完整日志及显式结果文件共同确认；基线结果为 `stage=completed, exitCode=0`。回收的日志 SHA-256 为 `e723bfd301c5b231d78d74b1e9f70a4b391f56fc69d1d6031a3603b7aa069994`。后续补测遇到虚拟机控制通道与正常关机超时；取得强制重启授权后恢复测试机，并继续完成下述补证。没有把空退出码、超时或未执行的探针记作通过。
+
+Windows 补充结果：
+
+- 确认本次测试盘为 NTFS；只读检查得到既有 `EnableLUA=0`，没有修改 UAC 或创建账户。本批没有普通用户权限证据。
+- [Windows filesystem integration tests](../../crates/radishmemory-source-vault/tests/windows_filesystem.rs)保留两个公共 API 测试：目录 capability 在持有期间禁止 root / objects / staging 改名，释放后可改名；root / objects / staging symlink、对象 symlink、staging symlink 和非普通对象均失败关闭且不改动外部合成 marker。
+- 为不再次改动已还原的 Cargo 缓存，使用固定工具链的 `rustc --test` 和 `clippy-driver -D warnings`，通过 `--extern` / `-L dependency` 链接提交 `66dc1aa` 的已构建库与依赖；显式带 `--include-ignored` 运行测试主体，2 个补充测试通过，0 failed、0 ignored。没有把这次直接链接复验表述为 Windows 全 workspace Cargo 验收。
+- 直接链接复验输入的 SHA-256 为 `3e4b2b616099792340abfb121223f89f56aa3d6bfd41bb4b23b1a30a4ae76600`，最终补测日志 SHA-256 为 `654c265e41b00e1dd5e034d057ad51b3db401f72d5e276e3a882f6ebe3689c6e`。symlink fixture 需要 Windows 创建符号链接权限，因此该项带明确 `ignore` 原因，不能把默认跳过计为通过；目录占用项是常规 Windows integration test。纳入 Cargo 入口时按仓库既有惯例补上跨平台依赖 lint 声明和 Windows 模块包裹，测试主体未变；入口包装在本机仓库门禁验证，未重跑 Windows Cargo 入口。
+
+后续在具备已授权符号链接权限及完整 locked 缓存的 Windows 环境，可通过常规 Cargo 入口复验：
+
+```powershell
+cargo test -p radishmemory-source-vault --test windows_filesystem --locked --offline -- --include-ignored
+```
+
+缓存收尾已实际核验：20 项索引恢复为备份值或原先不存在的状态，删除本批新增的 11 个 `.crate` 与 11 个解压源码目录；再次逐项验证后清理隔离 checkout、缓存备份、传输包及临时测试文件。没有还原 Cargo 自身的使用统计元数据，也没有改变 manifest、lockfile、notices 或系统设置。客体临时前缀零残留已核对，最后的结果文件也已删除；测试机随后正常关机并确认 `stopped`。本机收尾的 `./scripts/check-repo.sh` 通过 163 个文件检查、format / Clippy 与 160 个 Rust tests；没有执行远程 CI 或 Windows 全 workspace 门禁。
+
 ## 平台限制与下一步
 
-macOS 具备本机实际测试；Linux / Windows 尚未编译或运行本批。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。跨平台运行前不能宣称 Windows durable publish 已可用；若实测暴露 std-only 能力不足，须单独评审所需依赖和平台范围。
+macOS 具备本机实际测试；Windows ARM64 提升权限基线通过，普通用户、文件身份替换与权限验收未完成；Linux 尚未编译或运行本批。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。完成上述剩余验收前不能宣称 Windows durable publish 已可用；若实测暴露 std-only 能力不足，须单独评审所需依赖和平台范围。
 
-后续先补 Linux / Windows 文件系统运行证据与差异处置，再分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。
+后续先补 Windows 普通用户、文件身份 / 替换与权限边界证据，再补 Linux 文件系统运行证据与差异处置，再分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。
