@@ -4,6 +4,8 @@ use aead_stream as _;
 use chacha20poly1305 as _;
 use getrandom as _;
 use radishmemory_source_vault as _;
+#[cfg(windows)]
+use radishmemory_windows_filesystem as _;
 use sha2 as _;
 use zeroize as _;
 
@@ -136,5 +138,106 @@ mod windows {
             SourceVaultErrorCode::InvalidFile
         );
         assert_eq!(fs::read(&marker).unwrap(), b"synthetic outside marker");
+    }
+
+    #[test]
+    #[ignore = "requires an explicitly authorized ordinary Windows test user and synthetic-fixture ACL changes"]
+    fn ordinary_user_acl_denial_and_revocation_fail_closed() {
+        use std::io::ErrorKind;
+        use std::process::{Command, Stdio};
+        let sid = std::env::var("RADISHMEMORY_ACCEPTANCE_SID")
+            .expect("authorized ordinary-user runner must supply its synthetic account SID");
+        assert!(
+            sid.starts_with("S-1-5-21-")
+                && sid
+                    .chars()
+                    .all(|c| c == 'S' || c == '-' || c.is_ascii_digit())
+        );
+        struct Denial<'a> {
+            path: &'a std::path::Path,
+            sid: &'a str,
+        }
+        impl Drop for Denial<'_> {
+            fn drop(&mut self) {
+                assert!(
+                    Command::new("icacls.exe")
+                        .arg(self.path)
+                        .arg("/remove:d")
+                        .arg(format!("*{}", self.sid))
+                        .stdout(Stdio::null())
+                        .stderr(Stdio::null())
+                        .status()
+                        .unwrap()
+                        .success()
+                );
+            }
+        }
+        fn deny<'a>(path: &'a std::path::Path, sid: &'a str, right: &str) -> Denial<'a> {
+            assert!(
+                Command::new("icacls.exe")
+                    .arg(path)
+                    .arg("/deny")
+                    .arg(format!("*{sid}:({right})"))
+                    .stdout(Stdio::null())
+                    .stderr(Stdio::null())
+                    .status()
+                    .unwrap()
+                    .success()
+            );
+            Denial { path, sid }
+        }
+        fn assert_denied(error: radishmemory_source_vault::SourceVaultError) {
+            assert_eq!(error.code(), SourceVaultErrorCode::Io);
+            assert_eq!(error.io_kind(), Some(ErrorKind::PermissionDenied));
+            assert_eq!(error.os_code(), Some(5));
+        }
+        let root = Root::new();
+        let denied = deny(&root.0, &sid, "WD");
+        assert_denied(ObjectDirectory::open_application_directory(&root.0).unwrap_err());
+        assert_eq!(fs::read_dir(&root.0).unwrap().count(), 0);
+        drop(denied);
+
+        let vault = ObjectDirectory::open_application_directory(&root.0).unwrap();
+        let digest = [
+            0xe3, 0xb0, 0xc4, 0x42, 0x98, 0xfc, 0x1c, 0x14, 0x9a, 0xfb, 0xf4, 0xc8, 0x99, 0x6f,
+            0xb9, 0x24, 0x27, 0xae, 0x41, 0xe4, 0x64, 0x9b, 0x93, 0x4c, 0xa4, 0x95, 0x99, 0x1b,
+            0x78, 0x52, 0xb8, 0x55,
+        ];
+        let metadata = ObjectMetadata::new(
+            "synthetic-namespace",
+            "synthetic-permission-source",
+            digest,
+            0,
+            "text/plain",
+        )
+        .unwrap();
+        let key = KeyEncryptionKey::new([0xa5; 32]);
+        let write = ObjectWrite::seal(&key, &metadata, b"").unwrap();
+        let staging = root.0.join("source-staging-v1");
+        let objects = root.0.join("source-objects-v1");
+        // Revoke creation after capability acquisition: existing handles do not authorize new files.
+        let denied = deny(&staging, &sid, "WD");
+        assert_denied(vault.publish(&write, &key).unwrap_err());
+        assert_eq!(fs::read_dir(&staging).unwrap().count(), 0);
+        assert_eq!(fs::read_dir(&objects).unwrap().count(), 0);
+        drop(denied);
+        vault.publish(&write, &key).unwrap();
+        let object = objects.join(format!("{}.rmo", write.locator().token()));
+        let encrypted_before = fs::read(&object).unwrap();
+        let denied = deny(&object, &sid, "RD");
+        assert_denied(vault.read(write.locator(), &metadata, &key).unwrap_err());
+        assert_denied(
+            vault
+                .inspect_attempt(write.locator(), write.attempt_id(), &metadata, &key)
+                .unwrap_err(),
+        );
+        drop(denied);
+        assert!(fs::read(&object).unwrap() == encrypted_before);
+        assert!(
+            vault
+                .read(write.locator(), &metadata, &key)
+                .unwrap()
+                .is_empty()
+        );
     }
 }

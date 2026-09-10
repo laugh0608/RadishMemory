@@ -2,11 +2,11 @@
 
 日期：2026-09-10
 
-状态：`P1-S03b macOS and elevated Windows baseline validated — platform acceptance incomplete`
+状态：`P1-S03b Windows file-identity and ordinary-user acceptance validated — Linux pending`
 
 基线：`6581b59`，在 `dev` 上实施；本记录与本批实现一同提交。
 
-范围：落实 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)及 [P1-S03a](phase1-source-vault-portable-crypto.md)定义的 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish、认证 read-back 与单次 attempt identity。只扩展 `radishmemory-source-vault`；不改变 frozen cipher / AAD profile、canonical schema、manifest、`Cargo.lock` 或 notices，不接真实 key store、SQLite、application / UI，不处理真实资料。
+范围：落实 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)及 [P1-S03a](phase1-source-vault-portable-crypto.md)定义的 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish、认证 read-back 与单次 attempt identity。初始实现只扩展 `radishmemory-source-vault`，未改变 manifest、`Cargo.lock` 或 notices；后续 Windows 身份修复按单独授权新增最小原生 adapter 与依赖边，见下文。各批次均不改变 frozen cipher / AAD profile、canonical schema，不接真实 key store、SQLite、application / UI，不处理真实资料。
 
 ## 格式与参考契约
 
@@ -118,8 +118,50 @@ cargo test -p radishmemory-source-vault --test windows_filesystem --locked --off
 
 缓存收尾已实际核验：20 项索引恢复为备份值或原先不存在的状态，删除本批新增的 11 个 `.crate` 与 11 个解压源码目录；再次逐项验证后清理隔离 checkout、缓存备份、传输包及临时测试文件。没有还原 Cargo 自身的使用统计元数据，也没有改变 manifest、lockfile、notices 或系统设置。客体临时前缀零残留已核对，最后的结果文件也已删除；测试机随后正常关机并确认 `stopped`。本机收尾的 `./scripts/check-repo.sh` 通过 163 个文件检查、format / Clippy 与 160 个 Rust tests；没有执行远程 CI 或 Windows 全 workspace 门禁。
 
+## Windows 文件身份替换缺陷复现（2026-09-10）
+
+在 `6a6b611` 加一条合成回归的隔离源码副本中，使用同一 Windows 11 ARM64 / NTFS 测试环境及 Rust `1.96.0` 执行 `metadata_preserving_replacement_cannot_authorize_staging_cleanup`。在删除 staging 的 checkpoint 保留原文件，另建内容相同的文件，并将修改时间与创建时间设置为原值；长度与两个时间相等的前置断言全部通过。预期返回 `FilesystemChanged` 并保留替换文件，实际返回 `Ok(PublishedObject([REDACTED]))`，测试失败，退出码 `101`；原始日志 SHA-256 为 `06b6a893f8cf357f3642b6325574a3fc3dee8b0ef38789279846763efc7621fa`。这次是真实文件操作，未使用模拟返回值；不是普通用户验收。
+
+根因是 Windows `Identity` 仅比较可修改的 creation time，`Observation` 再比较长度和修改时间，三者相等不能证明是原文件。当前清理检查因此会接受这个替换，违反精确 staging 身份要求。该用例在 macOS 通过，因为 Unix 比较 device / inode。该复现批次新增回归保持失败可见，未加 ignore、未放宽断言，当时尚未修复 production code；随后修复见下节。此前 28 个 Windows 基线测试通过的历史事实不覆盖这个新场景。
+
+本次使用任务专用 `CARGO_HOME`，从本机已有缓存复制并核对 20 个锁定依赖，离线编译；未修改共享缓存、manifest、lockfile、工具链、UAC、账户或系统权限。普通用户 / ACL 验收环境调整仍未授权执行。收尾已移除任务专用源码、缓存、传输文件及清理脚本，脚本核对临时前缀零残留后正常关机，VM 状态确认 `stopped`；本机临时诊断日志与待审批方案保留供审阅。
+
+本批本机 `./scripts/check-repo.sh` 通过 163 个文件检查、format / Clippy 和包含新增回归的 Rust 测试；这只证明 macOS 门禁通过，Windows 新用例仍失败。未执行 Windows 全 workspace、普通用户 / ACL 或 Linux 验收，没有提交或 push。
+
+修复需要从实际打开的句柄取得卷标识与完整文件 ID，并审查句柄生命周期与 ID 重用；创建时间和内容摘要均不能替代身份。[Microsoft 的同文件识别说明](https://devblogs.microsoft.com/oldnewthing/20220128-00/?p=106201)及 [GetFileInformationByHandleEx](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex)提供该原生接口。固定工具链的 std-only 实现不足，新增原生 adapter / 依赖须先按 [ADR 0005](../adr/0005-m0-implementation-stack.md)和协作规则单独明确范围；本次未通过修改 lint 或引入 fallback 绕过该边界。
+
+## Windows 原生身份修复（2026-09-10）
+
+取得项目所有者的明确授权后，新增独立的 `radishmemory-windows-filesystem`；唯一安全入口从借用的 `File` 查询卷序号与 128 位文件 ID。只在此 adapter 的单一查询函数允许受审阅的 FFI，Source Vault 与 workspace 默认仍禁止 unsafe。依赖复用已锁定的 `windows-sys 0.61.2` / `windows-link 0.2.1`，没有新增或升级第三方 package；第一方 package 从 7 个变为 8 个，完整 lockfile 共 431 个 package，三目标 notices inventory 仍是原有 344 项。完整来源、许可证、替代方案和安全不变量见 [Rust 依赖基线](m0-rust-dependency-baseline.md)。
+
+目录身份和文件 `Observation` 均来自实际 no-follow 打开的句柄。Observation 在比较期间保留原文件引用以防 ID 重用；Windows 引用句柄请求零 data access 并允许 read / write / delete sharing，因此不会阻止测试中的实际替换，也不冒充读取或删除授权。实际写入 / 读取句柄必须与路径引用匹配，查询失败不回退到时间戳或低位 ID。Unix 同样保留引用，继续使用 device / inode。该修复没有将文件 ID 持久化为 canonical 字段，没有扩展恶意进程任意 syscall 竞态的威胁保证。
+
+Windows 11 ARM64 / NTFS / Rust `1.96.0` 在专用离线 `CARGO_HOME` 构建修复源码；源码包 SHA-256 为 `d5c8cd0ff4cde81dd3498e17b420703ae8325bce39c29ebf7454e1af88308f39`，22 个精确锁定的第三方依赖均从已有缓存复制并逐项验证，未联网下载、安装工具链或修改共享缓存。提升权限运行结果：
+
+- Source Vault 30 个 unit tests 全部通过，包含原 staging 清理失败用例，以及 staging read-back、publish、final read-back、cleanup 后 final 检查四个同内容 / 同时间戳替换边界；替换文件与保留的原文件仍在，不以禁止测试改名代替身份拒绝。
+- Windows directory / reparse integration 2 个测试通过；普通用户 ACL 项在本次提升权限运行显式过滤，另行验收。
+- native adapter 2 个测试通过：hard-link 的两个 handle 具有相同身份，保留旧 handle 时删除名字并新建文件获得不同身份；无文件身份的 `NUL` handle 返回错误。
+- 两个 package 的 `cargo check --all-targets --locked --offline` 与 Clippy `-D warnings` 通过；显式结果为 `stage=completed, exitCode=0`。
+- macOS `./scripts/check-repo.sh` 通过 165 个文件检查、notices 再生成、workspace format / Clippy 与 all-targets / all-features Rust tests；Source Vault 的两个新增替换用例通过。非 Windows 上 native adapter 不编译其平台实现，不能将 macOS 的零 native tests 记为原生 FFI 验证。
+
+普通用户 / ACL 实测使用同一组已构建测试二进制，未重新编译或替换 production code；回收的 9 个 manifest / lockfile / 源码输入 SHA-256 全部与本机工作区一致。测试环境临时启用 UAC 并正常重启，创建独立非管理员账户；控制目录仅 SYSTEM / Administrators 可写，测试账户只有读取 / 执行权，专用 run 子目录允许测试写入。一次性 S4U / Limited 任务无触发器，最长 30 分钟；跨账户 S4U 注册所需的合成密码明文仅在客体进程内存中生成并传给账户设置 / 任务注册，不写文件或日志；任务不保存密码，也不授予网络访问。账户描述长度与 S4U 注册校验先后失败过；随后发现该账户缺少批处理登录权利，精确补齐 `SeBatchLogonRight` 后才实际执行。没有把任务注册成功或未运行的状态计为通过。
+
+实际 token 核验为 `EnableLUA=1`、`administrator=false`、`mediumIntegrity=true`、合成 SID 与记录一致、`controlWriteDenied=true`。该身份下：
+
+- Source Vault 30 个 unit tests 全部通过，包括真实目录同步、完整发布 / read-back、文件替换失败关闭；
+- native adapter 2 个测试通过；
+- Windows integration 运行目录占用和普通用户 ACL 两项，均通过；需要 symlink 创建特权的另一项在此身份显式过滤，其通过证据来自前述提升权限运行。
+
+ACL 用例由普通测试账户真实设置并还原合成 fixture 的 DACL：专用根拒绝写入时不能打开 capability 且不创建子目录；持有 capability 后撤销 staging 创建权限，publish 返回 `Io / PermissionDenied / OS 5` 且两目录均无对象；撤销已发布对象的读取权限后 read / inspect 均以同一权限错误拒绝，恢复权限后加密 bytes 不变且可认证读取。不能将此证据扩展为 ACL 全组合、其它用户之间的数据隔离或安装器 owner 验收。
+
+普通用户脚本显式结果为 `stage=completed, exitCode=0`；任务实际退出码为 0，实例数为 0，run 下合成 fixture 目录零残留。事实文件 SHA-256 为 `68b17b06de4bc2ec3e66924df67a90bec0abe59e4b2e42a43a45f277404dd1ef`；Source Vault unit、native unit、Windows integration 日志分别为 `b9c27778218ec6390325b54123de8d41703e7f3b24588745975ad867bb1ed441`、`7f70643d2b3d61465b0fc23218ff4c56ed0907795e02449e514b1fa4de67667d`、`41535ac535e872c7b1f509823834a9c7547cdfa33c929a98deb8853103f04c1e`。完整合成证据包 SHA-256 为 `fd901332c1f643bd8db0a239056204245d212cbe135aad4d56cad8f150638dfe`。
+
+环境还原已完成：确认任务及测试子进程退出后移除一次性任务，撤销仅授予合成 SID 的 `SeBatchLogonRight`，导出核验 user-rights policy 已无该 SID。系统仍将 profile 标记为 loaded 时没有强制删除；先禁用临时账户、恢复 `EnableLUA` 为原 DWORD `0` 并正常重启，确认 profile 卸载后通过对应 SID 删除账户及 OS profile，再核验账户 / profile / 任务 / 用户权利均无残留。随后清理隔离源码、22 项专用缓存、二进制、合成 fixture、传输包和脚本；临时前缀零残留检查通过后正常关机，VM 状态确认 `stopped`。还原结果 SHA-256 为 `c7931d48bedbe11a1208ae213f1827f6e5780e5189646242ed377d82b985104f`。本机保留合成证据与源码输入包供审阅；没有清除事件日志，也不承诺虚拟机磁盘逐字节还原。
+
+最终 `python3 scripts/check-repo.py` 与 `git diff --check` 通过，检查器 27 个 unit tests 通过；实际源代码与前述 Windows 验收及本机完整仓库门禁相同。没有运行 Linux、ReFS、网络盘、真实断电、Windows 全 workspace、远程 CI 或产品 GUI / key-store / migration 验收，没有提交或 push。
+
 ## 平台限制与下一步
 
-macOS 具备本机实际测试；Windows ARM64 提升权限基线通过，普通用户、文件身份替换与权限验收未完成；Linux 尚未编译或运行本批。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。完成上述剩余验收前不能宣称 Windows durable publish 已可用；若实测暴露 std-only 能力不足，须单独评审所需依赖和平台范围。
+macOS 具备本机实际测试；Windows ARM64 提升权限与普通用户验收通过，文件身份替换缺陷已修复并通过回归；Linux 尚未编译或运行本批。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。当前运行证据只覆盖这台 Windows ARM64 / NTFS 测试机，不代表 Windows 全文件系统、ReFS、网络盘或其它 Windows 版本；本次原生依赖调整已单独评审，不意味着其它平台能力获得授权。
 
-后续先补 Windows 普通用户、文件身份 / 替换与权限边界证据，再补 Linux 文件系统运行证据与差异处置，再分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。
+后续补 Linux 文件系统运行证据与差异处置，再分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。

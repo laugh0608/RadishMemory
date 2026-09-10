@@ -17,6 +17,13 @@ impl Directory {
         let before = fs::symlink_metadata(&path)
             .map_err(|e| SourceVaultError::io("inspect directory", e))?;
         require_directory(&before)?;
+        let before_handle = reference_handle(&path)?;
+        require_directory(
+            &before_handle
+                .metadata()
+                .map_err(|e| SourceVaultError::io("inspect directory reference", e))?,
+        )?;
+        let before_identity = Identity::of(&before_handle)?;
         let mut options = no_follow_options();
         options.read(true);
         #[cfg(windows)]
@@ -35,8 +42,8 @@ impl Directory {
             .metadata()
             .map_err(|e| SourceVaultError::io("inspect directory handle", e))?;
         require_directory(&opened)?;
-        let identity = Identity::of(&opened)?;
-        if identity != Identity::of(&before)? {
+        let identity = Identity::of(&handle)?;
+        if identity != before_identity {
             return Err(changed());
         }
         let directory = Self {
@@ -75,7 +82,13 @@ impl Directory {
         let metadata = fs::symlink_metadata(&self.path)
             .map_err(|e| SourceVaultError::io("recheck directory capability", e))?;
         require_directory(&metadata)?;
-        if Identity::of(&metadata)? != self.identity
+        let current = reference_handle(&self.path)?;
+        require_directory(
+            &current
+                .metadata()
+                .map_err(|e| SourceVaultError::io("inspect directory reference", e))?,
+        )?;
+        if Identity::of(&current)? != self.identity
             || fs::canonicalize(&self.path)
                 .map_err(|e| SourceVaultError::io("resolve directory capability", e))?
                 != self.path
@@ -155,49 +168,27 @@ pub(crate) fn create_new(path: &Path) -> Result<File, SourceVaultError> {
 }
 
 pub(crate) fn read_file(path: &Path) -> Result<(Vec<u8>, Observation), SourceVaultError> {
-    let before = fs::symlink_metadata(path).map_err(|e| {
-        if e.kind() == io::ErrorKind::NotFound {
-            SourceVaultError::new(SourceVaultErrorCode::ObjectMissing, "object is missing")
-        } else {
-            SourceVaultError::io("inspect encrypted object", e)
-        }
-    })?;
-    require_file(&before)?;
+    let observed = Observation::open(path)?;
     let mut file = no_follow_options()
         .read(true)
         .open(path)
         .map_err(|e| SourceVaultError::io("open encrypted object", e))?;
-    let observed = Observation::of(
-        &file
-            .metadata()
-            .map_err(|e| SourceVaultError::io("inspect encrypted object handle", e))?,
-    )?;
-    if observed != Observation::of(&before)? {
-        return Err(changed());
-    }
+    observed.verify_handle(&file)?;
     let mut bytes = Vec::new();
     (&mut file)
         .take(MAX_ENVELOPE_BYTES as u64 + 1)
         .read_to_end(&mut bytes)
         .map_err(|e| SourceVaultError::io("read encrypted object", e))?;
-    if bytes.len() > MAX_ENVELOPE_BYTES
-        || bytes.len() as u64 != observed.length
-        || Observation::of(
-            &file
-                .metadata()
-                .map_err(|e| SourceVaultError::io("recheck encrypted object handle", e))?,
-        )? != observed
-    {
+    if bytes.len() > MAX_ENVELOPE_BYTES || bytes.len() as u64 != observed.snapshot.length {
         return Err(changed());
     }
+    observed.verify_handle(&file)?;
     verify_file(path, &observed)?;
     Ok((bytes, observed))
 }
 
 pub(crate) fn verify_file(path: &Path, observed: &Observation) -> Result<(), SourceVaultError> {
-    let current = fs::symlink_metadata(path)
-        .map_err(|e| SourceVaultError::io("recheck encrypted object identity", e))?;
-    if Observation::of(&current)? != *observed {
+    if Observation::open(path)? != *observed {
         return Err(changed());
     }
     Ok(())
@@ -214,17 +205,67 @@ pub(crate) fn present(path: &Path) -> Result<bool, SourceVaultError> {
     }
 }
 
-#[derive(Eq, PartialEq)]
 pub(crate) struct Observation {
+    snapshot: Snapshot,
+    // Keep the original file alive until the observation expires, preventing file-ID reuse.
+    // Windows uses a metadata-only handle with read/write/delete sharing, so this does not prevent
+    // the caller's hard-link publication or cleanup, and replacement tests still exercise rejection.
+    _handle: File,
+}
+impl PartialEq for Observation {
+    fn eq(&self, other: &Self) -> bool {
+        self.snapshot == other.snapshot
+    }
+}
+impl Eq for Observation {}
+
+impl Observation {
+    pub fn of(file: &File, path: &Path) -> Result<Self, SourceVaultError> {
+        let observed = Self::open(path)?;
+        // A path opened for retention must refer to the file actually written/read by the caller.
+        observed.verify_handle(file)?;
+        Ok(observed)
+    }
+
+    fn open(path: &Path) -> Result<Self, SourceVaultError> {
+        let before = fs::symlink_metadata(path).map_err(|e| {
+            if e.kind() == io::ErrorKind::NotFound {
+                SourceVaultError::new(SourceVaultErrorCode::ObjectMissing, "object is missing")
+            } else {
+                SourceVaultError::io("inspect encrypted object", e)
+            }
+        })?;
+        require_file(&before)?;
+        let handle = reference_handle(path)?;
+        let snapshot = Snapshot::of(&handle)?;
+        Ok(Self {
+            snapshot,
+            _handle: handle,
+        })
+    }
+
+    fn verify_handle(&self, file: &File) -> Result<(), SourceVaultError> {
+        if Snapshot::of(file)? != self.snapshot {
+            return Err(changed());
+        }
+        Ok(())
+    }
+}
+
+#[derive(Eq, PartialEq)]
+struct Snapshot {
     identity: Identity,
     length: u64,
     modified: SystemTime,
 }
-impl Observation {
-    pub fn of(metadata: &Metadata) -> Result<Self, SourceVaultError> {
-        require_file(metadata)?;
+impl Snapshot {
+    fn of(file: &File) -> Result<Self, SourceVaultError> {
+        let metadata = file
+            .metadata()
+            .map_err(|e| SourceVaultError::io("inspect object handle", e))?;
+        require_file(&metadata)?;
         Ok(Self {
-            identity: Identity::of(metadata)?,
+            identity: Identity::of(file)?,
             length: metadata.len(),
             modified: metadata
                 .modified()
@@ -239,28 +280,57 @@ struct Identity {
     device: u64,
     #[cfg(unix)]
     inode: u64,
-    #[cfg(not(unix))]
-    created: SystemTime,
+    #[cfg(windows)]
+    native: radishmemory_windows_filesystem::FileIdentity,
 }
 impl Identity {
-    fn of(metadata: &Metadata) -> Result<Self, SourceVaultError> {
+    fn of(file: &File) -> Result<Self, SourceVaultError> {
         #[cfg(unix)]
         {
             use std::os::unix::fs::MetadataExt;
+            let metadata = file
+                .metadata()
+                .map_err(|e| SourceVaultError::io("inspect filesystem identity", e))?;
             Ok(Self {
                 device: metadata.dev(),
                 inode: metadata.ino(),
             })
         }
-        #[cfg(not(unix))]
+        #[cfg(windows)]
         {
             Ok(Self {
-                created: metadata
-                    .created()
-                    .map_err(|e| SourceVaultError::io("inspect creation time", e))?,
+                native: radishmemory_windows_filesystem::file_identity(file)
+                    .map_err(|e| SourceVaultError::io("inspect filesystem identity", e))?,
             })
         }
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = file;
+            Err(SourceVaultError::io(
+                "unsupported filesystem identity",
+                io::ErrorKind::Unsupported.into(),
+            ))
+        }
     }
+}
+
+fn reference_handle(path: &Path) -> Result<File, SourceVaultError> {
+    let mut options = no_follow_options();
+    #[cfg(not(windows))]
+    options.read(true);
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::OpenOptionsExt;
+        // No data access; allow mutation of names while retaining the file's identity. Open the
+        // reparse point itself (never its target); BACKUP_SEMANTICS also permits directory handles.
+        options
+            .access_mode(0)
+            .share_mode(7)
+            .custom_flags(0x02000000 | 0x00200000);
+    }
+    options
+        .open(path)
+        .map_err(|e| SourceVaultError::io("open filesystem identity reference", e))
 }
 
 fn no_follow_options() -> OpenOptions {

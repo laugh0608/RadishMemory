@@ -18,12 +18,12 @@ M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象
 | 字段与 fixture | M0 字段级 canonical schema 定义九种顶层对象；fixture 固定 12 个场景的 86 个有序操作和 12 个指标 gate | [M0 Canonical Schema](../schema/m0-canonical-schema.md)不绑定数据库、生产 ID 编码或语言类型；[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md)说明实际证据限制 |
 | 文件入口 | `radishmemory-file-entry` 的 P1-I01 file snapshot contract、P1-I02 atomic source capture、P1-I03 exact export、P1-I04 lineage deletion 已落地 | [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md)；`SourceCaptureStore` 原子提交，`P1-F01` 至 `P1-F18` 已有三平台证据，故障 seam 仅 opt-in `acceptance-test-support`；不代表完整 importer / exporter 已实现 |
 | 本地宿主 | P1-H02 application service、P1-H03 source catalog、P1-H04 desktop UI、P1-H05 host acceptance 已有实现及合成宿主证据 | [ADR 0007](../adr/0007-phase1-local-library-host.md)的 `P1-HF01` 至 `P1-HF12` 保留历史记录；目录第 201 条和重启后损坏修复等缺口尚未关闭 |
-| 加密 Source Vault | P1-S01 storage contract、P1-S02 dependency and cipher review、P1-S03a portable crypto dependency landing 已完成对应范围；P1-S03b filesystem adapter 已通过 macOS 合成验证和 Windows ARM64 提升权限基线 | [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)的 `P1-SF01` 至 `P1-SF18` 尚未全部实现；object adapter 的 Windows 普通用户 / 专属边界与 Linux 运行证据、真实 key provider、migration、宿主接入仍待后续批次 |
+| 加密 Source Vault | P1-S01 storage contract、P1-S02 dependency and cipher review、P1-S03a portable crypto dependency landing 已完成对应范围；P1-S03b filesystem adapter 已通过 macOS 合成验证和 Windows ARM64 提升权限 / 普通用户验收 | [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)的 `P1-SF01` 至 `P1-SF18` 尚未全部实现；object adapter 的 Windows 文件身份替换缺陷已修复并通过普通用户 / ACL 回归；Linux 运行证据、真实 key provider、migration、宿主接入仍待后续批次 |
 | 用户价值 | 已能通过本地入口导入、版本化、搜索、精确导出和删除合成文本 | 尚无完整记忆控制台、模型问答、PDF / 图片解析、向量、同步、恢复或签名发行包 |
 
 ## 当前顺位
 
-1. `P1-S03b immutable object filesystem adapter` 已实现 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish 与认证 read-back，通过 macOS 本机合成测试和 Windows ARM64 提升权限基线（28 tests、check / Clippy，以及目录占用 / reparse point 两项补测）；下一步补 Windows 普通用户、文件身份 / 替换与权限边界，再补 Linux filesystem 运行证据及差异处置。目录 sync 不受支持时失败关闭，不能以本机测试宣称三平台可用。平台运行或依赖调整须按具体范围授权。
+1. `P1-S03b immutable object filesystem adapter` 已实现 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish 与认证 read-back，通过 macOS 本机合成测试和 Windows ARM64 / NTFS 提升权限及普通用户验收；creation-time 身份缺陷已改用原生 128 位 ID 与持有引用修复，30 个 Source Vault、2 个 native tests，以及目录占用 / reparse / 普通用户 ACL 分身份补测通过，check / Clippy 通过。下一步补 Linux filesystem 运行证据及差异处置。目录 sync 不受支持时失败关闭，不能以本机测试宣称三平台可用。平台运行或依赖调整须按具体范围授权。
 2. 近期修复计划应先明确审阅项 R01 至 R06 的范围与验收：中文检索、目录分页、派生损坏维护入口、读取性能、runner 证据和回源 / 结果刷新。场景见[本地资料库质量验收计划](../evaluation/phase1-local-library-quality.md)，目前全部待实现或待测，不以新增文档标记完成。
 3. 后续按 ADR 0008 分别收口 platform provider、SQLite migration 与宿主验收。PDF / 图片解析继续等待 encrypted Source Vault 完整链路成立。
 4. 产品验证聚焦“同一个长期项目的资料、关键事实、更正与受控上下文”；正式阶段依赖仍以[MVP 路线图](../mvp-roadmap.md)为准。提前跨阶段交付、整库加密、密钥恢复方案、许可证和分发授权均为待决策事项，文档更新不构成实现授权。

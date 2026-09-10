@@ -627,6 +627,84 @@ fn private_modes_are_created_and_permission_revocation_is_not_bypassed() {
     );
 }
 
+#[test]
+fn metadata_preserving_replacement_cannot_authorize_staging_cleanup() {
+    let root = TestDirectory::new();
+    let vault = directory(&root);
+    let write = write(b"synthetic metadata-preserving replacement", 0);
+    let stage = vault.staging_path(write.locator(), write.attempt_id());
+    let retained = root.0.join("retained-original-staging");
+    let result = vault.publish_with_step(&write, &key(), |step| {
+        if step == Step::RemoveStaging {
+            replace_preserving_metadata(&stage, &retained, &write.envelope);
+        }
+        Ok(())
+    });
+    assert_eq!(
+        result.unwrap_err().code(),
+        SourceVaultErrorCode::FilesystemChanged
+    );
+    assert!(stage.is_file());
+    assert!(retained.is_file());
+    assert!(fs::read(&stage).unwrap() == write.envelope);
+}
+
+#[test]
+fn metadata_preserving_replacements_fail_at_readback_and_publish_boundaries() {
+    for (step_to_replace, replace_staging) in [
+        (Step::StagingReadBack, true),
+        (Step::Publish, true),
+        (Step::PublishedReadBack, false),
+        (Step::CleanupSync, false),
+    ] {
+        let root = TestDirectory::new();
+        let vault = directory(&root);
+        let write = write(b"synthetic boundary replacement", 0);
+        let path = if replace_staging {
+            vault.staging_path(write.locator(), write.attempt_id())
+        } else {
+            vault.object_path(write.locator())
+        };
+        let retained = root.0.join("retained-original-object");
+        let result = vault.publish_with_step(&write, &key(), |step| {
+            if step == step_to_replace {
+                replace_preserving_metadata(&path, &retained, &write.envelope);
+            }
+            Ok(())
+        });
+        assert_eq!(
+            result.unwrap_err().code(),
+            SourceVaultErrorCode::FilesystemChanged
+        );
+        assert!(retained.is_file());
+        assert!(fs::read(&path).unwrap() == write.envelope);
+    }
+}
+
+fn replace_preserving_metadata(path: &std::path::Path, retained: &std::path::Path, bytes: &[u8]) {
+    let before = fs::metadata(path).unwrap();
+    // Keep the original file alive: the replacement has a different filesystem identity.
+    fs::rename(path, retained).unwrap();
+    fs::write(path, bytes).unwrap();
+    let times = fs::FileTimes::new().set_modified(before.modified().unwrap());
+    #[cfg(windows)]
+    let times = {
+        use std::os::windows::fs::FileTimesExt;
+        times.set_created(before.created().unwrap())
+    };
+    fs::OpenOptions::new()
+        .write(true)
+        .open(path)
+        .unwrap()
+        .set_times(times)
+        .unwrap();
+    let after = fs::metadata(path).unwrap();
+    assert_eq!(before.len(), after.len());
+    assert_eq!(before.modified().unwrap(), after.modified().unwrap());
+    #[cfg(windows)]
+    assert_eq!(before.created().unwrap(), after.created().unwrap());
+}
+
 #[cfg(unix)]
 fn write_other_source() -> ObjectWrite {
     let bytes = b"synthetic second private object";

@@ -9,7 +9,7 @@ change that license.
 
 - Inventory entries: **344** unique crates
 - Target entries: macOS **215**, Linux **285**, Windows **209**
-- Cargo.lock SHA-256: `fa8ca6b9a79ff49bd426124b83deef430b5f419334baa721eea40c02110d1463`
+- Cargo.lock SHA-256: `161f1d2a4539abab952293c6d708d7ae424ca983f532730aedb2b0ee126a398d`
 - Reviewed inventory SHA-256: `67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a`
 - Reproduce: `python3 scripts/generate-third-party-notices.py --check`
 

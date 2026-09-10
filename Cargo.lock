@@ -2609,6 +2609,7 @@ dependencies = [
  "aead-stream",
  "chacha20poly1305",
  "getrandom 0.4.3",
+ "radishmemory-windows-filesystem",
  "sha2",
  "zeroize",
 ]
@@ -2620,6 +2621,13 @@ dependencies = [
  "radishmemory-core",
  "radishmemory-file-entry",
  "rusqlite",
+]
+
+[[package]]
+name = "radishmemory-windows-filesystem"
+version = "0.1.0"
+dependencies = [
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

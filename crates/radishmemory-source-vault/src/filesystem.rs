@@ -194,11 +194,7 @@ impl ObjectDirectory {
         step(Step::FileSync)?;
         file.sync_all()
             .map_err(|e| SourceVaultError::io("sync encrypted staging object", e))?;
-        let written = support::Observation::of(
-            &file
-                .metadata()
-                .map_err(|e| SourceVaultError::io("inspect written staging object", e))?,
-        )?;
+        let written = support::Observation::of(&file, &staging)?;
         drop(file);
         step(Step::StagingSync)?;
         self.verify()?;

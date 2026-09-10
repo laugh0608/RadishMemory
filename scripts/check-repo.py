@@ -89,6 +89,8 @@ REQUIRED_FILES = (
     "crates/radishmemory-source-vault/src/test_support.rs",
     "crates/radishmemory-source-vault/src/lib.rs",
     "crates/radishmemory-source-vault/src/random.rs",
+    "crates/radishmemory-windows-filesystem/Cargo.toml",
+    "crates/radishmemory-windows-filesystem/src/lib.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
     "crates/radishmemory-sqlite/migrations/0001_sqlite_entry.sql",
     "crates/radishmemory-sqlite/migrations/0002_source_storage.sql",
@@ -227,6 +229,7 @@ members = [
   \"crates/radishmemory-file-entry\",
   \"crates/radishmemory-source-vault\",
   \"crates/radishmemory-sqlite\",
+  \"crates/radishmemory-windows-filesystem\",
 ]
 resolver = \"3\"
 
@@ -248,12 +251,14 @@ radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" 
 radishmemory-file-entry = { path = \"crates/radishmemory-file-entry\", version = \"=0.1.0\" }
 radishmemory-source-vault = { path = \"crates/radishmemory-source-vault\", version = \"=0.1.0\" }
 radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
+radishmemory-windows-filesystem = { path = \"crates/radishmemory-windows-filesystem\", version = \"=0.1.0\" }
 rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
 rfd = { version = \"=0.17.2\", default-features = false, features = [\"xdg-portal\", \"wayland\"] }
 serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
 sha2 = { version = \"0.11.0\", default-features = false }
 time = { version = \"0.3.55\", default-features = false, features = [\"formatting\", \"parsing\", \"std\"] }
 unicode-normalization = { version = \"0.1.25\", default-features = false, features = [\"std\"] }
+windows-sys = { version = \"=0.61.2\", default-features = false, features = [\"Win32_Foundation\", \"Win32_Storage_FileSystem\"] }
 zeroize = { version = \"=1.9.0\", default-features = false, features = [\"alloc\"] }
 
 [workspace.lints.rust]
@@ -362,6 +367,9 @@ chacha20poly1305.workspace = true
 getrandom.workspace = true
 sha2.workspace = true
 zeroize.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+radishmemory-windows-filesystem.workspace = true
 """,
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
 name = \"radishmemory-sqlite\"
@@ -384,6 +392,21 @@ rusqlite.workspace = true
 [dev-dependencies]
 radishmemory-file-entry = { workspace = true, features = ["acceptance-test-support"] }
 """,
+    "crates/radishmemory-windows-filesystem/Cargo.toml": """[package]
+name = \"radishmemory-windows-filesystem\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints.rust]
+unsafe_code = \"deny\"
+unused_crate_dependencies = \"deny\"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+""",
 }
 
 EXPECTED_RUST_TOOLCHAIN = """[toolchain]
@@ -392,8 +415,8 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 430
-EXPECTED_REVIEWED_LOCK_DIGEST = "c8d2e33f72694eedf0a2c44ac21d059826fc8ea039215225f3d70ea68903f80e"
+EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 431
+EXPECTED_REVIEWED_LOCK_DIGEST = "4d74ca4adb8536f97b3d85721019bee0d0c32a84916cabaf358594c5b3333acc"
 FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-application",
     "radishmemory-core",
@@ -402,6 +425,7 @@ FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-m0",
     "radishmemory-source-vault",
     "radishmemory-sqlite",
+    "radishmemory-windows-filesystem",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
 
@@ -1032,7 +1056,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
-            "七个第一方 workspace package",
+            "八个第一方 workspace package",
             "423 个第三方 package",
             "40 个第三方 package",
             "没有 Git dependency",
@@ -1128,7 +1152,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "`P1-F15` 至 `P1-F18`",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
-            "七个第一方 workspace package",
+            "八个第一方 workspace package",
             "radishmemory-file-entry 0.1.0",
             "40 个第三方 package",
             "当时没有扩大 40 个第三方 package 的 headless 基础子图",
@@ -1168,6 +1192,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         repo_root / "crates/radishmemory-application/src",
         repo_root / "crates/radishmemory-file-entry/src",
         repo_root / "crates/radishmemory-source-vault/src",
+        repo_root / "crates/radishmemory-windows-filesystem/src",
         repo_root / "crates/radishmemory-sqlite/src",
     ):
         for path in sorted(source_root.rglob("*.rs")):
@@ -1552,7 +1577,7 @@ def check_phase1_source_vault_portable_crypto(
             "portable dependency / cipher / wrap / AAD / 合成测试已落地",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
-            "七个第一方 workspace package",
+            "八个第一方 workspace package",
             "423 个第三方 package",
             "Source Vault portable crypto 直接依赖",
             "P1-S03a 的 11 个新增 package",
@@ -1568,13 +1593,17 @@ def check_phase1_source_vault_portable_crypto(
             'ROOT_PACKAGES = ("radishmemory-desktop", "radishmemory-source-vault")',
         ),
         "docs/implementation/phase1-source-vault-filesystem.md": (
-            "P1-S03b macOS and elevated Windows baseline validated — platform acceptance incomplete",
+            "P1-S03b Windows file-identity and ordinary-user acceptance validated — Linux pending",
             "RMOBJ\\x01",
             "PublishedObject",
             "不是 canonical capture receipt",
             "目录枚举、未知文件策略、业务重试、orphan reconciliation",
-            "Windows ARM64 提升权限基线通过",
-            "普通用户、文件身份替换与权限验收未完成",
+            "Windows ARM64 提升权限与普通用户验收通过",
+            "文件身份替换缺陷已修复并通过回归",
+            "`administrator=false`",
+            "普通用户脚本显式结果为 `stage=completed, exitCode=0`",
+            "metadata_preserving_replacement_cannot_authorize_staging_cleanup",
+            "唯一安全入口从借用的 `File` 查询卷序号与 128 位文件 ID",
             "Linux 尚未编译或运行本批",
             "28 个测试通过，0 failed、0 ignored",
             "2 个补充测试通过，0 failed、0 ignored",
@@ -1585,6 +1614,14 @@ def check_phase1_source_vault_portable_crypto(
             'OBJECT_CIPHER_PROFILE: &str = "radishmemory.xchacha20poly1305-stream-be32/1"',
             'DEK_WRAP_PROFILE: &str = "radishmemory.xchacha20poly1305-dek-wrap/1"',
             "MAX_OBJECT_PLAINTEXT_BYTES: usize = 8 * 1024 * 1024",
+        ),
+        "crates/radishmemory-windows-filesystem/src/lib.rs": (
+            "#![cfg(windows)]",
+            "#![deny(unsafe_code)]",
+            "#[allow(unsafe_code)]",
+            "pub fn file_identity(file: &File) -> io::Result<FileIdentity>",
+            "GetFileInformationByHandleEx",
+            "FILE_ID_INFO",
         ),
         "crates/radishmemory-source-vault/src/aad.rs": (
             'AAD_CODEC_PREFIX: &[u8] = b"RMAAD\\x01"',

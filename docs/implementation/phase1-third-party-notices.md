@@ -1,6 +1,6 @@
 # Phase 1 第三方 notices 与条件平台依赖复核
 
-日期：2026-09-03
+日期：2026-09-10
 
 状态：`Accepted — P1-H05 distribution inventory gate complete; P1-S03a expansion reviewed`
 
@@ -12,13 +12,15 @@
 
 | 目标 | 清单条目 | 已有运行证据 |
 | --- | ---: | --- |
-| `aarch64-apple-darwin` | 215 | desktop：macOS AppKit 可见窗口与 open / save panel；Source Vault：portable graph only |
+| `aarch64-apple-darwin` | 215 | desktop：macOS AppKit 可见窗口与 open / save panel；Source Vault：macOS filesystem 合成测试 |
 | `aarch64-unknown-linux-gnu` | 285 | desktop：Debian ARM64 / GNOME Wayland 的 XDG Portal / GTK picker；Source Vault：portable graph only |
-| `aarch64-pc-windows-msvc` | 209 | desktop：Windows 11 ARM64 的 native dialog、重开与 ACL；Source Vault：portable graph only |
+| `aarch64-pc-windows-msvc` | 209 | desktop：Windows 11 ARM64 的 native dialog、重开与 ACL；Source Vault：NTFS 提升权限 / 普通用户 filesystem 验收 |
 
 三个图合并后为 344 个唯一 crates.io package；全部有 `Cargo.lock` checksum 和上游声明许可证，没有 Git dependency、缺失许可证、未审查 source 或需要另行合并的 top-level `NOTICE` 文件。清单记录完整 checksum、平台成员关系、upstream / author attribution、原始 license expression 与选定 distribution basis；当前 inventory SHA-256 为 `67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a`。
 
 生成器从第一方 `radishmemory-desktop` 与 `radishmemory-source-vault` 两个分发根沿 normal / build edge 取并集，排除纯 dev dependency 和不可达的其它 lockfile 条目。`--check` 会重新解析三个目标图并逐字节比较生成物；新增 source、缺失 checksum / license、未知 license expression 或清单漂移均失败关闭。完整 lockfile 当前是 423 个第三方 package 的供应链上限，不应与 344 个三目标可达并集混写。P1-H05 收口时只有 desktop 根，历史并集为 333；P1-S03a 的 11 个新 package 使当前分发清单扩大到 344，但不改变既有宿主交互结论。
+
+P1-S03b 的 Windows file identity adapter 复用已有 `windows-sys 0.61.2` / `windows-link 0.2.1`；重新生成三目标 notices 后仍是相同 344 项与相同 inventory digest，没有遗漏新的独立分发根。两个 crate 的来源、版本和 MIT distribution basis 保持原记录；新增的是第一方隔离 FFI 与 Source Vault 到已在清单中的 Windows binding 的依赖边，不能把 portable crypto 本身无 FFI 的历史描述扩展到这个 adapter。安全不变量与维护风险见 [Rust 依赖基线](m0-rust-dependency-baseline.md)。
 
 ## License option 与人工复核
 
@@ -43,10 +45,10 @@
 
 Linux 发行环境必须提供可工作的 XDG Desktop Portal 及与桌面匹配的 backend；如果承诺 Zenity fallback，还必须把 Zenity 作为外部运行依赖明确声明并测试。当前 Debian / GNOME Wayland 实测 portal active 且没有 Zenity 进程，这只排除了该次运行进入 fallback，不能删除 fallback 的分发说明。Wayland / X11、Vulkan / GLES 同样是编译与运行条件，不代表每条 backend 都在本批逐一执行。
 
-Windows 当前证据来自 elevated ARM64 Developer Prompt，确认测试数据目录没有 `Everyone` / `BUILTIN\\Users` ACE，但 owner 是 `Administrators`；正式非提权安装仍须单独复核 owner 和安装器是否随包携带 notices。macOS 当前是未签名本机构建；签名、notarization、sandbox entitlement 和发行包内容不在本门禁内。
+Windows desktop 宿主证据来自 elevated ARM64 Developer Prompt，确认测试数据目录没有 `Everyone` / `BUILTIN\\Users` ACE，但 owner 是 `Administrators`；正式非提权安装仍须单独复核 owner 和安装器是否随包携带 notices。P1-S03b 独立 Source Vault adapter 后续补齐 Windows ARM64 / NTFS 普通用户与 ACL 验收，详见 [filesystem 记录](phase1-source-vault-filesystem.md)，不将该结果外推为 desktop 安装器 owner 验收。macOS 当前是未签名本机构建；签名、notarization、sandbox entitlement 和发行包内容不在本门禁内。
 
 ## 结论与持续门禁
 
-P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory 也已复核并由生成器守护；这只覆盖 portable crypto 的分发依赖，不证明平台 key-store 或 object adapter 已实现。
+P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory 也已复核并由生成器守护；该清单本身只覆盖分发依赖，不代替平台 key-store 或 object adapter 的实现与运行证据；后者以对应落地记录为准。
 
 这不等于已有发行包或 production deployment：任何 installer / DMG / archive 必须实际携带 `THIRD_PARTY_NOTICES.md` 与 `third_party/licenses/`，并在发布前验证包内容、目标架构、签名链、非提权数据 owner、平台最低版本和对应 native backend。后续依赖、feature、target 或 `Cargo.lock` 发生变化时，必须重新生成、人工复核并更新本页；检查器不会把未知表达式自动归为宽松许可证。
