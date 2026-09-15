@@ -242,10 +242,12 @@ publish = false
 
 [workspace.dependencies]
 aead-stream = { version = \"=0.6.0\", default-features = false, features = [\"alloc\"] }
+apple-native-keyring-store = { version = \"=1.0.2\", default-features = false, features = [\"keychain\"] }
 chacha20poly1305 = { version = \"=0.11.0\", default-features = false, features = [\"alloc\", \"zeroize\"] }
 directories = \"=6.0.0\"
 eframe = { version = \"=0.36.1\", default-features = false, features = [\"accesskit\", \"default_fonts\", \"wayland\", \"wgpu\", \"x11\"] }
 getrandom = { version = \"=0.4.3\", default-features = false }
+keyring-core = { version = \"=1.0.0\", default-features = false }
 radishmemory-application = { path = \"crates/radishmemory-application\", version = \"=0.1.0\" }
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
 radishmemory-file-entry = { path = \"crates/radishmemory-file-entry\", version = \"=0.1.0\" }
@@ -254,11 +256,15 @@ radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.
 radishmemory-windows-filesystem = { path = \"crates/radishmemory-windows-filesystem\", version = \"=0.1.0\" }
 rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
 rfd = { version = \"=0.17.2\", default-features = false, features = [\"xdg-portal\", \"wayland\"] }
+secret-service = { version = \"=5.2.0\", default-features = false, features = [\"crypto-rust\"] }
+security-framework = { version = \"=3.7.0\", default-features = false }
 serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
 sha2 = { version = \"0.11.0\", default-features = false }
 time = { version = \"0.3.55\", default-features = false, features = [\"formatting\", \"parsing\", \"std\"] }
 unicode-normalization = { version = \"0.1.25\", default-features = false, features = [\"std\"] }
 windows-sys = { version = \"=0.61.2\", default-features = false, features = [\"Win32_Foundation\", \"Win32_Storage_FileSystem\"] }
+windows-native-keyring-store = { version = \"=1.1.0\", default-features = false }
+zbus-secret-service-keyring-store = { version = \"=1.0.1\", default-features = false, features = [\"crypto-rust\"] }
 zeroize = { version = \"=1.9.0\", default-features = false, features = [\"alloc\"] }
 
 [workspace.lints.rust]
@@ -351,7 +357,7 @@ acceptance-test-support = []
 radishmemory-core.workspace = true
 """,
     "crates/radishmemory-source-vault/Cargo.toml": """[package]
-name = "radishmemory-source-vault"
+name = \"radishmemory-source-vault\"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -365,11 +371,21 @@ workspace = true
 aead-stream.workspace = true
 chacha20poly1305.workspace = true
 getrandom.workspace = true
+keyring-core.workspace = true
 sha2.workspace = true
 zeroize.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 radishmemory-windows-filesystem.workspace = true
+windows-native-keyring-store.workspace = true
+
+[target.'cfg(target_os = \"macos\")'.dependencies]
+apple-native-keyring-store.workspace = true
+security-framework.workspace = true
+
+[target.'cfg(target_os = \"linux\")'.dependencies]
+secret-service.workspace = true
+zbus-secret-service-keyring-store.workspace = true
 """,
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
 name = \"radishmemory-sqlite\"
@@ -415,8 +431,8 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 431
-EXPECTED_REVIEWED_LOCK_DIGEST = "4d74ca4adb8536f97b3d85721019bee0d0c32a84916cabaf358594c5b3333acc"
+EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 453
+EXPECTED_REVIEWED_LOCK_DIGEST = "8e783f30212f43e573c959a0f6f32b2c8ce6efa8a83445718ac92a9908b2b3f2"
 FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-application",
     "radishmemory-core",
@@ -1032,7 +1048,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
+            "Phase 1 Source Vault isolated key provider implemented; platform acceptance pending",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1049,7 +1065,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
+            "Phase 1 Source Vault isolated key provider implemented; platform acceptance pending",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1057,7 +1073,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
             "八个第一方 workspace package",
-            "423 个第三方 package",
+            "445 个第三方 package",
             "40 个第三方 package",
             "没有 Git dependency",
             "`serde_json 1.0.151`",
@@ -1263,7 +1279,7 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
             "P1-H02 application service",
             "P1-H03 source catalog",
             "P1-H04 desktop UI",
-            "423 个第三方 package",
+            "445 个第三方 package",
         ),
         "docs/implementation/phase1-desktop-dependency-review.md": (
             "状态：`Accepted",
@@ -1299,7 +1315,7 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
         "docs/implementation/phase1-third-party-notices.md": (
             "P1-H05 distribution inventory gate complete",
             "344 个唯一 crates.io package",
-            "67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a",
+            "fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3",
             "MIT AND OFL-1.1 AND Ubuntu-font-1.0",
             "MIT AND Unicode-3.0",
             "XDG Desktop Portal",
@@ -1380,7 +1396,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
+            "Phase 1 Source Vault isolated key provider implemented; platform acceptance pending",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1448,7 +1464,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
 ) -> None:
     contracts = {
         "docs/implementation/phase1-encrypted-source-vault-dependency-review.md": (
-            "状态：`Accepted — profile 已冻结；P1-S03a portable graph 已落地，platform providers 待后续单元`",
+            "状态：`Accepted — profile 已冻结；P1-S03a portable graph 与 P1-S03c-2 isolated providers 已落地；真实平台待验收`",
             "radishmemory.xchacha20poly1305-stream-be32/1",
             "radishmemory.xchacha20poly1305-dek-wrap/1",
             'aead-stream = { version = "=0.6.0"',
@@ -1467,7 +1483,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
+            "Phase 1 Source Vault isolated key provider implemented; platform acceptance pending",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1484,7 +1500,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
         "docs/architecture.md": (
             "XChaCha20-Poly1305 + STREAM-BE32",
             "macOS Keychain、Windows Credential Manager 或 Linux Secret Service",
-            "三个 platform provider 尚未进入依赖图",
+            "三个 platform provider 已进入依赖图",
         ),
         "docs/privacy-threat-model.md": (
             "XChaCha20-Poly1305 + STREAM-BE32",
@@ -1542,10 +1558,10 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
+            "Phase 1 Source Vault isolated key provider implemented; platform acceptance pending",
             "P1-S03a 落地记录",
             "扩大到 344 项",
-            "三个 platform provider、SQLite migration 与宿主加密数据流尚未实现",
+            "独立 platform provider 已实现；真实密钥库、SQLite migration 与宿主加密数据流尚未验收",
         ),
         "docs/status/current.md": (
             "P1-S03a portable crypto dependency landing",
@@ -1558,7 +1574,7 @@ def check_phase1_source_vault_portable_crypto(
         "docs/architecture.md": (
             "P1-S03a",
             "独立 portable crypto package",
-            "三个 platform provider 尚未进入依赖图",
+            "三个 platform provider 已进入依赖图",
             "P1-S03b` 至 `P1-S05",
         ),
         "docs/privacy-threat-model.md": (
@@ -1578,7 +1594,7 @@ def check_phase1_source_vault_portable_crypto(
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "八个第一方 workspace package",
-            "423 个第三方 package",
+            "445 个第三方 package",
             "Source Vault portable crypto 直接依赖",
             "P1-S03a 的 11 个新增 package",
             "两个分发根的三目标可达依赖 notices",
@@ -1656,23 +1672,8 @@ def check_phase1_source_vault_portable_crypto(
                     f"{name} is missing P1-S03a portable crypto fragment: {fragment}"
                 )
 
-    forbidden_platform_dependencies = (
-        "keyring-core",
-        "apple-native-keyring-store",
-        "windows-native-keyring-store",
-        "zbus-secret-service-keyring-store",
-    )
-    for name in ("Cargo.toml", "Cargo.lock"):
-        path = repo_root / name
-        if not path.is_file():
-            continue
-        text = path.read_text(encoding="utf-8")
-        for dependency in forbidden_platform_dependencies:
-            if dependency in text:
-                errors.append(
-                    f"{name} includes platform key-store dependency before its authorized unit: "
-                    f"{dependency}"
-                )
+    # P1-S03c-2 authorizes the exact platform graph. Manifest equality and the
+    # reviewed lock digest above continue to reject unreviewed providers/features.
 
 
 def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:

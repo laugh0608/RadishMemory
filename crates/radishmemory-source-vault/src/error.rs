@@ -20,6 +20,17 @@ pub enum SourceVaultErrorCode {
     ObjectExists,
     ObjectMissing,
     AttemptMismatch,
+    InvalidKeySlot,
+    KeyMissing,
+    KeyAmbiguous,
+    KeyCorrupt,
+    KeyMetadataMismatch,
+    KeyReadbackMismatch,
+    KeyStoreLocked,
+    KeyStoreDenied,
+    KeyStoreCancelled,
+    KeyStoreUnavailable,
+    KeyStoreFailure,
     Io,
 }
 
@@ -32,6 +43,19 @@ pub struct SourceVaultError {
 }
 
 impl SourceVaultError {
+    pub(crate) const fn provider(
+        code: SourceVaultErrorCode,
+        operation: &'static str,
+        os_code: Option<i32>,
+    ) -> Self {
+        Self {
+            code,
+            reason: operation,
+            io_kind: None,
+            os_code,
+        }
+    }
+
     pub(crate) const fn new(code: SourceVaultErrorCode, reason: &'static str) -> Self {
         Self {
             code,

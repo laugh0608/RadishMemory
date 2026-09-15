@@ -7,10 +7,10 @@ desktop targets. First-party workspace packages are excluded.
 It supplements the RadishMemory [source-available license](LICENSE); it does not
 change that license.
 
-- Inventory entries: **344** unique crates
-- Target entries: macOS **215**, Linux **285**, Windows **209**
-- Cargo.lock SHA-256: `161f1d2a4539abab952293c6d708d7ae424ca983f532730aedb2b0ee126a398d`
-- Reviewed inventory SHA-256: `67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a`
+- Inventory entries: **366** unique crates
+- Target entries: macOS **222**, Linux **301**, Windows **214**
+- Cargo.lock SHA-256: `f009a52e68e78a5dc125fe329f6a976b028f84dce85a91e2e25ae028d7b5dd5d`
+- Reviewed inventory SHA-256: `fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3`
 - Reproduce: `python3 scripts/generate-third-party-notices.py --check`
 
 The “distribution basis” column records the license branch selected when an
@@ -35,8 +35,10 @@ upstream project link provide the corresponding attribution and source location.
 | `adler2 2.0.1` | `0BSD OR MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Jonas Schievink <jonasschievink@gmail.com>, oyvindln <oyvindln@users.noreply.github.com>](https://github.com/oyvindln/adler2) | `320119579fcad9c21884f5c4861d16174d0e06250625266f50fe6898340abefa` |
 | `aead 0.6.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/traits) | `1973cfbc1a2daf9cf550e74e1f088c28e7f7d8c1e1418fb6c9dc5184b7e84c99` |
 | `aead-stream 0.6.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/AEADs) | `a901e5bcd15b4a9555a8f17a608d28ef92cf77bc4aa3b4a0c1a3fce1a9cc0bac` |
+| `aes 0.9.3` | `MIT OR Apache-2.0` | `MIT` | Linux | [RustCrypto Developers](https://github.com/RustCrypto/block-ciphers) | `35f0f96ce78e38c3dc6d8948aa8163d06385be74000f3c7a95bf1eef35d3ea32` |
 | `ahash 0.8.12` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Tom Kaitchuck <Tom.Kaitchuck@gmail.com>](https://github.com/tkaitchuck/ahash) | `5a15f179cd60c4584b8a8c596927aadc462e27f2ca70c04e0071964a73ba7a75` |
 | `allocator-api2 0.2.21` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Zakarum <zaq.dev@icloud.com>](https://github.com/zakarumych/allocator-api2) | `683d7910e743518b0e34f1186f92494becacb047c7b6bf616c96772180fef923` |
+| `apple-native-keyring-store 1.0.2` | `MIT OR Apache-2.0` | `MIT` | macOS | [Daniel Brotsky <dev@brotsky.com>](https://github.com/open-source-cooperative/apple-native-keyring-store.git) | `2b350bfd03649e07aa05c0a81b3e15934374e585c98204a57e20b9d49f49bb9a` |
 | `arboard 3.6.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/1Password/arboard) | `0348a1c054491f4bfe6ab86a7b6ab1e44e45d899005de92f58b3df180b36ddaf` |
 | `arrayvec 0.7.8` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [bluss](https://github.com/bluss/arrayvec) | `d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56` |
 | `as-raw-xcb-connection 1.0.1` | `MIT OR Apache-2.0` | `MIT` | Linux | [Upstream project](https://github.com/psychon/as-raw-xcb-connection) | `175571dd1d178ced59193a6fc02dde1b972eb0bc56c892cde9beeceac5bf0f6b` |
@@ -61,16 +63,19 @@ upstream project link provide the corresponding attribution and source location.
 | `bitflags 1.3.2` | `MIT/Apache-2.0` | `MIT` | macOS | [The Rust Project Developers](https://github.com/bitflags/bitflags) | `bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a` |
 | `bitflags 2.13.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [The Rust Project Developers](https://github.com/bitflags/bitflags) | `b588b76d00fde79687d7646a9b5bdf3cc0f655e0bbd080335a95d7e96f3587da` |
 | `block-buffer 0.12.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `d2f6c7dbe95a6ed67ad9f18e57daf93a2f034c524b99fd2b76d18fdfeb6660aa` |
+| `block-padding 0.4.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `710f1dd022ef4e93f8a438b4ba958de7f64308434fa6a87104481645cc30068b` |
 | `block2 0.5.1` | `MIT` | `MIT` | macOS | [Steven Sheldon, Mads Marquart <mads@marquart.dk>](https://github.com/madsmtm/objc2) | `2c132eebf10f5cad5289222520a4a058514204aed6d791f1cf4fe8088b82d15f` |
 | `block2 0.6.2` | `MIT` | `MIT` | macOS | [Mads Marquart <mads@marquart.dk>](https://github.com/madsmtm/objc2) | `cdeb9d870516001442e364c5220d3574d2da8dc765554b4a617230d33fa58ef5` |
 | `blocking 1.7.0` | `Apache-2.0 OR MIT` | `MIT` | Linux | [Upstream project](https://github.com/smol-rs/blocking) | `a70e4329df6cb94385eed412ec92375c3cdd8a6e502493d1229b6414e4036dfa` |
 | `bytemuck 1.25.2` | `Zlib OR Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Lokathor <zefria@gmail.com>](https://github.com/Lokathor/bytemuck) | `95832e849adfb21180ccb6826a99da14e5d266ae5c2e668e1602cf234f153797` |
 | `bytemuck_derive 1.12.0` | `Zlib OR Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Lokathor <zefria@gmail.com>](https://github.com/Lokathor/bytemuck) | `fc0e56a716f1e132ff6bf4bdac1c944a3fcdc1cae65f70a4a2a1ac3b401d2d1f` |
+| `byteorder 1.5.0` | `Unlicense OR MIT` | `MIT` | Windows | [Andrew Gallant <jamslam@gmail.com>](https://github.com/BurntSushi/byteorder) | `1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b` |
 | `byteorder-lite 0.1.0` | `Unlicense OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/image-rs/byteorder-lite) | `8f1fe948ff07f4bd06c30984e69f5b4899c516a3ef74f34df92a2df2ab535495` |
 | `calloop 0.13.0` | `MIT` | `MIT` | Linux | [Elinor Berger <elinor@safaradeg.net>](https://github.com/Smithay/calloop) | `b99da2f8558ca23c71f4fd15dc57c906239752dd27ff3c00a1d56b685b7cbfec` |
 | `calloop 0.14.4` | `MIT` | `MIT` | Linux | [Elinor Berger <elinor@safaradeg.net>](https://github.com/Smithay/calloop) | `4dbf9978365bac10f54d1d4b04f7ce4427e51f71d61f2fe15e3fed5166474df7` |
 | `calloop-wayland-source 0.3.0` | `MIT` | `MIT` | Linux | [Kirill Chibisov <contact@kchibisov.com>](https://github.com/smithay/calloop-wayland-source) | `95a66a987056935f7efce4ab5668920b5d0dac4a7c99991a67395f13702ddd20` |
 | `calloop-wayland-source 0.4.1` | `MIT` | `MIT` | Linux | [Kirill Chibisov <contact@kchibisov.com>](https://github.com/smithay/calloop-wayland-source) | `138efcf0940a02ebf0cc8d1eff41a1682a46b431630f4c52450d6265876021fa` |
+| `cbc 0.2.1` | `MIT OR Apache-2.0` | `MIT` | Linux | [RustCrypto Developers](https://github.com/RustCrypto/block-modes) | `ce2dc9ee5f88d11e0beb842c88b33c8a5cf0d1329c4b19494af42b07dbfe8896` |
 | `cc 1.4.4` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/rust-lang/cc-rs) | `0ad534f4357a5264cce5019c989cf66a4f0dc4e0d1b1d15f8aacec0ff7360273` |
 | `cfg-if 1.0.4` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Alex Crichton <alex@alexcrichton.com>](https://github.com/rust-lang/cfg-if) | `9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801` |
 | `cfg_aliases 0.2.2` | `MIT` | `MIT` | macOS, Linux, Windows | [Zicklag <zicklag@katharostech.com>](https://github.com/katharostech/cfg_aliases) | `f079e83a288787bcd14a6aea84cee5c87a67c5a3e660c30f557a3d24761b3527` |
@@ -83,10 +88,13 @@ upstream project link provide the corresponding attribution and source location.
 | `codespan-reporting 0.13.1` | `Apache-2.0` | `Apache-2.0` | macOS, Linux, Windows | [Brendan Zabarauskas <bjzaba@yahoo.com.au>](https://github.com/brendanzab/codespan) | `af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681` |
 | `color 0.3.3` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/linebender/color) | `2ec7c5eb7a16992b1904d76c517d170ab353b0e0b3d5a0c81a8a0cd1037893cf` |
 | `concurrent-queue 2.5.0` | `Apache-2.0 OR MIT` | `MIT` | Linux | [Stjepan Glavina <stjepang@gmail.com>, Taiki Endo <te316e89@gmail.com>, John Nunley <dev@notgull.net>](https://github.com/smol-rs/concurrent-queue) | `4ca0197aee26d1ae37445ee532fefce43251d24cc7c166799f4d46817f1d3973` |
+| `const-oid 0.10.2` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/formats) | `a6ef517f0926dd24a1582492c791b6a4818a4d94e789a334894aa15b0d12f55c` |
+| `core-foundation 0.10.1` | `MIT OR Apache-2.0` | `MIT` | macOS | [The Servo Project Developers](https://github.com/servo/core-foundation-rs) | `b2a6cd9ae233e7f62ba4e9353e81a88df7fc8a5987b8d445b4d90c879bd156f6` |
 | `core-foundation 0.9.4` | `MIT OR Apache-2.0` | `MIT` | macOS | [The Servo Project Developers](https://github.com/servo/core-foundation-rs) | `91e195e091a93c46f7102ec7818a2aa394e1e1771c3ab4825963fa03e45afb8f` |
 | `core-foundation-sys 0.8.7` | `MIT OR Apache-2.0` | `MIT` | macOS | [The Servo Project Developers](https://github.com/servo/core-foundation-rs) | `773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b` |
 | `core-graphics 0.23.2` | `MIT OR Apache-2.0` | `MIT` | macOS | [The Servo Project Developers](https://github.com/servo/core-foundation-rs) | `c07782be35f9e1140080c6b96f0d44b739e2278479f64e02fdab4e32dfd8b081` |
 | `core-graphics-types 0.1.3` | `MIT OR Apache-2.0` | `MIT` | macOS | [The Servo Project Developers](https://github.com/servo/core-foundation-rs) | `45390e6114f68f718cc7a830514a96f903cccd70d02a8f6d9f643ac4ba45afaf` |
+| `cpubits 0.1.1` | `MIT OR Apache-2.0` | `MIT` | Linux | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `15b85f9c39137c3a891689859392b1bd49812121d0d61c9caf00d46ed5ce06ae` |
 | `cpufeatures 0.3.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/utils) | `8b2a41393f66f16b0823bb79094d54ac5fbd34ab292ddafb9a0456ac9f87d201` |
 | `crc32fast 1.5.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Sam Rijs <srijs@airpost.net>, Alex Crichton <alex@alexcrichton.com>](https://github.com/srijs/rust-crc32fast) | `8498c871161e1742aaa9d52551b2d6ebdd4c3d45a3be423e3728f33b955be550` |
 | `crossbeam-utils 0.8.22` | `MIT OR Apache-2.0` | `MIT` | Linux | [Upstream project](https://github.com/crossbeam-rs/crossbeam) | `61803da095bee82a81bb1a452ecc25d3b2f1416d1897eb86430c6159ef717c17` |
@@ -159,6 +167,8 @@ upstream project link provide the corresponding attribution and source location.
 | `hashbrown 0.16.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Amanieu d'Antras <amanieu@gmail.com>](https://github.com/rust-lang/hashbrown) | `841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100` |
 | `hashbrown 0.17.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/rust-lang/hashbrown) | `ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a` |
 | `hex 0.4.3` | `MIT OR Apache-2.0` | `MIT` | Linux | [KokaKiwi <kokakiwi@kokakiwi.net>](https://github.com/KokaKiwi/rust-hex) | `7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70` |
+| `hkdf 0.13.0` | `MIT OR Apache-2.0` | `MIT` | Linux | [RustCrypto Developers](https://github.com/RustCrypto/KDFs/) | `4aaa26c720c68b866f2c96ef5c1264b3e6f473fe5d4ce61cd44bbe913e553018` |
+| `hmac 0.13.0` | `MIT OR Apache-2.0` | `MIT` | Linux | [RustCrypto Developers](https://github.com/RustCrypto/MACs) | `6303bc9732ae41b04cb554b844a762b4115a61bfaa81e3e83050991eeb56863f` |
 | `hybrid-array 0.4.14` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [RustCrypto Developers](https://github.com/RustCrypto/hybrid-array) | `707114b52a152fa7bdb290cd7cd5912d9467273b6d74e21b8d81aca1f8533f6b` |
 | `image 0.25.10` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [The image-rs Developers](https://github.com/image-rs/image) | `85ab80394333c02fe689eaf900ab500fbd0c2213da414687ebf995a65d5a6104` |
 | `indexmap 2.14.1` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/indexmap-rs/indexmap) | `07aa2048142242915a31d35844fb311e0e53fcca590c3a0a40dcf1b841fa09eb` |
@@ -166,6 +176,7 @@ upstream project link provide the corresponding attribution and source location.
 | `itertools 0.15.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [bluss](https://github.com/rust-itertools/itertools) | `8b4baf93f58d4425749ca49a51c50ebab072c5df6994d08fed93541c331481dc` |
 | `itoa 1.0.18` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [David Tolnay <dtolnay@gmail.com>](https://github.com/dtolnay/itoa) | `8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682` |
 | `jobserver 0.1.35` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Alex Crichton <alex@alexcrichton.com>](https://github.com/rust-lang/jobserver-rs) | `1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3` |
+| `keyring-core 1.0.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Daniel Brotsky <dev@brotsky.com>](https://github.com/open-source-cooperative/keyring-core.git) | `fb1e621458ca9c51aa110bd0339d4751a056b9576bf1253aee1aa560dda0fc9d` |
 | `khronos-egl 6.0.0` | `MIT/Apache-2.0` | `MIT` | macOS, Linux, Windows | [Timothée Haudebourg <author@haudebourg.net>, Sean Kerr <sean@metatomic.io>](https://github.com/timothee-haudebourg/khronos-egl) | `6aae1df220ece3c0ada96b8153459b67eebe9ae9212258bb0134ae60416fdf76` |
 | `khronos_api 3.1.0` | `Apache-2.0` | `Apache-2.0` | Linux, Windows | [Brendan Zabarauskas <bjzaba@yahoo.com.au>, Corey Richardson, Arseny Kapoulkine, Pierre Krieger <pierre.krieger1708@gmail.com>](https://github.com/brendanzab/gl-rs/) | `e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc` |
 | `kurbo 0.13.1` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Upstream project](https://github.com/linebender/kurbo) | `4b60dfc32f652b926df6192e55525b16d186c69d47876c3ead4da5cc9f8450e2` |
@@ -187,7 +198,13 @@ upstream project link provide the corresponding attribution and source location.
 | `naga 30.0.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [gfx-rs developers](https://github.com/gfx-rs/wgpu) | `a616d2fb8c89516ac2723a581f69d6c18576046bed761bd6b305e5618e6ae130` |
 | `naga-types 30.0.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [gfx-rs developers](https://github.com/gfx-rs/wgpu) | `590afbf58a6f4f62873cd5cff4468061844bafa1cdf399cc954537c22d768d49` |
 | `nohash-hasher 0.2.0` | `Apache-2.0 OR MIT` | `MIT` | macOS, Linux, Windows | [Parity Technologies <admin@parity.io>](https://github.com/paritytech/nohash-hasher) | `2bf50223579dc7cdcfb3bfcacf7069ff68243f8c363f62ffa99cf000a6b9c451` |
+| `num 0.4.3` | `MIT OR Apache-2.0` | `MIT` | Linux | [The Rust Project Developers](https://github.com/rust-num/num) | `35bd024e8b2ff75562e5f34e7f4905839deb4b22955ef5e73d2fea1b9813cb23` |
+| `num-bigint 0.4.8` | `MIT OR Apache-2.0` | `MIT` | Linux | [The Rust Project Developers](https://github.com/rust-num/num-bigint) | `c89e69e7e0f03bea5ef08013795c25018e101932225a656383bd384495ecc367` |
+| `num-complex 0.4.6` | `MIT OR Apache-2.0` | `MIT` | Linux | [The Rust Project Developers](https://github.com/rust-num/num-complex) | `73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495` |
 | `num-conv 0.2.2` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Jacob Pratt <jacob@jhpratt.dev>](https://github.com/jhpratt/num-conv) | `521739c6d2bac4aa25192232afe6841231376b2b26d4d9fae5ecf8ca5772e441` |
+| `num-integer 0.1.47` | `MIT OR Apache-2.0` | `MIT` | Linux | [The Rust Project Developers](https://github.com/rust-num/num-integer) | `7ce2d95d4b3734dc35aa2f45e1aa22cd416814592a4f9d9205e11affd5b8e10b` |
+| `num-iter 0.1.46` | `MIT OR Apache-2.0` | `MIT` | Linux | [The Rust Project Developers](https://github.com/rust-num/num-iter) | `c92800bd69a1eac91786bcfe9da64a897eb72911b8dc3095decbd07429e8048b` |
+| `num-rational 0.4.2` | `MIT OR Apache-2.0` | `MIT` | Linux | [The Rust Project Developers](https://github.com/rust-num/num-rational) | `f83d14da390562dca69fc84082e73e548e1ad308d24accdedd2720017cb37824` |
 | `num-traits 0.2.19` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [The Rust Project Developers](https://github.com/rust-num/num-traits) | `071dfc062690e90b734c0b2273ce72ad0ffa95f0c74596bc250dcfd960262841` |
 | `objc-sys 0.3.5` | `MIT` | `MIT` | macOS | [Mads Marquart <mads@marquart.dk>](https://github.com/madsmtm/objc2) | `cdb91bdd390c7ce1a8607f35f3ca7151b65afc0ff5ff3b34fa350f7d7c7e4310` |
 | `objc2 0.5.2` | `MIT` | `MIT` | macOS | [Steven Sheldon, Mads Marquart <mads@marquart.dk>](https://github.com/madsmtm/objc2) | `46a785d4eeff09c14c487497c162e92766fbb3e4059a71840cecc03d9a50b804` |
@@ -250,6 +267,9 @@ upstream project link provide the corresponding attribution and source location.
 | `rustix 1.1.4` | `Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT` | `MIT` | Linux | [Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com>](https://github.com/bytecodealliance/rustix) | `b6fe4565b9518b83ef4f91bb47ce29620ca828bd32cb7e408f0062e9930ba190` |
 | `scoped-tls 1.0.1` | `MIT/Apache-2.0` | `MIT` | Linux | [Alex Crichton <alex@alexcrichton.com>](https://github.com/alexcrichton/scoped-tls) | `e1cf6437eb19a8f4a6cc0f7dca544973b0b78843adbfeb3683d1a94a0024a294` |
 | `scopeguard 1.2.0` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [bluss](https://github.com/bluss/scopeguard) | `94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49` |
+| `secret-service 5.2.0` | `MIT OR Apache-2.0` | `MIT` | Linux | [Walther Chen <walther.chen@gmail.com>](https://github.com/hwchen/secret-service-rs.git) | `5107b24b91445dd2aa449a258a1807b63240942157292354dc5bfdbeb8bc6db8` |
+| `security-framework 3.7.0` | `MIT OR Apache-2.0` | `MIT` | macOS | [Steven Fackler <sfackler@gmail.com>, Kornel <kornel@geekhood.net>](https://github.com/kornelski/rust-security-framework) | `b7f4bc775c73d9a02cde8bf7b2ec4c9d12743edf609006c7facc23998404cd1d` |
+| `security-framework-sys 2.17.0` | `MIT OR Apache-2.0` | `MIT` | macOS | [Steven Fackler <sfackler@gmail.com>, Kornel <kornel@geekhood.net>](https://github.com/kornelski/rust-security-framework) | `6ce2691df843ecc5d231c0b14ece2acc3efb62c0a398c7e1d875f3983ce020e3` |
 | `self_cell 1.3.0` | `Apache-2.0 OR GPL-2.0-only` | `Apache-2.0` | macOS, Linux, Windows | [Lukas Bergdoll <lukas.bergdoll@gmail.com>](https://github.com/Voultapher/self_cell) | `2ab42ca02749e120097e328d91d415325bdf43b1c72c4c8badf37375fe40a813` |
 | `serde 1.0.229` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>](https://github.com/serde-rs/serde) | `4148590afebada386688f18773da617792bf2ef03ffc1e4cbd2b1d45b023e0ba` |
 | `serde_core 1.0.229` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com>](https://github.com/serde-rs/serde) | `67dca2c9c51e58a4791a4b1ed58308b39c64224d349a935ab5039aa360942a48` |
@@ -330,6 +350,7 @@ upstream project link provide the corresponding attribution and source location.
 | `windows-implement 0.60.2` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `053e2e040ab57b9dc951b72c264860db7eb3b0200ba345b4e4c3b14f67855ddf` |
 | `windows-interface 0.59.3` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `3f316c4a2570ba26bbec722032c4099d8c8bc095efccdc15688708623367e358` |
 | `windows-link 0.2.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5` |
+| `windows-native-keyring-store 1.1.0` | `MIT OR Apache-2.0` | `MIT` | Windows | [Daniel Brotsky <dev@brotsky.com>](https://github.com/open-source-cooperative/windows-native-keyring-store.git) | `063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8` |
 | `windows-numerics 0.3.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `6e2e40844ac143cdb44aead537bbf727de9b044e107a0f1220392177d15b0f26` |
 | `windows-result 0.4.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `7781fa89eaf60850ac3d2da7af8e5242a5ea78d1a11c49bf2910bb5a73853eb5` |
 | `windows-strings 0.5.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091` |
@@ -353,6 +374,7 @@ upstream project link provide the corresponding attribution and source location.
 | `zbus 5.19.0` | `MIT` | `MIT` | Linux | [Zeeshan Ali Khan <zeeshanak@gnome.org>](https://github.com/z-galaxy/zbus/) | `5db4be7c075cb421e4b7ee645541604239bd243ba7c357511f4ff3a74b555907` |
 | `zbus-lockstep 0.5.2` | `MIT` | `MIT` | Linux | [Luuk van der Duim <luukvanderduim@gmail.com>, Tait Hoyem<tait@tait.tech>](https://github.com/luukvanderduim/zbus-lockstep) | `6998de05217a084b7578728a9443d04ea4cd80f2a0839b8d78770b76ccd45863` |
 | `zbus-lockstep-macros 0.5.2` | `MIT` | `MIT` | Linux | [Luuk van der Duim <luukvanderduim@gmail.com>](https://github.com/luukvanderduim/zbus-lockstep) | `10da05367f3a7b7553c8cdf8fa91aee6b64afebe32b51c95177957efc47ca3a0` |
+| `zbus-secret-service-keyring-store 1.0.1` | `MIT OR Apache-2.0` | `MIT` | Linux | [Daniel Brotsky <dev@brotsky.com>](https://github.com/open-source-cooperative/zbus-secret-service-keyring-store.git) | `74801d001b9e7729adb4f1825b67b398185fed424749aa3d8bacf70417137d9a` |
 | `zbus_macros 5.19.0` | `MIT` | `MIT` | Linux | [Marc-André Lureau <marcandre.lureau@redhat.com>, Zeeshan Ali Khan <zeeshanak@gnome.org>](https://github.com/z-galaxy/zbus/) | `2990635d09ade6df1868f72f8cac69a876a90981e8bd3c40b1be413f8dc88f40` |
 | `zbus_names 4.3.4` | `MIT` | `MIT` | Linux | [Zeeshan Ali Khan <zeeshanak@gnome.org>](https://github.com/z-galaxy/zbus/) | `d8bf88b4a3ff53e883001e0e0115b297a9d53c31b9c1edd2bfdd853e3428624e` |
 | `zbus_xml 5.2.1` | `MIT` | `MIT` | Linux | [Zeeshan Ali Khan <zeeshanak@gnome.org>](https://github.com/z-galaxy/zbus/) | `d1586c021a01ca0a9216dcd874e546382e156a5cbab5fab6cb5f10087e22682a` |

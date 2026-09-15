@@ -2,7 +2,7 @@
 
 日期：2026-09-03
 
-状态：`Accepted — profile 已冻结；P1-S03a portable graph 已落地，platform providers 待后续单元`
+状态：`Accepted — profile 已冻结；P1-S03a portable graph 与 P1-S03c-2 isolated providers 已落地；真实平台待验收`
 
 范围：`P1-S02 dependency and cipher review`。本文选择 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md) 所需的对象 AEAD、streaming construction、DEK wrap、随机源、secret memory 边界和 macOS / Windows / Linux key provider，并冻结实现前门禁。本文不修改 production manifest、`Cargo.lock`、SQLite schema、application service 或 UI，不访问真实系统 key store，也不证明加密 Source Vault 已实现。
 
@@ -12,7 +12,7 @@
 
 随机字节继续来自 workspace 已固定的 `getrandom =0.4.3`；secret-bearing byte / string buffer 使用 `zeroize =1.9.0` 的 `Zeroizing` 或等价 drop zeroization。production platform key store 使用 `keyring-core =1.0.0` 的共同 error / entry model，但不链接 all-in-one `keyring`：macOS 精确选择 `apple-native-keyring-store =1.0.2` 的 legacy `keychain` feature，Windows 选择 `windows-native-keyring-store =1.1.0` 并关闭默认 `search`，Linux 选择 `zbus-secret-service-keyring-store =1.0.1` 的 `crypto-rust` feature。
 
-这些选择中 portable crypto 部分已由 [P1-S03a 落地记录](phase1-source-vault-portable-crypto.md)完成 crate 下载、checksum / lockfile、三目标图、许可证 / notices、advisory 复核与 known-answer / tamper tests。三个 platform key-store provider 仍只冻结精确选择，尚未进入 manifest / lockfile，也没有访问真实系统 store；其最终解析版本、feature、许可证、native surface 或 advisory 与本文不符时仍会重新打开 P1-S02。
+这些选择中 portable crypto 部分已由 [P1-S03a 落地记录](phase1-source-vault-portable-crypto.md)完成 crate 下载、checksum / lockfile、三目标图、许可证 / notices、advisory 复核与 known-answer / tamper tests。P1-S03c-1 已完成[隔离解析与源码预检](2026-09-15-source-vault-provider-preflight.md)，补充 API 方案随后获得授权；[P1-S03c-2](phase1-source-vault-key-provider.md) 已使三个 platform provider 与两个补充直接依赖进入正式 manifest / lockfile，实现独立 provider，但没有访问真实系统 store；正式落地的 feature、许可证、native surface 或 advisory 与本文不符时仍会重新打开 P1-S02。
 
 ## Object cipher profile
 
@@ -99,11 +99,11 @@ keyring-core = { version = "=1.0.0", default-features = false }
 
 - service：`io.github.laugh0608.RadishMemory.source-vault`；
 - user / account：`v1:<namespace_id>:<device_id>`，两项均来自已验真的 host profile，不从 path、OS username、machine name 或 origin file 推导；
-- label：固定 human-readable `RadishMemory Source Vault key`，不包含 namespace / device / path；
+- label：固定 human-readable `RadishMemory Source Vault key`，不包含 namespace / device / path；macOS / Linux 使用 label，Windows 映射到 `comment`（P1-S03c-2 已批准）；
 - secret value：ASCII `rmkek1:` 加 64 个 lowercase hexadecimal characters，解码后必须恰好 32 bytes。为兼容只可靠支持 UTF-8 secret 的 KDE Wallet，不直接持久化任意 binary；
 - SQLite 只保存 provider profile ID `radishmemory.platform-key-store/1` 和稳定 key-slot reference，不保存 secret value、可逆 path 或 credential dump。
 
-出现零个 entry、一个合法 entry、多个匹配 entry、损坏 value 和 provider failure 必须区分。多个匹配永远是 `ambiguous`，不能取 first / newest；读取后必须严格重编码复验。provider 的底层错误可以保留为受限 source chain，但公开 error 只使用稳定脱敏 reason。
+出现零个 entry、一个合法 entry、多个匹配 entry、损坏 value 和 provider failure 必须区分。多个匹配永远是 `ambiguous`，不能取 first / newest；读取后必须严格重编码复验。实现只从受审阅的底层错误中提取稳定 code / operation 和可取得的数值 OS code；含原始字节的 payload 必须零化，不向公开 error 附带原始 source chain。
 
 ### macOS
 
@@ -111,6 +111,8 @@ keyring-core = { version = "=1.0.0", default-features = false }
 [target.'cfg(target_os = "macos")'.dependencies]
 apple-native-keyring-store = { version = "=1.0.2", default-features = false, features = ["keychain"] }
 ```
+
+P1-S03c-2 另直接声明 `security-framework =3.7.0` / no defaults，仅通过安全 API 补齐固定 label 读写与 User-domain 精确查询，不引入第一方 unsafe。
 
 当前 desktop 没有 provisioning profile，因此首版选择 legacy Keychain Services generic-password store；不启用 `protected`，也不启用 biometric、access group、iCloud synchronization 或 Secure Enclave 声明。service / account 构成精确 lookup；duplicate、locked keychain、user denial、interaction not allowed 和其它 OSStatus 均显式失败。未来签名 sandbox app 若改用 protected-data keychain，属于 provider profile migration，不能只切 feature。
 
@@ -131,6 +133,8 @@ provider 默认 persistence 是 `Enterprise`，本项目必须显式指定 `Loca
 [target.'cfg(target_os = "linux")'.dependencies]
 zbus-secret-service-keyring-store = { version = "=1.0.1", default-features = false, features = ["crypto-rust"] }
 ```
+
+P1-S03c-2 另直接声明 `secret-service =5.2.0` / no defaults / `crypto-rust`，以只读 default collection guard 补齐既有项读取前后检查；不调用 `get_any_collection` 或持久化 D-Bus path。
 
 选择 Secret Service default collection，不传会创建 / 选择另一 collection 的 `target` modifier；entry 通过 service 与 username attributes 精确搜索，不持久化或信任 D-Bus object path。`crypto-rust` 避免 OpenSSL 和项目未采用的 async runtime feature；D-Bus / Secret Service 是本地 IPC / session service，不是产品 HTTP / TLS 能力。
 
@@ -214,6 +218,52 @@ P1-S02 在以下条件同时成立时完成：精确 primitive / STREAM / wrap /
 - 验收：公开 XChaCha vector、repository-owned STREAM / wrap vectors 和所有负向场景通过；resolved source / checksum / license / feature / build-script / proc-macro / `links` / advisory inventory 完整；`./scripts/check-repo.sh` 与 portable package locked tests 通过；工作树只含该单元文件；
 - 实际结果：新增独立 package 与 11 个 crates.io package，完成 CFRG / repository vectors、AAD byte fixture、tamper / truncation / reorder / final-flag、random failure、secret / diagnostic 边界、三目标 portable graph、344 项 notices 和当前 RustSec database 静态复核；没有加入 platform provider、对象目录、SQLite 或 application dependency edge；
 - 后续授权：下一最小单元为 `P1-S03b immutable object filesystem adapter`；平台 provider landing / 真实 key-store 交互、`P1-S04` SQLite coordination / migration 与 `P1-S05` host acceptance 继续分别授权，前一单元证据不能替代后一单元。
+
+## Platform provider 实施前核对与批次范围（2026-09-15）
+
+状态：`P1-S03c-1 preflight complete — supplemental API decisions accepted for P1-S03c-2`。
+
+本节保留当批授权范围与初始待证项；已确认的解析、源码行为、补充方案和证据限制见[隔离预检结果](2026-09-15-source-vault-provider-preflight.md)。
+
+P1-S03b 已在其对象 filesystem 范围完成 macOS、Windows ARM64 / NTFS、Linux ARM64 / ext4 验收，见[落地记录](phase1-source-vault-filesystem.md)。下一单元命名为 `P1-S03c platform key provider`。本节只落实实施前核对与拟执行范围，不修改上文已接受的 provider / slot / value / bootstrap 契约，不把 API 文档核对当成 provider 已实现或系统密钥库已验收。
+
+### 本轮发现与待证事项
+
+| 项目 | 已核对事实 | 实现约束与待证事项 |
+| --- | --- | --- |
+| 明确选择 store | `keyring-core` 的 `Entry::new` 使用全局 default store；具体 store 提供自身 builder | adapter 应持有精确平台 store，核验其直接 build 路径；不读取或修改全局 default store，不接受应用外部注入的其它 provider |
+| 写入不是 create-only | `Entry::set_password` / `set_secret` 会更新已有 secret | 不把上游 setter 暴露为任意调用方可用的 KEK 创建入口；P1-S04 的 SQLite `IMMEDIATE` 串行化、eligibility 重验、existing entry 复用与 read-back 是完整 bootstrap 的必要条件；P1-S03c 的合成编排不替代两实例产品验收 |
+| 错误也可能携带 secret | `BadEncoding` / `BadDataFormat` 带有原始字节，`Ambiguous` 带有匹配 entries | 不能直接透传其 Debug、Display 或 source chain；核验并零化可取得的 secret payload，公开错误只保留稳定 code / operation 与允许的数值 OS code。`NoStorageAccess` 不能一律猜作 locked；无法分类的错误保持 provider failure |
+| Windows 既有 persistence | `Local` modifier 仅在写入时生效；既有 entry 的 persistence 可从 attribute 读取 | 写入前固定 Local；读取既有 entry 时也验证 Local，Enterprise / Session / 属性不可验证均失败关闭，不自动改写 persistence |
+| macOS 固定 label | `apple-native-keyring-store 1.0.2` 的 legacy keychain 文档说明该模块忽略 credential attributes | 与本项目固定 label 要求存在 API 能力待证项；须检查发布源码和既有依赖提供的安全接口，不能忽略失败或自行放宽 label 契约；若必须新增原生能力、依赖或改变要求，提交具体差异再决策 |
+| Linux collection 与 ambiguity | 默认 collection 控制新建位置；精确 service / username 的既有项搜索跨 collections | 不通过新增 target、只保留默认 collection 或取首项隐藏 multiple matches；核验 default collection 缺失、跨 collection 同身份与创建行为，不让 lookup 触发替代 collection 创建 |
+| Linux feature 文档差异 | Rustdoc 的 Features 段仍描述四种 runtime / crypto 组合；前次评审选择为 `crypto-rust` | 以 `1.0.1` 发布 manifest、依赖 feature 传播和实际三目标图核验；不依据文档措辞自行切换 runtime 或 provider，也不据此宣称已选 feature 无效 |
+
+本表记录解析前的 API 文档发现；其后已取得发布源码 / checksum 和依赖解析证据，真实 OS 行为仍未验收。初始依据：[Entry 1.0.0](https://docs.rs/keyring-core/1.0.0/keyring_core/struct.Entry.html)、[Error 1.0.0](https://docs.rs/keyring-core/1.0.0/keyring_core/error/enum.Error.html)、[macOS legacy keychain 1.0.2](https://docs.rs/apple-native-keyring-store/1.0.2/apple_native_keyring_store/keychain/index.html)、[Windows provider 1.1.0](https://docs.rs/windows-native-keyring-store/1.1.0/windows_native_keyring_store/)、[Linux provider 文档](https://docs.rs/zbus-secret-service-keyring-store/latest/zbus_secret_service_keyring_store/)（本次页面标示 `1.0.1`；后续复验必须固定发布版本）。
+
+### P1-S03c-1：隔离依赖与 API 可行性核验
+
+项目所有者已确认并完成执行的预检范围如下：
+
+1. 在本机任务专用临时目录复制当前受控 manifest / lockfile，保持原 workspace 的 target 条件和 feature 关系；仅在副本中加入上文固定的 `keyring-core =1.0.0`、`apple-native-keyring-store =1.0.2` / `keychain`、`windows-native-keyring-store =1.1.0` / no defaults、`zbus-secret-service-keyring-store =1.0.1` / `crypto-rust`。不创建另一份长期 schema 或 production package。
+2. 使用已有 Rust / Cargo `1.96.0`、独立 `CARGO_HOME` 和 target 目录；从 crates.io 下载精确 provider 与其必要传递依赖，按发布 checksum 核对。临时副本执行 `cargo metadata --format-version 1` 解析，再以 `--locked --filter-platform` 分别导出 `aarch64-apple-darwin`、`aarch64-pc-windows-msvc`、`aarch64-unknown-linux-gnu` 图；不使用 `cargo update` 做无关升级。
+3. 对比正式 lockfile：记录直接 / 传递增量、已有版本变更、feature、license、build script、proc macro、`links` 与 native / runtime 面；复核当前 RustSec advisory 数据及可达性。没有 locked compile 证据时只报告解析结果，不宣称平台构建通过。
+4. 阅读发布源码，逐项验证表中的 store builder、upsert、原始错误字节、Windows Local attribute、macOS label、Linux feature / collection 行为；产出拟修改文件与依赖差异清单。若上游能力不足，列出最小可行方案及其对既有契约的影响，先决策再落地。
+5. 本批只形成可审阅的依赖 / API 证据；正式仓库 `Cargo.toml`、`Cargo.lock`、notices、Rust 代码保持不变。临时解析与源码阅读不执行 key-store API、不编译或运行第三方 build script，不启动 VM / GUI、不安装全局工具、不改系统配置、不访问真实 key store、不 push 或触发远程 CI。
+
+预计 30–60 分钟，主要副作用是 crates.io / RustSec 资料下载及任务专用磁盘缓存；不上传项目资料或凭据。使用唯一临时目录，收尾保留最小审阅证据，精确清理该目录内的源码副本与依赖缓存。没有正式 manifest / lockfile 修改，因此该批无需数据库、密钥或产品回滚。
+
+### 后续实现切片与完成条件
+
+- **P1-S03c-2 isolated provider adapter**：P1-S03c-1 解决兼容性问题并取得正式依赖 / 实现授权后，在现有 `radishmemory-source-vault` 扩展窄 provider 模块，复用 `KeyEncryptionKey`、随机源、zeroization 和错误体系。slot 输入来自经过验真的 host profile；遵循现有 `namespace-` / `device-` 加 32 位小写 hex 的宿主边界，避免 `:` / `/` 拼接歧义，不改变通用 canonical Identifier。
+- **读取与 value 验收**：严格 `rmkek1:` + 64 个小写 hex，拒绝非 UTF-8、空白、额外尾随内容、大小写替代和错误长度；缺 key、ambiguous、损坏、取消、拒绝、不可用各有真实失败证据。load 不调用 setter，不触发 replacement KEK；敏感缓冲及上游错误不得进入日志。
+- **bootstrap 验收归属**：分别定义 `load_existing` 与受控 `create_if_absent_for_bootstrap`，不提供 `bootstrap=true` 或调用方自报 `empty=true` 的授权捷径。provider 底层写操作保持内部边界；正式创建资格、事务锁和两实例验证由 P1-S04 接入，同一 slot 已有合法 key 时复用，已有坏 key 时失败关闭。
+- **P1-S03c-3 platform evidence**：按具体测试账户、专用 slot、系统交互及清理范围分别批准后，再运行真实 macOS Keychain、Windows Local Credential Manager、Linux GNOME / KDE-compatible Secret Service 验收；包括创建、read-back、关闭重开、取消、锁定、拒绝、重复匹配和精确测试凭据清理。默认仓库测试不自动访问 OS store。合成 store tests、单平台成功和清理命令成功均不能替代实际平台或清理结果证据。
+- P1-S03c 不接 SQLite migration、application / UI，也不新增 key rotation、恢复、同步或通用 credential 删除入口；这些仍按 ADR 0008 的后续单元推进。
+
+### 本批记录
+
+2026-09-15 基线 `5acdf74`；完成授权的隔离解析与源码核对：22 个新增 package、467 个发布文件校验通过，原有锁定版本不变，三目标 metadata / feature tree 和当前 RustSec 静态复核完成。正式 manifest / lockfile 和 Rust 实现未修改；候选 provider 编译、真实 key store、VM 与平台 provider 测试均未运行。macOS label、Linux default collection guard 的两个直接依赖补充及 Windows comment 映射随后已批准并在 P1-S03c-2 落地；预检当批范围详见[预检结果与下一批范围](2026-09-15-source-vault-provider-preflight.md#建议决策与下一批精确范围)。
 
 ## 官方依据
 

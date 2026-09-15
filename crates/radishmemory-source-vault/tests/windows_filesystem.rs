@@ -1,12 +1,23 @@
 //! Windows filesystem boundaries; all paths and payloads are isolated synthetic fixtures.
 // Cargo passes the package's direct dependencies to integration test crates on every platform.
 use aead_stream as _;
+#[cfg(target_os = "macos")]
+use apple_native_keyring_store as _;
 use chacha20poly1305 as _;
 use getrandom as _;
+use keyring_core as _;
 use radishmemory_source_vault as _;
 #[cfg(windows)]
 use radishmemory_windows_filesystem as _;
+#[cfg(target_os = "linux")]
+use secret_service as _;
+#[cfg(target_os = "macos")]
+use security_framework as _;
 use sha2 as _;
+#[cfg(windows)]
+use windows_native_keyring_store as _;
+#[cfg(target_os = "linux")]
+use zbus_secret_service_keyring_store as _;
 use zeroize as _;
 
 #[cfg(windows)]

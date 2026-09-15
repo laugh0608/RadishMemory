@@ -20,10 +20,12 @@ publish = false
 
 [workspace.dependencies]
 aead-stream = { version = "=0.6.0", default-features = false, features = ["alloc"] }
+apple-native-keyring-store = { version = "=1.0.2", default-features = false, features = ["keychain"] }
 chacha20poly1305 = { version = "=0.11.0", default-features = false, features = ["alloc", "zeroize"] }
 directories = "=6.0.0"
 eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
 getrandom = { version = "=0.4.3", default-features = false }
+keyring-core = { version = "=1.0.0", default-features = false }
 radishmemory-application = { path = "crates/radishmemory-application", version = "=0.1.0" }
 radishmemory-core = { path = "crates/radishmemory-core", version = "=0.1.0" }
 radishmemory-file-entry = { path = "crates/radishmemory-file-entry", version = "=0.1.0" }
@@ -32,11 +34,15 @@ radishmemory-sqlite = { path = "crates/radishmemory-sqlite", version = "=0.1.0" 
 radishmemory-windows-filesystem = { path = "crates/radishmemory-windows-filesystem", version = "=0.1.0" }
 rusqlite = { version = "0.40.2", default-features = false, features = ["bundled"] }
 rfd = { version = "=0.17.2", default-features = false, features = ["xdg-portal", "wayland"] }
+secret-service = { version = "=5.2.0", default-features = false, features = ["crypto-rust"] }
+security-framework = { version = "=3.7.0", default-features = false }
 serde_json = { version = "1.0.151", default-features = false, features = ["arbitrary_precision", "std"] }
 sha2 = { version = "0.11.0", default-features = false }
 time = { version = "0.3.55", default-features = false, features = ["formatting", "parsing", "std"] }
 unicode-normalization = { version = "0.1.25", default-features = false, features = ["std"] }
 windows-sys = { version = "=0.61.2", default-features = false, features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
+windows-native-keyring-store = { version = "=1.1.0", default-features = false }
+zbus-secret-service-keyring-store = { version = "=1.0.1", default-features = false, features = ["crypto-rust"] }
 zeroize = { version = "=1.9.0", default-features = false, features = ["alloc"] }
 
 [workspace.lints.rust]

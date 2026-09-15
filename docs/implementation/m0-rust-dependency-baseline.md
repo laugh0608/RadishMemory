@@ -1,12 +1,12 @@
 # RadishMemory Rust 依赖基线
 
-日期：2026-09-10
+日期：2026-09-15
 
-范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、`P1-S03a portable crypto dependency landing`、`P1-S03b Windows file identity adapter`、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
+范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、`P1-S03a portable crypto dependency landing`、`P1-S03b Windows file identity adapter`、`P1-S03c-2 isolated platform key provider`、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
-`Cargo.lock` 由 Cargo `1.96.0` 生成，lockfile format 为 `4`。当前依赖图包含八个第一方 workspace package，以及从 crates.io 解析并带 checksum 的 423 个第三方 package；没有 Git dependency。数量包含 Linux、macOS、Windows、Android、WASM 和可选 renderer 的条件解析全集，不等于单个产物会编译或链接全部 package。
+`Cargo.lock` 由 Cargo `1.96.0` 生成，lockfile format 为 `4`。当前依赖图包含八个第一方 workspace package，以及从 crates.io 解析并带 checksum 的 445 个第三方 package；没有 Git dependency。数量包含 Linux、macOS、Windows、Android、WASM 和可选 renderer 的条件解析全集，不等于单个产物会编译或链接全部 package。
 
 | package | 直接依赖 | 来源 | 许可证 |
 | --- | --- | --- | --- |
@@ -15,7 +15,7 @@
 | `radishmemory-sqlite 0.1.0` | runtime：`radishmemory-core =0.1.0`、`rusqlite`；test-only：`radishmemory-file-entry =0.1.0`（`acceptance-test-support`） | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-application 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-file-entry =0.1.0`、`radishmemory-sqlite =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-desktop 0.1.0` | `radishmemory-application =0.1.0`、`eframe`、`rfd`、`directories`、`getrandom`、`time` | workspace path | 仓库 [LICENSE](../../LICENSE) |
-| `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`；仅 Windows：`radishmemory-windows-filesystem =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`、`keyring-core`；macOS：`apple-native-keyring-store`、`security-framework`；Windows：`windows-native-keyring-store`、`radishmemory-windows-filesystem =0.1.0`；Linux：`zbus-secret-service-keyring-store`、`secret-service` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`（`fixture-runner`）、`serde_json` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-windows-filesystem 0.1.0` | 仅 Windows：`windows-sys =0.61.2` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 
@@ -40,9 +40,9 @@
 
 ## Source Vault portable crypto 直接依赖
 
-`P1-S03a` 新增独立第一方 `radishmemory-source-vault` package，只落地 [P1-S02 依赖与密码套件评审](phase1-encrypted-source-vault-dependency-review.md)冻结的 portable cipher / wrap、AAD、系统随机和 secret-memory profile。其精确直接依赖为 `aead-stream =0.6.0`、`chacha20poly1305 =0.11.0`、既有 `getrandom =0.4.3`、既有 `sha2 0.11.0` 与 `zeroize =1.9.0`；三个 platform key-store provider 仍未进入 manifest 或 lockfile。
+`P1-S03a` 新增独立第一方 `radishmemory-source-vault` package，只落地 [P1-S02 依赖与密码套件评审](phase1-encrypted-source-vault-dependency-review.md)冻结的 portable cipher / wrap、AAD、系统随机和 secret-memory profile。其精确直接依赖为 `aead-stream =0.6.0`、`chacha20poly1305 =0.11.0`、既有 `getrandom =0.4.3`、既有 `sha2 0.11.0` 与 `zeroize =1.9.0`；该单元当时未加入三个 platform key-store provider，P1-S03c-2 的后续落地见下节。
 
-本次 lockfile 精确新增 `aead 0.6.1`、`aead-stream 0.6.0`、`chacha20 0.10.2`、`chacha20poly1305 0.11.0`、`cipher 0.5.2`、`cmov 0.5.4`、`ctutils 0.4.2`、`inout 0.2.2`、`poly1305 0.9.1`、`universal-hash 0.6.1` 与 `zeroize 1.9.0` 共 11 个 crates.io package。它们没有 build script、proc macro、native `links`、OpenSSL、FFI、网络 client 或 async runtime；三项目标的 portable crypto / digest 子图一致，只有既有 `getrandom` / `sha2` 解析目标条件。公开向量、项目固定向量、负向测试、许可证、checksum、notices 和 RustSec 复核详见 [P1-S03a 落地记录](phase1-source-vault-portable-crypto.md)。
+该单元 lockfile 精确新增 `aead 0.6.1`、`aead-stream 0.6.0`、`chacha20 0.10.2`、`chacha20poly1305 0.11.0`、`cipher 0.5.2`、`cmov 0.5.4`、`ctutils 0.4.2`、`inout 0.2.2`、`poly1305 0.9.1`、`universal-hash 0.6.1` 与 `zeroize 1.9.0` 共 11 个 crates.io package。它们没有 build script、proc macro、native `links`、OpenSSL、FFI、网络 client 或 async runtime；三项目标的 portable crypto / digest 子图一致，只有既有 `getrandom` / `sha2` 解析目标条件。公开向量、项目固定向量、负向测试、许可证、checksum、notices 和 RustSec 复核详见 [P1-S03a 落地记录](phase1-source-vault-portable-crypto.md)。
 
 ## Windows 文件身份 adapter 直接依赖与安全不变量
 
@@ -56,11 +56,17 @@ Source Vault 的 `Observation` 保留原文件引用直到比较结束，避免�
 
 替代方案已检查：固定工具链的 std Windows 文件 ID 接口不可用于该实现；`same-file 1.0.6` 仅比较较低分辨率 ID，无法覆盖 ReFS 的完整 128 位；`file-id 0.2.3` 的公开入口从路径重新打开并跟随 reparse point，不能绑定本次已经打开的句柄。因此保留最小原生查询边界，不回退到时间戳、低位 ID、外部命令或未经认证的路径查询。具体复现、回归及平台证据见 [filesystem adapter 记录](phase1-source-vault-filesystem.md)。
 
+## Source Vault platform provider 直接依赖
+
+P1-S03c-2 经独立授权加入六项精确直接依赖：共同 `keyring-core =1.0.0`；macOS `apple-native-keyring-store =1.0.2` / `keychain` 与 `security-framework =3.7.0`；Windows `windows-native-keyring-store =1.1.0` / no defaults；Linux `zbus-secret-service-keyring-store =1.0.1` 与 `secret-service =5.2.0` / `crypto-rust`。六项均关闭自身 default features，但不能关闭其它 dependency edge 激活的上游默认 feature。
+
+22-package 增量的 checksum、MIT distribution basis、MSRV、native / runtime / build-script / proc-macro 面及固定 RustSec 快照已复核；没有旧版本漂移。两个分发根的三目标可达依赖 notices 当前为 366 项；精确 API、补充依赖用途、运行与未验证边界见[provider 落地记录](phase1-source-vault-key-provider.md)，不能把 portable 单元的无 FFI 历史结论扩展到整个 Source Vault。
+
 ## Desktop 直接依赖、平台面与当前目标
 
 `radishmemory-desktop` 的精确直接依赖与选择理由见 [Phase 1 桌面宿主依赖评审](phase1-desktop-dependency-review.md)：`eframe =0.36.1` 关闭 default features 并只启用 `accesskit`、`default_fonts`、`wayland`、`wgpu`、`x11`；`rfd =0.17.2` 只启用 `xdg-portal`、`wayland`；`directories =6.0.0`、`getrandom =0.4.3` 与 `time =0.3.55` 提供应用目录、系统随机与 UTC RFC 3339。Windows ARM64 真实运行证明 `glow` 无法在该虚拟显示宿主取得 OpenGL 2.0，当前以唯一 `wgpu` renderer 修复，不保留静默 fallback。
 
-当前 `aarch64-apple-darwin` desktop 根可达 180 个唯一 package ID，其中 5 个第一方；真实编译使用 AppKit、AccessKit、`wgpu` / Metal binding、剪贴板、系统随机与 bundled SQLite。P1-H05 当时的 lockfile 为 418 个 package；P1-S03a 加入独立 portable crypto 根后为 430 个 package；P1-S03b 增加一个第一方 Windows adapter，当前全集为 431 个 package。全集仍保存其它 target 和可选依赖，因此出现 `glow` / Glutin、Linux XDG Portal / D-Bus、Wayland / X11、Windows、Android 与 WASM package，不代表当前 macOS artifact 启用了这些路径。整份 lockfile 与当前目标树都没有常见 HTTP / TLS client 或 `tokio`；Linux portal 的本地 D-Bus / async 条件面、窗口系统、GPU backend、剪贴板和 accessibility 仍是必须承认的平台能力。
+当前 `aarch64-apple-darwin` desktop 根可达 180 个唯一 package ID，其中 5 个第一方；真实编译使用 AppKit、AccessKit、`wgpu` / Metal binding、剪贴板、系统随机与 bundled SQLite。P1-H05 当时的 lockfile 为 418 个 package；P1-S03a 加入独立 portable crypto 根后为 430 个 package；P1-S03b 增加一个第一方 Windows adapter，当时全集为 431 个 package；P1-S03c-2 新增 22 个第三方 package，当前全集为 453 个。全集仍保存其它 target 和可选依赖，因此出现 `glow` / Glutin、Linux XDG Portal / D-Bus、Wayland / X11、Windows、Android 与 WASM package，不代表当前 macOS artifact 启用了这些路径。当前目标未接产品 HTTP / TLS client 或 `tokio`；新加入的 macOS Security framework 上游默认 features 包括 alpn / session-tickets，这不代表产品启用 TLS；Linux portal 的本地 D-Bus / async 条件面、窗口系统、GPU backend、剪贴板和 accessibility 仍是必须承认的平台能力。
 
 desktop 新增四个第三方直接依赖的声明许可证是：`eframe`、`directories`、`getrandom` 为 `MIT OR Apache-2.0`，`rfd` 为 `MIT`；`time` 保持既有 `MIT OR Apache-2.0`。完整 locked metadata 没有缺失 license 字段，跨目标全集有 75 个 build-script package ID、27 个 proc-macro package ID 和 3 个 native `links` 声明；P1-S03a 的 11 个新增 package 不增加这三类执行 / 原生面。`radishmemory-desktop` 与 `radishmemory-source-vault` 两个分发根在三目标可达的 344 个 crate、`epaint_default_fonts` 的 OFL / Ubuntu Font License、`option-ext` 的 MPL-2.0、`unicode-ident` 的 Unicode-3.0 与每个 OR expression 的实际 distribution basis 已由 [third-party notices 与条件平台依赖复核](phase1-third-party-notices.md)逐项收口。不得把本页摘要替代完整 notices。
 
