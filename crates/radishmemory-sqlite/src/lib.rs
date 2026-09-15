@@ -16,6 +16,7 @@ mod migration;
 mod source_capture;
 mod source_catalog;
 mod source_store;
+mod source_vault_key;
 
 use std::fmt;
 use std::path::Path;
@@ -32,6 +33,7 @@ pub use error::{
 #[cfg(feature = "fixture-runner")]
 pub use fixture_runner::FixtureDeletionFailure;
 pub use migration::SQLITE_SCHEMA_VERSION;
+pub use source_vault_key::{KeyInitializationTransaction, SourceVaultKeyDatabase};
 
 /// An initialized RadishMemory SQLite database.
 pub struct SqliteDatabase {

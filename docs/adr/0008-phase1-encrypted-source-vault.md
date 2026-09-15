@@ -127,7 +127,7 @@ KEK 缺失、锁定、拒绝授权、wrapper 损坏或错误 key 都是显式失
 1. `P1-S01 storage contract`：接受本文，冻结声明、identity、envelope、密钥、提交、迁移、删除和合成验收；不改 production code；
 2. `P1-S02 dependency and cipher review`：已由[专项评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)选择精确 AEAD / key-wrap / random / platform key provider，并冻结版本、test vector、许可证、native build、系统授权、维护和三平台影响；
 3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Windows ARM64 / NTFS 提升权限、普通用户与 ACL 验收已通过，文件身份替换缺陷已修复；Linux ARM64 / ext4 普通用户验收也已通过；`P1-S03c-2 isolated platform key provider` 已落地精确依赖、读取及私有 bootstrap 编排，并通过 macOS 构建和合成测试；真实平台凭据验收仍待后续；
-4. `P1-S04 SQLite coordination and migration`：实现 object reference、capture attempt、v6 migration、orphan reconciliation、verify / rebuild 与 deletion execution；
+4. `P1-S04 SQLite coordination and migration`：P1-S04a 已实现密钥初始化资格、事务串行化与 maintenance-only v7 `key_ready` checkpoint，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)；object reference、capture attempt、v6 正文 migration、orphan reconciliation、verify / rebuild 与 deletion execution 继续推进；
 5. `P1-S05 application and host acceptance`：接入 application service / UI，完成合成迁移、重启、key failure、故障注入和三平台 locked / 真实宿主证据。
 
 只有已经接受的 `P1-S02` 与后续 `P1-S03` 至 `P1-S05` 分别通过后，才评审 PDF / 图片的 media type、parser sandbox、页码 / 区域 citation、质量指标和派生数据治理。
@@ -198,6 +198,8 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 兼容性：M0 Canonical Schema 已允许 SourceArtifact content 物理内联或外置，因此本文不修改九种 canonical 顶层对象、`radishmemory.m0/1`、citation 或现有 DeleteRequest / DeletionEvidence schema。具体 object reference、envelope、attempt 和 migration 表是 adapter-private、带版本的实现格式；若后续 PDF / 图片需要扩展 source kind、media type、片段坐标或 citation，必须通过新的 canonical 兼容性评审。
 
 ## 当前实施状态与停止线
+
+2026-09-15 项目所有者已授权 P1-S04a：复用现有 SQLite adapter，在 Source Vault coordinator 下实现真实存储资格检查、密钥初始化与事务 checkpoint，仅用合成资料 / 测试 provider 验证；不接入 application / UI 或访问真实系统 key store。v7 只保留初始化准备状态，后续正文迁移单独推进；默认 `SqliteDatabase::open` 仍只允许 v6。Windows / Linux 验证按[当前顺位](../status/current.md)后置集中执行。
 
 `P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 已实现，真实平台凭据、SQLite migration 与 host integration 均未验收。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
 

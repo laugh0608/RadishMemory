@@ -75,7 +75,8 @@ fn valid_id(value: &str, prefix: &str) -> bool {
 /// run off the UI thread after host authorization. Before OS access, the host's
 /// logger must suppress sensitive upstream targets (including `keyring_core`);
 /// enabling their debug/trace output can disclose credential identifiers.
-/// There is deliberately no public key creation, setter, or deletion API.
+/// Creation is available only through the SQLite-coordinated library initializer;
+/// there is no public slot-only creator, setter, or deletion API.
 ///
 /// ```compile_fail
 /// use radishmemory_source_vault::{KeySlot, PlatformKeyProvider};
@@ -108,36 +109,54 @@ impl PlatformKeyProvider {
         }
     }
 
-    // This is the only production write entry, intentionally unreachable from
-    // consumers until P1-S04 supplies transaction-owned eligibility. A slot or
-    // caller-provided boolean can never authorize this method through public API.
-    #[expect(
-        dead_code,
-        reason = "private write entry awaits the P1-S04 transaction coordinator"
-    )]
-    fn create_if_absent_for_bootstrap(&self, slot: &KeySlot) -> Result<KeyEncryptionKey> {
-        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
-        {
-            bootstrap(&platform::Store::connect(slot)?, &mut SystemRandom)
-        }
-        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
-        {
-            let _ = slot;
-            Err(failure(
-                SourceVaultErrorCode::KeyStoreUnavailable,
-                "unsupported key store platform",
-            ))
-        }
+    /// Prepares the dedicated library's key checkpoint under its SQLite writer
+    /// lock. May prompt/write the real OS key store. The host must supply verified
+    /// profile identities, suspend ordinary operations, and suppress sensitive
+    /// logging before explicitly invoking this maintenance operation.
+    pub fn initialize_library_key(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+    ) -> std::result::Result<KeyEncryptionKey, crate::KeyInitializationError> {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::bootstrap::initialize(directory, namespace_id, device_id, |initialized| {
+            #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+            {
+                let store = platform::Store::connect(&slot)?;
+                load_or_bootstrap(&store, initialized, &mut SystemRandom)
+            }
+            #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+            {
+                let _ = (&slot, initialized);
+                Err(failure(
+                    SourceVaultErrorCode::KeyStoreUnavailable,
+                    "unsupported key store platform",
+                ))
+            }
+        })
     }
 }
 
 // Each read checks actual identity/persistence/default collection before and
 // after reading. Implementations never treat attribute access failure as absence.
-trait KeyStore {
+pub(crate) trait KeyStore {
     fn read_secret(&self) -> Result<Zeroizing<Vec<u8>>>;
     fn validate_label(&self) -> Result<()>;
     fn write_secret(&self, value: &[u8]) -> Result<()>;
     fn set_label(&self) -> Result<()>;
+}
+
+pub(crate) fn load_or_bootstrap(
+    store: &impl KeyStore,
+    initialized: bool,
+    random: &mut impl RandomSource,
+) -> Result<KeyEncryptionKey> {
+    if initialized {
+        load_existing(store)
+    } else {
+        bootstrap(store, random)
+    }
 }
 
 fn load_existing(store: &impl KeyStore) -> Result<KeyEncryptionKey> {

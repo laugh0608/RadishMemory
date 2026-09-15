@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod aad;
+mod bootstrap;
 mod crypto;
 mod envelope;
 mod error;
@@ -13,6 +14,7 @@ mod random;
 mod test_support;
 
 pub use aad::ObjectMetadata;
+pub use bootstrap::KeyInitializationError;
 pub use crypto::{KeyEncryptionKey, SealedObject, open_object, seal_object};
 pub use error::{SourceVaultError, SourceVaultErrorCode};
 pub use filesystem::{

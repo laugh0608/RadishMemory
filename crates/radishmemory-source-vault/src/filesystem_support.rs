@@ -227,7 +227,7 @@ impl Observation {
         Ok(observed)
     }
 
-    fn open(path: &Path) -> Result<Self, SourceVaultError> {
+    pub(crate) fn open(path: &Path) -> Result<Self, SourceVaultError> {
         let before = fs::symlink_metadata(path).map_err(|e| {
             if e.kind() == io::ErrorKind::NotFound {
                 SourceVaultError::new(SourceVaultErrorCode::ObjectMissing, "object is missing")
@@ -246,6 +246,15 @@ impl Observation {
 
     fn verify_handle(&self, file: &File) -> Result<(), SourceVaultError> {
         if Snapshot::of(file)? != self.snapshot {
+            return Err(changed());
+        }
+        Ok(())
+    }
+
+    // SQLite changes size/mtime as it commits. Retain the file identity while
+    // allowing those legitimate writes; a replacement is still rejected.
+    pub(crate) fn verify_identity(&self, path: &Path) -> Result<(), SourceVaultError> {
+        if Self::open(path)?.snapshot.identity != self.snapshot.identity {
             return Err(changed());
         }
         Ok(())

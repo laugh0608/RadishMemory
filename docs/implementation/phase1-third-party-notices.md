@@ -55,3 +55,7 @@ Windows desktop 宿主证据来自 elevated ARM64 Developer Prompt，确认测�
 P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory；P1-S03c-2 再扩大到当前 366 项，均已复核并由生成器守护；该清单本身只覆盖分发依赖，不代替平台 key-store 或 object adapter 的实现与运行证据；后者以对应落地记录为准。
 
 这不等于已有发行包或 production deployment：任何 installer / DMG / archive 必须实际携带 `THIRD_PARTY_NOTICES.md` 与 `third_party/licenses/`，并在发布前验证包内容、目标架构、签名链、非提权数据 owner、平台最低版本和对应 native backend。后续依赖、feature、target 或 `Cargo.lock` 发生变化时，必须重新生成、人工复核并更新本页；检查器不会把未知表达式自动归为宽松许可证。
+
+## P1-S04a 协调连线复核
+
+Source Vault 增加现有 SQLite 第一方依赖和测试用 `rusqlite` 后，重新生成 notices：Cargo.lock SHA-256 更新为 `b4efc35519a91c33eca592251116f9434f8aaa3baa3e293fba3c9dea1fc1b698`；两个分发根的三目标 inventory 保持 366 项及既有 inventory digest。没有新增第三方条目、license option、版本或目标 feature。

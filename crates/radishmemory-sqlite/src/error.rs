@@ -72,6 +72,7 @@ pub enum SqliteStorageReason {
     OriginBindingMismatch,
     LineageTipMismatch,
     CaptureStateMismatch,
+    KeyProfileMismatch,
 }
 
 /// SQLite adapter failure that does not display database paths or SQL text.
@@ -269,6 +270,15 @@ impl SqliteError {
     #[must_use]
     pub const fn code(&self) -> SqliteErrorCode {
         self.code
+    }
+
+    /// Retains the native SQLite failure category without SQL text or paths.
+    #[must_use]
+    pub fn sqlite_extended_code(&self) -> Option<i32> {
+        self.source
+            .as_deref()?
+            .downcast_ref::<rusqlite::Error>()?
+            .sqlite_extended_error_code()
     }
 
     /// Returns the required capability when initialization rejected the runtime.

@@ -134,6 +134,53 @@ pub struct ObjectDirectory {
     staging: Directory,
 }
 impl ObjectDirectory {
+    // Pair the coordinator with this capability's database, never an unrelated
+    // empty database supplied by a caller alongside an existing object vault.
+    pub(crate) fn key_database_path(&self) -> Result<std::path::PathBuf> {
+        self.verify()?;
+        let path = self.root.path.join("library.sqlite3");
+        support::present(&path)?;
+        self.verify()?;
+        Ok(path)
+    }
+
+    pub(crate) fn prepare_key_database(
+        &self,
+    ) -> Result<(std::path::PathBuf, support::Observation)> {
+        let path = self.key_database_path()?;
+        if !support::present(&path)? {
+            match support::create_new(&path) {
+                Ok(file) => {
+                    file.sync_all()
+                        .map_err(|e| SourceVaultError::io("sync new key database", e))?;
+                    drop(file);
+                    self.root.sync()?;
+                }
+                Err(error) if error.code() == SourceVaultErrorCode::ObjectExists => {}
+                Err(error) => return Err(error),
+            }
+        }
+        self.verify()?;
+        let reference = support::Observation::open(&path)?;
+        Ok((path, reference))
+    }
+
+    pub(crate) fn is_empty_for_key_initialization(&self) -> Result<bool> {
+        self.verify()?;
+        for directory in [&self.objects, &self.staging] {
+            let mut entries = fs::read_dir(&directory.path)
+                .map_err(|e| SourceVaultError::io("inspect bootstrap object directory", e))?;
+            if let Some(entry) = entries.next() {
+                entry.map_err(|e| SourceVaultError::io("inspect bootstrap directory entry", e))?;
+                self.verify()?;
+                // Any name (including unknown files or symlinks) blocks creation.
+                return Ok(false);
+            }
+        }
+        self.verify()?;
+        Ok(true)
+    }
+
     /// The trusted platform caller must resolve and prepare a dedicated application data root.
     /// No default root is chosen. Tests supply an isolated synthetic directory.
     pub fn open_application_directory(path: impl AsRef<std::path::Path>) -> Result<Self> {

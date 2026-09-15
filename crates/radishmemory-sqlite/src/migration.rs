@@ -5,8 +5,9 @@ use rusqlite::{Connection, Transaction, TransactionBehavior, params};
 
 use crate::SqliteError;
 
-/// Newest on-disk schema version understood by this adapter.
+/// Newest on-disk schema version accepted for ordinary library operations.
 pub const SQLITE_SCHEMA_VERSION: u32 = 6;
+pub(crate) const KEY_INITIALIZATION_SCHEMA_VERSION: u32 = 7;
 
 struct Migration {
     version: u32,
@@ -15,7 +16,7 @@ struct Migration {
     tables_created: &'static [&'static str],
 }
 
-const MIGRATIONS: [Migration; 6] = [
+const MIGRATIONS: [Migration; 7] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -90,15 +91,22 @@ const MIGRATIONS: [Migration; 6] = [
             "radishmemory_source_origin_bindings",
         ],
     },
+    Migration {
+        version: 7,
+        name: "0007_source_vault_key",
+        sql: include_str!("../migrations/0007_source_vault_key.sql"),
+        tables_created: &["radishmemory_source_vault_key_profile"],
+    },
 ];
 
 pub(crate) fn preflight(connection: &Connection) -> Result<i64, SqliteError> {
+    preflight_to(connection, SQLITE_SCHEMA_VERSION)
+}
+
+pub(crate) fn preflight_to(connection: &Connection, supported: u32) -> Result<i64, SqliteError> {
     let found = user_version(connection).map_err(SqliteError::migration)?;
-    if found < 0 || found > i64::from(SQLITE_SCHEMA_VERSION) {
-        return Err(SqliteError::unsupported_schema_version(
-            found,
-            SQLITE_SCHEMA_VERSION,
-        ));
+    if found < 0 || found > i64::from(supported) {
+        return Err(SqliteError::unsupported_schema_version(found, supported));
     }
 
     if found == 0
@@ -128,7 +136,7 @@ pub(crate) fn migrate_from(connection: &mut Connection, found: i64) -> Result<()
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(SqliteError::migration)?;
-    apply_pending(&transaction, found)?;
+    apply_pending(&transaction, found, SQLITE_SCHEMA_VERSION)?;
     validate_migration_history(&transaction, SQLITE_SCHEMA_VERSION)?;
     transaction.commit().map_err(SqliteError::migration)
 }
@@ -139,10 +147,14 @@ fn migrate(connection: &mut Connection) -> Result<(), SqliteError> {
     migrate_from(connection, found)
 }
 
-fn apply_pending(transaction: &Transaction<'_>, found: i64) -> Result<(), SqliteError> {
+pub(crate) fn apply_pending(
+    transaction: &Transaction<'_>,
+    found: i64,
+    target: u32,
+) -> Result<(), SqliteError> {
     for migration in MIGRATIONS
         .iter()
-        .filter(|migration| i64::from(migration.version) > found)
+        .filter(|migration| i64::from(migration.version) > found && migration.version <= target)
     {
         transaction
             .execute_batch(migration.sql)
@@ -249,6 +261,39 @@ fn user_version(connection: &Connection) -> rusqlite::Result<i64> {
     connection.pragma_query_value(None, "user_version", |row| row.get(0))
 }
 
+// The bootstrap gate must reject hidden views/triggers and altered columns as
+// well as unknown tables. Derive the expected schema from the same migrations.
+pub(crate) fn verify_schema_definition(
+    connection: &Connection,
+    version: u32,
+) -> Result<(), SqliteError> {
+    let expected = Connection::open_in_memory().map_err(SqliteError::migration)?;
+    for migration in MIGRATIONS
+        .iter()
+        .filter(|migration| migration.version <= version)
+    {
+        expected
+            .execute_batch(migration.sql)
+            .map_err(SqliteError::migration)?;
+    }
+    fn schema(
+        connection: &Connection,
+    ) -> Result<Vec<(String, String, Option<String>)>, SqliteError> {
+        let mut statement = connection.prepare(
+            "SELECT type, name, sql FROM sqlite_schema WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+        ).map_err(SqliteError::migration)?;
+        statement
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
+            .map_err(SqliteError::migration)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(SqliteError::migration)
+    }
+    if schema(connection)? != schema(&expected)? {
+        return Err(SqliteError::schema_drift(None));
+    }
+    Ok(())
+}
+
 fn main_schema_is_empty(connection: &Connection) -> rusqlite::Result<bool> {
     connection.query_row(
         "SELECT NOT EXISTS (
@@ -287,6 +332,7 @@ mod tests {
             .expect("migration rows must decode");
         let expected = MIGRATIONS
             .iter()
+            .filter(|migration| migration.version <= SQLITE_SCHEMA_VERSION)
             .map(|migration| {
                 (
                     migration.version,

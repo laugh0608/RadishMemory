@@ -4,6 +4,8 @@
 
 状态：`P1-S03c-2 isolated provider implementation complete — native acceptance pending`
 
+后续：本文保留 P1-S03c-2 的实现范围与证据；[P1-S04a](phase1-source-vault-key-bootstrap.md) 已新增受 SQLite 事务约束的 library initializer，取代当时等待协调器的 dead-code 写入口。Windows / Linux 验证现按[当前状态](../status/current.md)后置集中执行。
+
 范围：项目所有者确认 [P1-S03c-1 预检](2026-09-15-source-vault-provider-preflight.md#建议决策与下一批精确范围)后的六项精确依赖、平台映射和独立实现范围。本批只修改 Source Vault、相应依赖 / notices、检查器及正式文档；没有接入 SQLite、application 或 UI，没有访问系统密钥库。Windows / Linux provider 尚无 locked compile 证据，不能以本机通过代替三平台完成。
 
 ## 实际 API 与资格边界
@@ -53,5 +55,5 @@ notices 生成器未放宽规则：当前 **366** 项，metadata 保守图分别
 - 公共写入口不可调用的 compile-fail doctest 通过；完整 `./scripts/check-repo.sh` 检查 174 个文件，workspace fmt / Clippy 与 175 个 Rust tests 通过；35 个 Python 检查器回归测试通过。`git diff --check` 通过。
 - 22 个新增 archive 与 467 个发布文件已再次核验，正式 lockfile 与隔离 Cargo 生成结果一致。候选源码与独立 Cargo cache 已精确清理并复验不存在，隔离 target 从未创建；保留本地依赖图、hash、检查日志与清理 receipt。正式 Cargo cache 和 workspace target 作为本批依赖 / 构建产物保留。
 - 未启动后台服务、VM 或 GUI，未调用系统 key-store API，未改权限、凭据、全局工具或远程状态。工作区改动尚未提交，`dev` 仍有此前 2 个未推送提交。
-- 下一步先补齐 Windows / Linux locked compile，再按测试账户、专用 slot、logger 过滤、prompt / 锁定 / 拒绝 / duplicate、重开和精确清理范围做 P1-S03c-3。真实 store 授权不由本批依赖 / 构建授权推导。
+- P1-S03c-2 结束时原定先补齐 Windows / Linux locked compile；当前顺位以上述后续说明为准。真实凭据仍按测试账户、专用 slot、logger 过滤、prompt / 锁定 / 拒绝 / duplicate、重开和精确清理范围做 P1-S03c-3。真实 store 授权不由本批依赖 / 构建授权推导。
 - P1-S04 / P1-S05、SQLite v6 明文迁移和宿主接入仍未实现。PDF / 图片解析继续等待完整 encrypted Source Vault 链路。

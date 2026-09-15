@@ -14,6 +14,7 @@ aead-stream.workspace = true
 chacha20poly1305.workspace = true
 getrandom.workspace = true
 keyring-core.workspace = true
+radishmemory-sqlite.workspace = true
 sha2.workspace = true
 zeroize.workspace = true
 
@@ -28,3 +29,6 @@ security-framework.workspace = true
 [target.'cfg(target_os = "linux")'.dependencies]
 secret-service.workspace = true
 zbus-secret-service-keyring-store.workspace = true
+
+[dev-dependencies]
+rusqlite.workspace = true
