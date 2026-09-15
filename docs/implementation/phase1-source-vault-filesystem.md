@@ -1,8 +1,8 @@
 # Phase 1 Source Vault immutable object filesystem adapter
 
-日期：2026-09-10
+更新时间：2026-09-15
 
-状态：`P1-S03b Windows file-identity and ordinary-user acceptance validated — Linux pending`
+状态：`P1-S03b object filesystem platform acceptance complete — key provider next`
 
 初始基线：`6581b59`，在 `dev` 上实施；实现提交依次为 `66dc1aa`、`6a6b611`、`2971fc9`。下文按批次保留当时测试数量与环境事实，日终汇总和明日事项见[2026-09-10 收尾记录](../status/2026-09-10-source-vault.md)。
 
@@ -160,8 +160,48 @@ ACL 用例由普通测试账户真实设置并还原合成 fixture 的 DACL：�
 
 最终 `python3 scripts/check-repo.py` 与 `git diff --check` 通过，检查器 27 个 unit tests 通过；实际源代码与前述 Windows 验收及本机完整仓库门禁相同。没有运行 Linux、ReFS、网络盘、真实断电、Windows 全 workspace、远程 CI 或产品 GUI / key-store / migration 验收；修复随后提交为 `2971fc9`，没有 push。
 
+## Linux ARM64 / ext4 普通用户验收（2026-09-15）
+
+基线为 `dev` 的 `9d88319`，该提交仅新增 `tests/linux_filesystem.rs` 的三个 Linux 公开 API 验收测试；production adapter 仍为 `2971fc9` 中的实现。没有新增依赖、修改 manifest / lockfile、修改密码格式或接入产品数据流。
+
+项目所有者在本任务确认精确 VM、专用目录、离线输入、普通用户测试、合成文件权限修改与清理范围后，使用既有 `Debian13-ARM64` 测试副本。UTM CLI 首次返回 `OSStatus -609`，第二次返回 `-1712`；复查均未启动，随后经 UTM 界面启动并确认 guest agent 可用。部分 guest exec 请求没有直接输出，因此本批以保存的阶段日志、真实退出码、输入复验与清理回执判断结果，不以宿主命令返回 0 冒充验收成功。
+
+### 环境与输入
+
+- Debian GNU/Linux 13.6 `trixie`，Linux `6.12.101+deb13-arm64`，Rust host `aarch64-unknown-linux-gnu`；复用已有 Rust / Cargo `1.96.0`、Clippy `0.1.96`，没有工具链安装或联网下载。
+- 测试在 ext4 上运行，mount options 为 `rw,relatime,errors=remount-ro`；现有普通账户的真实、有效、saved 与 filesystem UID 均为 1000，`CapEff=0000000000000000`。guest agent 的 root 身份只用于隔离准备和清理，不用于 Cargo 或权限验收。
+- 源码、专用 `CARGO_HOME`、target、`TMPDIR`、日志和合成 fixture 均在同一任务目录；没有修改共享缓存或既有 P1-H05 资料。离线包包含 167 个仓库文件与 Source Vault 的 21 个 Linux 可达锁定 registry archives；每个 `.crate` 的 SHA-256 均与 `Cargo.lock` 一致。
+- 输入包为 29573120 bytes，SHA-256 `0078602fe4912951447a265c1583acda4700cbbb205c884af53eb1a07a349784`；输入清单 SHA-256 `c64248beffead9c194c31181a3bd69f1bd2aa10f46717c56fc1c04d7c7531e20`，`Cargo.lock` SHA-256 `161f1d2a4539abab952293c6d708d7ae424ca983f532730aedb2b0ee126a398d`。执行前后清单逐项复验通过。
+
+### 运行结果与边界
+
+| 验证入口 | 实际结果 |
+| --- | --- |
+| `cargo check -p radishmemory-source-vault --all-targets --locked --offline` | 通过，exit 0 |
+| `cargo clippy -p radishmemory-source-vault --all-targets --locked --offline -- -D warnings` | 通过，exit 0 |
+| `cargo test -p radishmemory-source-vault --locked --offline` | 34 个 unit tests 与 3 个 Linux integration tests 通过；0 failed、0 ignored |
+| 输入复验与合成目录检查 | `input_recheck=passed fixture_residue=0 result=passed` |
+
+34 个 unit tests 在本机 ext4 上实际覆盖 0 / 37 bytes、1 MiB、跨段及 8 MiB 的 publish / reopen / exact read、目录 sync、no-overwrite 竞争、symlink / 非普通文件、目录替换、同内容同时间戳但不同 inode 的文件替换、认证失败、部分写入与精确 attempt 状态。中断与 `StorageFull` 使用已有测试 seam 注入，不代表真实磁盘满、断电或内核崩溃已实测。
+
+三个新增 integration tests 只使用公开 `ObjectDirectory` API：
+
+- `ordinary_user_creation_and_read_revocation_fail_closed_and_recover`：普通用户初始目录不可写、取得 capability 后 staging 不可写均返回 `PermissionDenied / OS 13`，不产生对象；撤销对象读取权限后 read / inspect 均拒绝，恢复权限后密文字节不变，重开可认证读取。
+- `fifo_object_and_staging_entries_are_rejected_without_consuming_them`：用系统 `mkfifo` 创建合成占位，final FIFO 的 publish / read 与 attempt 检查拒绝，staging FIFO 不被覆盖或消耗；没有读取 FIFO 的内容。该场景验证已存在 FIFO 的拒绝，不外推为任意 syscall 间替换竞态已穷尽。
+- `replacement_private_directories_do_not_inherit_open_capabilities`：objects / staging 被新的 `0700` 目录替换后，publish / read / inspect 均返回 `FilesystemChanged`，未知 marker 保持原状；恢复原目录后原对象仍可认证读取。
+
+新增测试会拒绝 root 或非零 effective capabilities，避免特权执行绕过权限测试；本批无需修改生产代码。实际环境、check / Clippy / test 日志与输入清单的证据包 SHA-256 为 `12522be5e5befb9c98e6aafdb43d277db81e1e8a98323f0f7dbcc94909c3fde3`。
+
+### 清理与退出范围
+
+取回证据后，确认任务进程与合成 fixture 零残留，精确移除本批源码、专用缓存、二进制、日志及两个传输文件；回执及逐路径不存在检查均通过。测试 VM 已正常关机并确认 `stopped`；未启动或修改 CleanBase / RadishLex VM，未修改账户、系统权限、代理或真实 key store。本机任务临时目录保留合成证据和输入包供复核，不进入 Git；不承诺 VM 磁盘逐字节还原。
+
+macOS 上完整 `./scripts/check-repo.sh` 已通过 167 个文件检查、format、Clippy 与 162 个 Rust tests。首次沙箱内运行因既有合成网络观察器无法绑定本机端口而失败，沙箱外离线重跑通过；这不是 production 或 Linux 测试失败，也没有放宽测试。文档与阶段检查器同步后，`python3 -m unittest discover -s scripts/tests` 的 35 个检查器测试通过，`git diff --check` 通过。
+
+P1-S03b 的对象 filesystem 范围现已具备 macOS 本机、Windows ARM64 / NTFS 和 Linux ARM64 / ext4 的运行证据。Windows 本批未重跑，继续引用 9 月 10 日同一 production adapter 的证据。Linux 全 workspace、其它 Linux 文件系统 / 架构、其它 Windows 文件系统、远程 CI、真实断电、key provider、SQLite migration 与产品宿主仍未在本批验收；三个 Linux 新测试也不替代其它平台专用用例。
+
 ## 平台限制与下一步
 
-macOS 具备本机实际测试；Windows ARM64 提升权限与普通用户验收通过，文件身份替换缺陷已修复并通过回归；Linux 尚未编译或运行本批。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。当前运行证据只覆盖这台 Windows ARM64 / NTFS 测试机，不代表 Windows 全文件系统、ReFS、网络盘或其它 Windows 版本；本次原生依赖调整已单独评审，不意味着其它平台能力获得授权。
+macOS 具备本机实际测试；Windows ARM64 提升权限与普通用户验收通过，文件身份替换缺陷已修复并通过回归；Linux ARM64 / ext4 普通用户验收通过。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。Windows 运行证据只覆盖这台 ARM64 / NTFS 测试机，Linux 只覆盖这台 ARM64 / ext4 测试机，不代表所有文件系统、ReFS、网络盘、架构或系统版本；此前原生依赖调整已单独评审，不意味着其它平台能力获得授权。
 
-后续补 Linux 文件系统运行证据与差异处置，再分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。
+后续分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。

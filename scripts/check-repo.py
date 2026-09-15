@@ -1032,7 +1032,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
+            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1049,7 +1049,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
+            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1380,7 +1380,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
+            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1467,7 +1467,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
+            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1542,7 +1542,7 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault immutable object adapter locally validated; platform validation next",
+            "Phase 1 Source Vault object filesystem platform acceptance complete; key provider next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
             "三个 platform provider、SQLite migration 与宿主加密数据流尚未实现",
@@ -1593,7 +1593,7 @@ def check_phase1_source_vault_portable_crypto(
             'ROOT_PACKAGES = ("radishmemory-desktop", "radishmemory-source-vault")',
         ),
         "docs/implementation/phase1-source-vault-filesystem.md": (
-            "P1-S03b Windows file-identity and ordinary-user acceptance validated — Linux pending",
+            "P1-S03b object filesystem platform acceptance complete — key provider next",
             "RMOBJ\\x01",
             "PublishedObject",
             "不是 canonical capture receipt",
@@ -1604,7 +1604,11 @@ def check_phase1_source_vault_portable_crypto(
             "普通用户脚本显式结果为 `stage=completed, exitCode=0`",
             "metadata_preserving_replacement_cannot_authorize_staging_cleanup",
             "唯一安全入口从借用的 `File` 查询卷序号与 128 位文件 ID",
-            "Linux 尚未编译或运行本批",
+            "Linux ARM64 / ext4 普通用户验收通过",
+            "34 个 unit tests 与 3 个 Linux integration tests 通过",
+            "CapEff=0000000000000000",
+            "input_recheck=passed fixture_residue=0 result=passed",
+            "不代表真实磁盘满、断电或内核崩溃已实测",
             "28 个测试通过，0 failed、0 ignored",
             "2 个补充测试通过，0 failed、0 ignored",
             "EnableLUA=0",
