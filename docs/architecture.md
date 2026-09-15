@@ -98,7 +98,7 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 一个不可变 SourceArtifact version 首批对应一个不可变密文对象。逻辑 lookup 使用精确 `source_id` 与 `exact-bytes-v1` digest，物理 locator 保持 adapter-private；不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重。该选择保留独立 governance、retention 和 deletion scope，不把内容摘要升级为 canonical identity。
 
-每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)已将精确 profile 冻结为 XChaCha20-Poly1305 + STREAM-BE32 与独立 XChaCha20-Poly1305 DEK wrap，随机源复用 `getrandom =0.4.3`，设备 KEK 按 target 使用 macOS Keychain、Windows Credential Manager 或 Linux Secret Service。P1-S03a 已使 portable crypto 依赖进入 manifest / lockfile 并实现 deterministic AAD、seal / open 与合成验证；三个 platform provider 已进入依赖图；[P1-S03c-2](implementation/phase1-source-vault-key-provider.md) 已实现独立读取与私有 bootstrap 编排，只有 macOS 本机构建及合成证据。真实密钥库、SQLite 协调与 host 数据流仍未验收，filesystem adapter 也未接入 production。
+每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)已将精确 profile 冻结为 XChaCha20-Poly1305 + STREAM-BE32 与独立 XChaCha20-Poly1305 DEK wrap，随机源复用 `getrandom =0.4.3`，设备 KEK 按 target 使用 macOS Keychain、Windows Credential Manager 或 Linux Secret Service。P1-S03a 已使 portable crypto 依赖进入 manifest / lockfile 并实现 deterministic AAD、seal / open 与合成验证；三个 platform provider 已进入依赖图；[P1-S03c-2](implementation/phase1-source-vault-key-provider.md) 已实现独立读取与私有 bootstrap 编排，只有 macOS 本机构建及合成证据。真实密钥库、正文对象 / SQLite 提交协调与 host 数据流仍未验收；密钥初始化的 SQLite 协调已由下述 P1-S04a 完成合成验证，filesystem adapter 尚未接入产品正文路径。
 
 [P1-S04a](implementation/phase1-source-vault-key-bootstrap.md) 新增 Source Vault → SQLite 的第一方依赖连线：SQLite 持有不暴露 SQL handle 的 maintenance connection / live transaction，负责 schema、canonical / inline body 验真与 v7 key checkpoint；Source Vault coordinator 组合对象目录 capability 和私有 key-store 编排。数据库路径固定取同一应用目录的 `library.sqlite3`，不接受与对象目录无关的空库作为创建资格。普通 adapter 仍仅开放 v6，v7 表示密钥准备完成，不代表正文已迁移。宿主接入时必须先暂停普通资料库操作；本批未接入 application / UI。
 
@@ -106,7 +106,7 @@ P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`Ob
 
 对象提交遵循“密文 publish → SQLite commit → read-back”三段状态：先在内存中生成 envelope / 密文，再直接写入应用专用 staging，经 sync、关闭写句柄、认证与 no-overwrite publish 后，才能在一个 SQLite `IMMEDIATE` transaction 内提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 复验成功才返回 receipt。publish 后、metadata commit 前的对象只是可识别 orphan candidate；恢复器只能清理无 committed reference、无可恢复 attempt 且身份明确的对象，ambiguous state 使 library 失败关闭。
 
-SQLite v6 migration 在普通操作暴露前逐对象复验 inline body、发布密文、提交 reference 并 read-back；未完成或损坏时不混合返回 inline / object-backed source。迁移不改变 canonical identity、citation、governance 或 deletion state，也不证明 SQLite 空闲页、快照和备份中的历史明文已物理清除。`P1-S03b` 至 `P1-S05` 完成 filesystem adapter、platform provider、migration 与宿主验收前，PDF / 图片解析保持停止。
+约定的 SQLite v6 正文 migration 必须在普通操作暴露前逐对象复验 inline body、发布密文、提交 reference 并 read-back；未完成或损坏时不混合返回 inline / object-backed source。迁移不改变 canonical identity、citation、governance 或 deletion state，也不证明 SQLite 空闲页、快照和备份中的历史明文已物理清除。`P1-S03b` 至 `P1-S05` 完成 filesystem adapter、platform provider、migration 与宿主验收前，PDF / 图片解析保持停止。
 
 ## 当前模块与读取维护边界
 

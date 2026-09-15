@@ -2,7 +2,9 @@
 
 更新时间：2026-09-15
 
-状态：`P1-S03b object filesystem platform acceptance complete — key provider next`
+批次退出状态：`P1-S03b object filesystem platform acceptance complete — key provider next`
+
+后续进展：[P1-S03c-2 provider](phase1-source-vault-key-provider.md) 和 [P1-S04a 密钥初始化协调](phase1-source-vault-key-bootstrap.md)已落地；本记录中的各平台结果只覆盖相应基线。9 月 15 日日终结论与明日事项见[收尾记录](../status/2026-09-15-source-vault.md)，现行顺位以[当前状态](../status/current.md)为准。
 
 初始基线：`6581b59`，在 `dev` 上实施；实现提交依次为 `66dc1aa`、`6a6b611`、`2971fc9`。下文按批次保留当时测试数量与环境事实，日终汇总和明日事项见[2026-09-10 收尾记录](../status/2026-09-10-source-vault.md)。
 
@@ -204,4 +206,4 @@ P1-S03b 的对象 filesystem 范围现已具备 macOS 本机、Windows ARM64 / N
 
 macOS 具备本机实际测试；Windows ARM64 提升权限与普通用户验收通过，文件身份替换缺陷已修复并通过回归；Linux ARM64 / ext4 普通用户验收通过。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。Windows 运行证据只覆盖这台 ARM64 / NTFS 测试机，Linux 只覆盖这台 ARM64 / ext4 测试机，不代表所有文件系统、ReFS、网络盘、架构或系统版本；此前原生依赖调整已单独评审，不意味着其它平台能力获得授权。
 
-后续分别推进 platform provider landing、P1-S04 SQLite coordination / migration、P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。
+P1-S03c-2 provider landing 与 P1-S04a 密钥初始化协调已完成对应实现；下一批推进 P1-S04b 正文对象 migration / 恢复，再完成 P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。

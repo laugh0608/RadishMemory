@@ -56,4 +56,4 @@ Cargo 以 offline metadata 更新 lockfile，只增加 Source Vault 的第一方
 
 下一批为 `P1-S04b`：持久化 object references 与 capture / migration attempts、逐项正文迁移、read-back 与可中断恢复；之后继续 orphan、verify / rebuild、deletion execution 和 P1-S05 application / host acceptance。不能在这些步骤完成前进入 PDF / 图片解析或声明 encrypted Source Vault 可用。
 
-本批未访问真实密钥库、启动 GUI / VM、修改系统配置或执行远程动作。合成数据库、对象和测试子进程由各验收清理；常规忽略的编译缓存保留。P1-S03c-2 已提交为 `146ea8f`；P1-S04a 更改暂留工作区供审阅，未 push。
+本批未访问真实密钥库、启动 GUI / VM、修改系统配置或执行远程动作。合成数据库、对象和测试子进程由各验收清理；常规忽略的编译缓存保留。P1-S03c-2 已提交为 `146ea8f`；P1-S04a 已提交为 `b484656`，未 push；日终汇总与明日事项见[9 月 15 日记录](../status/2026-09-15-source-vault.md)。

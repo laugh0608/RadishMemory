@@ -172,7 +172,7 @@ workspace Rust `1.96.0` 高于上述 direct crates 声明的 MSRV。crypto crate
 
 RustCrypto 依赖有公开 specification / test vectors 和 audit lineage；keyring provider 是从既有 keyring ecosystem 拆分出的较新 1.x package，文档覆盖和独立 adoption 仍有限。这是当前最大供应链剩余风险，因此必须精确 pin、target-gate、禁止 provider fallback，并用三平台真实 key-store behavior 补足。未来 patch / minor upgrade 都重新执行 advisory、license、source / checksum、feature 和 host evidence 评审。
 
-P1-S02 评审当时只依据 upstream manifest / API 文档和 OS specification 做选择，没有运行 registry resolution 或 advisory scanner。随后 P1-S03a 已对 portable 11-package 增量执行下列供应链落地并记录在专项证据中；以下要求继续适用于尚未落地的 platform provider graph：
+P1-S02 评审当时只依据 upstream manifest / API 文档和 OS specification 做选择，没有运行 registry resolution 或 advisory scanner。随后 P1-S03a 已对 portable 11-package 增量执行下列供应链落地并记录在专项证据中；P1-S03c-2 随后已完成 platform provider graph 落地与源码复核，见[实现记录](phase1-source-vault-key-provider.md)。以下要求继续约束后续依赖变更，真实平台凭据验收仍待执行：
 
 - 只从 crates.io 解析并记录 source / checksum，无 Git dependency；
 - 更新 dependency baseline、目标依赖清单、`THIRD_PARTY_NOTICES.md`、许可证文本和仓库检查器；
@@ -281,3 +281,7 @@ P1-S03b 已在其对象 filesystem 范围完成 macOS、Windows ARM64 / NTFS、L
 - [Microsoft CREDENTIAL structure](https://learn.microsoft.com/en-us/windows/win32/api/wincred/ns-wincred-credentialw)
 - [zbus-secret-service-keyring-store 1.0.1](https://docs.rs/crate/zbus-secret-service-keyring-store/1.0.1)
 - [freedesktop Secret Service specification](https://specifications.freedesktop.org/secret-service/latest-single/)
+
+## P1-S04a 衔接
+
+`b484656` 已实现受 SQLite `IMMEDIATE` transaction 约束的 `initialize_library_key`、真实数据库 / 对象目录资格检查和 v7 `key_ready` checkpoint，见[初始化协调记录](phase1-source-vault-key-bootstrap.md)。原 slot-only 创建入口没有公开；历史章节中的等待 P1-S04 指当批顺位。正文对象 migration、完整重启恢复与真实平台密钥库仍未验收，当前顺位以[当前状态](../status/current.md)为准。

@@ -6,7 +6,7 @@
 
 `Phase 1 Source Vault key bootstrap coordination implemented; object migration next`
 
-M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，尚未接入产品数据流。当前 production code 仍是 SQLite v6 inline plaintext body。项目具备受约束的工程原型，但中文找回、完整目录访问、启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
+M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，尚未接入产品数据流。当前 production code 仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint。项目具备受约束的工程原型，但中文找回、完整目录访问、启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
 
 P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../implementation/phase1-source-vault-key-provider.md)，Windows / Linux provider 编译和真实密钥库尚待验收。P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；实现范围为独立 Source Vault package 与 Windows 文件身份 adapter，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
 
@@ -31,7 +31,7 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 ## 已接受的边界
 
-- [ADR 0005](../adr/0005-m0-implementation-stack.md)冻结 Rust 2024 模块化单体，首个工具链固定为 Rust `1.96.0`。当前依赖、manifest / lockfile 和 notices 以[Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)及[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)为准。
+- [ADR 0005](../adr/0005-m0-implementation-stack.md)冻结 Rust 2024 模块化单体，首个工具链固定为 Rust `1.96.0`。当前依赖、manifest / lockfile 和 notices 以[Rust 依赖基线](../implementation/m0-rust-dependency-baseline.md)及[第三方 notices 记录](../implementation/phase1-third-party-notices.md)为准。
 - P1-S02 已选择 `radishmemory.xchacha20poly1305-stream-be32/1` 与 `radishmemory.xchacha20poly1305-dek-wrap/1`；P1-S03a 已使 portable manifest / `Cargo.lock` / notices 和 cipher 实现落地；P1-S03b 复用该依赖与 AAD，新增严格 envelope、不可覆盖发布及精确 attempt 检查；Windows 使用单独审阅的最小文件身份 adapter，P1-S03c-2 另落地独立 provider；尚未访问真实系统 key store。
 - 原始对象按 source version 独立认证加密，不跨 provenance 物理去重；publish → SQLite commit → read-back 必须完整成立。未知 profile、缺 key、认证失败或 ambiguous state 失败关闭，不回退旧 BLOB 或外部原件。
 - 首批对象加密不覆盖 SQLite metadata、FTS、派生数据；当前整文件片段使 FTS 保存完整可读正文，不能简化为“只有少量元数据未加密”。历史明文、进程内明文、交换区、快照、备份和用户导出仍在该保证之外。
@@ -61,14 +61,12 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
-2026-09-15 基线 `9d88319` 已通过 macOS 完整仓库门禁及 Linux ARM64 / ext4 的 Source Vault check、Clippy、unit / integration 验收；Windows 继续引用 9 月 10 日同一 production adapter 的 ARM64 / NTFS、native adapter 和分身份验收证据。本批未重跑 Windows、Linux 全 workspace 或远程 CI。Windows 批次与环境还原见[日终记录](2026-09-10-source-vault.md)，Linux 场景与清理见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md#linux-arm64--ext4-普通用户验收2026-09-15)。
+2026-09-15 日终基线 `b484656`：本机完整仓库检查、191 个 Rust tests、35 个检查器回归和 1 个 compile-fail doctest 通过；跨进程 helper 由父测试实际执行。初始化、回滚和并发均使用合成数据与测试 provider。各批次数量、代码与文档复核见[日终记录](2026-09-15-source-vault.md)，初始化机制见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。
 
-2026-09-15 P1-S03c-2 工作区通过完整仓库门禁、175 个 Rust tests、1 个 compile-fail doctest 与 35 个检查器回归测试。真实 key store 未访问；该结果不补充 Windows / Linux provider 编译或系统凭据行为证据。
-
-2026-09-15 P1-S04a 通过本机完整仓库检查、191 个 Rust tests、35 个检查器回归和 1 个 compile-fail doctest；跨进程 helper 由父测试实际执行。初始化、回滚和并发均使用合成数据与测试 provider，详情见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。
+Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继续引用 9 月 10 日基线。它们不覆盖后续新增的 provider / SQLite 协调代码。平台范围及清理分别见[filesystem 记录](../implementation/phase1-source-vault-filesystem.md#linux-arm64--ext4-普通用户验收2026-09-15)和[9 月 10 日记录](2026-09-10-source-vault.md)。真实密钥库、当前代码的 Windows / Linux 编译和运行、远程 CI 均尚未验证。
 
 ## 后续事项
 
 `P1-S03c-2` 已完成独立 provider、六项精确直接依赖、22-package 增量及 366 项 notices 落地，见[实现与验收记录](../implementation/phase1-source-vault-key-provider.md)。macOS locked Clippy / 合成测试通过；Windows / Linux provider 编译、真实系统密钥库与上游 logger 过滤仍待分平台验证。P1-S04a 新增受事务约束的 library initializer，slot-only 创建 / setter 继续不公开；资格来自实际数据库与对象目录，不接受调用方自报。初始化使用合成 provider 验证，尚未接入宿主。
 
-当前继续推进 P1-S04b 正文迁移与恢复；R01 至 R06、宿主接入及集中跨平台验证遵循上述顺位与停止线。9 月 10 日[明日验收清单](2026-09-10-source-vault.md#明日事项2026-09-11)保留为历史安排，不再作为未完成状态。下一批真实 key store、依赖或 VM / 系统变更须按具体范围授权。
+明日首项为 P1-S04b 正文迁移与恢复，具体切片和验收见[明日事项（2026-09-16）](2026-09-15-source-vault.md#明日事项2026-09-16)；R01 至 R06、宿主接入及集中跨平台验证遵循上述顺位与停止线。9 月 10 日[明日验收清单](2026-09-10-source-vault.md#明日事项2026-09-11)保留为历史安排，不再作为未完成状态。下一批真实 key store、依赖或 VM / 系统变更须按具体范围授权。
