@@ -34,6 +34,7 @@ use rusqlite::{Connection, TransactionBehavior};
 pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
 pub use encrypted_capture::{
     CaptureAbandonmentTarget, CaptureObject, CaptureObjectState, EncryptedCaptureDatabase,
+    ObjectReadView,
 };
 pub use error::{
     SqliteCapability, SqliteConfigurationReason, SqliteError, SqliteErrorCode, SqliteStorageReason,

@@ -109,6 +109,21 @@ impl PlatformKeyProvider {
         }
     }
 
+    /// Open a migrated library for authenticated reads using its existing key.
+    /// The authorized host must suspend other library operations, run off the UI
+    /// thread and filter upstream credential logs as described on this provider.
+    /// Dropping the reader releases the database lock and key. No schema upgrade,
+    /// migration, repair or new key creation is performed by this entry point.
+    pub fn open_library_reader<'a>(
+        &self,
+        directory: &'a crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::reader::open(directory, namespace, device, || self.load_existing(&slot))
+    }
+
     /// Execute an explicitly authorized canonical local-purge request after body
     /// migration. Host must suspend ordinary operations and filter sensitive logger
     /// targets before existing key-store access. Does not destroy the library key.

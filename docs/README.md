@@ -37,6 +37,7 @@
     - [Phase 1 object-backed verify / rebuild](implementation/phase1-source-vault-maintenance.md)：独立维护入口、派生行事务修复、失败关闭与中断恢复。
     - [Phase 1 object-backed 删除执行](implementation/phase1-source-vault-deletion.md)：维护 v11、冻结请求、引用关闭、对象清理与十组件证据。
     - [历史删除请求迁移兼容](implementation/phase1-source-vault-legacy-deletion.md)：维护 v12、原请求 / 闭包校验、旧正文执行凭据与失败恢复。
+    - [加密资料库读取切片](implementation/phase1-source-vault-reader.md)：认证读取会话、目录 / 检索复用、精确导出衔接与宿主接入限制。
     - [Phase 1 Source Vault inventory reconciliation](implementation/phase1-source-vault-reconciliation.md)：独立 inventory 核对、pending 状态报告、committed staging link 清理与失败关闭边界。
     - [Phase 1 Source Vault 加密 capture 协调](implementation/phase1-source-vault-capture.md)：v9 请求绑定、原子提交、认证回读、幂等恢复与剩余协调范围。
 26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。

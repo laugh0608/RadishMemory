@@ -2773,6 +2773,7 @@ dependencies = [
  "getrandom 0.4.3",
  "keyring-core",
  "radishmemory-core",
+ "radishmemory-file-entry",
  "radishmemory-sqlite",
  "radishmemory-windows-filesystem",
  "rusqlite",

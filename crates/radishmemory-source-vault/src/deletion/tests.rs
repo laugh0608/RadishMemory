@@ -564,3 +564,24 @@ fn subprocess_deletion_helper() {
 
 #[path = "legacy_tests.rs"]
 mod legacy;
+
+#[test]
+fn deletion_identity_checks_preserve_process_exclusion_through_retirement() {
+    let (root, dir) = setup(true);
+    execute_with_step(
+        &dir,
+        &request(&["legacy-source"], &[]),
+        &execution(),
+        || Ok(key()),
+        |step| {
+            if matches!(
+                step,
+                Step::IntentCommitted | Step::RetirementCommitted | Step::Executed
+            ) {
+                crate::test_support::assert_database_writer_locked(&root.0);
+            }
+            Ok(())
+        },
+    )
+    .unwrap();
+}

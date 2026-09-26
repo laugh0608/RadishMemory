@@ -338,3 +338,14 @@ fn database_symlink_and_replacement_cannot_return_initialization_success() {
     assert_eq!(store.writes.load(Ordering::SeqCst), 1);
     assert_eq!(version(&root), 0);
 }
+
+#[test]
+fn bootstrap_identity_checks_preserve_process_exclusion_during_key_access() {
+    let root = crate::test_support::TestDirectory::new();
+    let dir = crate::ObjectDirectory::open_application_directory(&root.0).unwrap();
+    super::initialize(&dir, NAMESPACE, DEVICE, |_| {
+        crate::test_support::assert_database_writer_locked(&root.0);
+        Ok(crate::test_support::key())
+    })
+    .unwrap();
+}

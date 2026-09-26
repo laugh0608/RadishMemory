@@ -122,3 +122,7 @@ Source Vault 为调用现有 SQLite maintenance transaction 增加 `radishmemory
 ## P1-S04 加密 capture 第一方连线
 
 2026-09-26 经项目所有者批准，Source Vault 增加 `radishmemory-core.workspace = true`，直接复用 canonical `SourceCapture` 与返回类型，避免第二套请求 schema。Cargo 离线更新 lockfile 仅新增这一条依赖边；core 已通过 SQLite 可达，第三方 package / version / feature、构建面和许可证无增量。notices 三目标并集仍为 366 项；实现与限制见[加密 capture 协调](phase1-source-vault-capture.md)。
+
+## P1-S04 认证读取与导出测试连线
+
+2026-09-26 经项目所有者确认，Source Vault 仅在 dev-dependencies 增加 `radishmemory-file-entry.workspace = true`，用于真实密文对象认证读取与既有精确导出器的组合验收，避免复制导出实现或用测试替身代替证据。该 crate 是仓库内随 workspace 维护的第一方 package，使用同一项目许可证；离线解析不下载新包、不隐式联网。Cargo.lock 仅增加这一条第一方依赖边，453 个 package 的 name / version / source / checksum 集合不变，production 依赖图及第三方许可证不变。撤回该测试依赖与对应测试可恢复原连线；实现和实际验证见[读取切片](phase1-source-vault-reader.md)。

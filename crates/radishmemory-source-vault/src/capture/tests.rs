@@ -726,3 +726,21 @@ fn checkpoint_lock_and_diagnostics_keep_their_boundaries() {
     }
     assert!(error.source().is_none());
 }
+
+#[test]
+fn capture_identity_checks_preserve_process_exclusion_across_commits() {
+    let (root, dir) = setup(true);
+    let req = request("lock-source", "lock-lineage", 1, BODY, None);
+    capture_with_step(
+        &dir,
+        NS,
+        DEVICE,
+        &req,
+        || Ok(key()),
+        |_| {
+            crate::test_support::assert_database_writer_locked(&root.0);
+            Ok(())
+        },
+    )
+    .unwrap();
+}

@@ -120,6 +120,10 @@ REQUIRED_FILES = (
     "crates/radishmemory-sqlite/src/legacy_deletion.rs",
     "crates/radishmemory-source-vault/src/deletion/legacy_tests.rs",
     "docs/implementation/phase1-source-vault-legacy-deletion.md",
+    "docs/implementation/phase1-source-vault-reader.md",
+    "crates/radishmemory-source-vault/src/reader.rs",
+    "crates/radishmemory-source-vault/src/reader/tests.rs",
+    "crates/radishmemory-sqlite/src/object_read.rs",
     "crates/radishmemory-source-vault/src/maintenance.rs",
     "crates/radishmemory-source-vault/src/maintenance/tests.rs",
     "crates/radishmemory-sqlite/migrations/0010_capture_abandonment.sql",
@@ -431,6 +435,7 @@ secret-service.workspace = true
 zbus-secret-service-keyring-store.workspace = true
 
 [dev-dependencies]
+radishmemory-file-entry.workspace = true
 rusqlite.workspace = true
 """,
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
@@ -1094,7 +1099,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault legacy deletion compatibility implemented; application integration next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1111,7 +1116,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault legacy deletion compatibility implemented; application integration next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1424,6 +1429,13 @@ def check_phase1_encrypted_source_vault_contract(
     repo_root: Path, errors: list[str]
 ) -> None:
     contracts = {
+        "docs/implementation/phase1-source-vault-reader.md": (
+            "P1-S04 object-backed read slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "FTS 仍含完整可读正文",
+            "不回退旧 BLOB 或外部原件",
+        ),
         "docs/implementation/phase1-source-vault-legacy-deletion.md": (
             "P1-S04 legacy deletion compatibility implemented — synthetic acceptance",
             "不改变 canonical schema",
@@ -1493,7 +1505,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault legacy deletion compatibility implemented; application integration next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1580,7 +1592,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault legacy deletion compatibility implemented; application integration next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1655,7 +1667,7 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault legacy deletion compatibility implemented; application integration next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
             "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",

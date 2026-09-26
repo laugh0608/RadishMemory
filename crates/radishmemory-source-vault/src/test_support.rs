@@ -59,3 +59,16 @@ impl Drop for TestDirectory {
         fs::remove_dir_all(&self.0).expect("remove this test's isolated synthetic directory");
     }
 }
+
+pub(crate) fn assert_database_writer_locked(root: &std::path::Path) {
+    let output = std::process::Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "reader::tests::database_writer_probe",
+            "--ignored",
+        ])
+        .env("RADISHMEMORY_WRITER_PROBE_ROOT", root)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{output:?}");
+}

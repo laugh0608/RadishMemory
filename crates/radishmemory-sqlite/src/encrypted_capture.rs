@@ -14,6 +14,9 @@ mod abandonment;
 #[path = "object_deletion.rs"]
 mod deletion;
 pub use abandonment::CaptureAbandonmentTarget;
+#[path = "object_read.rs"]
+mod read;
+pub use read::ObjectReadView;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum CaptureObjectState {

@@ -263,15 +263,75 @@ impl Observation {
         }
         Ok(())
     }
+}
 
-    // SQLite changes size/mtime as it commits. Retain the file identity while
-    // allowing those legitimate writes; a replacement is still rejected.
+/// Database identity checks must not close an extra descriptor on Unix: POSIX
+/// record locks belong to the process and closing ANY descriptor for the inode
+/// releases SQLite's locks. SQLite's own live connection pins that inode during
+/// the session; use lstat here, including on competing opens that fail preflight.
+/// Object observations still retain handles for immutable-file identity checks.
+pub(crate) struct DatabaseObservation {
+    identity: Identity,
+    #[cfg(not(unix))]
+    _handle: File,
+}
+impl DatabaseObservation {
+    pub(crate) fn open(path: &Path) -> Result<Self, SourceVaultError> {
+        let metadata = fs::symlink_metadata(path)
+            .map_err(|e| SourceVaultError::io("inspect database identity", e))?;
+        require_database_file(&metadata)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::MetadataExt;
+            Ok(Self {
+                identity: Identity {
+                    device: metadata.dev(),
+                    inode: metadata.ino(),
+                },
+            })
+        }
+        #[cfg(not(unix))]
+        {
+            let handle = reference_handle(path)?;
+            require_database_file(
+                &handle
+                    .metadata()
+                    .map_err(|e| SourceVaultError::io("inspect database handle", e))?,
+            )?;
+            Ok(Self {
+                identity: Identity::of(&handle)?,
+                _handle: handle,
+            })
+        }
+    }
     pub(crate) fn verify_identity(&self, path: &Path) -> Result<(), SourceVaultError> {
-        if Self::open(path)?.snapshot.identity != self.snapshot.identity {
+        if Self::open(path)?.identity != self.identity {
             return Err(changed());
         }
         Ok(())
     }
+}
+
+/// SQLite file size includes metadata, indexes and freed pages from many objects;
+/// it is not bounded by one encrypted envelope's maximum length.
+pub(crate) fn database_present(path: &Path) -> Result<bool, SourceVaultError> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) => {
+            require_database_file(&metadata)?;
+            Ok(true)
+        }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(SourceVaultError::io("inspect database path", e)),
+    }
+}
+fn require_database_file(metadata: &Metadata) -> Result<(), SourceVaultError> {
+    if is_link(metadata) || !metadata.is_file() {
+        return Err(SourceVaultError::new(
+            SourceVaultErrorCode::InvalidFile,
+            "database must be a regular file",
+        ));
+    }
+    Ok(())
 }
 
 #[derive(Eq, PartialEq)]

@@ -32,7 +32,7 @@ pub(crate) fn inspect(
     load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
 ) -> Result<Option<CaptureAbandonmentTarget>> {
     let path = directory.key_database_path()?;
-    let identity = crate::filesystem_support::Observation::open(&path)?;
+    let identity = crate::filesystem_support::DatabaseObservation::open(&path)?;
     let db = EncryptedCaptureDatabase::open(&path, namespace, device, PROVIDER_PROFILE)?;
     identity.verify_identity(&directory.key_database_path()?)?;
     let key = load_existing()?;
@@ -64,7 +64,7 @@ fn abandon_with_step(
     mut step: impl FnMut(Step) -> Result<()>,
 ) -> Result<AbandonmentReport> {
     let path = directory.key_database_path()?;
-    let identity = crate::filesystem_support::Observation::open(&path)?;
+    let identity = crate::filesystem_support::DatabaseObservation::open(&path)?;
     let mut db = EncryptedCaptureDatabase::open(&path, namespace, device, PROVIDER_PROFILE)?;
     let verify_identity = || -> Result<()> {
         identity.verify_identity(&directory.key_database_path()?)?;

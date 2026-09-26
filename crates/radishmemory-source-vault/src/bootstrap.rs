@@ -26,7 +26,7 @@ fn initialize_in_database(
     key_operation: impl FnOnce(bool) -> Result<KeyEncryptionKey, SourceVaultError>,
 ) -> Result<KeyEncryptionKey, KeyInitializationError> {
     let path = directory.key_database_path()?;
-    let reference = crate::filesystem_support::Observation::open(&path)?;
+    let reference = crate::filesystem_support::DatabaseObservation::open(&path)?;
     let transaction = database.begin_key_initialization(namespace, device, PROVIDER_PROFILE)?;
     reference.verify_identity(&path)?;
     // A nonempty directory is evidence, never a caller assertion of eligibility.

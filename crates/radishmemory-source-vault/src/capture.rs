@@ -36,7 +36,7 @@ fn capture_with_step(
     mut step: impl FnMut(Step) -> Result<()>,
 ) -> Result<SourceCaptureResult> {
     let path = directory.key_database_path()?;
-    let identity = crate::filesystem_support::Observation::open(&path)?;
+    let identity = crate::filesystem_support::DatabaseObservation::open(&path)?;
     let mut db = EncryptedCaptureDatabase::open(&path, namespace, device, PROVIDER_PROFILE)?;
     let verify_identity = || -> Result<()> {
         directory.key_database_path()?;

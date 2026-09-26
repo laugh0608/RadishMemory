@@ -15,6 +15,7 @@ mod maintenance;
 mod maintenance_error;
 mod provider;
 mod random;
+mod reader;
 mod reconciliation;
 
 #[cfg(test)]
@@ -32,6 +33,7 @@ pub use filesystem::{
     AttemptId, AttemptState, ObjectDirectory, ObjectLocator, ObjectWrite, PublishedObject,
 };
 pub use provider::{KeySlot, PlatformKeyProvider};
+pub use reader::LibraryReader;
 pub use reconciliation::ReconciliationReport;
 
 pub const ENVELOPE_PROFILE: &str = "radishmemory.phase1-encrypted-source-vault/1";

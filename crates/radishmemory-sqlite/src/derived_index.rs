@@ -415,7 +415,15 @@ pub(crate) fn search(
     connection: &Connection,
     request: &LocalSearchRequest,
 ) -> Result<Vec<LocalSearchHit>, SqliteError> {
-    let catalog = Catalog::load(connection)?;
+    search_with_sources(connection, request, &load_source_artifact)
+}
+
+pub(crate) fn search_with_sources(
+    connection: &Connection,
+    request: &LocalSearchRequest,
+    load_source: SourceLoader<'_>,
+) -> Result<Vec<LocalSearchHit>, SqliteError> {
+    let catalog = Catalog::load_with(connection, load_source)?;
     verify_catalog(connection, &catalog)?;
     let eligible = catalog
         .candidates

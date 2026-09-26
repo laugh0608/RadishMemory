@@ -38,7 +38,7 @@ fn execute_with_step(
     mut step: impl FnMut(Step) -> Result<()>,
 ) -> Result<Vec<ComponentResult>> {
     let path = directory.key_database_path()?;
-    let identity = crate::filesystem_support::Observation::open(&path)?;
+    let identity = crate::filesystem_support::DatabaseObservation::open(&path)?;
     let p = request.params();
     let mut db = EncryptedCaptureDatabase::open(
         &path,
@@ -117,7 +117,7 @@ pub(crate) fn store_evidence(
     load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
 ) -> Result<()> {
     let path = directory.key_database_path()?;
-    let identity = crate::filesystem_support::Observation::open(&path)?;
+    let identity = crate::filesystem_support::DatabaseObservation::open(&path)?;
     let p = evidence.params();
     let mut db = EncryptedCaptureDatabase::open(
         &path,

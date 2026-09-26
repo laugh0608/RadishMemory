@@ -145,16 +145,16 @@ impl ObjectDirectory {
     pub(crate) fn key_database_path(&self) -> Result<std::path::PathBuf> {
         self.verify()?;
         let path = self.root.path.join("library.sqlite3");
-        support::present(&path)?;
+        support::database_present(&path)?;
         self.verify()?;
         Ok(path)
     }
 
     pub(crate) fn prepare_key_database(
         &self,
-    ) -> Result<(std::path::PathBuf, support::Observation)> {
+    ) -> Result<(std::path::PathBuf, support::DatabaseObservation)> {
         let path = self.key_database_path()?;
-        if !support::present(&path)? {
+        if !support::database_present(&path)? {
             match support::create_new(&path) {
                 Ok(file) => {
                     file.sync_all()
@@ -167,7 +167,7 @@ impl ObjectDirectory {
             }
         }
         self.verify()?;
-        let reference = support::Observation::open(&path)?;
+        let reference = support::DatabaseObservation::open(&path)?;
         Ok((path, reference))
     }
 
