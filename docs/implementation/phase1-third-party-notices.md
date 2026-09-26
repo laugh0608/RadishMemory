@@ -63,3 +63,7 @@ Source Vault 增加现有 SQLite 第一方依赖和测试用 `rusqlite` 后，�
 ## P1-S04 加密 capture 连线复核（2026-09-26）
 
 Source Vault 直接复用已传递可达的 core 后，Cargo 离线更新 lockfile 仅新增该第一方依赖边；重新生成 notices，只有 Cargo.lock SHA-256 更新为 `c690188bcb1f53bc49e5cc854250de8e0e8f608d019c8fd9dbea79c4095d3a57`。第三方 package、版本、feature、license option 和 inventory digest 均未变；三目标数量仍为 222 / 301 / 214，并集 366 项。不据此宣称新协调代码已通过 Windows / Linux 编译或运行。
+
+## P1-S04 认证读取 / 导出测试连线复核（2026-09-26）
+
+经批准仅增加 Source Vault → file-entry 的第一方 dev-dependency，Cargo 离线解析不改变 453 个 package 的 name / version / source / checksum 集合。生成器更新 notices 后，只有 Cargo.lock SHA-256 变为 `842cb554e10292c655feb0acddeb055650c781c6219f734b6c1f94a58aa9301f`；reviewed inventory digest、366 项清单、三目标数量 222 / 301 / 214 和所有 license option 保持不变。production 依赖图不新增 file-entry 连线；本次静态图复核不替代 Windows / Linux 编译或运行。

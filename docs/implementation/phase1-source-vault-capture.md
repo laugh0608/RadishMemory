@@ -45,14 +45,16 @@ request digest 使用 adapter-private `radishmemory.capture-attempt/1` codec：S
 
 本机 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整通过：194 个仓库文件、notices、fmt、all-targets / all-features locked Clippy 与 224 个 Rust tests；包含 15 项 capture 合成测试和 1 项 SQLite 真实 commit 失败测试。3 个 ignored helper 由父测试实际启动，不另计入总数。35 项检查器回归、M0 fixture 契约（12 场景 / 86 操作 / 12 gate）、1 个 compile-fail doctest 与 `git diff --check` 通过。完整检查因既有 P1-F17 本机端口测试需要，沿已确认权限流程在沙箱外执行，未跳过测试或放宽检查。子进程退出不等于真实断电；真实断电、磁盘满、Windows / Linux 当前代码编译和运行、真实 key store、logger 过滤、宿主生命周期均未验收。
 
-内部 object-backed verify 已用于 capture 的拒绝判定，但没有公开完整 verify / rebuild 维护入口。当前每次 capture 会认证整个已知对象 inventory 并在内存保留 active sources；尚无大库性能、流式读取或索引修复验收。删除执行、普通搜索 / 导出和 application 数据流未接入加密对象。本批不宣称 R01 至 R06 产品质量问题已修复。
+在 capture 批次退出时，内部 object-backed verify 已用于拒绝判定，但尚未公开完整 verify / rebuild 维护入口。当前每次 capture 会认证整个已知对象 inventory 并在内存保留 active sources；该批尚无大库性能、流式读取或索引修复验收，删除执行、普通搜索 / 导出和 application 数据流也未接入加密对象。本批不宣称 R01 至 R06 产品质量问题已修复。
 
 FTS 仍含完整可读正文；原始对象加密不等于整库静态加密，也不清除迁移前明文、SQLite 空闲页、交换区、快照或备份。core 返回的正文仍受既有进程内明文边界约束。
 
 ## 下一步与交接
 
-下一步完成完整 orphan reconciliation、object-backed verify / rebuild 和删除协调，再进入 application / macOS 宿主、真实 Keychain 与集中 Windows / Linux 验收。PDF / 图片、模型、同步和发行停止线保持不变。
+当批退出时建议完成完整 orphan reconciliation、object-backed verify / rebuild 和删除协调，再进入 application / macOS 宿主、真实 Keychain 与集中 Windows / Linux 验收。PDF / 图片、模型、同步和发行停止线保持不变。
 
-本批与此前正文迁移改动一起保留在本地 `dev`，未提交、未 push、未运行远程 CI。未启动长期服务、GUI 或 VM；合成测试自行清理临时库、对象与子进程，常规忽略的编译缓存保留。
+本批与此前正文迁移改动一起提交为 `a7db975`，未 push、未运行远程 CI。未启动长期服务、GUI 或 VM；合成测试自行清理临时库、对象与子进程，常规忽略的编译缓存保留。
 
 同日后续 [inventory reconciliation](phase1-source-vault-reconciliation.md) 已完成独立核对与 committed staging link 精确清理；本页原验证与未完成范围保留为 capture 批次事实，现行顺位见[当前状态](../status/current.md)。
+
+日终交接：截至本日结束，维护、删除兼容和认证读取 / 导出组合验收均已形成独立切片；完整提交回顾见[9 月 26 日记录](../status/2026-09-26-source-vault.md)。当前首项为 application 生命周期接入，早期批次中的待实现描述保留其当时范围。

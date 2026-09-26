@@ -30,4 +30,6 @@ inventory 必须显式区分 committed、prepared、abandoning、abandoned，不
 
 原子性仅覆盖各次 SQLite 事务，文件系统与 SQLite 仍无共同事务。清理中失败可能已有一个或两个路径消失；返回错误、保留真实 `abandoning` 并重试。终态提交后回读失败仍返回错误，不回滚文件或伪报成功。持久化终态保留内部 metadata，不声明整库静态加密、取证级删除或备份清除。大库性能、真实断电、磁盘满、Windows / Linux 当前代码、真实 key store 与 application / UI 未验收；FTS 仍含完整可读正文。
 
-本批不改变 canonical schema、数据所有权、记忆状态、密码套件或依赖。实现保持本地 `dev` 未提交，未 push、未运行远程 CI，未访问真实资料或密钥库，未启动长期服务、GUI 或 VM。合成测试自行清理隔离目录与子进程，常规编译缓存保留。下一步推进完整 object-backed verify / rebuild，再接删除执行与宿主验收。
+本批不改变 canonical schema、数据所有权、记忆状态、密码套件或依赖。实现已提交为 `3f5cc0f`，未 push、未运行远程 CI，未访问真实资料或密钥库，未启动长期服务、GUI 或 VM。合成测试自行清理隔离目录与子进程，常规编译缓存保留。当批下一步为完整 object-backed verify / rebuild，再接删除执行与宿主验收。
+
+日终交接：截至本日结束，维护、删除兼容和认证读取 / 导出组合验收均已形成独立切片；完整提交回顾见[9 月 26 日记录](../status/2026-09-26-source-vault.md)。当前首项为 application 生命周期接入，早期批次中的待实现描述保留其当时范围。

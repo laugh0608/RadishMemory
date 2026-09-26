@@ -212,7 +212,7 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 2026-09-26 项目所有者授权推进 P1-S04b 首个正文迁移 / 中断恢复切片；仅使用合成资料和测试 key，不访问真实系统 key store，不接入 application / UI、不改依赖或远程状态。v8 `objects_ready` 仅表示本批 inventory 的正文已认证迁移，不代表 P1-S04 / P1-S05 或十八项产品场景全部通过。
 
-2026-09-26 后续授权继续推进新 capture，并明确批准 Source Vault → core 这一条既有第一方依赖。维护 v9 演进同一 attempts / references 表，以请求摘要约束精确重试，publish 后原子提交 canonical / binding / audit / FTS / reference，再按 committed reference 认证回读；详见[加密 capture 协调](../implementation/phase1-source-vault-capture.md)。普通入口仍为 v6；完整 orphan、维护修复、删除、真实密钥库与宿主验收仍未完成。
+2026-09-26 后续授权继续推进新 capture，并明确批准 Source Vault → core 这一条既有第一方依赖。维护 v9 演进同一 attempts / references 表，以请求摘要约束精确重试，publish 后原子提交 canonical / binding / audit / FTS / reference，再按 committed reference 认证回读；详见[加密 capture 协调](../implementation/phase1-source-vault-capture.md)。该 capture 批次退出时普通入口仍为 v6，完整 orphan、维护修复、删除、真实密钥库与宿主验收尚未完成；同日后续进展见下文和[日终记录](../status/2026-09-26-source-vault.md)。
 
 2026-09-26 后续 inventory reconciliation 继续沿上述孤儿清理条件实施：v9 未提交对象仍有 active attempt，因此只报告待恢复，不删除；已提交对象的多余 staging link 必须同时认证并具有同一文件身份才可移除。无登记 / 解析失败 / 身份冲突保留并失败关闭，不新增取消或自动放弃语义；详见[核对记录](../implementation/phase1-source-vault-reconciliation.md)。
 

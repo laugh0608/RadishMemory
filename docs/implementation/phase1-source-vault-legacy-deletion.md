@@ -25,4 +25,6 @@
 
 ## 工作区与下一步
 
-上一批删除执行已按用户要求提交为 `292ed57`。本批兼容实现为新的工作区差异；未 push、未运行远程 CI。代码复核确认 `LocalLibrary` 仍直接持有 `SqliteDatabase`，目录、检索结果回源与精确导出均走明文 source loader。下一步先补齐认证读取、目录、检索及导出的 object-backed 存储适配，复用既有 `SourceVault` / `SourceCatalog` / `LocalSearch` 语义，再接入 application 的显式打开流程和完整操作链路；不能以独立维护接口通过代替普通产品已切换。真实系统凭据、宿主交互及集中跨平台检查仍按具体范围授权。
+上一批删除执行已按用户要求提交为 `292ed57`。本批兼容实现已提交为 `3dd312b`；未 push、未运行远程 CI。代码复核确认 `LocalLibrary` 仍直接持有 `SqliteDatabase`，目录、检索结果回源与精确导出均走明文 source loader。当批下一步为补齐认证读取、目录、检索及导出的 object-backed 存储适配，复用既有 `SourceVault` / `SourceCatalog` / `LocalSearch` 语义，再接入 application 的显式打开流程和完整操作链路；不能以独立维护接口通过代替普通产品已切换。真实系统凭据、宿主交互及集中跨平台检查仍按具体范围授权。
+
+日终交接：截至本日结束，维护、删除兼容和认证读取 / 导出组合验收均已形成独立切片；完整提交回顾见[9 月 26 日记录](../status/2026-09-26-source-vault.md)。当前首项为 application 生命周期接入，早期批次中的待实现描述保留其当时范围。

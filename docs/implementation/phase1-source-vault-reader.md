@@ -39,4 +39,4 @@
 
 ## 工作区与下一步
 
-本批为 `dev` 上的新工作区差异，未提交、未 push，未运行远程 CI 或启动 GUI / VM / 长期服务。下一步将读取与既有 capture、删除、verify / rebuild 能力接入现有 application service 的显式库打开及操作生命周期；继续沿 ADR 0008 推进 macOS 宿主、真实 Keychain 和集中跨平台验收。
+本批已在 `dev` 提交为 `8d2c651`，未 push，未运行远程 CI 或启动 GUI / VM / 长期服务。下一步将读取与既有 capture、删除、verify / rebuild 能力接入现有 application service 的显式库打开及操作生命周期；继续沿 ADR 0008 推进 macOS 宿主、真实 Keychain 和集中跨平台验收。

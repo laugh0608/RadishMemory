@@ -36,6 +36,8 @@ SQLite 专项通过真实 deferred foreign-key COMMIT 失败验证请求 / schem
 
 ## 工作区与下一步
 
-上一批 verify / rebuild 已提交为 `543108e`，本批删除实现保留为新的工作区差异；未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试清理各自的隔离库、子进程和端口，保留常规编译缓存与任务专用临时验证日志，不纳入 Git。下一步先收口历史未完成删除请求的迁移兼容，再按当前状态评估并推进 application 数据流接入，再完成 macOS 宿主、真实 Keychain 及集中跨平台验收；具体系统操作须另行授权。
+上一批 verify / rebuild 已提交为 `543108e`，本批删除实现随后提交为 `292ed57`；未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试清理各自的隔离库、子进程和端口，保留常规编译缓存与任务专用临时验证日志，不纳入 Git。当批下一步为历史未完成删除请求的迁移兼容，再按当前状态评估并推进 application 数据流接入，再完成 macOS 宿主、真实 Keychain 及集中跨平台验收；具体系统操作须另行授权。
 
-后续提交与推进：本批已提交为 `292ed57`；历史请求迁移兼容的实现与最新工作区状态见[兼容记录](phase1-source-vault-legacy-deletion.md)，当前顺位以[当前状态](../status/current.md)为准。
+后续历史请求迁移兼容见[兼容记录](phase1-source-vault-legacy-deletion.md)，当前顺位以[当前状态](../status/current.md)为准。
+
+日终交接：截至本日结束，维护、删除兼容和认证读取 / 导出组合验收均已形成独立切片；完整提交回顾见[9 月 26 日记录](../status/2026-09-26-source-vault.md)。当前首项为 application 生命周期接入，早期批次中的待实现描述保留其当时范围。

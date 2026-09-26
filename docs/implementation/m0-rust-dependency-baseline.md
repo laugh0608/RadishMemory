@@ -1,8 +1,8 @@
 # RadishMemory Rust 依赖基线
 
-日期：2026-09-15
+更新时间：2026-09-26
 
-范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、`P1-S03a portable crypto dependency landing`、`P1-S03b Windows file identity adapter`、`P1-S03c-2 isolated platform key provider`、`P1-S04a key bootstrap coordination`、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
+范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、`P1-S03a portable crypto dependency landing`、`P1-S03b Windows file identity adapter`、`P1-S03c-2 isolated platform key provider`、`P1-S04a key bootstrap coordination`、P1-S04 capture 与认证读取 / 导出测试连线、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
@@ -15,7 +15,7 @@
 | `radishmemory-sqlite 0.1.0` | runtime：`radishmemory-core =0.1.0`、`rusqlite`；test-only：`radishmemory-file-entry =0.1.0`（`acceptance-test-support`） | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-application 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-file-entry =0.1.0`、`radishmemory-sqlite =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-desktop 0.1.0` | `radishmemory-application =0.1.0`、`eframe`、`rfd`、`directories`、`getrandom`、`time` | workspace path | 仓库 [LICENSE](../../LICENSE) |
-| `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`、`keyring-core`、`radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`；test-only：`rusqlite`；macOS：`apple-native-keyring-store`、`security-framework`；Windows：`windows-native-keyring-store`、`radishmemory-windows-filesystem =0.1.0`；Linux：`zbus-secret-service-keyring-store`、`secret-service` | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`、`keyring-core`、`radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`；test-only：`rusqlite`、`radishmemory-file-entry =0.1.0`；macOS：`apple-native-keyring-store`、`security-framework`；Windows：`windows-native-keyring-store`、`radishmemory-windows-filesystem =0.1.0`；Linux：`zbus-secret-service-keyring-store`、`secret-service` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`（`fixture-runner`）、`serde_json` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-windows-filesystem 0.1.0` | 仅 Windows：`windows-sys =0.61.2` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 

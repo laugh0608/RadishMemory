@@ -2,7 +2,7 @@
 
 日期：2026-09-26。状态：`P1-S04 object-backed verify and rebuild implemented — synthetic acceptance`。
 
-本批提供完成正文迁移后的独立维护入口，支持维护 v8 / v9 / v10。普通 `SqliteDatabase::open` 仍只允许 v6；本批不改变 canonical schema、依赖、lockfile、密钥生命周期或数据所有权，不接入 application / UI。
+本批提供完成正文迁移后的独立维护入口，初始批次支持维护 v8 / v9 / v10。普通 `SqliteDatabase::open` 仍只允许 v6；本批不改变 canonical schema、依赖、lockfile、密钥生命周期或数据所有权，不接入 application / UI。
 
 ## 操作契约
 
@@ -25,6 +25,8 @@
 
 ## 后续顺位与交接
 
-下一步推进 object-backed 删除执行，再接入 application / macOS 宿主及集中跨平台验收。既有显式放弃与 orphan retirement 已提交为 `3f5cc0f`；本批维护实现保留为新的工作区差异。未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试自行清理隔离库、子进程与端口，保留常规编译缓存；本批验证日志位于任务专用临时目录，不纳入 Git。
+当批下一步为 object-backed 删除执行，再接入 application / macOS 宿主及集中跨平台验收。既有显式放弃与 orphan retirement 已提交为 `3f5cc0f`；本批维护实现已提交为 `543108e`。未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试自行清理隔离库、子进程与端口，保留常规编译缓存；本批验证日志位于任务专用临时目录，不纳入 Git。
 
 同日后续[删除切片](phase1-source-vault-deletion.md) 已扩展维护 v11。报告增加 `deletion_pending_objects` 与 `deleted_objects`，分别表示待物理清理和已退役对象数，不等于整个删除请求已完成。维护会认证仍存在的删除中对象，要求退役终态的两个路径均缺失；不自动清理或推进删除请求。上述原批次验证数字保留。
+
+日终复核：后续[历史请求兼容](phase1-source-vault-legacy-deletion.md) 已使共用入口接受维护 v8 至 v12，并复验历史正文缺失凭据；该类来源不计入 `deleted_objects` 物理对象数。只观察状态，不接管或推进旧删除请求。本批已提交，当前顺位见[日终记录](../status/2026-09-26-source-vault.md)与[当前状态](../status/current.md)。

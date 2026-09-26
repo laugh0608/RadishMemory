@@ -51,8 +51,10 @@ v8 由唯一 migration `0008_source_vault_objects.sql` 定义，全部是 adapte
 
 ## 后续顺位
 
-继续收口新 capture 协调、完整 orphan reconciliation、object-backed verify / rebuild 和删除执行，再进入 P1-S05 application / macOS 宿主、真实 Keychain 与集中 Windows / Linux 检查点。PDF / 图片、模型、同步与发行保持原停止线。R01 至 R06 质量缺口仍按独立计划跟踪。
+当批退出时建议继续收口新 capture 协调、完整 orphan reconciliation、object-backed verify / rebuild 和删除执行，再进入 P1-S05 application / macOS 宿主、真实 Keychain 与集中 Windows / Linux 检查点。PDF / 图片、模型、同步与发行保持原停止线。R01 至 R06 质量缺口仍按独立计划跟踪。
 
-本批变更留在本地 `dev`，未提交、未 push、未执行远程 CI 或发布。测试自行清理合成库、密文对象与子进程；未启动长期服务、GUI 或 VM。常规忽略的编译缓存保留。
+本批后来与 capture 一并提交为 `a7db975`，未 push、未执行远程 CI 或发布。测试自行清理合成库、密文对象与子进程；未启动长期服务、GUI 或 VM。常规忽略的编译缓存保留。
 
 同日后续[加密 capture 切片](phase1-source-vault-capture.md) 已将新来源 / 版本协调推进到维护 v9，正文迁移入口仍只接受 v7 / v8；本页上述验证数量与未实现范围保留为迁移批次事实，现行顺位以[当前状态](../status/current.md)为准。
+
+日终交接：截至本日结束，维护、删除兼容和认证读取 / 导出组合验收均已形成独立切片；完整提交回顾见[9 月 26 日记录](../status/2026-09-26-source-vault.md)。当前首项为 application 生命周期接入，早期批次中的待实现描述保留其当时范围。

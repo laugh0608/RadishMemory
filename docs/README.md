@@ -44,6 +44,7 @@
 
 ## 质量与历史记录
 
+- [2026-09-26 Source Vault 日终记录与明日事项](status/2026-09-26-source-vault.md)：当天七个实现提交、代码与文档复核、读取 / 导出验收及 application 生命周期接入安排。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。

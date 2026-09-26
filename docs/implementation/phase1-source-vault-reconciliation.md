@@ -2,7 +2,7 @@
 
 日期：2026-09-26。状态：`P1-S04 inventory reconciliation slice implemented — synthetic acceptance`。
 
-本批承接正文迁移与加密 capture，新增独立对象核对入口。适用完成迁移的维护 v8 / v9；普通 `SqliteDatabase::open` 仍只允许 v6。不增加 schema、依赖、第三方包或公共 canonical 字段，不接入 application / UI 或真实 key store。
+本批承接正文迁移与加密 capture，新增独立对象核对入口。初始批次适用完成迁移的维护 v8 / v9；普通 `SqliteDatabase::open` 仍只允许 v6。不增加 schema、依赖、第三方包或公共 canonical 字段，不接入 application / UI 或真实 key store。
 
 ## 核对与清理边界
 
@@ -27,14 +27,16 @@ ADR 0008 要求只有“没有 committed reference、没有仍可恢复的 activ
 
 本机 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整通过：197 个仓库文件、notices、fmt、all-targets / all-features locked Clippy 与 236 个 Rust tests；其中本批新增 12 项核对测试。4 个 ignored helper 均由父测试实际启动，不另计入总数。35 项检查器回归、M0 fixture 契约（12 场景 / 86 操作 / 12 gate）、1 个 compile-fail doctest 与 `git diff --check` 通过。既有 P1-F17 本机临时端口测试需要沙箱外权限，完整检查沿权限流程运行，未跳过或放宽检查。上述测试只使用合成库与测试 key，子进程退出不等于真实断电；Windows / Linux 当前代码、真实密钥库、宿主生命周期与磁盘满未验收。
 
-本批不是完整 orphan retirement：未建立已放弃 attempt 的持久化状态，也未开放取消或删除未引用对象的入口。现有 v9 不存在满足冻结清理条件的可删除 orphan，不能伪造此类成功证据。后续应先明确显式放弃 / 取消的恢复语义，再实现对应精确清理；完整 verify / rebuild、删除执行与宿主验收仍待完成。
+本批不是完整 orphan retirement：未建立已放弃 attempt 的持久化状态，也未开放取消或删除未引用对象的入口。现有 v9 不存在满足冻结清理条件的可删除 orphan，不能伪造此类成功证据。当批后续建议先明确显式放弃 / 取消的恢复语义，再实现对应精确清理；完整 verify / rebuild、删除执行与宿主验收仍待完成。
 
 核对仍会全量认证已有对象并在内存构造 active sources，没有大库性能验收。FTS 仍含完整可读正文；对象加密和 link 清理不构成整库静态加密、历史明文擦除或备份清除。
 
 ## 工作区交接
 
-此前正文迁移与加密 capture 已按项目所有者要求提交为 `a7db975`。本批核对实现单独保留工作区差异供后续审阅；未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试自行清理隔离目录和子进程，常规编译缓存保留。
+此前正文迁移与加密 capture 已按项目所有者要求提交为 `a7db975`。本批核对实现已单独提交为 `83f3fc1`；未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试自行清理隔离目录和子进程，常规编译缓存保留。
 
 同日后续[显式放弃切片](phase1-source-vault-abandonment.md) 已扩展维护 v10；本页上述 v8 / v9 验证保留为原批次事实。核对报告现增加 `abandonment_pending` 与 `abandoned_attempts`，只报告待完成清理，不自动作出放弃决定。原 v9 `prepared` 继续保留；已持久化 `abandoning` 经同一显式入口恢复。
 
 同日后续[删除切片](phase1-source-vault-deletion.md) 已扩展维护 v11。报告增加 `deletion_pending_objects` 与 `deleted_objects`，分别表示待物理清理和已退役对象数，不等于整个删除请求已完成。维护会认证仍存在的删除中对象，要求退役终态的两个路径均缺失；不自动清理或推进删除请求。上述原批次验证数字保留。
+
+日终复核：后续[历史请求兼容](phase1-source-vault-legacy-deletion.md) 已使共用入口接受维护 v8 至 v12，并复验历史正文缺失凭据；该类来源不计入 `deleted_objects` 物理对象数。只观察状态，不接管或推进旧删除请求。本批已提交，当前顺位见[日终记录](../status/2026-09-26-source-vault.md)与[当前状态](../status/current.md)。
