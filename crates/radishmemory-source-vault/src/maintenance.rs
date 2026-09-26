@@ -13,6 +13,8 @@ pub struct VerificationReport {
     pub pending_captures: usize,
     pub abandonment_pending: bool,
     pub abandoned_attempts: usize,
+    pub deletion_pending_objects: usize,
+    pub deleted_objects: usize,
     pub derivations_rebuilt: bool,
 }
 
@@ -91,6 +93,14 @@ fn maintain_with_step(
         abandoned_attempts: items
             .iter()
             .filter(|i| i.state == CaptureObjectState::Abandoned)
+            .count(),
+        deletion_pending_objects: items
+            .iter()
+            .filter(|i| i.state == CaptureObjectState::Deleting)
+            .count(),
+        deleted_objects: items
+            .iter()
+            .filter(|i| i.state == CaptureObjectState::Deleted)
             .count(),
         derivations_rebuilt: rebuild,
     })

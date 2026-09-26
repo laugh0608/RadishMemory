@@ -109,6 +109,35 @@ impl PlatformKeyProvider {
         }
     }
 
+    /// Execute an explicitly authorized canonical local-purge request after body
+    /// migration. Host must suspend ordinary operations and filter sensitive logger
+    /// targets before existing key-store access. Does not destroy the library key.
+    /// Retries require a request frozen by this entry point; migrated unfinished
+    /// legacy requests without an object plan are preserved and rejected.
+    pub fn execute_library_deletion(
+        &self,
+        directory: &crate::ObjectDirectory,
+        request: &radishmemory_core::DeleteRequest,
+        execution: &radishmemory_core::LocalDeletionExecution,
+    ) -> std::result::Result<Vec<radishmemory_core::ComponentResult>, crate::VaultMaintenanceError>
+    {
+        let p = request.params();
+        let slot = KeySlot::new(p.namespace_id.as_str(), p.device_id.as_str())?;
+        crate::deletion::execute(directory, request, execution, || self.load_existing(&slot))
+    }
+
+    /// Store canonical evidence only when it matches actual persisted component
+    /// results, after authenticating the library again. Same host boundary as deletion.
+    pub fn store_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        evidence: &radishmemory_core::DeletionEvidence,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError> {
+        let p = evidence.params();
+        let slot = KeySlot::new(p.namespace_id.as_str(), p.device_id.as_str())?;
+        crate::deletion::store_evidence(directory, evidence, || self.load_existing(&slot))
+    }
+
     /// Explicit verification after completed body migration, including derived rows.
     /// Requires host authorization for existing key-store access, suspended ordinary
     /// operations and sensitive logger suppression. Never repairs or creates a key.

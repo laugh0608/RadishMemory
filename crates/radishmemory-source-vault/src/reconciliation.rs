@@ -15,6 +15,8 @@ pub struct ReconciliationReport {
     pub pending_capture: Option<AttemptState>,
     pub abandonment_pending: bool,
     pub abandoned_attempts: usize,
+    pub deletion_pending_objects: usize,
+    pub deleted_objects: usize,
     pub committed_staging_links_removed: usize,
 }
 
@@ -109,6 +111,14 @@ fn reconcile_with_step(
         abandoned_attempts: items
             .iter()
             .filter(|i| i.state == CaptureObjectState::Abandoned)
+            .count(),
+        deletion_pending_objects: items
+            .iter()
+            .filter(|i| i.state == CaptureObjectState::Deleting)
+            .count(),
+        deleted_objects: items
+            .iter()
+            .filter(|i| i.state == CaptureObjectState::Deleted)
             .count(),
         committed_staging_links_removed: removed,
     })

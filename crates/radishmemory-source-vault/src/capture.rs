@@ -140,7 +140,11 @@ pub(crate) fn authenticate_all(
                 &meta,
                 key,
             )?;
-            if item.state == CaptureObjectState::Abandoned && state != AttemptState::Absent {
+            if matches!(
+                item.state,
+                CaptureObjectState::Abandoned | CaptureObjectState::Deleted
+            ) && state != AttemptState::Absent
+            {
                 return Err(invalid());
             }
             continue;

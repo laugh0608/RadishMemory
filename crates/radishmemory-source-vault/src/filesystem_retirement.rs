@@ -1,4 +1,4 @@
-//! Precise removal after a persisted abandonment decision. Never scans for garbage.
+//! Precise removal after a persisted retirement decision. Never scans for garbage.
 use super::*;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -49,7 +49,7 @@ impl ObjectDirectory {
             }
             if observations[index].is_some() {
                 fs::remove_file(&paths[index])
-                    .map_err(|e| SourceVaultError::io("remove abandoned attempt entry", e))?;
+                    .map_err(|e| SourceVaultError::io("remove retired object entry", e))?;
                 removed[index] = true;
             }
             step(if index == 0 {

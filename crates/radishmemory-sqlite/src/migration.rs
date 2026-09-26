@@ -22,7 +22,9 @@ pub(crate) const CAPTURE_SCHEMA_VERSION: u32 = 9;
 
 pub(crate) const ABANDONMENT_SCHEMA_VERSION: u32 = 10;
 
-const MIGRATIONS: [Migration; 10] = [
+pub(crate) const OBJECT_DELETION_SCHEMA_VERSION: u32 = 11;
+
+const MIGRATIONS: [Migration; 11] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -124,6 +126,15 @@ const MIGRATIONS: [Migration; 10] = [
         name: "0010_capture_abandonment",
         sql: include_str!("../migrations/0010_capture_abandonment.sql"),
         tables_created: &[],
+    },
+    Migration {
+        version: 11,
+        name: "0011_source_vault_deletion",
+        sql: include_str!("../migrations/0011_source_vault_deletion.sql"),
+        tables_created: &[
+            "radishmemory_source_vault_delete_plans",
+            "radishmemory_source_vault_deletions",
+        ],
     },
 ];
 

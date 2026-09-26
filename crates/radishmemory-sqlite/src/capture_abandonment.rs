@@ -151,7 +151,7 @@ impl EncryptedCaptureDatabase {
         }
         before_commit(&tx)?;
         tx.commit().map_err(SqliteError::storage)?;
-        self.version = migration::ABANDONMENT_SCHEMA_VERSION;
+        self.version = self.version.max(migration::ABANDONMENT_SCHEMA_VERSION);
         self.verify_structure()
     }
 }

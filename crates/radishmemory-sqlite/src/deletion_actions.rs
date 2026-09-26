@@ -155,6 +155,30 @@ fn delete_source_bodies(
     targets: &[ObjectRef],
 ) -> Result<ActionResult, SqliteError> {
     require_closure_type(targets, CanonicalObjectType::SourceArtifact)?;
+    let version: i64 = transaction
+        .pragma_query_value(None, "user_version", |r| r.get(0))
+        .map_err(SqliteError::storage)?;
+    if version >= 11 {
+        for target in targets {
+            let retired: bool = transaction.query_row(
+                "SELECT EXISTS(SELECT 1 FROM radishmemory_source_vault_deletions d WHERE d.source_id=?1 AND d.state='deleted' AND NOT EXISTS(SELECT 1 FROM radishmemory_source_vault_references r WHERE r.source_id=d.source_id))",
+                [target.object_id().as_str()], |r| r.get(0),
+            ).map_err(SqliteError::storage)?;
+            if !retired {
+                return Err(SqliteError::deletion_invariant(
+                    SqliteStorageReason::DeletionExecution,
+                ));
+            }
+        }
+        return Ok(ActionResult {
+            outcome: if targets.is_empty() {
+                ComponentOutcome::NotFound
+            } else {
+                ComponentOutcome::Deleted
+            },
+            verification_method: "source-vault-authenticated-absence-v1",
+        });
+    }
     let mut removed = 0;
     for target in targets {
         removed += transaction

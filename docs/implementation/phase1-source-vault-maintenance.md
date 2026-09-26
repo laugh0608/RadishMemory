@@ -26,3 +26,5 @@
 ## 后续顺位与交接
 
 下一步推进 object-backed 删除执行，再接入 application / macOS 宿主及集中跨平台验收。既有显式放弃与 orphan retirement 已提交为 `3f5cc0f`；本批维护实现保留为新的工作区差异。未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试自行清理隔离库、子进程与端口，保留常规编译缓存；本批验证日志位于任务专用临时目录，不纳入 Git。
+
+同日后续[删除切片](phase1-source-vault-deletion.md) 已扩展维护 v11。报告增加 `deletion_pending_objects` 与 `deleted_objects`，分别表示待物理清理和已退役对象数，不等于整个删除请求已完成。维护会认证仍存在的删除中对象，要求退役终态的两个路径均缺失；不自动清理或推进删除请求。上述原批次验证数字保留。

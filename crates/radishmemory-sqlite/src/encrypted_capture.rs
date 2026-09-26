@@ -11,6 +11,8 @@ use std::{collections::BTreeMap, fmt, path::Path};
 
 #[path = "capture_abandonment.rs"]
 mod abandonment;
+#[path = "object_deletion.rs"]
+mod deletion;
 pub use abandonment::CaptureAbandonmentTarget;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -19,6 +21,8 @@ pub enum CaptureObjectState {
     Prepared,
     Abandoning,
     Abandoned,
+    Deleting,
+    Deleted,
 }
 
 type Result<T> = std::result::Result<T, SqliteError>;
@@ -53,8 +57,8 @@ impl EncryptedCaptureDatabase {
             namespace,
             device,
             provider,
-            migration::ABANDONMENT_SCHEMA_VERSION,
-            &[8, 9, 10],
+            migration::OBJECT_DELETION_SCHEMA_VERSION,
+            &[8, 9, 10, 11],
         )?;
         let db = Self {
             connection,
@@ -80,7 +84,12 @@ impl EncryptedCaptureDatabase {
     }
 
     pub fn objects(&self) -> Result<Vec<CaptureObject>> {
-        let mut stmt=self.connection.prepare("SELECT source_id,namespace_id,digest_value,content_length,media_type,locator,attempt_id,state FROM radishmemory_source_vault_attempts ORDER BY source_id").map_err(SqliteError::storage)?;
+        let sql = if self.version >= 11 {
+            "SELECT m.source_id,m.namespace_id,m.digest_value,m.content_length,m.media_type,m.locator,m.attempt_id,COALESCE(d.state,m.state) FROM radishmemory_source_vault_attempts m LEFT JOIN radishmemory_source_vault_deletions d ON d.source_id=m.source_id ORDER BY m.source_id"
+        } else {
+            "SELECT source_id,namespace_id,digest_value,content_length,media_type,locator,attempt_id,state FROM radishmemory_source_vault_attempts ORDER BY source_id"
+        };
+        let mut stmt = self.connection.prepare(sql).map_err(SqliteError::storage)?;
         let rows = stmt
             .query_map([], |r| {
                 Ok((
@@ -119,6 +128,8 @@ impl EncryptedCaptureDatabase {
                     "prepared" => CaptureObjectState::Prepared,
                     "abandoning" => CaptureObjectState::Abandoning,
                     "abandoned" => CaptureObjectState::Abandoned,
+                    "deleting" => CaptureObjectState::Deleting,
+                    "deleted" => CaptureObjectState::Deleted,
                     _ => return Err(invalid()),
                 },
             })
@@ -203,10 +214,11 @@ impl EncryptedCaptureDatabase {
         {
             return Err(invalid());
         }
-        if self
-            .objects()?
-            .iter()
-            .any(|item| item.state == CaptureObjectState::Abandoning)
+        if self.deletion_in_progress()?
+            || self
+                .objects()?
+                .iter()
+                .any(|item| item.state == CaptureObjectState::Abandoning)
         {
             return Err(invalid());
         }
@@ -315,7 +327,7 @@ impl EncryptedCaptureDatabase {
         locator: &str,
         attempt: &str,
     ) -> Result<()> {
-        if !matches!(self.version, 9 | 10) {
+        if !matches!(self.version, 9..=11) {
             return Err(invalid());
         }
         let p = capture.source().params();
@@ -401,22 +413,31 @@ impl EncryptedCaptureDatabase {
         {
             return Err(invalid());
         }
+        let deletion_rows = if self.version >= 11 {
+            "SELECT source_id FROM radishmemory_source_vault_deletions"
+        } else {
+            "SELECT NULL AS source_id WHERE 0"
+        };
         let mismatch:bool=self.connection.query_row(
-            "SELECT EXISTS(SELECT 1 FROM radishmemory_source_vault_attempts m
+            &format!("SELECT EXISTS(SELECT 1 FROM radishmemory_source_vault_attempts m
              LEFT JOIN radishmemory_source_artifacts a ON a.source_id=m.source_id
              LEFT JOIN radishmemory_source_vault_references r ON r.source_id=m.source_id
+             LEFT JOIN ({deletion_rows}) d ON d.source_id=m.source_id
              WHERE m.namespace_id!=?1 OR
                 (m.state IN ('prepared','abandoning','abandoned') AND (a.source_id IS NOT NULL OR r.source_id IS NOT NULL)) OR
-                (m.state IN ('retired','committed') AND (a.source_id IS NULL OR r.source_id IS NULL OR
+                (m.state IN ('retired','committed') AND (a.source_id IS NULL OR
+                   (d.source_id IS NULL AND r.source_id IS NULL) OR
+                   (d.source_id IS NOT NULL AND (r.source_id IS NOT NULL OR a.deletion_state='active')) OR
                    m.namespace_id!=a.namespace_id OR m.digest_value!=a.content_digest_value OR
                    a.content_digest_algorithm!='sha256' OR a.content_digest_profile!='exact-bytes-v1' OR
                    m.content_length!=a.content_length OR m.media_type!=a.media_type OR
                    m.locator!=r.locator OR m.attempt_id!=r.attempt_id))) OR
-             EXISTS(SELECT 1 FROM radishmemory_source_artifacts a LEFT JOIN radishmemory_source_vault_references r ON a.source_id=r.source_id WHERE a.deletion_state='active' AND r.source_id IS NULL)",
+             EXISTS(SELECT 1 FROM radishmemory_source_artifacts a LEFT JOIN radishmemory_source_vault_references r ON a.source_id=r.source_id WHERE a.deletion_state='active' AND r.source_id IS NULL)"),
             [&self.namespace],|r|r.get(0)).map_err(SqliteError::storage)?;
         if mismatch {
             return Err(invalid());
         }
+        self.verify_deletion_inventory()?;
         if self.version == 8
             && self
                 .objects()?

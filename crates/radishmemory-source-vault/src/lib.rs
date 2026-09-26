@@ -6,6 +6,7 @@ mod body_migration;
 mod bootstrap;
 mod capture;
 mod crypto;
+mod deletion;
 mod envelope;
 mod error;
 mod filesystem;
