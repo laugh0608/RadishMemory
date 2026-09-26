@@ -4,7 +4,7 @@ use crate::{
     ObjectWrite, PROVIDER_PROFILE, SourceVaultError, SourceVaultErrorCode, VaultMaintenanceError,
 };
 use radishmemory_core::{SourceArtifact, SourceCapture, SourceCaptureOutcome, SourceCaptureResult};
-use radishmemory_sqlite::{CaptureObject, EncryptedCaptureDatabase};
+use radishmemory_sqlite::{CaptureObject, CaptureObjectState, EncryptedCaptureDatabase};
 use zeroize::Zeroizing;
 
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
@@ -55,7 +55,10 @@ fn capture_with_step(
     }
     db.initialize_capture_schema()?;
     verify_identity()?;
-    let pending = db.objects()?.into_iter().find(|o| o.pending);
+    let pending = db
+        .objects()?
+        .into_iter()
+        .find(|o| o.state == CaptureObjectState::Prepared);
     let absent = if let Some(item) = &pending {
         directory.inspect_attempt(
             &ObjectLocator::from_token(&item.locator)?,
@@ -89,7 +92,7 @@ fn capture_with_step(
     let item = db
         .objects()?
         .into_iter()
-        .find(|o| o.pending)
+        .find(|o| o.state == CaptureObjectState::Prepared)
         .ok_or_else(invalid)?;
     directory.recover_attempt(
         &ObjectLocator::from_token(&item.locator)?,
@@ -130,13 +133,16 @@ pub(crate) fn authenticate_all(
     let mut sources = Vec::new();
     for item in &items {
         let meta = metadata(item)?;
-        if item.pending {
-            directory.inspect_attempt(
+        if item.state != CaptureObjectState::Committed {
+            let state = directory.inspect_attempt(
                 &ObjectLocator::from_token(&item.locator)?,
                 &AttemptId::from_token(&item.attempt_id)?,
                 &meta,
                 key,
             )?;
+            if item.state == CaptureObjectState::Abandoned && state != AttemptState::Absent {
+                return Err(invalid());
+            }
             continue;
         }
         // The read path is selected by the committed reference, never by a

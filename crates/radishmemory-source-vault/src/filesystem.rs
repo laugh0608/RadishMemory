@@ -1,4 +1,4 @@
-//! Filesystem publication only: this module never commits canonical facts or deletes orphans.
+//! Filesystem object operations; SQLite owns canonical facts and durable cleanup decisions.
 use std::fmt;
 use std::fs;
 use std::io::Write;
@@ -15,6 +15,9 @@ use crate::{
 
 #[path = "filesystem_recovery.rs"]
 mod recovery;
+#[path = "filesystem_retirement.rs"]
+mod retirement;
+pub(crate) use retirement::RetirementStep;
 
 type Result<T> = std::result::Result<T, SourceVaultError>;
 

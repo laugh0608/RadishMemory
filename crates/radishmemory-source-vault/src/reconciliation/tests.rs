@@ -53,6 +53,8 @@ fn completed_v8_inventory_is_verified_without_schema_or_object_changes() {
         ReconciliationReport {
             committed_objects_verified: 1,
             pending_capture: None,
+            abandonment_pending: false,
+            abandoned_attempts: 0,
             committed_staging_links_removed: 0,
         }
     );

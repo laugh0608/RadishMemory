@@ -109,6 +109,38 @@ impl PlatformKeyProvider {
         }
     }
 
+    /// Authenticate and select the exact pending capture without cancelling it.
+    /// Target is not authorization; the host must explicitly approve abandonment.
+    /// Real key-store access still requires suspended operations and logger filtering.
+    pub fn inspect_library_capture_abandonment(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+    ) -> std::result::Result<Option<crate::CaptureAbandonmentTarget>, crate::VaultMaintenanceError>
+    {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::abandonment::inspect(directory, namespace_id, device_id, || {
+            self.load_existing(&slot)
+        })
+    }
+
+    /// Irreversibly abandon exactly the selected uncommitted capture. Caller must
+    /// have explicit approval to discard it. Persists intent before removal and
+    /// retains a tombstone; never deletes a committed source or creates a key.
+    pub fn abandon_library_capture(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+        target: &crate::CaptureAbandonmentTarget,
+    ) -> std::result::Result<crate::AbandonmentReport, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::abandonment::abandon(directory, namespace_id, device_id, target, || {
+            self.load_existing(&slot)
+        })
+    }
+
     /// Explicit maintenance reconciliation after body migration. Preserves every
     /// pending capture; only removes authenticated duplicate staging links of
     /// committed objects. Requires suspended ordinary operations and host approval

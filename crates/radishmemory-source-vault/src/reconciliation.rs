@@ -1,9 +1,9 @@
-//! Reconcile the existing v8/v9 inventory without cancelling recoverable captures.
+//! Reconcile the v8/v9/v10 inventory without deciding to abandon recoverable captures.
 use crate::{
     AttemptId, AttemptState, KeyEncryptionKey, ObjectDirectory, ObjectLocator, PROVIDER_PROFILE,
     SourceVaultError, VaultMaintenanceError,
 };
-use radishmemory_sqlite::EncryptedCaptureDatabase;
+use radishmemory_sqlite::{CaptureObjectState, EncryptedCaptureDatabase};
 
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 
@@ -13,6 +13,8 @@ type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 pub struct ReconciliationReport {
     pub committed_objects_verified: usize,
     pub pending_capture: Option<AttemptState>,
+    pub abandonment_pending: bool,
+    pub abandoned_attempts: usize,
     pub committed_staging_links_removed: usize,
 }
 
@@ -62,7 +64,10 @@ fn reconcile_with_step(
     verify_identity()?;
     let mut removed = 0;
     let items = db.objects()?;
-    for item in items.iter().filter(|item| !item.pending) {
+    for item in items
+        .iter()
+        .filter(|item| item.state == CaptureObjectState::Committed)
+    {
         let (locator, attempt) = db.reference(&item.source_id)?;
         step(Step::BeforeCleanup)?;
         verify_identity()?;
@@ -81,7 +86,7 @@ fn reconcile_with_step(
     verify_all()?;
     let pending_capture = items
         .iter()
-        .find(|item| item.pending)
+        .find(|item| item.state == CaptureObjectState::Prepared)
         .map(|item| -> Result<AttemptState> {
             Ok(directory.inspect_attempt(
                 &ObjectLocator::from_token(&item.locator)?,
@@ -93,8 +98,18 @@ fn reconcile_with_step(
         .transpose()?;
     verify_identity()?;
     Ok(ReconciliationReport {
-        committed_objects_verified: items.iter().filter(|item| !item.pending).count(),
+        committed_objects_verified: items
+            .iter()
+            .filter(|item| item.state == CaptureObjectState::Committed)
+            .count(),
         pending_capture,
+        abandonment_pending: items
+            .iter()
+            .any(|i| i.state == CaptureObjectState::Abandoning),
+        abandoned_attempts: items
+            .iter()
+            .filter(|i| i.state == CaptureObjectState::Abandoned)
+            .count(),
         committed_staging_links_removed: removed,
     })
 }

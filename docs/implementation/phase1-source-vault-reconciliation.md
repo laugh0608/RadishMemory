@@ -34,3 +34,5 @@ ADR 0008 要求只有“没有 committed reference、没有仍可恢复的 activ
 ## 工作区交接
 
 此前正文迁移与加密 capture 已按项目所有者要求提交为 `a7db975`。本批核对实现单独保留工作区差异供后续审阅；未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试自行清理隔离目录和子进程，常规编译缓存保留。
+
+同日后续[显式放弃切片](phase1-source-vault-abandonment.md) 已扩展维护 v10；本页上述 v8 / v9 验证保留为原批次事实。核对报告现增加 `abandonment_pending` 与 `abandoned_attempts`，只报告待完成清理，不自动作出放弃决定。原 v9 `prepared` 继续保留；已持久化 `abandoning` 经同一显式入口恢复。

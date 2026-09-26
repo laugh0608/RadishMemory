@@ -33,6 +33,7 @@
     - [Phase 1 Source Vault key provider 落地记录](implementation/phase1-source-vault-key-provider.md)：精确平台依赖、严格读取、私有 bootstrap 编排与真实密钥库待验收边界。
     - [Phase 1 Source Vault 密钥初始化协调](implementation/phase1-source-vault-key-bootstrap.md)：P1-S04a SQLite 事务资格、v7 维护 checkpoint、并发、提交失败与恢复限制。
     - [Phase 1 Source Vault 正文迁移与恢复](implementation/phase1-source-vault-body-migration.md)：P1-S04b 首个维护切片、v8 状态契约、故障验收和未覆盖范围。
+    - [Phase 1 capture 显式放弃与 orphan retirement](implementation/phase1-source-vault-abandonment.md)：维护 v10、精确 target、不可逆决定、终态防重放与故障恢复。
     - [Phase 1 Source Vault inventory reconciliation](implementation/phase1-source-vault-reconciliation.md)：独立 inventory 核对、pending 状态报告、committed staging link 清理与失败关闭边界。
     - [Phase 1 Source Vault 加密 capture 协调](implementation/phase1-source-vault-capture.md)：v9 请求绑定、原子提交、认证回读、幂等恢复与剩余协调范围。
 26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。

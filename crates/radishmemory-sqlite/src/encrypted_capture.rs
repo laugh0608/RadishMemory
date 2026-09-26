@@ -9,6 +9,18 @@ use radishmemory_core::{
 use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 use std::{collections::BTreeMap, fmt, path::Path};
 
+#[path = "capture_abandonment.rs"]
+mod abandonment;
+pub use abandonment::CaptureAbandonmentTarget;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum CaptureObjectState {
+    Committed,
+    Prepared,
+    Abandoning,
+    Abandoned,
+}
+
 type Result<T> = std::result::Result<T, SqliteError>;
 
 /// A private object fact, not an authorization or diagnostic payload.
@@ -20,7 +32,7 @@ pub struct CaptureObject {
     pub media_type: String,
     pub locator: String,
     pub attempt_id: String,
-    pub pending: bool,
+    pub state: CaptureObjectState,
 }
 
 pub struct EncryptedCaptureDatabase {
@@ -41,8 +53,8 @@ impl EncryptedCaptureDatabase {
             namespace,
             device,
             provider,
-            migration::CAPTURE_SCHEMA_VERSION,
-            &[8, 9],
+            migration::ABANDONMENT_SCHEMA_VERSION,
+            &[8, 9, 10],
         )?;
         let db = Self {
             connection,
@@ -102,7 +114,13 @@ impl EncryptedCaptureDatabase {
                 media_type,
                 locator,
                 attempt_id,
-                pending: state == "prepared",
+                state: match state.as_str() {
+                    "retired" | "committed" => CaptureObjectState::Committed,
+                    "prepared" => CaptureObjectState::Prepared,
+                    "abandoning" => CaptureObjectState::Abandoning,
+                    "abandoned" => CaptureObjectState::Abandoned,
+                    _ => return Err(invalid()),
+                },
             })
         })
         .collect()
@@ -114,7 +132,7 @@ impl EncryptedCaptureDatabase {
         item: &CaptureObject,
         body: &[u8],
     ) -> Result<Option<SourceArtifact>> {
-        if item.pending
+        if item.state != CaptureObjectState::Committed
             || body.len() as u64 != item.content_length
             || compute_exact_bytes_digest(body).value() != item.digest_value
         {
@@ -153,7 +171,14 @@ impl EncryptedCaptureDatabase {
         {
             return Err(invalid());
         }
-        if self.version == 9 {
+        if self
+            .objects()?
+            .iter()
+            .any(|item| item.state == CaptureObjectState::Abandoning)
+        {
+            return Err(invalid());
+        }
+        if self.version >= 9 {
             let pending:Option<String>=self.connection.query_row("SELECT request_digest FROM radishmemory_source_vault_attempts WHERE state='prepared'",[],|r|r.get(0)).optional().map_err(SqliteError::storage)?;
             if pending.is_some_and(|d| d != fingerprint(capture)) {
                 return Err(invalid());
@@ -162,6 +187,9 @@ impl EncryptedCaptureDatabase {
             // if a later capture has advanced this binding's tip.
             let prior:Option<(String,String,String)>=self.connection.query_row("SELECT request_digest,state,origin_binding_id FROM radishmemory_source_vault_attempts WHERE kind='capture' AND source_id=?1",[capture.source().params().source_id.as_str()],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?))).optional().map_err(SqliteError::storage)?;
             if let Some((digest, state, binding)) = prior {
+                if matches!(state.as_str(), "abandoning" | "abandoned") {
+                    return Err(invalid());
+                }
                 if binding != capture.origin_binding_id().as_str() {
                     return Err(invalid());
                 }
@@ -255,7 +283,7 @@ impl EncryptedCaptureDatabase {
         locator: &str,
         attempt: &str,
     ) -> Result<()> {
-        if self.version != 9 {
+        if !matches!(self.version, 9 | 10) {
             return Err(invalid());
         }
         let p = capture.source().params();
@@ -346,8 +374,8 @@ impl EncryptedCaptureDatabase {
              LEFT JOIN radishmemory_source_artifacts a ON a.source_id=m.source_id
              LEFT JOIN radishmemory_source_vault_references r ON r.source_id=m.source_id
              WHERE m.namespace_id!=?1 OR
-                (m.state='prepared' AND (a.source_id IS NOT NULL OR r.source_id IS NOT NULL)) OR
-                (m.state!='prepared' AND (a.source_id IS NULL OR r.source_id IS NULL OR
+                (m.state IN ('prepared','abandoning','abandoned') AND (a.source_id IS NOT NULL OR r.source_id IS NOT NULL)) OR
+                (m.state IN ('retired','committed') AND (a.source_id IS NULL OR r.source_id IS NULL OR
                    m.namespace_id!=a.namespace_id OR m.digest_value!=a.content_digest_value OR
                    a.content_digest_algorithm!='sha256' OR a.content_digest_profile!='exact-bytes-v1' OR
                    m.content_length!=a.content_length OR m.media_type!=a.media_type OR
@@ -357,7 +385,12 @@ impl EncryptedCaptureDatabase {
         if mismatch {
             return Err(invalid());
         }
-        if self.version == 8 && self.objects()?.iter().any(|o| o.pending) {
+        if self.version == 8
+            && self
+                .objects()?
+                .iter()
+                .any(|o| o.state != CaptureObjectState::Committed)
+        {
             return Err(invalid());
         }
         Ok(())
@@ -392,7 +425,7 @@ fn verify_facts(connection: &Connection, sources: &[SourceArtifact]) -> Result<(
             return Err(invalid());
         }
         let fragments = source_store::load_fragments_for_source(connection, source)?;
-        if schema == 9 {
+        if schema >= 9 {
             let persisted:Option<(String,String)>=connection.query_row("SELECT request_digest,origin_binding_id FROM radishmemory_source_vault_attempts WHERE source_id=?1 AND kind='capture' AND state='committed'",[p.source_id.as_str()],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(SqliteError::storage)?;
             if let Some((digest, binding)) = persisted {
                 let capture = SourceCapture::new(
@@ -509,10 +542,13 @@ mod tests {
                 .unwrap();
             assert_eq!(count, 0);
         }
-        assert!(db.objects().unwrap()[0].pending);
+        assert_eq!(db.objects().unwrap()[0].state, CaptureObjectState::Prepared);
         db.verify_facts(&[]).unwrap();
         db.commit_capture(&req, &[]).unwrap();
-        assert!(!db.objects().unwrap()[0].pending);
+        assert_eq!(
+            db.objects().unwrap()[0].state,
+            CaptureObjectState::Committed
+        );
         db.verify_facts(&[req.source().clone()]).unwrap();
     }
 }

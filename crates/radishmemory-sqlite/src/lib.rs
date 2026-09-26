@@ -31,7 +31,9 @@ use radishmemory_file_entry as _;
 use rusqlite::{Connection, TransactionBehavior};
 
 pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
-pub use encrypted_capture::{CaptureObject, EncryptedCaptureDatabase};
+pub use encrypted_capture::{
+    CaptureAbandonmentTarget, CaptureObject, CaptureObjectState, EncryptedCaptureDatabase,
+};
 pub use error::{
     SqliteCapability, SqliteConfigurationReason, SqliteError, SqliteErrorCode, SqliteStorageReason,
 };

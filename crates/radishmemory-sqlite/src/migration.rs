@@ -20,7 +20,9 @@ pub(crate) const OBJECT_MIGRATION_SCHEMA_VERSION: u32 = 8;
 
 pub(crate) const CAPTURE_SCHEMA_VERSION: u32 = 9;
 
-const MIGRATIONS: [Migration; 9] = [
+pub(crate) const ABANDONMENT_SCHEMA_VERSION: u32 = 10;
+
+const MIGRATIONS: [Migration; 10] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -115,6 +117,12 @@ const MIGRATIONS: [Migration; 9] = [
         version: 9,
         name: "0009_source_vault_capture",
         sql: include_str!("../migrations/0009_source_vault_capture.sql"),
+        tables_created: &[],
+    },
+    Migration {
+        version: 10,
+        name: "0010_capture_abandonment",
+        sql: include_str!("../migrations/0010_capture_abandonment.sql"),
         tables_created: &[],
     },
 ];

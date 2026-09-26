@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 mod aad;
+mod abandonment;
 mod body_migration;
 mod bootstrap;
 mod capture;
@@ -18,6 +19,7 @@ mod reconciliation;
 mod test_support;
 
 pub use aad::ObjectMetadata;
+pub use abandonment::{AbandonmentReport, CaptureAbandonmentTarget};
 pub use maintenance_error::VaultMaintenanceError;
 pub type KeyInitializationError = VaultMaintenanceError;
 pub use body_migration::BodyMigrationReport;
