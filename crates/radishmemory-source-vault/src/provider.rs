@@ -112,8 +112,9 @@ impl PlatformKeyProvider {
     /// Execute an explicitly authorized canonical local-purge request after body
     /// migration. Host must suspend ordinary operations and filter sensitive logger
     /// targets before existing key-store access. Does not destroy the library key.
-    /// Retries require a request frozen by this entry point; migrated unfinished
-    /// legacy requests without an object plan are preserved and rejected.
+    /// Legacy requests require the exact persisted authority and validated closure.
+    /// Missing pre-migration bodies require a real original component result;
+    /// ambiguous requests are preserved and rejected.
     pub fn execute_library_deletion(
         &self,
         directory: &crate::ObjectDirectory,

@@ -13,6 +13,7 @@ mod encrypted_capture;
 mod error;
 #[cfg(feature = "fixture-runner")]
 mod fixture_runner;
+mod legacy_deletion;
 mod memory_store;
 mod migration;
 mod source_capture;

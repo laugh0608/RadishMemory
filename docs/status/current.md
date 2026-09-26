@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`Phase 1 Source Vault deletion slice implemented; legacy request compatibility next`
+`Phase 1 Source Vault legacy deletion compatibility implemented; application integration next`
 
-M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，尚未接入产品数据流。当前 production code 仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 仅供正文迁移维护，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint；普通入口拒绝 v7 / v8 / v9 / v10 / v11。项目具备受约束的工程原型，但中文找回、完整目录访问、启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
+M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，尚未接入产品数据流。当前 production code 仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 仅供正文迁移维护，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；普通入口拒绝 v7 / v8 / v9 / v10 / v11 / v12。项目具备受约束的工程原型，但中文找回、完整目录访问、启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
 
 P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../implementation/phase1-source-vault-key-provider.md)，Windows / Linux provider 编译和真实密钥库尚待验收。P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；实现范围为独立 Source Vault package 与 Windows 文件身份 adapter，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
 
@@ -24,7 +24,7 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 ## 当前顺位
 
 1. `P1-S04a SQLite key bootstrap coordination` 已实现：在真实 SQLite `IMMEDIATE` transaction 内验真初始化资格，复验对象目录、创建 / 复用密钥并提交 maintenance-only v7 `key_ready` checkpoint。合成测试覆盖并发连接、独立子进程、真实 commit 失败、缺 key、历史正文损坏和 schema 漂移，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。普通产品入口继续使用 v6；该初始化步骤不迁移正文；后续迁移由独立 v8 维护入口承担。
-2. `P1-S04b` 首个正文迁移 / 恢复切片已实现：维护专用 v8 inventory、migration attempt、committed reference、逐项认证迁移与中断恢复，见[落地记录](../implementation/phase1-source-vault-body-migration.md)。后续[加密 capture 切片](../implementation/phase1-source-vault-capture.md) 已实现 v9 attempt、publish → atomic commit → read-back、新来源 / 版本与中断恢复。[inventory reconciliation](../implementation/phase1-source-vault-reconciliation.md) 已完成独立核对、pending 状态报告和 committed staging link 清理；后续[显式放弃切片](../implementation/phase1-source-vault-abandonment.md) 已建立维护 v10 的 `prepared → abandoning → abandoned`，先持久化决定，再精确清理并保留防重放终态；可恢复 attempt 不自动删除。后续[verify / rebuild 维护切片](../implementation/phase1-source-vault-maintenance.md) 已完成独立全库认证及 FTS / tip / memory projection 原子重建；schema、数据库结构 / 外键或 canonical 损坏继续失败关闭。[删除执行切片](../implementation/phase1-source-vault-deletion.md) 已完成维护 v11 的请求冻结、引用关闭、精确对象清理及既有十组件结果 / evidence 校验。下一批先收口旧明文库未完成删除请求的迁移兼容（当前拒绝接管并保留残留），再评估并推进 application 数据流接入，随后完成 macOS 宿主、真实 Keychain 与端到端验收；真实系统操作仍单独授权。
+2. `P1-S04b` 首个正文迁移 / 恢复切片已实现：维护专用 v8 inventory、migration attempt、committed reference、逐项认证迁移与中断恢复，见[落地记录](../implementation/phase1-source-vault-body-migration.md)。后续[加密 capture 切片](../implementation/phase1-source-vault-capture.md) 已实现 v9 attempt、publish → atomic commit → read-back、新来源 / 版本与中断恢复。[inventory reconciliation](../implementation/phase1-source-vault-reconciliation.md) 已完成独立核对、pending 状态报告和 committed staging link 清理；后续[显式放弃切片](../implementation/phase1-source-vault-abandonment.md) 已建立维护 v10 的 `prepared → abandoning → abandoned`，先持久化决定，再精确清理并保留防重放终态；可恢复 attempt 不自动删除。后续[verify / rebuild 维护切片](../implementation/phase1-source-vault-maintenance.md) 已完成独立全库认证及 FTS / tip / memory projection 原子重建；schema、数据库结构 / 外键或 canonical 损坏继续失败关闭。[删除执行切片](../implementation/phase1-source-vault-deletion.md) 已完成维护 v11 的请求冻结、引用关闭、精确对象清理及既有十组件结果 / evidence 校验。后续[历史请求兼容切片](../implementation/phase1-source-vault-legacy-deletion.md) 已完成旧请求授权 / 闭包复核、残留对象清理与原执行结果支持的正文缺失接管；证据不足继续保留并拒绝。下一批评估并推进 application 数据流接入，随后完成 macOS 宿主、真实 Keychain 与端到端验收；真实系统操作仍单独授权。
 3. 按项目所有者 2026-09-15 的安排，Windows / Linux 编译与运行验证后置到上述链路形成阶段切片后的集中检查点；待验收状态保留，不能以 macOS 结果代替。真实系统 key store 与上游日志过滤仍须按具体测试范围授权和验证。PDF / 图片解析继续等待完整加密链路通过。
 4. R01 至 R06 的产品质量缺口继续跟踪：[本地资料库质量验收计划](../evaluation/phase1-local-library-quality.md)中的中文检索、目录分页、派生损坏维护入口、读取性能、runner 证据和回源 / 结果刷新仍未收口。本批基础存储实现不等于这些产品问题已经修复。
 5. 产品验证继续聚焦“同一个长期项目的资料、关键事实、更正与受控上下文”，完整阶段依赖以[MVP 路线图](../mvp-roadmap.md)为准。
@@ -77,8 +77,10 @@ Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继�
 
 2026-09-26 object-backed 删除执行的状态契约、十组件结果与验证见[删除记录](../implementation/phase1-source-vault-deletion.md)。文件系统失败或中断保留请求并返回错误；只在对象和 staging 都持久化缺失后记为已退役。删除后的 verify / rebuild 不恢复原始对象或召回。
 
+2026-09-26 历史删除请求的接管、真实旧执行凭据和失败关闭验证见[兼容记录](../implementation/phase1-source-vault-legacy-deletion.md)。维护 v12 不开放普通产品入口；已消失正文不补造对象或成功历史。
+
 ## 后续事项
 
 `P1-S03c-2` 已完成独立 provider、六项精确直接依赖、22-package 增量及 366 项 notices 落地，见[实现与验收记录](../implementation/phase1-source-vault-key-provider.md)。macOS locked Clippy / 合成测试通过；Windows / Linux provider 编译、真实系统密钥库与上游 logger 过滤仍待分平台验证。P1-S04a 新增受事务约束的 library initializer，slot-only 创建 / setter 继续不公开；资格来自实际数据库与对象目录，不接受调用方自报。初始化使用合成 provider 验证，尚未接入宿主。
 
-P1-S04 的迁移、capture、reconciliation、显式放弃、verify / rebuild 与删除执行现已有独立合成切片，历史请求迁移兼容仍未收口。当前首项为收口旧明文库未完成删除请求的迁移兼容，之后评估并推进 application 数据流接入，再进入 P1-S05 宿主验收；不能将独立维护链路视为普通产品已切换加密。9 月 15 日[明日事项](2026-09-15-source-vault.md#明日事项2026-09-16)保留为历史安排，其中正文迁移与新 capture 切片已由后续批次推进。R01 至 R06、宿主接入及集中跨平台验证遵循上述顺位与停止线。下一批真实 key store、依赖或 VM / 系统变更须按具体范围授权。
+P1-S04 的迁移、capture、reconciliation、显式放弃、verify / rebuild 与删除执行现已有独立合成切片，历史请求迁移兼容也已形成独立合成切片。当前首项为评估并推进 application 数据流接入，再进入 P1-S05 宿主验收；不能将独立维护链路视为普通产品已切换加密。9 月 15 日[明日事项](2026-09-15-source-vault.md#明日事项2026-09-16)保留为历史安排，其中正文迁移与新 capture 切片已由后续批次推进。R01 至 R06、宿主接入及集中跨平台验证遵循上述顺位与停止线。下一批真实 key store、依赖或 VM / 系统变更须按具体范围授权。

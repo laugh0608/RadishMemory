@@ -151,3 +151,43 @@ fn actual_component_failure_is_reported_and_retry_does_not_reopen_recall() {
     );
     db.verify_facts(&[]).unwrap();
 }
+
+#[test]
+fn legacy_adoption_commit_failure_preserves_original_request_and_references() {
+    let (mut db, _, request) = setup();
+    let tx = db.connection.transaction().unwrap();
+    let closure = deletion_store::build_execution_closure(&tx, &request).unwrap();
+    deletion_store::insert_request(&tx, &request, &closure).unwrap();
+    deletion_store::close_targets_to_recall(&tx, &request, &closure).unwrap();
+    tx.commit().unwrap();
+    let err = db.begin_with_check(&request, &[], fail_commit).unwrap_err();
+    assert_eq!(
+        err.sqlite_extended_code(),
+        Some(rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY)
+    );
+    assert_eq!(db.version, 9);
+    assert_eq!(
+        db.connection
+            .pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+            .unwrap(),
+        9
+    );
+    db.reference("source-commit-1").unwrap();
+    db.verify_facts(&[]).unwrap();
+    assert_eq!(
+        deletion_store::load_request(
+            &db.connection,
+            &request.params().namespace_id,
+            &request.params().delete_request_id
+        )
+        .unwrap(),
+        Some(request.clone())
+    );
+    db.begin_object_deletion(&request, &[]).unwrap();
+    assert_eq!(db.version, 12);
+    assert!(db.reference("source-commit-1").is_err());
+    assert_eq!(
+        db.deletion_objects(&request).unwrap()[0].state,
+        CaptureObjectState::Deleting
+    );
+}

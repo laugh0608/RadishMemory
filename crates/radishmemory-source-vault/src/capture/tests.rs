@@ -131,7 +131,11 @@ pub(crate) fn interrupt(dir: &ObjectDirectory, req: &SourceCapture, point: Step)
     );
 }
 
-pub(crate) fn setup_confirmed_memory() -> (TestDirectory, ObjectDirectory) {
+pub(crate) fn setup_plaintext_confirmed_memory() -> TestDirectory {
+    setup_plaintext_memory(true)
+}
+
+pub(crate) fn setup_plaintext_memory(confirmed: bool) -> TestDirectory {
     use radishmemory_core::{
         ActorRef, ActorType, Decision, EvidenceRef, EvidenceType, MemoryDecision,
         MemoryDecisionParams, MemoryEventType, MemoryProposal, MemoryProposalParams, MemoryRecord,
@@ -228,10 +232,17 @@ pub(crate) fn setup_confirmed_memory() -> (TestDirectory, ObjectDirectory) {
     let mut db = radishmemory_sqlite::SqliteDatabase::open(root.0.join("library.sqlite3")).unwrap();
     db.capture_source(&legacy).unwrap();
     db.store_memory_proposal(&proposal).unwrap();
-    db.store_memory_decision(&decision).unwrap();
-    db.materialize_accepted_memory(&memory, &event, &[])
-        .unwrap();
+    if confirmed {
+        db.store_memory_decision(&decision).unwrap();
+        db.materialize_accepted_memory(&memory, &event, &[])
+            .unwrap();
+    }
     drop(db);
+    root
+}
+
+pub(crate) fn setup_confirmed_memory() -> (TestDirectory, ObjectDirectory) {
+    let root = setup_plaintext_confirmed_memory();
     let dir = ObjectDirectory::open_application_directory(&root.0).unwrap();
     crate::bootstrap::initialize(&dir, NS, DEVICE, |_| Ok(key())).unwrap();
     crate::body_migration::migrate(&dir, NS, DEVICE, || Ok(key())).unwrap();

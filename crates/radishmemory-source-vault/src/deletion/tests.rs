@@ -478,7 +478,7 @@ fn missing_key_is_bounded_and_does_not_commit_a_request() {
 }
 
 #[test]
-fn migrated_legacy_pending_request_without_object_plan_is_preserved_and_rejected() {
+fn migrated_legacy_pending_request_is_adopted_with_original_scope() {
     let root = TestDirectory::new();
     let mut db = radishmemory_sqlite::SqliteDatabase::open(root.0.join("library.sqlite3")).unwrap();
     db.capture_source(&capture_request(
@@ -497,10 +497,16 @@ fn migrated_legacy_pending_request_without_object_plan_is_preserved_and_rejected
     crate::body_migration::migrate(&dir, NS, DEVICE, || Ok(key())).unwrap();
     let before = files(&root);
     assert_eq!(before.len(), 1);
-    assert!(delete(&dir, &req).is_err());
-    assert_eq!(files(&root), before);
+    assert!(
+        delete(&dir, &req)
+            .unwrap()
+            .iter()
+            .all(|r| r.params().status == ComponentStatus::Succeeded)
+    );
+    assert!(files(&root).is_empty());
+    assert_eq!(verify(&dir, true).deleted_objects, 1);
     assert_eq!(count(&root, "radishmemory_delete_requests"), 1);
-    assert_eq!(count(&root, "radishmemory_deletion_execution_results"), 0);
+    assert_eq!(count(&root, "radishmemory_deletion_execution_results"), 10);
     assert_eq!(count(&root, "radishmemory_recall_fts"), 0);
 }
 
@@ -555,3 +561,6 @@ fn subprocess_deletion_helper() {
     .unwrap();
     panic!("synthetic checkpoint not reached");
 }
+
+#[path = "legacy_tests.rs"]
+mod legacy;

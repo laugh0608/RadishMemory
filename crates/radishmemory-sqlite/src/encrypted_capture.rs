@@ -57,8 +57,8 @@ impl EncryptedCaptureDatabase {
             namespace,
             device,
             provider,
-            migration::OBJECT_DELETION_SCHEMA_VERSION,
-            &[8, 9, 10, 11],
+            migration::LEGACY_DELETION_SCHEMA_VERSION,
+            &[8, 9, 10, 11, 12],
         )?;
         let db = Self {
             connection,
@@ -327,7 +327,7 @@ impl EncryptedCaptureDatabase {
         locator: &str,
         attempt: &str,
     ) -> Result<()> {
-        if !matches!(self.version, 9..=11) {
+        if !matches!(self.version, 9..=12) {
             return Err(invalid());
         }
         let p = capture.source().params();

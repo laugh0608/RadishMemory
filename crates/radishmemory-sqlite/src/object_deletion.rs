@@ -29,11 +29,18 @@ impl EncryptedCaptureDatabase {
             &request.params().namespace_id,
             &request.params().delete_request_id,
         )? {
-            if existing != *request || self.version < 11 {
+            if existing != *request {
                 return Err(invalid());
             }
-            self.verify_delete_plan(request)?;
-            return Ok(());
+            let registered = self.version >= 11 && self.connection.query_row(
+                "SELECT EXISTS(SELECT 1 FROM radishmemory_source_vault_delete_plans WHERE delete_request_id=?1)",
+                [request.params().delete_request_id.as_str()], |r| r.get::<_,bool>(0),
+            ).map_err(SqliteError::storage)?;
+            if registered {
+                self.verify_delete_plan(request)?;
+                return Ok(());
+            }
+            return self.adopt_legacy_deletion(request, before_commit);
         }
         if self.objects()?.iter().any(|i| {
             matches!(
@@ -100,7 +107,69 @@ impl EncryptedCaptureDatabase {
         verify_facts(&tx, &remaining)?;
         before_commit(&tx)?;
         tx.commit().map_err(SqliteError::storage)?;
-        self.version = 11;
+        self.version = self.version.max(11);
+        self.verify_structure()
+    }
+
+    fn adopt_legacy_deletion(
+        &mut self,
+        request: &DeleteRequest,
+        before_commit: impl FnOnce(&Connection) -> Result<()>,
+    ) -> Result<()> {
+        if self.objects()?.iter().any(|i| {
+            matches!(
+                i.state,
+                CaptureObjectState::Prepared | CaptureObjectState::Abandoning
+            )
+        }) {
+            return Err(invalid());
+        }
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(SqliteError::storage)?;
+        let bodies = crate::legacy_deletion::validate_resume(&tx, request)?;
+        migration::apply_pending(
+            &tx,
+            i64::from(self.version),
+            migration::LEGACY_DELETION_SCHEMA_VERSION,
+        )?;
+        tx.execute(
+            "INSERT INTO radishmemory_source_vault_delete_plans VALUES(?1,?2)",
+            params![
+                request.params().delete_request_id.as_str(),
+                plan_digest(&tx, request.params().delete_request_id.as_str())?
+            ],
+        )
+        .map_err(SqliteError::storage)?;
+        for (source, prior_attempt) in bodies {
+            if let Some(attempt) = prior_attempt {
+                tx.execute(
+                    "INSERT INTO radishmemory_legacy_body_retirements VALUES(?1,?2,?3)",
+                    params![source, request.params().delete_request_id.as_str(), attempt],
+                )
+                .map_err(SqliteError::storage)?;
+            } else {
+                if tx
+                    .execute(
+                        "DELETE FROM radishmemory_source_vault_references WHERE source_id=?1",
+                        [&source],
+                    )
+                    .map_err(SqliteError::storage)?
+                    != 1
+                {
+                    return Err(invalid());
+                }
+                tx.execute(
+                    "INSERT INTO radishmemory_source_vault_deletions VALUES(?1,?2,'deleting')",
+                    params![source, request.params().delete_request_id.as_str()],
+                )
+                .map_err(SqliteError::storage)?;
+            }
+        }
+        before_commit(&tx)?;
+        tx.commit().map_err(SqliteError::storage)?;
+        self.version = migration::LEGACY_DELETION_SCHEMA_VERSION;
         self.verify_structure()
     }
 
@@ -249,7 +318,12 @@ impl EncryptedCaptureDatabase {
             self.validate_delete_identity(&request)?;
             self.verify_delete_plan(&request)?;
         }
-        let mismatch: bool = self.connection.query_row("SELECT EXISTS(
+        let legacy_rows = if self.version >= 12 {
+            "SELECT source_id,delete_request_id FROM radishmemory_legacy_body_retirements"
+        } else {
+            "SELECT NULL AS source_id,NULL AS delete_request_id WHERE 0"
+        };
+        let mismatch: bool = self.connection.query_row(&format!("SELECT EXISTS(
             SELECT 1 FROM radishmemory_source_vault_deletions d
             JOIN radishmemory_source_vault_attempts m ON m.source_id=d.source_id
             LEFT JOIN radishmemory_source_artifacts a ON a.source_id=d.source_id
@@ -259,10 +333,14 @@ impl EncryptedCaptureDatabase {
         ) OR EXISTS(
             SELECT 1 FROM radishmemory_delete_execution_closure c JOIN radishmemory_source_vault_delete_plans p ON p.delete_request_id=c.delete_request_id
             LEFT JOIN radishmemory_source_vault_deletions d ON d.source_id=c.object_id AND d.delete_request_id=c.delete_request_id
-            WHERE c.component_type='source_body' AND (c.object_type!='SourceArtifact' OR d.source_id IS NULL)
-        )",[],|r|r.get(0)).map_err(SqliteError::storage)?;
+            LEFT JOIN ({legacy_rows}) l ON l.source_id=c.object_id AND l.delete_request_id=c.delete_request_id
+            WHERE c.component_type='source_body' AND (c.object_type!='SourceArtifact' OR (d.source_id IS NULL AND l.source_id IS NULL))
+        )"),[],|r|r.get(0)).map_err(SqliteError::storage)?;
         if mismatch {
             return Err(invalid());
+        }
+        if self.version >= 12 {
+            crate::legacy_deletion::verify_receipts(&self.connection, &self.namespace)?;
         }
         Ok(())
     }

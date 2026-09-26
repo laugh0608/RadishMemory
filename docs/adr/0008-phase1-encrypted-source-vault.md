@@ -219,3 +219,5 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 2026-09-26 项目所有者确认显式放弃方案并授权实现：`prepared → abandoning → abandoned`，先将放弃决定与维护 v10 升级原子提交，再精确清理无 canonical source / reference 的认证对象，目录同步及缺失复验后提交终态。终态保留原 source / request digest / attempt；旧请求禁止复活，新导入使用新 source ID。全程保持 exclusive session；未完成清理不解除 capture 阻塞。未知、截断、身份冲突与终态后重现对象不自动删除。此状态只属于未提交 capture，不代替已提交资料的 `DeleteRequest`，实现与证据见[放弃记录](../implementation/phase1-source-vault-abandonment.md)。
 
 2026-09-26 后续删除执行复用上述 `DeleteRequest` / `DeletionEvidence` 与十组件边界。维护 v11 仅增加请求 / 闭包摘要和对象退役 checkpoint：请求提交先关闭召回及 committed reference，物理清理和目录同步完成后记录对象退役，再由既有执行器处理十组件并校验 evidence。中断保留请求，重试必须匹配冻结计划；终态重现对象、未知文件或认证损坏失败关闭。未销毁 library key，也不增加远端、备份或取证级清除声明，详见[删除记录](../implementation/phase1-source-vault-deletion.md)。
+
+2026-09-26 [历史请求兼容切片](../implementation/phase1-source-vault-legacy-deletion.md) 在上述协议内增加维护 v12：原请求精确匹配、冻结闭包复核及接管事务；有对象残留时使用既有精确退役链路，迁移前正文已消失时保存并复验原请求的旧成功组件结果引用。缺凭据、闭包漂移或文件重现继续失败关闭；不改变 canonical schema、十组件协议或删除保证。

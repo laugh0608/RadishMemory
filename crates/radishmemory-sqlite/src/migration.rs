@@ -24,7 +24,9 @@ pub(crate) const ABANDONMENT_SCHEMA_VERSION: u32 = 10;
 
 pub(crate) const OBJECT_DELETION_SCHEMA_VERSION: u32 = 11;
 
-const MIGRATIONS: [Migration; 11] = [
+pub(crate) const LEGACY_DELETION_SCHEMA_VERSION: u32 = 12;
+
+const MIGRATIONS: [Migration; 12] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -135,6 +137,12 @@ const MIGRATIONS: [Migration; 11] = [
             "radishmemory_source_vault_delete_plans",
             "radishmemory_source_vault_deletions",
         ],
+    },
+    Migration {
+        version: 12,
+        name: "0012_legacy_body_retirement",
+        sql: include_str!("../migrations/0012_legacy_body_retirement.sql"),
+        tables_created: &["radishmemory_legacy_body_retirements"],
     },
 ];
 
