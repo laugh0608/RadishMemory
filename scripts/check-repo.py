@@ -99,6 +99,20 @@ REQUIRED_FILES = (
     "crates/radishmemory-sqlite/migrations/0005_local_deletion.sql",
     "crates/radishmemory-sqlite/migrations/0006_source_capture.sql",
     "crates/radishmemory-sqlite/migrations/0007_source_vault_key.sql",
+    "crates/radishmemory-sqlite/migrations/0008_source_vault_objects.sql",
+    "crates/radishmemory-sqlite/src/source_vault_migration.rs",
+    "crates/radishmemory-source-vault/src/body_migration.rs",
+    "crates/radishmemory-source-vault/src/body_migration/tests.rs",
+    "crates/radishmemory-source-vault/src/filesystem_recovery.rs",
+    "crates/radishmemory-source-vault/src/maintenance_error.rs",
+    "docs/implementation/phase1-source-vault-body-migration.md",
+    "docs/implementation/phase1-source-vault-capture.md",
+    "crates/radishmemory-source-vault/src/capture.rs",
+    "crates/radishmemory-source-vault/src/capture/tests.rs",
+    "crates/radishmemory-sqlite/src/capture_fingerprint.rs",
+    "crates/radishmemory-sqlite/src/encrypted_capture.rs",
+    "crates/radishmemory-sqlite/src/vault_session.rs",
+    "crates/radishmemory-sqlite/migrations/0009_source_vault_capture.sql",
     "crates/radishmemory-sqlite/src/source_vault_key.rs",
     "crates/radishmemory-source-vault/src/bootstrap.rs",
     "crates/radishmemory-source-vault/src/bootstrap/tests.rs",
@@ -377,6 +391,7 @@ aead-stream.workspace = true
 chacha20poly1305.workspace = true
 getrandom.workspace = true
 keyring-core.workspace = true
+radishmemory-core.workspace = true
 radishmemory-sqlite.workspace = true
 sha2.workspace = true
 zeroize.workspace = true
@@ -1057,7 +1072,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault key bootstrap coordination implemented; object migration next",
+            "Phase 1 Source Vault encrypted capture slice implemented; reconciliation next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1074,7 +1089,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault key bootstrap coordination implemented; object migration next",
+            "Phase 1 Source Vault encrypted capture slice implemented; reconciliation next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1387,6 +1402,22 @@ def check_phase1_encrypted_source_vault_contract(
     repo_root: Path, errors: list[str]
 ) -> None:
     contracts = {
+        "docs/implementation/phase1-source-vault-capture.md": (
+            "P1-S04 encrypted capture slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "不回退 inline BLOB 或外部原件",
+            "不是完整 orphan reconciliation",
+            "FTS 仍含完整可读正文",
+        ),
+        "docs/implementation/phase1-source-vault-body-migration.md": (
+            "P1-S04b body migration slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "不回退 inline body 或外部原件",
+            "这不是完整 orphan reconciliation",
+            "FTS 仍含完整可读正文",
+        ),
         "docs/adr/0008-phase1-encrypted-source-vault.md": (
             "状态：Accepted",
             "radishmemory.phase1-encrypted-source-vault/1",
@@ -1405,7 +1436,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault key bootstrap coordination implemented; object migration next",
+            "Phase 1 Source Vault encrypted capture slice implemented; reconciliation next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1492,7 +1523,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault key bootstrap coordination implemented; object migration next",
+            "Phase 1 Source Vault encrypted capture slice implemented; reconciliation next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1567,10 +1598,10 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault key bootstrap coordination implemented; object migration next",
+            "Phase 1 Source Vault encrypted capture slice implemented; reconciliation next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
-            "独立 platform provider 已实现；真实密钥库、SQLite migration 与宿主加密数据流尚未验收",
+            "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",
         ),
         "docs/status/current.md": (
             "P1-S03a portable crypto dependency landing",

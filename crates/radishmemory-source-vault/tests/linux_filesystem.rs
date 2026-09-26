@@ -5,6 +5,7 @@ use apple_native_keyring_store as _;
 use chacha20poly1305 as _;
 use getrandom as _;
 use keyring_core as _;
+use radishmemory_core as _;
 use radishmemory_source_vault as _;
 use radishmemory_sqlite as _;
 #[cfg(windows)]

@@ -1,12 +1,15 @@
 #![forbid(unsafe_code)]
 
 mod aad;
+mod body_migration;
 mod bootstrap;
+mod capture;
 mod crypto;
 mod envelope;
 mod error;
 mod filesystem;
 mod filesystem_support;
+mod maintenance_error;
 mod provider;
 mod random;
 
@@ -14,7 +17,9 @@ mod random;
 mod test_support;
 
 pub use aad::ObjectMetadata;
-pub use bootstrap::KeyInitializationError;
+pub use maintenance_error::VaultMaintenanceError;
+pub type KeyInitializationError = VaultMaintenanceError;
+pub use body_migration::BodyMigrationReport;
 pub use crypto::{KeyEncryptionKey, SealedObject, open_object, seal_object};
 pub use error::{SourceVaultError, SourceVaultErrorCode};
 pub use filesystem::{

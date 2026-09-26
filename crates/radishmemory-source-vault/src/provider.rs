@@ -109,6 +109,39 @@ impl PlatformKeyProvider {
         }
     }
 
+    /// Internal encrypted capture after completed body migration. This does not
+    /// enable ordinary application operations. Requires the same explicit host
+    /// authorization, logger suppression and suspended old handles as migration.
+    /// A pre-commit retry must provide the identical validated capture request.
+    pub fn capture_library_source(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+        capture: &radishmemory_core::SourceCapture,
+    ) -> std::result::Result<radishmemory_core::SourceCaptureResult, crate::VaultMaintenanceError>
+    {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::capture::capture(directory, namespace_id, device_id, capture, || {
+            self.load_existing(&slot)
+        })
+    }
+
+    /// Explicit maintenance migration after key initialization. Reads the existing
+    /// OS key only; host authorization, logging suppression and suspended library
+    /// operations are required just as for initialization. No product API is enabled.
+    pub fn migrate_library_bodies(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+    ) -> std::result::Result<crate::BodyMigrationReport, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::body_migration::migrate(directory, namespace_id, device_id, || {
+            self.load_existing(&slot)
+        })
+    }
+
     /// Prepares the dedicated library's key checkpoint under its SQLite writer
     /// lock. May prompt/write the real OS key store. The host must supply verified
     /// profile identities, suspend ordinary operations, and suppress sensitive

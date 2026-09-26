@@ -15,7 +15,7 @@
 | `radishmemory-sqlite 0.1.0` | runtime：`radishmemory-core =0.1.0`、`rusqlite`；test-only：`radishmemory-file-entry =0.1.0`（`acceptance-test-support`） | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-application 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-file-entry =0.1.0`、`radishmemory-sqlite =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-desktop 0.1.0` | `radishmemory-application =0.1.0`、`eframe`、`rfd`、`directories`、`getrandom`、`time` | workspace path | 仓库 [LICENSE](../../LICENSE) |
-| `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`、`keyring-core`、`radishmemory-sqlite =0.1.0`；test-only：`rusqlite`；macOS：`apple-native-keyring-store`、`security-framework`；Windows：`windows-native-keyring-store`、`radishmemory-windows-filesystem =0.1.0`；Linux：`zbus-secret-service-keyring-store`、`secret-service` | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`、`keyring-core`、`radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`；test-only：`rusqlite`；macOS：`apple-native-keyring-store`、`security-framework`；Windows：`windows-native-keyring-store`、`radishmemory-windows-filesystem =0.1.0`；Linux：`zbus-secret-service-keyring-store`、`secret-service` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`（`fixture-runner`）、`serde_json` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-windows-filesystem 0.1.0` | 仅 Windows：`windows-sys =0.61.2` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 
@@ -118,3 +118,7 @@ adapter 启动时同时核对运行时版本、`sqlite_compileoption_used('ENABL
 Source Vault 为调用现有 SQLite maintenance transaction 增加 `radishmemory-sqlite.workspace = true`，测试复用现有 `rusqlite.workspace = true`。Cargo 离线重算 lockfile，只增加这两条依赖边，453 个 package 的 name / version / source / checksum 集合未变；无新增第三方、版本或 feature 增量。分发根 inventory 仍为 366 项。设计与验证见[密钥初始化协调](phase1-source-vault-key-bootstrap.md)。
 
 上述无增量指 workspace 已锁定的第三方集合和两个分发根的并集；独立 Source Vault package 现已通过 SQLite adapter 可达 core 校验、bundled SQLite C 构建及其既有传递依赖，不能继续把该 package 整体描述为仅 portable crypto / provider 的编译子图。纯 cipher / AAD 算法与 profile 未变。
+
+## P1-S04 加密 capture 第一方连线
+
+2026-09-26 经项目所有者批准，Source Vault 增加 `radishmemory-core.workspace = true`，直接复用 canonical `SourceCapture` 与返回类型，避免第二套请求 schema。Cargo 离线更新 lockfile 仅新增这一条依赖边；core 已通过 SQLite 可达，第三方 package / version / feature、构建面和许可证无增量。notices 三目标并集仍为 366 项；实现与限制见[加密 capture 协调](phase1-source-vault-capture.md)。

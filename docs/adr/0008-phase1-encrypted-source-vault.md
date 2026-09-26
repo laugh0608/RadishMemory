@@ -127,7 +127,7 @@ KEK 缺失、锁定、拒绝授权、wrapper 损坏或错误 key 都是显式失
 1. `P1-S01 storage contract`：接受本文，冻结声明、identity、envelope、密钥、提交、迁移、删除和合成验收；不改 production code；
 2. `P1-S02 dependency and cipher review`：已由[专项评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)选择精确 AEAD / key-wrap / random / platform key provider，并冻结版本、test vector、许可证、native build、系统授权、维护和三平台影响；
 3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Windows ARM64 / NTFS 提升权限、普通用户与 ACL 验收已通过，文件身份替换缺陷已修复；Linux ARM64 / ext4 普通用户验收也已通过；`P1-S03c-2 isolated platform key provider` 已落地精确依赖、读取及私有 bootstrap 编排，并通过 macOS 构建和合成测试；真实平台凭据验收仍待后续；
-4. `P1-S04 SQLite coordination and migration`：P1-S04a 已实现密钥初始化资格、事务串行化与 maintenance-only v7 `key_ready` checkpoint，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)；object reference、capture attempt、v6 正文 migration、orphan reconciliation、verify / rebuild 与 deletion execution 继续推进；
+4. `P1-S04 SQLite coordination and migration`：P1-S04a 已实现密钥初始化资格、事务串行化与 maintenance-only v7 `key_ready` checkpoint，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)；P1-S04b 首个切片已实现 object reference、migration attempt 和 v6 正文经 v7 checkpoint 到 v8 的迁移 / 恢复，见[落地记录](../implementation/phase1-source-vault-body-migration.md)；[加密 capture 切片](../implementation/phase1-source-vault-capture.md) 已实现维护 v9 attempt、原子 metadata commit 与认证回读；完整 orphan reconciliation、公开 verify / rebuild 与 deletion execution 继续推进；
 5. `P1-S05 application and host acceptance`：接入 application service / UI，完成合成迁移、重启、key failure、故障注入和三平台 locked / 真实宿主证据。
 
 只有已经接受的 `P1-S02` 与后续 `P1-S03` 至 `P1-S05` 分别通过后，才评审 PDF / 图片的 media type、parser sandbox、页码 / 区域 citation、质量指标和派生数据治理。
@@ -201,7 +201,7 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 2026-09-15 项目所有者已授权 P1-S04a：复用现有 SQLite adapter，在 Source Vault coordinator 下实现真实存储资格检查、密钥初始化与事务 checkpoint，仅用合成资料 / 测试 provider 验证；不接入 application / UI 或访问真实系统 key store。v7 只保留初始化准备状态，后续正文迁移单独推进；默认 `SqliteDatabase::open` 仍只允许 v6。Windows / Linux 验证按[当前顺位](../status/current.md)后置集中执行。
 
-`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，真实平台凭据、正文对象 migration 与 host integration 均未验收。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
+`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，正文对象 migration 首个维护切片已有合成证据；真实平台凭据与 host integration 均未验收。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
 
 - `P1-S03b` 当前证据不代表其它 Linux / Windows 文件系统、架构或真实断电持久化已通过，平台差异必须保留真实失败；若后续需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
 - filesystem adapter 继续使用 synthetic key / random test seam 验收；P1-S03c-2 只授权精确 provider 依赖与独立实现，未经真实平台授权不访问 keychain / platform security provider；
@@ -209,3 +209,7 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 - 未经独立平台授权，不启动 GUI / VM、不访问系统 key store、不修改权限或签名配置；
 - 不使用真实个人资料、真实密钥或生产数据库；不进入 PDF / OCR、图片解析、Embedding、模型、网络、同步、发布或部署；
 - 不 push、不创建 PR、不触发远程 CI、不 merge，也不把文档契约外推为实现证据。
+
+2026-09-26 项目所有者授权推进 P1-S04b 首个正文迁移 / 中断恢复切片；仅使用合成资料和测试 key，不访问真实系统 key store，不接入 application / UI、不改依赖或远程状态。v8 `objects_ready` 仅表示本批 inventory 的正文已认证迁移，不代表 P1-S04 / P1-S05 或十八项产品场景全部通过。
+
+2026-09-26 后续授权继续推进新 capture，并明确批准 Source Vault → core 这一条既有第一方依赖。维护 v9 演进同一 attempts / references 表，以请求摘要约束精确重试，publish 后原子提交 canonical / binding / audit / FTS / reference，再按 committed reference 认证回读；详见[加密 capture 协调](../implementation/phase1-source-vault-capture.md)。普通入口仍为 v6；完整 orphan、维护修复、删除、真实密钥库与宿主验收仍未完成。

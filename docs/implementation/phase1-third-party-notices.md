@@ -59,3 +59,7 @@ P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、�
 ## P1-S04a 协调连线复核
 
 Source Vault 增加现有 SQLite 第一方依赖和测试用 `rusqlite` 后，重新生成 notices：Cargo.lock SHA-256 更新为 `b4efc35519a91c33eca592251116f9434f8aaa3baa3e293fba3c9dea1fc1b698`；两个分发根的三目标 inventory 保持 366 项及既有 inventory digest。没有新增第三方条目、license option、版本或目标 feature。
+
+## P1-S04 加密 capture 连线复核（2026-09-26）
+
+Source Vault 直接复用已传递可达的 core 后，Cargo 离线更新 lockfile 仅新增该第一方依赖边；重新生成 notices，只有 Cargo.lock SHA-256 更新为 `c690188bcb1f53bc49e5cc854250de8e0e8f608d019c8fd9dbea79c4095d3a57`。第三方 package、版本、feature、license option 和 inventory digest 均未变；三目标数量仍为 222 / 301 / 214，并集 366 项。不据此宣称新协调代码已通过 Windows / Linux 编译或运行。

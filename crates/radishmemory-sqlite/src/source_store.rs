@@ -59,6 +59,23 @@ pub(crate) fn insert_source_artifact(
     connection: &Connection,
     source: &SourceArtifact,
 ) -> Result<(), SqliteError> {
+    insert_source_metadata(connection, source)?;
+    connection
+        .execute(
+            "INSERT INTO radishmemory_source_bodies (source_id, content) VALUES (?1, ?2)",
+            params![
+                source.params().source_id.as_str(),
+                source.params().content.as_str().as_bytes()
+            ],
+        )
+        .map_err(SqliteError::storage)?;
+    Ok(())
+}
+
+pub(crate) fn insert_source_metadata(
+    connection: &Connection,
+    source: &SourceArtifact,
+) -> Result<(), SqliteError> {
     let value = source.params();
     let version = to_i64(value.version.get())?;
     let content_length = to_i64(value.content_length)?;
@@ -110,12 +127,6 @@ pub(crate) fn insert_source_artifact(
             ],
         )
         .map_err(SqliteError::storage)?;
-    connection
-        .execute(
-            "INSERT INTO radishmemory_source_bodies (source_id, content) VALUES (?1, ?2)",
-            params![value.source_id.as_str(), value.content.as_str().as_bytes()],
-        )
-        .map_err(SqliteError::storage)?;
     for (ordinal, superseded_source_id) in value.supersedes_source_ids.iter().enumerate() {
         connection
             .execute(
@@ -138,13 +149,27 @@ pub(crate) fn insert_source_fragments(
     fragments: &[SourceFragment],
 ) -> Result<(), SqliteError> {
     let (namespace_id, source_id) = validate_fragment_batch(fragments)?;
+    let source = load_source_artifact(connection, namespace_id, source_id)?
+        .ok_or_else(|| SqliteError::source_invariant(SqliteStorageReason::MissingSource))?;
+    insert_fragments_for_source(connection, fragments, &source)
+}
+
+pub(crate) fn insert_fragments_for_source(
+    connection: &Connection,
+    fragments: &[SourceFragment],
+    source: &SourceArtifact,
+) -> Result<(), SqliteError> {
+    let (namespace_id, source_id) = validate_fragment_batch(fragments)?;
+    if namespace_id != &source.params().namespace_id || source_id != &source.params().source_id {
+        return Err(SqliteError::source_invariant(
+            SqliteStorageReason::MixedFragmentBatch,
+        ));
+    }
     for fragment in fragments {
         validate_fragment_numbers(fragment)?;
     }
-    let source = load_source_artifact(connection, namespace_id, source_id)?
-        .ok_or_else(|| SqliteError::source_invariant(SqliteStorageReason::MissingSource))?;
     for fragment in fragments {
-        validate_source_fragment_resolution(fragment, &source).map_err(|source| {
+        validate_source_fragment_resolution(fragment, source).map_err(|source| {
             SqliteError::source_invariant_with_core(SqliteStorageReason::SourceResolution, source)
         })?;
     }
@@ -206,7 +231,7 @@ pub(crate) fn insert_source_fragments(
                     .map_err(SqliteError::storage)?;
             }
         }
-        crate::derived_index::insert_source_fragment(connection, fragment, &source)?;
+        crate::derived_index::insert_source_fragment(connection, fragment, source)?;
     }
     Ok(())
 }
@@ -219,6 +244,14 @@ pub(crate) fn load_source_fragments(
     let Some(source) = load_source_artifact(connection, namespace_id, source_id)? else {
         return Ok(None);
     };
+    Ok(Some(load_fragments_for_source(connection, &source)?))
+}
+
+pub(crate) fn load_fragments_for_source(
+    connection: &Connection,
+    source: &SourceArtifact,
+) -> Result<Vec<SourceFragment>, SqliteError> {
+    let source_id = &source.params().source_id;
     let mut statement = connection
         .prepare(
             "SELECT fragment_id, canonical_schema_version, object_type, namespace_id,
@@ -241,8 +274,8 @@ pub(crate) fn load_source_fragments(
     let mut fragments = Vec::with_capacity(stored.len());
     for stored_fragment in stored {
         let headings = load_heading_path(connection, &stored_fragment.fragment_id)?;
-        let fragment = stored_fragment.into_domain(&source, headings)?;
-        validate_source_fragment_resolution(&fragment, &source).map_err(|source| {
+        let fragment = stored_fragment.into_domain(source, headings)?;
+        validate_source_fragment_resolution(&fragment, source).map_err(|source| {
             SqliteError::invalid_stored_with_source(
                 SqliteStorageReason::StoredIntegrityMismatch,
                 source,
@@ -250,7 +283,7 @@ pub(crate) fn load_source_fragments(
         })?;
         fragments.push(fragment);
     }
-    Ok(Some(fragments))
+    Ok(fragments)
 }
 
 fn validate_superseded_sources(
@@ -366,6 +399,17 @@ pub(crate) fn load_source_artifact(
     namespace_id: &Identifier,
     source_id: &Identifier,
 ) -> Result<Option<SourceArtifact>, SqliteError> {
+    load_source_with_body(connection, namespace_id, source_id, None)
+}
+
+// Only the maintenance coordinator supplies an authenticated body. Ordinary
+// reads retain their inline-only behavior and never acquire an implicit fallback.
+pub(crate) fn load_source_with_body(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    source_id: &Identifier,
+    authenticated_body: Option<Vec<u8>>,
+) -> Result<Option<SourceArtifact>, SqliteError> {
     let stored = connection
         .query_row(
             "SELECT a.source_id, a.canonical_schema_version, a.object_type, a.lineage_id,
@@ -385,9 +429,12 @@ pub(crate) fn load_source_artifact(
         )
         .optional()
         .map_err(SqliteError::storage)?;
-    let Some(stored) = stored else {
+    let Some(mut stored) = stored else {
         return Ok(None);
     };
+    if let Some(body) = authenticated_body {
+        stored.content = Some(body);
+    }
     let supersedes = load_superseded_ids(connection, source_id)?;
     let source = stored.into_domain(supersedes)?;
     validate_stored_superseded_sources(connection, &source)?;
@@ -398,6 +445,21 @@ pub(crate) fn load_resolved_source_fragment(
     connection: &Connection,
     namespace_id: &Identifier,
     fragment_id: &Identifier,
+) -> Result<Option<(SourceFragment, SourceArtifact)>, SqliteError> {
+    load_resolved_fragment_with(connection, namespace_id, fragment_id, &load_source_artifact)
+}
+
+pub(crate) type SourceLoader<'a> = &'a dyn Fn(
+    &Connection,
+    &Identifier,
+    &Identifier,
+) -> Result<Option<SourceArtifact>, SqliteError>;
+
+pub(crate) fn load_resolved_fragment_with(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    fragment_id: &Identifier,
+    load_source: SourceLoader<'_>,
 ) -> Result<Option<(SourceFragment, SourceArtifact)>, SqliteError> {
     let stored = connection
         .query_row(
@@ -419,7 +481,7 @@ pub(crate) fn load_resolved_source_fragment(
         return Ok(None);
     };
     let source_id = identifier(stored.source_id.clone())?;
-    let source = load_source_artifact(connection, namespace_id, &source_id)?
+    let source = load_source(connection, namespace_id, &source_id)?
         .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch))?;
     let headings = load_heading_path(connection, &stored.fragment_id)?;
     let fragment = stored.into_domain(&source, headings)?;
@@ -813,7 +875,7 @@ fn unknown_enum<T>() -> Result<T, SqliteError> {
     ))
 }
 
-fn source_kind_str(value: SourceKind) -> &'static str {
+pub(crate) fn source_kind_str(value: SourceKind) -> &'static str {
     match value {
         SourceKind::Text => "text",
         SourceKind::Markdown => "markdown",
@@ -836,7 +898,7 @@ fn parse_media_type(value: &str) -> Result<MediaType, SqliteError> {
     }
 }
 
-fn source_origin_kind_str(value: SourceOriginKind) -> &'static str {
+pub(crate) fn source_origin_kind_str(value: SourceOriginKind) -> &'static str {
     match value {
         SourceOriginKind::SyntheticFixture => "synthetic_fixture",
         SourceOriginKind::ExplicitUserInput => "explicit_user_input",

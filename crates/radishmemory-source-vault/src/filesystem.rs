@@ -13,6 +13,9 @@ use crate::{
     open_object, seal_object,
 };
 
+#[path = "filesystem_recovery.rs"]
+mod recovery;
+
 type Result<T> = std::result::Result<T, SourceVaultError>;
 
 /// Adapter-private reference token, never a canonical identity, user path or logging field.

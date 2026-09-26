@@ -197,7 +197,12 @@ fn validate_proposal_for_store(
     connection: &Connection,
     proposal: &MemoryProposal,
 ) -> Result<(), SqliteError> {
-    validate_proposal_sources(connection, proposal, false)?;
+    validate_proposal_sources(
+        connection,
+        proposal,
+        false,
+        &crate::source_store::load_source_artifact,
+    )?;
     for target_id in &proposal.params().target_memory_ids {
         let target =
             load_memory_record_closure(connection, &proposal.params().namespace_id, target_id)?
@@ -216,13 +221,15 @@ fn validate_proposal_sources(
     connection: &Connection,
     proposal: &MemoryProposal,
     stored: bool,
+    load_source: crate::source_store::SourceLoader<'_>,
 ) -> Result<(), SqliteError> {
     let mut resolved_pairs = Vec::with_capacity(proposal.params().source_fragment_refs.len());
     for fragment_id in &proposal.params().source_fragment_refs {
-        let resolved = load_resolved_source_fragment(
+        let resolved = crate::source_store::load_resolved_fragment_with(
             connection,
             &proposal.params().namespace_id,
             fragment_id,
+            load_source,
         )?
         .ok_or_else(|| {
             if stored {
@@ -397,6 +404,20 @@ fn load_memory_proposal(
     namespace_id: &Identifier,
     proposal_id: &Identifier,
 ) -> Result<Option<MemoryProposal>, SqliteError> {
+    load_memory_proposal_with(
+        connection,
+        namespace_id,
+        proposal_id,
+        &crate::source_store::load_source_artifact,
+    )
+}
+
+fn load_memory_proposal_with(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    proposal_id: &Identifier,
+    load_source: crate::source_store::SourceLoader<'_>,
+) -> Result<Option<MemoryProposal>, SqliteError> {
     let stored = connection
         .query_row(
             "SELECT proposal_id, canonical_schema_version, object_type, namespace_id,
@@ -429,7 +450,7 @@ fn load_memory_proposal(
         proposal_id,
     )?;
     let proposal = stored.into_domain(sources, targets)?;
-    validate_proposal_sources(connection, &proposal, true)?;
+    validate_proposal_sources(connection, &proposal, true, load_source)?;
     for target_id in &proposal.params().target_memory_ids {
         if !memory_exists_in_namespace(connection, namespace_id, target_id)? {
             return Err(SqliteError::invalid_stored(
@@ -507,6 +528,20 @@ fn load_memory_decision(
     namespace_id: &Identifier,
     decision_id: &Identifier,
 ) -> Result<Option<MemoryDecision>, SqliteError> {
+    load_memory_decision_with(
+        connection,
+        namespace_id,
+        decision_id,
+        &crate::source_store::load_source_artifact,
+    )
+}
+
+fn load_memory_decision_with(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    decision_id: &Identifier,
+    load_source: crate::source_store::SourceLoader<'_>,
+) -> Result<Option<MemoryDecision>, SqliteError> {
     let proposal_id = connection
         .query_row(
             "SELECT proposal_id FROM radishmemory_memory_decisions
@@ -520,7 +555,7 @@ fn load_memory_decision(
         return Ok(None);
     };
     let proposal_id = identifier(proposal_id)?;
-    let proposal = load_memory_proposal(connection, namespace_id, &proposal_id)?
+    let proposal = load_memory_proposal_with(connection, namespace_id, &proposal_id, load_source)?
         .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch))?;
     let decisions = load_decision_chain(connection, &proposal)?;
     Ok(decisions
@@ -930,7 +965,27 @@ pub(crate) fn load_memory_record_closure(
     namespace_id: &Identifier,
     memory_id: &Identifier,
 ) -> Result<Option<(MemoryRecord, Vec<MemoryStateEvent>)>, SqliteError> {
-    load_memory_record_closure_inner(connection, namespace_id, memory_id, &mut BTreeSet::new())
+    load_memory_record_closure_with(
+        connection,
+        namespace_id,
+        memory_id,
+        &crate::source_store::load_source_artifact,
+    )
+}
+
+pub(crate) fn load_memory_record_closure_with(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    memory_id: &Identifier,
+    load_source: crate::source_store::SourceLoader<'_>,
+) -> Result<Option<(MemoryRecord, Vec<MemoryStateEvent>)>, SqliteError> {
+    load_memory_record_closure_inner(
+        connection,
+        namespace_id,
+        memory_id,
+        &mut BTreeSet::new(),
+        load_source,
+    )
 }
 
 fn load_memory_record_closure_inner(
@@ -938,6 +993,7 @@ fn load_memory_record_closure_inner(
     namespace_id: &Identifier,
     memory_id: &Identifier,
     visiting: &mut BTreeSet<Identifier>,
+    load_source: crate::source_store::SourceLoader<'_>,
 ) -> Result<Option<(MemoryRecord, Vec<MemoryStateEvent>)>, SqliteError> {
     let stored = connection
         .query_row(
@@ -997,16 +1053,18 @@ fn load_memory_record_closure_inner(
             MemoryState::Confirmed,
             root.params().event_id.clone(),
         )?;
-        let proposal = load_memory_proposal(
+        let proposal = load_memory_proposal_with(
             connection,
             namespace_id,
             &initial.params().origin_proposal_id,
+            load_source,
         )?
         .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch))?;
-        let decision = load_memory_decision(
+        let decision = load_memory_decision_with(
             connection,
             namespace_id,
             &initial.params().accepted_by_decision_id,
+            load_source,
         )?
         .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch))?;
         validate_memory_materialization(&proposal, &decision, &initial, root).map_err(
@@ -1050,6 +1108,7 @@ fn load_memory_record_closure_inner(
                     namespace_id,
                     target_id,
                     visiting,
+                    load_source,
                 )?
                 .ok_or_else(|| {
                     SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch)

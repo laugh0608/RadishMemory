@@ -7,8 +7,10 @@ use radishmemory_core::{
 };
 use rusqlite::{Connection, params};
 
-use crate::memory_store::load_memory_record_closure;
-use crate::source_store::{identifier, load_resolved_source_fragment, sensitivity_str};
+use crate::memory_store::load_memory_record_closure_with;
+use crate::source_store::{
+    SourceLoader, identifier, load_resolved_fragment_with, load_source_artifact, sensitivity_str,
+};
 use crate::{SqliteError, SqliteStorageReason};
 
 const SOURCE_FRAGMENT_KIND: &str = "source_fragment";
@@ -130,18 +132,29 @@ struct Catalog {
 
 impl Catalog {
     fn load(connection: &Connection) -> Result<Self, SqliteError> {
-        verify_source_tips(connection)?;
+        Self::load_with(connection, &load_source_artifact)
+    }
+
+    fn load_with(
+        connection: &Connection,
+        load_source: SourceLoader<'_>,
+    ) -> Result<Self, SqliteError> {
+        verify_source_tips(connection, load_source)?;
         let mut catalog = Self {
             recall_rows: BTreeMap::new(),
             projections: BTreeMap::new(),
             candidates: BTreeMap::new(),
         };
-        catalog.load_sources(connection)?;
-        catalog.load_memories(connection)?;
+        catalog.load_sources(connection, load_source)?;
+        catalog.load_memories(connection, load_source)?;
         Ok(catalog)
     }
 
-    fn load_sources(&mut self, connection: &Connection) -> Result<(), SqliteError> {
+    fn load_sources(
+        &mut self,
+        connection: &Connection,
+        load_source: SourceLoader<'_>,
+    ) -> Result<(), SqliteError> {
         let mut statement = connection
             .prepare(
                 "SELECT f.namespace_id, f.fragment_id
@@ -169,7 +182,7 @@ impl Catalog {
             let namespace = identifier(namespace)?;
             let fragment_id = identifier(fragment_id)?;
             let (fragment, source) =
-                load_resolved_source_fragment(connection, &namespace, &fragment_id)?
+                load_resolved_fragment_with(connection, &namespace, &fragment_id, load_source)?
                     .ok_or_else(derived_mismatch)?;
             if fragment.governance().deletion_state() != DeletionState::Active
                 || source.governance().deletion_state() != DeletionState::Active
@@ -192,7 +205,11 @@ impl Catalog {
         Ok(())
     }
 
-    fn load_memories(&mut self, connection: &Connection) -> Result<(), SqliteError> {
+    fn load_memories(
+        &mut self,
+        connection: &Connection,
+        load_source: SourceLoader<'_>,
+    ) -> Result<(), SqliteError> {
         let mut statement = connection
             .prepare(
                 "SELECT namespace_id, memory_id
@@ -213,8 +230,9 @@ impl Catalog {
         for (namespace, memory_id) in stored {
             let namespace = identifier(namespace)?;
             let memory_id = identifier(memory_id)?;
-            let (record, _) = load_memory_record_closure(connection, &namespace, &memory_id)?
-                .ok_or_else(derived_mismatch)?;
+            let (record, _) =
+                load_memory_record_closure_with(connection, &namespace, &memory_id, load_source)?
+                    .ok_or_else(derived_mismatch)?;
             let value = record.params();
             insert_unique(
                 &mut self.projections,
@@ -291,8 +309,18 @@ pub(crate) fn verify(connection: &Connection) -> Result<(), SqliteError> {
     verify_catalog(connection, &expected)
 }
 
-fn verify_source_tips(connection: &Connection) -> Result<(), SqliteError> {
-    if expected_source_tips(connection)? != actual_source_tips(connection)? {
+pub(crate) fn verify_with_sources(
+    connection: &Connection,
+    load_source: SourceLoader<'_>,
+) -> Result<(), SqliteError> {
+    verify_catalog(connection, &Catalog::load_with(connection, load_source)?)
+}
+
+fn verify_source_tips(
+    connection: &Connection,
+    load_source: SourceLoader<'_>,
+) -> Result<(), SqliteError> {
+    if expected_source_tips_with(connection, load_source)? != actual_source_tips(connection)? {
         return Err(derived_mismatch());
     }
     Ok(())
@@ -300,6 +328,13 @@ fn verify_source_tips(connection: &Connection) -> Result<(), SqliteError> {
 
 fn expected_source_tips(
     connection: &Connection,
+) -> Result<BTreeMap<SourceLineageKey, SourceTipRow>, SqliteError> {
+    expected_source_tips_with(connection, &load_source_artifact)
+}
+
+fn expected_source_tips_with(
+    connection: &Connection,
+    load_source: SourceLoader<'_>,
 ) -> Result<BTreeMap<SourceLineageKey, SourceTipRow>, SqliteError> {
     let mut statement = connection
         .prepare(
@@ -338,8 +373,7 @@ fn expected_source_tips(
         let namespace_id = identifier(key.namespace_id.clone())?;
         let source_id = identifier(tip.source_id.clone())?;
         let source =
-            crate::source_store::load_source_artifact(connection, &namespace_id, &source_id)?
-                .ok_or_else(derived_mismatch)?;
+            load_source(connection, &namespace_id, &source_id)?.ok_or_else(derived_mismatch)?;
         if source.params().lineage_id.as_str() != key.lineage_id
             || i64::try_from(source.params().version.get()) != Ok(tip.version)
         {

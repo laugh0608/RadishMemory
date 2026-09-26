@@ -1,54 +1,10 @@
 //! Combines the SQLite-owned live eligibility proof and the object capability.
-use std::{error::Error, fmt};
-
-use radishmemory_sqlite::{
-    SourceVaultKeyDatabase, SqliteError, SqliteErrorCode, SqliteStorageReason,
-};
+use radishmemory_sqlite::SourceVaultKeyDatabase;
 
 use crate::{
-    KeyEncryptionKey, ObjectDirectory, PROVIDER_PROFILE, SourceVaultError, SourceVaultErrorCode,
+    KeyEncryptionKey, KeyInitializationError, ObjectDirectory, PROVIDER_PROFILE, SourceVaultError,
+    SourceVaultErrorCode,
 };
-
-/// Bounded diagnostics only; never retain SQLite's arbitrary SQL/source chain.
-#[derive(Debug)]
-pub enum KeyInitializationError {
-    Database {
-        code: SqliteErrorCode,
-        reason: Option<SqliteStorageReason>,
-        sqlite_extended_code: Option<i32>,
-    },
-    Vault(SourceVaultError),
-}
-impl From<SqliteError> for KeyInitializationError {
-    fn from(error: SqliteError) -> Self {
-        Self::Database {
-            code: error.code(),
-            reason: error.storage_reason(),
-            sqlite_extended_code: error.sqlite_extended_code(),
-        }
-    }
-}
-impl From<SourceVaultError> for KeyInitializationError {
-    fn from(error: SourceVaultError) -> Self {
-        Self::Vault(error)
-    }
-}
-impl fmt::Display for KeyInitializationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Database {
-                code,
-                reason,
-                sqlite_extended_code,
-            } => write!(
-                f,
-                "key initialization database failure: {code:?} ({reason:?}, SQLite {sqlite_extended_code:?})"
-            ),
-            Self::Vault(error) => write!(f, "key initialization failed: {error}"),
-        }
-    }
-}
-impl Error for KeyInitializationError {}
 
 pub(crate) fn initialize(
     directory: &ObjectDirectory,
@@ -92,5 +48,7 @@ fn initialize_in_database(
     Ok(key)
 }
 
+#[cfg(test)]
+use radishmemory_sqlite::SqliteErrorCode;
 #[cfg(test)]
 mod tests;

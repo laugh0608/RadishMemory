@@ -16,7 +16,11 @@ struct Migration {
     tables_created: &'static [&'static str],
 }
 
-const MIGRATIONS: [Migration; 7] = [
+pub(crate) const OBJECT_MIGRATION_SCHEMA_VERSION: u32 = 8;
+
+pub(crate) const CAPTURE_SCHEMA_VERSION: u32 = 9;
+
+const MIGRATIONS: [Migration; 9] = [
     Migration {
         version: 1,
         name: "0001_sqlite_entry",
@@ -96,6 +100,22 @@ const MIGRATIONS: [Migration; 7] = [
         name: "0007_source_vault_key",
         sql: include_str!("../migrations/0007_source_vault_key.sql"),
         tables_created: &["radishmemory_source_vault_key_profile"],
+    },
+    Migration {
+        version: 8,
+        name: "0008_source_vault_objects",
+        sql: include_str!("../migrations/0008_source_vault_objects.sql"),
+        tables_created: &[
+            "radishmemory_source_vault_migration",
+            "radishmemory_source_vault_attempts",
+            "radishmemory_source_vault_references",
+        ],
+    },
+    Migration {
+        version: 9,
+        name: "0009_source_vault_capture",
+        sql: include_str!("../migrations/0009_source_vault_capture.sql"),
+        tables_created: &[],
     },
 ];
 

@@ -54,6 +54,8 @@
 
 Cargo 以 offline metadata 更新 lockfile，只增加 Source Vault 的第一方 `radishmemory-sqlite` 和测试 `rusqlite` 两条连线。453 个 package 的 name / version / source / checksum 集合不变；重生成 notices 仍为 366 项，目标数为 macOS 222、Linux 301、Windows 214，inventory SHA-256 保持 `fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3`。lockfile SHA-256 为 `b4efc35519a91c33eca592251116f9434f8aaa3baa3e293fba3c9dea1fc1b698`。
 
-下一批为 `P1-S04b`：持久化 object references 与 capture / migration attempts、逐项正文迁移、read-back 与可中断恢复；之后继续 orphan、verify / rebuild、deletion execution 和 P1-S05 application / host acceptance。不能在这些步骤完成前进入 PDF / 图片解析或声明 encrypted Source Vault 可用。
+本批退出时下一批为 `P1-S04b`：持久化 object references 与 capture / migration attempts、逐项正文迁移、read-back 与可中断恢复；之后继续 orphan、verify / rebuild、deletion execution 和 P1-S05 application / host acceptance。不能在这些步骤完成前进入 PDF / 图片解析或声明 encrypted Source Vault 可用。
 
 本批未访问真实密钥库、启动 GUI / VM、修改系统配置或执行远程动作。合成数据库、对象和测试子进程由各验收清理；常规忽略的编译缓存保留。P1-S03c-2 已提交为 `146ea8f`；P1-S04a 已提交为 `b484656`，未 push；日终汇总与明日事项见[9 月 15 日记录](../status/2026-09-15-source-vault.md)。
+
+2026-09-26 后续进展：[正文迁移与恢复首个切片](phase1-source-vault-body-migration.md)已落地；部分正文外置后的恢复使用独立 v8 维护入口，不再调用本页的空对象目录 bootstrap。

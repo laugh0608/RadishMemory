@@ -155,40 +155,11 @@ fn profile_mismatch() -> SqliteError {
     SqliteError::invalid_stored(SqliteStorageReason::KeyProfileMismatch)
 }
 
-fn verify_plaintext_facts(connection: &Connection, namespace: &str) -> Result<(), SqliteError> {
-    let integrity: String = connection
-        .query_row("PRAGMA quick_check", [], |row| row.get(0))
-        .map_err(SqliteError::storage)?;
-    let foreign_key_failure = connection
-        .prepare("PRAGMA foreign_key_check")
-        .map_err(SqliteError::storage)?
-        .exists([])
-        .map_err(SqliteError::storage)?;
-    if integrity != "ok" || foreign_key_failure {
-        return Err(profile_mismatch());
-    }
-    // Include all canonical namespaces, not only sources selected by current FTS.
-    for table in [
-        "radishmemory_source_artifacts",
-        "radishmemory_source_fragments",
-        "radishmemory_memory_proposals",
-        "radishmemory_memory_decisions",
-        "radishmemory_memory_records",
-        "radishmemory_memory_state_events",
-        "radishmemory_delete_requests",
-        "radishmemory_deletion_evidence",
-    ] {
-        let mismatch = connection
-            .prepare(&format!(
-                "SELECT 1 FROM {table} WHERE namespace_id != ?1 LIMIT 1"
-            ))
-            .map_err(SqliteError::storage)?
-            .exists([namespace])
-            .map_err(SqliteError::storage)?;
-        if mismatch {
-            return Err(profile_mismatch());
-        }
-    }
+pub(crate) fn verify_plaintext_facts(
+    connection: &Connection,
+    namespace: &str,
+) -> Result<(), SqliteError> {
+    verify_database_facts(connection, namespace)?;
     // Verify digest and length of every remaining BLOB, including old versions and deletion
     // residuals that ordinary active/current source reads intentionally exclude.
     let mut statement = connection.prepare(
@@ -229,4 +200,45 @@ fn verify_plaintext_facts(connection: &Connection, namespace: &str) -> Result<()
     }
     crate::source_capture::verify_origin_bindings(connection)?;
     crate::derived_index::verify(connection)
+}
+
+// Shared integrity and namespace gate for both bootstrap and resumed migration.
+pub(crate) fn verify_database_facts(
+    connection: &Connection,
+    namespace: &str,
+) -> Result<(), SqliteError> {
+    let integrity: String = connection
+        .query_row("PRAGMA quick_check", [], |row| row.get(0))
+        .map_err(SqliteError::storage)?;
+    let foreign_key_failure = connection
+        .prepare("PRAGMA foreign_key_check")
+        .map_err(SqliteError::storage)?
+        .exists([])
+        .map_err(SqliteError::storage)?;
+    if integrity != "ok" || foreign_key_failure {
+        return Err(profile_mismatch());
+    }
+    // Include all canonical namespaces, not only sources selected by current FTS.
+    for table in [
+        "radishmemory_source_artifacts",
+        "radishmemory_source_fragments",
+        "radishmemory_memory_proposals",
+        "radishmemory_memory_decisions",
+        "radishmemory_memory_records",
+        "radishmemory_memory_state_events",
+        "radishmemory_delete_requests",
+        "radishmemory_deletion_evidence",
+    ] {
+        let mismatch = connection
+            .prepare(&format!(
+                "SELECT 1 FROM {table} WHERE namespace_id != ?1 LIMIT 1"
+            ))
+            .map_err(SqliteError::storage)?
+            .exists([namespace])
+            .map_err(SqliteError::storage)?;
+        if mismatch {
+            return Err(profile_mismatch());
+        }
+    }
+    Ok(())
 }

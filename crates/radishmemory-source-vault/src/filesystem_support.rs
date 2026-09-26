@@ -187,6 +187,19 @@ pub(crate) fn read_file(path: &Path) -> Result<(Vec<u8>, Observation), SourceVau
     Ok((bytes, observed))
 }
 
+pub(crate) fn sync_file(path: &Path, observed: &Observation) -> Result<(), SourceVaultError> {
+    let file = no_follow_options()
+        .read(true)
+        .write(true)
+        .open(path)
+        .map_err(|e| SourceVaultError::io("open recovered object for sync", e))?;
+    observed.verify_handle(&file)?;
+    file.sync_all()
+        .map_err(|e| SourceVaultError::io("sync recovered object", e))?;
+    observed.verify_handle(&file)?;
+    verify_file(path, observed)
+}
+
 pub(crate) fn verify_file(path: &Path, observed: &Observation) -> Result<(), SourceVaultError> {
     if Observation::open(path)? != *observed {
         return Err(changed());
