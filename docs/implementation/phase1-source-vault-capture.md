@@ -31,7 +31,7 @@ request digest 使用 adapter-private `radishmemory.capture-attempt/1` codec：S
 
 1. 持有跨 checkpoint 的 SQLite exclusive session；复验目录与数据库文件身份，认证所有 committed 对象及已知 pending attempt，再用对象正文复用既有 canonical、binding、audit、FTS 和派生投影校验。
 2. 复用现有 capture 的 binding / lineage / governance / exact bytes 判定。相同 binding 和当前正文保持幂等；不同 binding 的相同正文仍各有独立 source 与对象；正文变化新增版本并推进 tip。
-3. 新请求先验证 source / fragment ID、版本、supersedes 与整数范围。在内存加密后提交 `prepared` 的请求摘要和随机 locator / attempt，然后写入密文 staging 并 durable no-overwrite publish。
+3. 新请求先验证 source / fragment ID、版本、supersedes 与整数范围。在内存加密后提交 `prepared` 的请求摘要和locator / 随机加密 attempt，然后写入密文 staging 并 durable no-overwrite publish。
 4. 重新认证精确发布对象；在一个真实 SQLite transaction 内写入 source metadata、fragments、binding、audit、FTS、lineage tip、committed reference 和 `committed` 状态。新 capture 不写 inline BLOB。
 5. 提交后重新查询 committed reference 并认证解密，复验完整存储事实后才返回 `SourceCaptureResult`。read-back 失败明确返回错误；已经提交的事实由重试重新确认，不伪报未提交或成功。
 
@@ -54,3 +54,5 @@ FTS 仍含完整可读正文；原始对象加密不等于整库静态加密，�
 下一步完成完整 orphan reconciliation、object-backed verify / rebuild 和删除协调，再进入 application / macOS 宿主、真实 Keychain 与集中 Windows / Linux 验收。PDF / 图片、模型、同步和发行停止线保持不变。
 
 本批与此前正文迁移改动一起保留在本地 `dev`，未提交、未 push、未运行远程 CI。未启动长期服务、GUI 或 VM；合成测试自行清理临时库、对象与子进程，常规忽略的编译缓存保留。
+
+同日后续 [inventory reconciliation](phase1-source-vault-reconciliation.md) 已完成独立核对与 committed staging link 精确清理；本页原验证与未完成范围保留为 capture 批次事实，现行顺位见[当前状态](../status/current.md)。

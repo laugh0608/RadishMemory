@@ -346,7 +346,8 @@ impl ObjectDirectory {
                 observations[index] = Some(observation);
             }
         }
-        if contents.len() == 2 && contents[0] != contents[1] {
+        if contents.len() == 2 && (contents[0] != contents[1] || observations[0] != observations[1])
+        {
             return Err(support::changed());
         }
         self.verify()?;

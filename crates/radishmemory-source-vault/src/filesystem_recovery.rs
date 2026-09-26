@@ -41,11 +41,37 @@ impl ObjectDirectory {
         metadata: &ObjectMetadata,
         key: &KeyEncryptionKey,
     ) -> Result<()> {
+        self.finish_attempt(locator, attempt, metadata, key, true)
+            .map(|_| ())
+    }
+
+    /// Only remove the duplicate staging link of an existing committed object.
+    /// Missing canonical objects must never be republished by reconciliation.
+    pub(crate) fn cleanup_committed_staging(
+        &self,
+        locator: &ObjectLocator,
+        attempt: &AttemptId,
+        metadata: &ObjectMetadata,
+        key: &KeyEncryptionKey,
+    ) -> Result<bool> {
+        self.finish_attempt(locator, attempt, metadata, key, false)
+    }
+
+    fn finish_attempt(
+        &self,
+        locator: &ObjectLocator,
+        attempt: &AttemptId,
+        metadata: &ObjectMetadata,
+        key: &KeyEncryptionKey,
+        allow_publication: bool,
+    ) -> Result<bool> {
         let state = self.inspect_attempt(locator, attempt, metadata, key)?;
-        if state == AttemptState::Absent {
+        if state == AttemptState::Absent
+            || (!allow_publication && state == AttemptState::AuthenticatedStaging)
+        {
             return Err(SourceVaultError::new(
                 SourceVaultErrorCode::ObjectMissing,
-                "migration object missing",
+                "required object missing",
             ));
         }
         let staging = self.staging_path(locator, attempt);
@@ -85,7 +111,8 @@ impl ObjectDirectory {
         }
         self.staging.sync()?;
         self.verify()?;
-        support::verify_file(&target, &reference)
+        support::verify_file(&target, &reference)?;
+        Ok(has_staging)
     }
 }
 fn unknown() -> SourceVaultError {

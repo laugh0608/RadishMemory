@@ -12,6 +12,7 @@ mod filesystem_support;
 mod maintenance_error;
 mod provider;
 mod random;
+mod reconciliation;
 
 #[cfg(test)]
 mod test_support;
@@ -26,6 +27,7 @@ pub use filesystem::{
     AttemptId, AttemptState, ObjectDirectory, ObjectLocator, ObjectWrite, PublishedObject,
 };
 pub use provider::{KeySlot, PlatformKeyProvider};
+pub use reconciliation::ReconciliationReport;
 
 pub const ENVELOPE_PROFILE: &str = "radishmemory.phase1-encrypted-source-vault/1";
 pub const OBJECT_CIPHER_PROFILE: &str = "radishmemory.xchacha20poly1305-stream-be32/1";

@@ -9,16 +9,16 @@ use radishmemory_core::{
 use rusqlite::Connection;
 use std::{fs, process::Command};
 
-const NS: &str = "namespace-0123456789abcdef0123456789abcdef";
-const DEVICE: &str = "device-fedcba9876543210fedcba9876543210";
-const BODY: &str = "合成 capture 原文\r\n# exact bytes\n";
+pub(crate) const NS: &str = "namespace-0123456789abcdef0123456789abcdef";
+pub(crate) const DEVICE: &str = "device-fedcba9876543210fedcba9876543210";
+pub(crate) const BODY: &str = "合成 capture 原文\r\n# exact bytes\n";
 fn id(s: &str) -> Identifier {
     Identifier::new(s).unwrap()
 }
 fn text(s: &str) -> NonEmptyText {
     NonEmptyText::new(s).unwrap()
 }
-fn request(
+pub(crate) fn request(
     source: &str,
     lineage: &str,
     version: u64,
@@ -78,7 +78,7 @@ fn request(
     .unwrap();
     SourceCapture::new(binding, artifact, vec![fragment]).unwrap()
 }
-fn setup(legacy: bool) -> (TestDirectory, ObjectDirectory) {
+pub(crate) fn setup(legacy: bool) -> (TestDirectory, ObjectDirectory) {
     let root = TestDirectory::new();
     if legacy {
         let mut db =
@@ -97,16 +97,16 @@ fn setup(legacy: bool) -> (TestDirectory, ObjectDirectory) {
     crate::body_migration::migrate(&directory, NS, DEVICE, || Ok(key())).unwrap();
     (root, directory)
 }
-fn run(dir: &ObjectDirectory, req: &SourceCapture) -> Result<SourceCaptureResult> {
+pub(crate) fn run(dir: &ObjectDirectory, req: &SourceCapture) -> Result<SourceCaptureResult> {
     capture(dir, NS, DEVICE, req, || Ok(key()))
 }
-fn count(root: &TestDirectory, table: &str) -> i64 {
+pub(crate) fn count(root: &TestDirectory, table: &str) -> i64 {
     Connection::open(root.0.join("library.sqlite3"))
         .unwrap()
         .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
         .unwrap()
 }
-fn files(root: &TestDirectory) -> Vec<(std::ffi::OsString, Vec<u8>)> {
+pub(crate) fn files(root: &TestDirectory) -> Vec<(std::ffi::OsString, Vec<u8>)> {
     let mut files: Vec<_> = fs::read_dir(root.0.join("source-objects-v1"))
         .unwrap()
         .map(|e| {
@@ -117,7 +117,7 @@ fn files(root: &TestDirectory) -> Vec<(std::ffi::OsString, Vec<u8>)> {
     files.sort_by(|a, b| a.0.cmp(&b.0));
     files
 }
-fn interrupt(dir: &ObjectDirectory, req: &SourceCapture, point: Step) {
+pub(crate) fn interrupt(dir: &ObjectDirectory, req: &SourceCapture, point: Step) {
     assert!(
         capture_with_step(
             dir,

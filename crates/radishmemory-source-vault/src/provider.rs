@@ -109,6 +109,22 @@ impl PlatformKeyProvider {
         }
     }
 
+    /// Explicit maintenance reconciliation after body migration. Preserves every
+    /// pending capture; only removes authenticated duplicate staging links of
+    /// committed objects. Requires suspended ordinary operations and host approval
+    /// for the real key-store read, with sensitive upstream logging suppressed.
+    pub fn reconcile_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+    ) -> std::result::Result<crate::ReconciliationReport, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::reconciliation::reconcile(directory, namespace_id, device_id, || {
+            self.load_existing(&slot)
+        })
+    }
+
     /// Internal encrypted capture after completed body migration. This does not
     /// enable ordinary application operations. Requires the same explicit host
     /// authorization, logger suppression and suspended old handles as migration.

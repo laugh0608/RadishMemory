@@ -9,7 +9,7 @@ use zeroize::Zeroizing;
 
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Step {
+pub(crate) enum Step {
     Prepared,
     Published,
     Committed,
@@ -111,7 +111,7 @@ fn capture_with_step(
     Ok(SourceCaptureResult::from_source(source, committed))
 }
 
-fn authenticate_all(
+pub(crate) fn authenticate_all(
     db: &EncryptedCaptureDatabase,
     directory: &ObjectDirectory,
     key: &KeyEncryptionKey,
@@ -160,7 +160,7 @@ fn authenticate_all(
     directory.verify_inventory(&tokens)?;
     Ok(sources)
 }
-fn metadata(item: &CaptureObject) -> Result<ObjectMetadata> {
+pub(crate) fn metadata(item: &CaptureObject) -> Result<ObjectMetadata> {
     Ok(ObjectMetadata::new(
         &item.namespace_id,
         &item.source_id,
@@ -188,4 +188,4 @@ fn invalid() -> VaultMaintenanceError {
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;
