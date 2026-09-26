@@ -10,6 +10,7 @@ mod envelope;
 mod error;
 mod filesystem;
 mod filesystem_support;
+mod maintenance;
 mod maintenance_error;
 mod provider;
 mod random;
@@ -20,6 +21,7 @@ mod test_support;
 
 pub use aad::ObjectMetadata;
 pub use abandonment::{AbandonmentReport, CaptureAbandonmentTarget};
+pub use maintenance::VerificationReport;
 pub use maintenance_error::VaultMaintenanceError;
 pub type KeyInitializationError = VaultMaintenanceError;
 pub use body_migration::BodyMigrationReport;

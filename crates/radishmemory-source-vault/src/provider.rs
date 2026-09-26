@@ -109,6 +109,36 @@ impl PlatformKeyProvider {
         }
     }
 
+    /// Explicit verification after completed body migration, including derived rows.
+    /// Requires host authorization for existing key-store access, suspended ordinary
+    /// operations and sensitive logger suppression. Never repairs or creates a key.
+    pub fn verify_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::maintenance::maintain(directory, namespace_id, device_id, false, || {
+            self.load_existing(&slot)
+        })
+    }
+
+    /// Explicitly rebuild FTS, source tips and memory projections from authenticated
+    /// canonical facts. Uses the same authorization boundary as verification; does
+    /// not repair canonical data or clean files. Success requires post-commit readback.
+    pub fn rebuild_library_derivations(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace_id: &str,
+        device_id: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace_id, device_id)?;
+        crate::maintenance::maintain(directory, namespace_id, device_id, true, || {
+            self.load_existing(&slot)
+        })
+    }
+
     /// Authenticate and select the exact pending capture without cancelling it.
     /// Target is not authorization; the host must explicitly approve abandonment.
     /// Real key-store access still requires suspended operations and logger filtering.

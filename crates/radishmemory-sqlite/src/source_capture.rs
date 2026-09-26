@@ -204,6 +204,7 @@ pub(crate) fn verify_origin_bindings(connection: &Connection) -> Result<(), Sqli
 }
 
 pub(crate) fn verify_origin_binding_rows(connection: &Connection) -> Result<(), SqliteError> {
+    // Bindings are canonical: their validation must not depend on repairable tips.
     let expected = expected_origin_bindings(connection)?;
     let actual = actual_origin_bindings(connection)?;
     if expected
@@ -474,12 +475,18 @@ fn expected_origin_bindings(
 ) -> Result<BTreeMap<(String, String), String>, SqliteError> {
     let mut statement = connection
         .prepare(
-            "SELECT tip.namespace_id, source.origin_ref, tip.lineage_id
-             FROM radishmemory_source_lineage_tips AS tip
-             JOIN radishmemory_source_artifacts AS source ON source.source_id = tip.source_id
+            "SELECT source.namespace_id, source.origin_ref, source.lineage_id
+             FROM radishmemory_source_artifacts AS source
              WHERE source.origin_kind = 'explicit_user_input'
                AND source.origin_ref IS NOT NULL
-             ORDER BY tip.namespace_id, source.origin_ref",
+               AND source.deletion_state = 'active'
+               AND NOT EXISTS (
+                   SELECT 1 FROM radishmemory_source_artifacts AS newer
+                   WHERE newer.namespace_id = source.namespace_id
+                     AND newer.lineage_id = source.lineage_id
+                     AND newer.version > source.version
+               )
+             ORDER BY source.namespace_id, source.origin_ref",
         )
         .map_err(SqliteError::storage)?;
     let rows = statement

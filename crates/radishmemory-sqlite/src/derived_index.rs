@@ -262,7 +262,14 @@ impl Catalog {
 }
 
 pub(crate) fn rebuild(connection: &Connection) -> Result<(), SqliteError> {
-    let source_tips = expected_source_tips(connection)?;
+    rebuild_with_sources(connection, &load_source_artifact)
+}
+
+pub(crate) fn rebuild_with_sources(
+    connection: &Connection,
+    load_source: SourceLoader<'_>,
+) -> Result<(), SqliteError> {
+    let source_tips = expected_source_tips_with(connection, load_source)?;
     connection
         .execute("DELETE FROM radishmemory_source_lineage_tips", [])
         .map_err(SqliteError::storage)?;
@@ -276,7 +283,7 @@ pub(crate) fn rebuild(connection: &Connection) -> Result<(), SqliteError> {
             )
             .map_err(SqliteError::storage)?;
     }
-    let expected = Catalog::load(connection)?;
+    let expected = Catalog::load_with(connection, load_source)?;
     connection
         .execute("DELETE FROM radishmemory_recall_fts", [])
         .map_err(SqliteError::storage)?;
@@ -324,12 +331,6 @@ fn verify_source_tips(
         return Err(derived_mismatch());
     }
     Ok(())
-}
-
-fn expected_source_tips(
-    connection: &Connection,
-) -> Result<BTreeMap<SourceLineageKey, SourceTipRow>, SqliteError> {
-    expected_source_tips_with(connection, &load_source_artifact)
 }
 
 fn expected_source_tips_with(

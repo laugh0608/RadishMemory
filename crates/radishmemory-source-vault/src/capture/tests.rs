@@ -131,8 +131,7 @@ pub(crate) fn interrupt(dir: &ObjectDirectory, req: &SourceCapture, point: Step)
     );
 }
 
-#[test]
-fn migrated_confirmed_memory_keeps_object_backed_provenance_during_new_capture() {
+pub(crate) fn setup_confirmed_memory() -> (TestDirectory, ObjectDirectory) {
     use radishmemory_core::{
         ActorRef, ActorType, Decision, EvidenceRef, EvidenceType, MemoryDecision,
         MemoryDecisionParams, MemoryEventType, MemoryProposal, MemoryProposalParams, MemoryRecord,
@@ -236,6 +235,12 @@ fn migrated_confirmed_memory_keeps_object_backed_provenance_during_new_capture()
     let dir = ObjectDirectory::open_application_directory(&root.0).unwrap();
     crate::bootstrap::initialize(&dir, NS, DEVICE, |_| Ok(key())).unwrap();
     crate::body_migration::migrate(&dir, NS, DEVICE, || Ok(key())).unwrap();
+    (root, dir)
+}
+
+#[test]
+fn migrated_confirmed_memory_keeps_object_backed_provenance_during_new_capture() {
+    let (root, dir) = setup_confirmed_memory();
     let next = request("new-source", "new-lineage", 1, "Synthetic new bytes", None);
     assert_eq!(
         run(&dir, &next).unwrap().outcome(),

@@ -157,6 +157,38 @@ impl EncryptedCaptureDatabase {
         verify_facts(&self.connection, sources)
     }
 
+    /// Check FTS5's internal index as well as its separately stored content rows.
+    /// This FTS5 command performs verification; it does not rebuild the index.
+    pub fn verify_recall_index_structure(&self) -> Result<()> {
+        self.connection.execute(
+            "INSERT INTO radishmemory_recall_fts(radishmemory_recall_fts) VALUES('integrity-check')",
+            [],
+        ).map_err(SqliteError::storage)?;
+        Ok(())
+    }
+
+    /// Rebuild only derived rows under the existing exclusive maintenance session.
+    /// The caller supplies authenticated bodies and must reauthenticate objects in
+    /// `before_commit`. Callback failure rolls back all derived writes. No source,
+    /// attempt, reference, schema or key is created or modified here.
+    pub fn rebuild_recall_derivations<E: From<SqliteError>>(
+        &self,
+        sources: &[SourceArtifact],
+        before_commit: impl FnOnce() -> std::result::Result<(), E>,
+    ) -> std::result::Result<(), E> {
+        self.verify_structure()?;
+        verify_canonical_facts(&self.connection, sources)?;
+        let load = source_loader(sources)?;
+        let tx =
+            rusqlite::Transaction::new_unchecked(&self.connection, TransactionBehavior::Exclusive)
+                .map_err(SqliteError::storage)?;
+        crate::derived_index::rebuild_with_sources(&tx, &|_, ns, id| load(ns, id))?;
+        verify_facts(&tx, sources)?;
+        before_commit()?;
+        tx.commit().map_err(SqliteError::storage)?;
+        Ok(())
+    }
+
     pub fn reference(&self, source_id: &str) -> Result<(String, String)> {
         self.connection.query_row("SELECT locator,attempt_id FROM radishmemory_source_vault_references WHERE source_id=?1",[source_id],|r|Ok((r.get(0)?,r.get(1)?))).map_err(SqliteError::storage)
     }
@@ -398,7 +430,13 @@ impl EncryptedCaptureDatabase {
 }
 
 fn verify_facts(connection: &Connection, sources: &[SourceArtifact]) -> Result<()> {
+    verify_canonical_facts(connection, sources)?;
     let load = source_loader(sources)?;
+    crate::derived_index::verify_with_sources(connection, &|_, ns, id| load(ns, id))
+}
+
+fn verify_canonical_facts(connection: &Connection, sources: &[SourceArtifact]) -> Result<()> {
+    let _ = source_loader(sources)?;
     let count: i64 = connection
         .query_row(
             "SELECT count(*) FROM radishmemory_source_artifacts WHERE deletion_state='active'",
@@ -449,8 +487,7 @@ fn verify_facts(connection: &Connection, sources: &[SourceArtifact]) -> Result<(
             )?;
         }
     }
-    crate::source_capture::verify_origin_binding_rows(connection)?;
-    crate::derived_index::verify_with_sources(connection, &|_, ns, id| load(ns, id))
+    crate::source_capture::verify_origin_binding_rows(connection)
 }
 fn source_loader(
     sources: &[SourceArtifact],
@@ -491,6 +528,45 @@ impl fmt::Debug for EncryptedCaptureDatabase {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn rebuild_commit_failure_restores_damaged_derivations() {
+        let mut connection = Connection::open_in_memory().unwrap();
+        crate::configure_connection(&connection).unwrap();
+        let tx = connection.transaction().unwrap();
+        migration::apply_pending(&tx, 0, 8).unwrap();
+        tx.execute("INSERT INTO radishmemory_source_vault_key_profile VALUES(1,'namespace-commit-1','device-synthetic','provider-synthetic','key_ready')", []).unwrap();
+        tx.execute(
+            "INSERT INTO radishmemory_source_vault_migration VALUES(1,'objects_ready')",
+            [],
+        )
+        .unwrap();
+        tx.execute("INSERT INTO radishmemory_recall_fts VALUES('source_fragment','missing-fragment','namespace-commit-1','personal','Synthetic stale row')", []).unwrap();
+        tx.commit().unwrap();
+        let db = EncryptedCaptureDatabase {
+            connection,
+            namespace: "namespace-commit-1".into(),
+            version: 8,
+        };
+        let error: SqliteError = db.rebuild_recall_derivations(&[], || {
+            db.connection.execute_batch("PRAGMA defer_foreign_keys=ON; INSERT INTO radishmemory_fragment_heading_path VALUES('missing-synthetic-fragment',0,'Synthetic heading')").map_err(SqliteError::storage)
+        }).unwrap_err();
+        assert_eq!(
+            error.sqlite_extended_code(),
+            Some(rusqlite::ffi::SQLITE_CONSTRAINT_FOREIGNKEY)
+        );
+        let rows: i64 = db
+            .connection
+            .query_row("SELECT count(*) FROM radishmemory_recall_fts", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(rows, 1);
+        assert!(db.verify_facts(&[]).is_err());
+        db.rebuild_recall_derivations(&[], || Ok::<(), SqliteError>(()))
+            .unwrap();
+        db.verify_facts(&[]).unwrap();
+    }
+
     #[test]
     fn real_deferred_commit_failure_rolls_back_every_fact_but_keeps_prepared_attempt() {
         let mut connection = Connection::open_in_memory().unwrap();
