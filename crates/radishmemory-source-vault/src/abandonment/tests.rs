@@ -356,6 +356,7 @@ fn abandoning_a_version_preserves_history_and_new_identity_can_advance_the_tip()
     assert_eq!(count(&root, "radishmemory_source_bodies"), 0);
 }
 
+#[cfg(unix)]
 #[test]
 fn database_replacement_after_intent_cannot_authorize_file_removal() {
     let (root, dir, target) = pending(AttemptState::AuthenticatedPublishedCandidate);
@@ -381,6 +382,50 @@ fn database_replacement_after_intent_cannot_authorize_file_removal() {
         fs::read(root.0.join("library.sqlite3")).unwrap(),
         b"Synthetic unrelated database replacement"
     );
+}
+
+#[cfg(windows)]
+#[test]
+fn open_database_blocks_replacement_and_interrupted_abandonment_resumes() {
+    let (root, dir, target) = pending(AttemptState::AuthenticatedPublishedCandidate);
+    let (object, _) = paths(&root);
+    let original_object = fs::read(&object).unwrap();
+    let database = root.0.join("library.sqlite3");
+    let retained = root.0.join("retained-synthetic-database");
+    let mut attempted = false;
+    let result = abandon_with_step(
+        &dir,
+        NS,
+        DEVICE,
+        &target,
+        || Ok(key()),
+        |point| {
+            if point == Step::IntentCommitted {
+                attempted = true;
+                // SQLite's Windows handle denies delete sharing. Unlike Unix,
+                // replacing its path while this session is alive is blocked.
+                let error = fs::rename(&database, &retained).unwrap_err();
+                assert_eq!(error.raw_os_error(), Some(32)); // ERROR_SHARING_VIOLATION
+                assert!(database.exists());
+                assert!(!retained.exists());
+                assert_eq!(fs::read(&object).unwrap(), original_object);
+                return Err(failure());
+            }
+            Ok(())
+        },
+    );
+    assert!(attempted && result.is_err());
+    assert_eq!(state(&root), "abandoning");
+    assert_eq!(fs::read(&object).unwrap(), original_object);
+    assert!(!retained.exists());
+    assert!(
+        fs::read(&database)
+            .unwrap()
+            .starts_with(b"SQLite format 3\0")
+    );
+    assert!(!execute(&dir, &target).unwrap().already_abandoned);
+    assert_eq!(state(&root), "abandoned");
+    assert!(!object.exists());
 }
 
 #[test]

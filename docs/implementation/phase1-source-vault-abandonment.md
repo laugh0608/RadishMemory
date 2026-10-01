@@ -33,3 +33,11 @@ inventory 必须显式区分 committed、prepared、abandoning、abandoned，不
 本批不改变 canonical schema、数据所有权、记忆状态、密码套件或依赖。实现已提交为 `3f5cc0f`，未 push、未运行远程 CI，未访问真实资料或密钥库，未启动长期服务、GUI 或 VM。合成测试自行清理隔离目录与子进程，常规编译缓存保留。当批下一步为完整 object-backed verify / rebuild，再接删除执行与宿主验收。
 
 日终交接：截至本日结束，维护、删除兼容和认证读取 / 导出组合验收均已形成独立切片；完整提交回顾见[9 月 26 日记录](../status/2026-09-26-source-vault.md)。当前首项为 application 生命周期接入，早期批次中的待实现描述保留其当时范围。
+
+## Windows 数据库替换回归修正（2026-10-01）
+
+[PR #4 的 run 36835480894](https://github.com/laugh0608/RadishMemory/actions/runs/36835480894) 通过三平台 fmt / Clippy，Linux / macOS tests 通过；Windows Source Vault 为 161 passed、1 failed、8 个 helper ignored。唯一失败是本测试在 IntentCommitted 后直接 `rename` 已打开的 SQLite 数据库并 `unwrap()`：Windows SQLite 句柄不允许 delete sharing，实际返回 ERROR_SHARING_VIOLATION（32）。这不能证明 production 放弃执行错误，也不能当作真实数据库替换成功的证据。
+
+修正保留 Unix 实际路径替换后的身份拒绝验收，并为 Windows 增加独立验收：打开的 session 必须阻止数据库重命名，精确检查错误码及路径 / 对象保留；在该 checkpoint 注入中断后，状态仍为 abandoning、对象原字节保留，再沿用同一 target 重试并验证 abandoned 和真实对象退役。没有修改 production、SQLite 句柄分享权限或安全校验，没有跳过 Windows 场景、放宽 CI 或把 Windows 阻止替换外推为 Unix 保证。最终平台结果随 PR #4 的候选 head checks 复验；真实 key store 和宿主范围仍保留上述限制。
+
+修正后本机完整 `./scripts/check-repo.sh --base-ref origin/master` 通过：235 个文件、notices、fmt、locked Clippy、42 项 Python 回归、M0 fixture 与 309 项 Rust tests。沙箱内既有 P1-F17 网络观察器绑定端口被拒绝，沿权限流程在宿主机完整重跑通过，没有跳过该测试。Windows 新回归由 PR CI 实际执行，不以 macOS 结果代替。
