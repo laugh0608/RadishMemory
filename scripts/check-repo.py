@@ -81,8 +81,16 @@ REQUIRED_FILES = (
     "crates/radishmemory-source-vault/src/aad.rs",
     "crates/radishmemory-source-vault/src/crypto.rs",
     "crates/radishmemory-source-vault/src/error.rs",
+    "crates/radishmemory-source-vault/src/envelope.rs",
+    "crates/radishmemory-source-vault/src/envelope_tests.rs",
+    "crates/radishmemory-source-vault/src/filesystem.rs",
+    "crates/radishmemory-source-vault/src/filesystem_support.rs",
+    "crates/radishmemory-source-vault/src/filesystem_tests.rs",
+    "crates/radishmemory-source-vault/src/test_support.rs",
     "crates/radishmemory-source-vault/src/lib.rs",
     "crates/radishmemory-source-vault/src/random.rs",
+    "crates/radishmemory-windows-filesystem/Cargo.toml",
+    "crates/radishmemory-windows-filesystem/src/lib.rs",
     "crates/radishmemory-sqlite/Cargo.toml",
     "crates/radishmemory-sqlite/migrations/0001_sqlite_entry.sql",
     "crates/radishmemory-sqlite/migrations/0002_source_storage.sql",
@@ -90,6 +98,51 @@ REQUIRED_FILES = (
     "crates/radishmemory-sqlite/migrations/0004_local_recall.sql",
     "crates/radishmemory-sqlite/migrations/0005_local_deletion.sql",
     "crates/radishmemory-sqlite/migrations/0006_source_capture.sql",
+    "crates/radishmemory-sqlite/migrations/0007_source_vault_key.sql",
+    "crates/radishmemory-sqlite/migrations/0008_source_vault_objects.sql",
+    "crates/radishmemory-sqlite/src/source_vault_migration.rs",
+    "crates/radishmemory-source-vault/src/body_migration.rs",
+    "crates/radishmemory-source-vault/src/body_migration/tests.rs",
+    "crates/radishmemory-source-vault/src/filesystem_recovery.rs",
+    "crates/radishmemory-source-vault/src/maintenance_error.rs",
+    "docs/implementation/phase1-source-vault-body-migration.md",
+    "docs/implementation/phase1-source-vault-capture.md",
+    "docs/implementation/phase1-source-vault-reconciliation.md",
+    "docs/implementation/phase1-source-vault-abandonment.md",
+    "docs/implementation/phase1-source-vault-maintenance.md",
+    "docs/implementation/phase1-source-vault-deletion.md",
+    "crates/radishmemory-source-vault/src/deletion.rs",
+    "crates/radishmemory-source-vault/src/deletion/tests.rs",
+    "crates/radishmemory-sqlite/src/object_deletion.rs",
+    "crates/radishmemory-sqlite/src/object_deletion/tests.rs",
+    "crates/radishmemory-sqlite/migrations/0011_source_vault_deletion.sql",
+    "crates/radishmemory-sqlite/migrations/0012_legacy_body_retirement.sql",
+    "crates/radishmemory-sqlite/src/legacy_deletion.rs",
+    "crates/radishmemory-source-vault/src/deletion/legacy_tests.rs",
+    "docs/implementation/phase1-source-vault-legacy-deletion.md",
+    "docs/implementation/phase1-source-vault-reader.md",
+    "crates/radishmemory-source-vault/src/reader.rs",
+    "crates/radishmemory-source-vault/src/reader/tests.rs",
+    "crates/radishmemory-sqlite/src/object_read.rs",
+    "crates/radishmemory-source-vault/src/maintenance.rs",
+    "crates/radishmemory-source-vault/src/maintenance/tests.rs",
+    "crates/radishmemory-sqlite/migrations/0010_capture_abandonment.sql",
+    "crates/radishmemory-sqlite/src/capture_abandonment.rs",
+    "crates/radishmemory-source-vault/src/abandonment.rs",
+    "crates/radishmemory-source-vault/src/abandonment/tests.rs",
+    "crates/radishmemory-source-vault/src/filesystem_retirement.rs",
+    "crates/radishmemory-source-vault/src/reconciliation.rs",
+    "crates/radishmemory-source-vault/src/reconciliation/tests.rs",
+    "crates/radishmemory-source-vault/src/capture.rs",
+    "crates/radishmemory-source-vault/src/capture/tests.rs",
+    "crates/radishmemory-sqlite/src/capture_fingerprint.rs",
+    "crates/radishmemory-sqlite/src/encrypted_capture.rs",
+    "crates/radishmemory-sqlite/src/vault_session.rs",
+    "crates/radishmemory-sqlite/migrations/0009_source_vault_capture.sql",
+    "crates/radishmemory-sqlite/src/source_vault_key.rs",
+    "crates/radishmemory-source-vault/src/bootstrap.rs",
+    "crates/radishmemory-source-vault/src/bootstrap/tests.rs",
+    "docs/implementation/phase1-source-vault-key-bootstrap.md",
     "crates/radishmemory-sqlite/src/capability.rs",
     "crates/radishmemory-sqlite/src/error.rs",
     "crates/radishmemory-sqlite/src/lib.rs",
@@ -114,6 +167,7 @@ REQUIRED_FILES = (
     "docs/adr/0008-phase1-encrypted-source-vault.md",
     "docs/implementation/phase1-encrypted-source-vault-dependency-review.md",
     "docs/implementation/phase1-source-vault-portable-crypto.md",
+    "docs/implementation/phase1-source-vault-filesystem.md",
     "docs/architecture.md",
     "docs/evaluation/m0-fixture-contract.md",
     "docs/evaluation/m0-local-memory-loop.md",
@@ -220,8 +274,13 @@ members = [
   \"crates/radishmemory-file-entry\",
   \"crates/radishmemory-source-vault\",
   \"crates/radishmemory-sqlite\",
+  \"crates/radishmemory-windows-filesystem\",
 ]
 resolver = \"3\"
+exclude = [\"third_party/vendor/windows-native-keyring-store-1.1.0\"]
+
+[patch.crates-io]
+windows-native-keyring-store = { path = \"third_party/vendor/windows-native-keyring-store-1.1.0\" }
 
 [workspace.package]
 version = \"0.1.0\"
@@ -232,21 +291,29 @@ publish = false
 
 [workspace.dependencies]
 aead-stream = { version = \"=0.6.0\", default-features = false, features = [\"alloc\"] }
+apple-native-keyring-store = { version = \"=1.0.2\", default-features = false, features = [\"keychain\"] }
 chacha20poly1305 = { version = \"=0.11.0\", default-features = false, features = [\"alloc\", \"zeroize\"] }
 directories = \"=6.0.0\"
 eframe = { version = \"=0.36.1\", default-features = false, features = [\"accesskit\", \"default_fonts\", \"wayland\", \"wgpu\", \"x11\"] }
 getrandom = { version = \"=0.4.3\", default-features = false }
+keyring-core = { version = \"=1.0.0\", default-features = false }
 radishmemory-application = { path = \"crates/radishmemory-application\", version = \"=0.1.0\" }
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
 radishmemory-file-entry = { path = \"crates/radishmemory-file-entry\", version = \"=0.1.0\" }
 radishmemory-source-vault = { path = \"crates/radishmemory-source-vault\", version = \"=0.1.0\" }
 radishmemory-sqlite = { path = \"crates/radishmemory-sqlite\", version = \"=0.1.0\" }
+radishmemory-windows-filesystem = { path = \"crates/radishmemory-windows-filesystem\", version = \"=0.1.0\" }
 rusqlite = { version = \"0.40.2\", default-features = false, features = [\"bundled\"] }
 rfd = { version = \"=0.17.2\", default-features = false, features = [\"xdg-portal\", \"wayland\"] }
+secret-service = { version = \"=5.2.0\", default-features = false, features = [\"crypto-rust\"] }
+security-framework = { version = \"=3.7.0\", default-features = false }
 serde_json = { version = \"1.0.151\", default-features = false, features = [\"arbitrary_precision\", \"std\"] }
 sha2 = { version = \"0.11.0\", default-features = false }
 time = { version = \"0.3.55\", default-features = false, features = [\"formatting\", \"parsing\", \"std\"] }
 unicode-normalization = { version = \"0.1.25\", default-features = false, features = [\"std\"] }
+windows-sys = { version = \"=0.61.2\", default-features = false, features = [\"Win32_Foundation\", \"Win32_Storage_FileSystem\"] }
+windows-native-keyring-store = { version = \"=1.1.0\", default-features = false }
+zbus-secret-service-keyring-store = { version = \"=1.0.1\", default-features = false, features = [\"crypto-rust\"] }
 zeroize = { version = \"=1.9.0\", default-features = false, features = [\"alloc\"] }
 
 [workspace.lints.rust]
@@ -339,7 +406,7 @@ acceptance-test-support = []
 radishmemory-core.workspace = true
 """,
     "crates/radishmemory-source-vault/Cargo.toml": """[package]
-name = "radishmemory-source-vault"
+name = \"radishmemory-source-vault\"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -353,8 +420,27 @@ workspace = true
 aead-stream.workspace = true
 chacha20poly1305.workspace = true
 getrandom.workspace = true
+keyring-core.workspace = true
+radishmemory-core.workspace = true
+radishmemory-sqlite.workspace = true
 sha2.workspace = true
 zeroize.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+radishmemory-windows-filesystem.workspace = true
+windows-native-keyring-store.workspace = true
+
+[target.'cfg(target_os = \"macos\")'.dependencies]
+apple-native-keyring-store.workspace = true
+security-framework.workspace = true
+
+[target.'cfg(target_os = \"linux\")'.dependencies]
+secret-service.workspace = true
+zbus-secret-service-keyring-store.workspace = true
+
+[dev-dependencies]
+radishmemory-file-entry.workspace = true
+rusqlite.workspace = true
 """,
     "crates/radishmemory-sqlite/Cargo.toml": """[package]
 name = \"radishmemory-sqlite\"
@@ -377,6 +463,21 @@ rusqlite.workspace = true
 [dev-dependencies]
 radishmemory-file-entry = { workspace = true, features = ["acceptance-test-support"] }
 """,
+    "crates/radishmemory-windows-filesystem/Cargo.toml": """[package]
+name = \"radishmemory-windows-filesystem\"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license-file.workspace = true
+publish.workspace = true
+
+[lints.rust]
+unsafe_code = \"deny\"
+unused_crate_dependencies = \"deny\"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys.workspace = true
+""",
 }
 
 EXPECTED_RUST_TOOLCHAIN = """[toolchain]
@@ -385,8 +486,8 @@ components = [\"clippy\", \"rustfmt\"]
 profile = \"minimal\"
 """
 
-EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 430
-EXPECTED_REVIEWED_LOCK_DIGEST = "c8d2e33f72694eedf0a2c44ac21d059826fc8ea039215225f3d70ea68903f80e"
+EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 453
+EXPECTED_REVIEWED_LOCK_DIGEST = "f8028e8132aeea0cf7f3a6ef673d0cbfda10dbabce25839b63b777163289ba0d"
 FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-application",
     "radishmemory-core",
@@ -395,8 +496,10 @@ FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-m0",
     "radishmemory-source-vault",
     "radishmemory-sqlite",
+    "radishmemory-windows-filesystem",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
+REVIEWED_VENDOR_PATH = "third_party/vendor/windows-native-keyring-store-1.1.0"
 
 FORBIDDEN_DIRECTORY_NAMES = {
     "__pycache__",
@@ -510,7 +613,9 @@ def check_rust_workspace_contract(
         if path.name == "Cargo.toml"
         and not {".git", "target"}.intersection(path.relative_to(repo_root).parts)
     )
-    expected_manifests = sorted(EXPECTED_CARGO_MANIFESTS)
+    expected_manifests = sorted(
+        [*EXPECTED_CARGO_MANIFESTS, f"{REVIEWED_VENDOR_PATH}/Cargo.toml"]
+    )
     if manifests != expected_manifests:
         errors.append(
             "Rust workspace must contain only the reviewed root, M0, Phase 1 library, application, and desktop manifests: "
@@ -555,6 +660,11 @@ def check_rust_workspace_contract(
         if name in FIRST_PARTY_RUST_PACKAGES:
             if source_match is not None or checksum_match is not None:
                 errors.append(f"first-party lock package must remain a workspace path: {name}")
+        elif name == "windows-native-keyring-store" and version_match.group(1) == "1.1.0":
+            # Only this reviewed patch may omit registry identity. The root
+            # manifest pins its path; notices verify every vendored source byte.
+            if source_match is not None or checksum_match is not None:
+                errors.append("Windows keyring lock package must use the reviewed local patch")
         elif source_match is None or source_match.group(1) != CRATES_IO_SOURCE:
             errors.append(f"third-party lock package must come from crates.io: {name}")
         elif checksum_match is None:
@@ -622,6 +732,10 @@ def check_text_files(repo_root: Path, paths: list[Path], errors: list[str]) -> N
             continue
 
         name = relative(repo_root, path)
+        if name.startswith(f"{REVIEWED_VENDOR_PATH}/") and path.name != "provenance.json":
+            # Keep published CRLF/whitespace intact. This exact source inventory
+            # and its hashes are checked by the mandatory notices gate.
+            continue
         data = path.read_bytes()
         if data.startswith(b"\xef\xbb\xbf"):
             errors.append(f"UTF-8 BOM is not allowed: {name}")
@@ -1001,7 +1115,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1018,15 +1132,15 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
             "lockfile format 为 `4`",
-            "七个第一方 workspace package",
-            "423 个第三方 package",
+            "八个第一方 workspace package",
+            "445 个第三方 package",
             "40 个第三方 package",
             "没有 Git dependency",
             "`serde_json 1.0.151`",
@@ -1121,7 +1235,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
             "`P1-F15` 至 `P1-F18`",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
-            "七个第一方 workspace package",
+            "八个第一方 workspace package",
             "radishmemory-file-entry 0.1.0",
             "40 个第三方 package",
             "当时没有扩大 40 个第三方 package 的 headless 基础子图",
@@ -1161,6 +1275,7 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
         repo_root / "crates/radishmemory-application/src",
         repo_root / "crates/radishmemory-file-entry/src",
         repo_root / "crates/radishmemory-source-vault/src",
+        repo_root / "crates/radishmemory-windows-filesystem/src",
         repo_root / "crates/radishmemory-sqlite/src",
     ):
         for path in sorted(source_root.rglob("*.rs")):
@@ -1231,7 +1346,7 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
             "P1-H02 application service",
             "P1-H03 source catalog",
             "P1-H04 desktop UI",
-            "423 个第三方 package",
+            "445 个第三方 package",
         ),
         "docs/implementation/phase1-desktop-dependency-review.md": (
             "状态：`Accepted",
@@ -1267,7 +1382,7 @@ def check_phase1_local_host_contract(repo_root: Path, errors: list[str]) -> None
         "docs/implementation/phase1-third-party-notices.md": (
             "P1-H05 distribution inventory gate complete",
             "344 个唯一 crates.io package",
-            "67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a",
+            "fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3",
             "MIT AND OFL-1.1 AND Ubuntu-font-1.0",
             "MIT AND Unicode-3.0",
             "XDG Desktop Portal",
@@ -1330,6 +1445,64 @@ def check_phase1_encrypted_source_vault_contract(
     repo_root: Path, errors: list[str]
 ) -> None:
     contracts = {
+        "docs/implementation/phase1-source-vault-reader.md": (
+            "P1-S04 object-backed read slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "FTS 仍含完整可读正文",
+            "不回退旧 BLOB 或外部原件",
+        ),
+        "docs/implementation/phase1-source-vault-legacy-deletion.md": (
+            "P1-S04 legacy deletion compatibility implemented — synthetic acceptance",
+            "不改变 canonical schema",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "FTS 仍含完整可读正文",
+            "缺少旧执行凭据时失败关闭",
+        ),
+        "docs/implementation/phase1-source-vault-deletion.md": (
+            "P1-S04 object-backed deletion implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "FTS 仍含完整可读正文",
+            "不销毁 library key",
+        ),
+        "docs/implementation/phase1-source-vault-maintenance.md": (
+            "P1-S04 object-backed verify and rebuild implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不回退 inline BLOB 或外部原件",
+            "不改变 canonical schema",
+            "FTS 仍含完整可读正文",
+        ),
+        "docs/implementation/phase1-source-vault-abandonment.md": (
+            "P1-S04 capture abandonment implemented — synthetic acceptance",
+            "prepared → abandoning → abandoned",
+            "禁止超时、重启或失败次数自动触发放弃",
+            "不改变 canonical schema",
+            "FTS 仍含完整可读正文",
+        ),
+        "docs/implementation/phase1-source-vault-reconciliation.md": (
+            "P1-S04 inventory reconciliation slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "本批不是完整 orphan retirement",
+            "FTS 仍含完整可读正文",
+            "不回退 inline BLOB 或外部原件",
+        ),
+        "docs/implementation/phase1-source-vault-capture.md": (
+            "P1-S04 encrypted capture slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "不回退 inline BLOB 或外部原件",
+            "不是完整 orphan reconciliation",
+            "FTS 仍含完整可读正文",
+        ),
+        "docs/implementation/phase1-source-vault-body-migration.md": (
+            "P1-S04b body migration slice implemented — synthetic acceptance",
+            "普通 `SqliteDatabase::open` 仍只允许 v6",
+            "不改变 canonical schema",
+            "不回退 inline body 或外部原件",
+            "这不是完整 orphan reconciliation",
+            "FTS 仍含完整可读正文",
+        ),
         "docs/adr/0008-phase1-encrypted-source-vault.md": (
             "状态：Accepted",
             "radishmemory.phase1-encrypted-source-vault/1",
@@ -1348,7 +1521,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1416,7 +1589,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
 ) -> None:
     contracts = {
         "docs/implementation/phase1-encrypted-source-vault-dependency-review.md": (
-            "状态：`Accepted — profile 已冻结；P1-S03a portable graph 已落地，platform providers 待后续单元`",
+            "状态：`Accepted — profile 已冻结；P1-S03a portable graph 与 P1-S03c-2 isolated providers 已落地；真实平台待验收`",
             "radishmemory.xchacha20poly1305-stream-be32/1",
             "radishmemory.xchacha20poly1305-dek-wrap/1",
             'aead-stream = { version = "=0.6.0"',
@@ -1435,7 +1608,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1452,7 +1625,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
         "docs/architecture.md": (
             "XChaCha20-Poly1305 + STREAM-BE32",
             "macOS Keychain、Windows Credential Manager 或 Linux Secret Service",
-            "三个 platform provider 尚未进入依赖图",
+            "三个 platform provider 已进入依赖图",
         ),
         "docs/privacy-threat-model.md": (
             "XChaCha20-Poly1305 + STREAM-BE32",
@@ -1510,10 +1683,10 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault portable crypto complete; immutable object adapter next",
+            "Phase 1 Source Vault read slice implemented; application integration next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
-            "三个 platform provider、object filesystem、SQLite migration",
+            "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",
         ),
         "docs/status/current.md": (
             "P1-S03a portable crypto dependency landing",
@@ -1526,13 +1699,13 @@ def check_phase1_source_vault_portable_crypto(
         "docs/architecture.md": (
             "P1-S03a",
             "独立 portable crypto package",
-            "三个 platform provider 尚未进入依赖图",
+            "三个 platform provider 已进入依赖图",
             "P1-S03b` 至 `P1-S05",
         ),
         "docs/privacy-threat-model.md": (
             "P1-S03a",
             "portable cipher / wrap / AAD 与合成测试",
-            "filesystem、platform key provider、SQLite migration",
+            "filesystem envelope、不可覆盖发布与认证读取",
         ),
         "docs/mvp-roadmap.md": (
             "P1-S03a portable crypto dependency landing",
@@ -1545,8 +1718,8 @@ def check_phase1_source_vault_portable_crypto(
             "portable dependency / cipher / wrap / AAD / 合成测试已落地",
         ),
         "docs/implementation/m0-rust-dependency-baseline.md": (
-            "七个第一方 workspace package",
-            "423 个第三方 package",
+            "八个第一方 workspace package",
+            "445 个第三方 package",
             "Source Vault portable crypto 直接依赖",
             "P1-S03a 的 11 个新增 package",
             "两个分发根的三目标可达依赖 notices",
@@ -1560,11 +1733,40 @@ def check_phase1_source_vault_portable_crypto(
         "scripts/generate-third-party-notices.py": (
             'ROOT_PACKAGES = ("radishmemory-desktop", "radishmemory-source-vault")',
         ),
+        "docs/implementation/phase1-source-vault-filesystem.md": (
+            "P1-S03b object filesystem platform acceptance complete — key provider next",
+            "RMOBJ\\x01",
+            "PublishedObject",
+            "不是 canonical capture receipt",
+            "目录枚举、未知文件策略、业务重试、orphan reconciliation",
+            "Windows ARM64 提升权限与普通用户验收通过",
+            "文件身份替换缺陷已修复并通过回归",
+            "`administrator=false`",
+            "普通用户脚本显式结果为 `stage=completed, exitCode=0`",
+            "metadata_preserving_replacement_cannot_authorize_staging_cleanup",
+            "唯一安全入口从借用的 `File` 查询卷序号与 128 位文件 ID",
+            "Linux ARM64 / ext4 普通用户验收通过",
+            "34 个 unit tests 与 3 个 Linux integration tests 通过",
+            "CapEff=0000000000000000",
+            "input_recheck=passed fixture_residue=0 result=passed",
+            "不代表真实磁盘满、断电或内核崩溃已实测",
+            "28 个测试通过，0 failed、0 ignored",
+            "2 个补充测试通过，0 failed、0 ignored",
+            "EnableLUA=0",
+        ),
         "crates/radishmemory-source-vault/src/lib.rs": (
             "#![forbid(unsafe_code)]",
             'OBJECT_CIPHER_PROFILE: &str = "radishmemory.xchacha20poly1305-stream-be32/1"',
             'DEK_WRAP_PROFILE: &str = "radishmemory.xchacha20poly1305-dek-wrap/1"',
             "MAX_OBJECT_PLAINTEXT_BYTES: usize = 8 * 1024 * 1024",
+        ),
+        "crates/radishmemory-windows-filesystem/src/lib.rs": (
+            "#![cfg(windows)]",
+            "#![deny(unsafe_code)]",
+            "#[allow(unsafe_code)]",
+            "pub fn file_identity(file: &File) -> io::Result<FileIdentity>",
+            "GetFileInformationByHandleEx",
+            "FILE_ID_INFO",
         ),
         "crates/radishmemory-source-vault/src/aad.rs": (
             'AAD_CODEC_PREFIX: &[u8] = b"RMAAD\\x01"',
@@ -1595,23 +1797,8 @@ def check_phase1_source_vault_portable_crypto(
                     f"{name} is missing P1-S03a portable crypto fragment: {fragment}"
                 )
 
-    forbidden_platform_dependencies = (
-        "keyring-core",
-        "apple-native-keyring-store",
-        "windows-native-keyring-store",
-        "zbus-secret-service-keyring-store",
-    )
-    for name in ("Cargo.toml", "Cargo.lock"):
-        path = repo_root / name
-        if not path.is_file():
-            continue
-        text = path.read_text(encoding="utf-8")
-        for dependency in forbidden_platform_dependencies:
-            if dependency in text:
-                errors.append(
-                    f"{name} includes platform key-store dependency before its authorized unit: "
-                    f"{dependency}"
-                )
+    # P1-S03c-2 authorizes the exact platform graph. Manifest equality and the
+    # reviewed lock digest above continue to reject unreviewed providers/features.
 
 
 def run_m0_fixture_check(repo_root: Path, errors: list[str]) -> None:

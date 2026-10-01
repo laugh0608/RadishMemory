@@ -2,6 +2,8 @@
 
 日期：2026-09-03
 
+时间口径：本文保留 P1-S03a 当批状态、12 个测试与下一单元定义。P1-S03b 的后续实现与本机验证见[filesystem adapter 落地记录](phase1-source-vault-filesystem.md)，现行顺位以[当前状态](../status/current.md)为准。
+
 状态：`Accepted — P1-S03a portable crypto dependency landing complete`
 
 提交：`c1ffd74 feat(storage): 落地 P1-S03a portable crypto`

@@ -172,6 +172,7 @@ impl DeletionStore for SqliteDatabase {
         let execution_closure = build_execution_closure(&transaction, request)?;
         insert_request(&transaction, request, &execution_closure)?;
         close_targets_to_recall(&transaction, request, &execution_closure)?;
+        crate::source_capture::verify_origin_bindings(&transaction)?;
         crate::derived_index::verify(&transaction)?;
         transaction.commit().map_err(SqliteError::storage)
     }
@@ -249,7 +250,7 @@ pub(crate) fn validate_request_profile(request: &DeleteRequest) -> Result<(), Sq
     Ok(())
 }
 
-fn validate_semantic_targets(
+pub(crate) fn validate_semantic_targets(
     connection: &Connection,
     request: &DeleteRequest,
 ) -> Result<(), SqliteError> {
@@ -384,9 +385,9 @@ fn validate_semantic_targets(
     Ok(())
 }
 
-type ExecutionClosure = BTreeMap<&'static str, BTreeSet<ObjectRef>>;
+pub(crate) type ExecutionClosure = BTreeMap<&'static str, BTreeSet<ObjectRef>>;
 
-fn build_execution_closure(
+pub(crate) fn build_execution_closure(
     connection: &Connection,
     request: &DeleteRequest,
 ) -> Result<ExecutionClosure, SqliteError> {
@@ -581,7 +582,7 @@ fn query_ids(
         .map_err(SqliteError::storage)
 }
 
-fn insert_request(
+pub(crate) fn insert_request(
     transaction: &Transaction<'_>,
     request: &DeleteRequest,
     closure: &ExecutionClosure,
@@ -694,7 +695,7 @@ fn insert_request(
     Ok(())
 }
 
-fn close_targets_to_recall(
+pub(crate) fn close_targets_to_recall(
     transaction: &Transaction<'_>,
     request: &DeleteRequest,
     closure: &ExecutionClosure,
@@ -782,7 +783,6 @@ fn close_targets_to_recall(
             )
             .map_err(SqliteError::storage)?;
     }
-    crate::source_capture::verify_origin_bindings(transaction)?;
     Ok(())
 }
 
@@ -793,7 +793,7 @@ fn target_refs(target_ref: &DeletionTargetRef) -> Vec<&ObjectRef> {
     }
 }
 
-fn load_request(
+pub(crate) fn load_request(
     connection: &Connection,
     namespace_id: &Identifier,
     delete_request_id: &Identifier,
@@ -1008,7 +1008,7 @@ fn load_request_components(
     Ok(components)
 }
 
-fn execute_request(
+pub(crate) fn execute_request(
     connection: &mut Connection,
     request: &DeleteRequest,
     execution: &LocalDeletionExecution,
@@ -1237,7 +1237,7 @@ fn load_execution_results(
     Ok(results)
 }
 
-fn store_evidence(
+pub(crate) fn store_evidence(
     connection: &mut Connection,
     evidence: &DeletionEvidence,
 ) -> Result<(), SqliteError> {
@@ -1332,7 +1332,7 @@ fn store_evidence(
     transaction.commit().map_err(SqliteError::storage)
 }
 
-fn load_evidence(
+pub(crate) fn load_evidence(
     connection: &Connection,
     namespace_id: &Identifier,
     deletion_evidence_id: &Identifier,

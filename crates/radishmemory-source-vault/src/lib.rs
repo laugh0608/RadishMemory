@@ -1,13 +1,40 @@
 #![forbid(unsafe_code)]
 
 mod aad;
+mod abandonment;
+mod body_migration;
+mod bootstrap;
+mod capture;
 mod crypto;
+mod deletion;
+mod envelope;
 mod error;
+mod filesystem;
+mod filesystem_support;
+mod maintenance;
+mod maintenance_error;
+mod provider;
 mod random;
+mod reader;
+mod reconciliation;
+
+#[cfg(test)]
+mod test_support;
 
 pub use aad::ObjectMetadata;
+pub use abandonment::{AbandonmentReport, CaptureAbandonmentTarget};
+pub use maintenance::VerificationReport;
+pub use maintenance_error::VaultMaintenanceError;
+pub type KeyInitializationError = VaultMaintenanceError;
+pub use body_migration::BodyMigrationReport;
 pub use crypto::{KeyEncryptionKey, SealedObject, open_object, seal_object};
 pub use error::{SourceVaultError, SourceVaultErrorCode};
+pub use filesystem::{
+    AttemptId, AttemptState, ObjectDirectory, ObjectLocator, ObjectWrite, PublishedObject,
+};
+pub use provider::{KeySlot, PlatformKeyProvider};
+pub use reader::LibraryReader;
+pub use reconciliation::ReconciliationReport;
 
 pub const ENVELOPE_PROFILE: &str = "radishmemory.phase1-encrypted-source-vault/1";
 pub const OBJECT_CIPHER_PROFILE: &str = "radishmemory.xchacha20poly1305-stream-be32/1";

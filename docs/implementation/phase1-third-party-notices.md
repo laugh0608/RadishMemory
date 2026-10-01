@@ -1,10 +1,10 @@
 # Phase 1 第三方 notices 与条件平台依赖复核
 
-日期：2026-09-03
+更新时间：2026-10-01
 
-状态：`Accepted — P1-H05 distribution inventory gate complete; P1-S03a expansion reviewed`
+状态：`Accepted — P1-H05 distribution inventory gate complete; P1-S03a expansion reviewed; P1-S03c-2 expansion reviewed`
 
-范围：复核 `radishmemory-desktop` 与独立 `radishmemory-source-vault` 在三个 ARM64 目标上的 locked normal / build 依赖、可分发许可证文本、默认字体、bundled SQLite 和操作系统条件依赖。desktop 根已有三平台真实宿主证据；P1-S03a 只增加 portable crypto 静态依赖图和本地合成测试，不把该证据外推为新的远程 CI 或平台 key-store 行为。本文不授权签名、打包、发布、真实个人资料、PDF / OCR、向量、模型、网络或同步，也不把单个测试环境外推为所有平台版本和驱动组合。
+范围：复核 `radishmemory-desktop` 与独立 `radishmemory-source-vault` 在三个 ARM64 目标上的 locked normal / build 依赖、可分发许可证文本、默认字体、bundled SQLite 和操作系统条件依赖。desktop 根已有三平台真实宿主证据；P1-S03a 只增加 portable crypto 静态依赖图和本地合成测试，不把该证据外推为新的远程 CI 或平台 key-store 行为。P1-S03c-2 随后增加独立平台 provider 的依赖与合成证据，真实密钥库仍未验收。本文不授权签名、打包、发布、真实个人资料、PDF / OCR、向量、模型、网络或同步，也不把单个测试环境外推为所有平台版本和驱动组合。
 
 ## 可复现清单
 
@@ -12,13 +12,19 @@
 
 | 目标 | 清单条目 | 已有运行证据 |
 | --- | ---: | --- |
-| `aarch64-apple-darwin` | 215 | desktop：macOS AppKit 可见窗口与 open / save panel；Source Vault：portable graph only |
-| `aarch64-unknown-linux-gnu` | 285 | desktop：Debian ARM64 / GNOME Wayland 的 XDG Portal / GTK picker；Source Vault：portable graph only |
-| `aarch64-pc-windows-msvc` | 209 | desktop：Windows 11 ARM64 的 native dialog、重开与 ACL；Source Vault：portable graph only |
+| `aarch64-apple-darwin` | 222 | desktop：macOS AppKit 可见窗口与 open / save panel；Source Vault：macOS filesystem 合成测试、provider 构建与合成测试 |
+| `aarch64-unknown-linux-gnu` | 301 | desktop：Debian ARM64 / GNOME Wayland 的 XDG Portal / GTK picker；Source Vault：ext4 普通用户 filesystem 验收；provider 仅解析图 |
+| `aarch64-pc-windows-msvc` | 214 | desktop：Windows 11 ARM64 的 native dialog、重开与 ACL；Source Vault：NTFS 提升权限 / 普通用户 filesystem 验收 |
 
-三个图合并后为 344 个唯一 crates.io package；全部有 `Cargo.lock` checksum 和上游声明许可证，没有 Git dependency、缺失许可证、未审查 source 或需要另行合并的 top-level `NOTICE` 文件。清单记录完整 checksum、平台成员关系、upstream / author attribution、原始 license expression 与选定 distribution basis；当前 inventory SHA-256 为 `67e767a36884963bd2ddc5b2db932226a1cdba076ad974630eec357d52dd2e9a`。
+三个图合并后为 366 个唯一第三方 package：365 个 crates.io package 有 `Cargo.lock` checksum，`windows-native-keyring-store 1.1.0` 使用经批准的本地可见性补丁，记录原 archive 与受审阅逐文件 provenance 摘要；全部保留上游声明许可证，没有 Git dependency、缺失许可证、未审查 source 或需要另行合并的 top-level `NOTICE` 文件。清单记录完整来源摘要、平台成员关系、upstream / author attribution、原始 license expression 与选定 distribution basis；当前 inventory SHA-256 为 `cbfe990725226152442d4fc7bf917ed728edf4bbd13ed3cebc5d4331479d37a1`。补丁前的历史摘要为 `fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3`。
 
-生成器从第一方 `radishmemory-desktop` 与 `radishmemory-source-vault` 两个分发根沿 normal / build edge 取并集，排除纯 dev dependency 和不可达的其它 lockfile 条目。`--check` 会重新解析三个目标图并逐字节比较生成物；新增 source、缺失 checksum / license、未知 license expression 或清单漂移均失败关闭。完整 lockfile 当前是 423 个第三方 package 的供应链上限，不应与 344 个三目标可达并集混写。P1-H05 收口时只有 desktop 根，历史并集为 333；P1-S03a 的 11 个新 package 使当前分发清单扩大到 344，但不改变既有宿主交互结论。
+生成器从第一方 `radishmemory-desktop` 与 `radishmemory-source-vault` 两个分发根沿 normal / build edge 取并集，排除纯 dev dependency 和不可达的其它 lockfile 条目。`--check` 会重新解析三个目标图并逐字节比较生成物；新增 source、缺失 checksum / license、未知 license expression 或清单漂移均失败关闭。完整 lockfile 当前是 445 个第三方 package 的供应链上限，不应与 366 个三目标可达并集混写。P1-H05 收口时只有 desktop 根，历史并集为 333；P1-S03a 的 11 个新 package 使当时分发清单扩大到 344，但不改变既有宿主交互结论。
+
+唯一非 registry 第三方例外是 [受摘要约束的 Windows keyring 补丁](../../third_party/vendor/README.md)。生成器在解析图前验证固定 provenance 摘要、全部 source / license 原字节和精确文件集合，拒绝 symlink；只接纳该 package / version / manifest path。未知第三方 path 不再被 `source=None` 分支静默漏列。文本检查对这一原发布副本保留 CRLF 与空白，以原字节摘要约束替代格式重写；第一方门禁不变。
+
+P1-S03b 的 Windows file identity adapter 复用已有 `windows-sys 0.61.2` / `windows-link 0.2.1`；该批重新生成三目标 notices 后仍是相同 344 项与相同 inventory digest，没有遗漏新的独立分发根。两个 crate 的来源、版本和 MIT distribution basis 保持原记录；新增的是第一方隔离 FFI 与 Source Vault 到已在清单中的 Windows binding 的依赖边，不能把 portable crypto 本身无 FFI 的历史描述扩展到这个 adapter。安全不变量与维护风险见 [Rust 依赖基线](m0-rust-dependency-baseline.md)。
+
+P1-S03c-2 在历史 344 个唯一 crates.io package 上增加 22 项，没有旧版本漂移；MIT 文本、checksum 与条件 feature 已复核。两个补充直接依赖只改变依赖边，没有扩大预检的 package / feature 集合，见[隔离预检](2026-09-15-source-vault-provider-preflight.md)和[provider 落地](phase1-source-vault-key-provider.md)。生成器使用 metadata 的保守 feature 并集，平台标记不能直接等同于该目标实际编译树；目标实际增量另由 Cargo tree 复验，未改动生成器缩减 notices。
 
 ## License option 与人工复核
 
@@ -39,14 +45,33 @@
 | 文件选择 | `rfd` 调用 AppKit open / save panel | `rfd` 调用 COM / Windows Shell native open / save dialog | 首选 XDG Desktop Portal over session D-Bus，依赖可用 portal backend；失败路径可能调用外部 Zenity |
 | 应用数据目录 | Standard Directory 规则 | Known Folder API 与目录继承 ACL | XDG base directory 规则与 Unix mode / ACL |
 | GPU | `wgpu` Metal backend | `wgpu` 的 DX12 / Vulkan / GLES 条件 backend，最终可用性由驱动决定 | `wgpu` 的 Vulkan / GLES 条件 backend，最终可用性由驱动和 display stack 决定 |
+| 设备本地 KEK（独立 provider，尚未接产品） | User-domain legacy Keychain / Security framework | 当前用户 Local Credential Manager | session D-Bus 与可用的 Secret Service default collection；无 plaintext / session collection fallback |
 | 辅助功能 / IPC | 系统 accessibility API | UI Automation / COM | AT-SPI / D-Bus 条件面 |
 
 Linux 发行环境必须提供可工作的 XDG Desktop Portal 及与桌面匹配的 backend；如果承诺 Zenity fallback，还必须把 Zenity 作为外部运行依赖明确声明并测试。当前 Debian / GNOME Wayland 实测 portal active 且没有 Zenity 进程，这只排除了该次运行进入 fallback，不能删除 fallback 的分发说明。Wayland / X11、Vulkan / GLES 同样是编译与运行条件，不代表每条 backend 都在本批逐一执行。
 
-Windows 当前证据来自 elevated ARM64 Developer Prompt，确认测试数据目录没有 `Everyone` / `BUILTIN\\Users` ACE，但 owner 是 `Administrators`；正式非提权安装仍须单独复核 owner 和安装器是否随包携带 notices。macOS 当前是未签名本机构建；签名、notarization、sandbox entitlement 和发行包内容不在本门禁内。
+Windows desktop 宿主证据来自 elevated ARM64 Developer Prompt，确认测试数据目录没有 `Everyone` / `BUILTIN\\Users` ACE，但 owner 是 `Administrators`；正式非提权安装仍须单独复核 owner 和安装器是否随包携带 notices。P1-S03b 独立 Source Vault adapter 后续补齐 Windows ARM64 / NTFS 普通用户与 ACL 验收，详见 [filesystem 记录](phase1-source-vault-filesystem.md)，不将该结果外推为 desktop 安装器 owner 验收。macOS 当前是未签名本机构建；签名、notarization、sandbox entitlement 和发行包内容不在本门禁内。
 
 ## 结论与持续门禁
 
-P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory 也已复核并由生成器守护；这只覆盖 portable crypto 的分发依赖，不证明平台 key-store 或 object adapter 已实现。
+P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory；P1-S03c-2 再扩大到当前 366 项，均已复核并由生成器守护；该清单本身只覆盖分发依赖，不代替平台 key-store 或 object adapter 的实现与运行证据；后者以对应落地记录为准。
 
 这不等于已有发行包或 production deployment：任何 installer / DMG / archive 必须实际携带 `THIRD_PARTY_NOTICES.md` 与 `third_party/licenses/`，并在发布前验证包内容、目标架构、签名链、非提权数据 owner、平台最低版本和对应 native backend。后续依赖、feature、target 或 `Cargo.lock` 发生变化时，必须重新生成、人工复核并更新本页；检查器不会把未知表达式自动归为宽松许可证。
+
+## P1-S04a 协调连线复核
+
+Source Vault 增加现有 SQLite 第一方依赖和测试用 `rusqlite` 后，重新生成 notices：Cargo.lock SHA-256 更新为 `b4efc35519a91c33eca592251116f9434f8aaa3baa3e293fba3c9dea1fc1b698`；两个分发根的三目标 inventory 保持 366 项及既有 inventory digest。没有新增第三方条目、license option、版本或目标 feature。
+
+## P1-S04 加密 capture 连线复核（2026-09-26）
+
+Source Vault 直接复用已传递可达的 core 后，Cargo 离线更新 lockfile 仅新增该第一方依赖边；重新生成 notices，只有 Cargo.lock SHA-256 更新为 `c690188bcb1f53bc49e5cc854250de8e0e8f608d019c8fd9dbea79c4095d3a57`。第三方 package、版本、feature、license option 和 inventory digest 均未变；三目标数量仍为 222 / 301 / 214，并集 366 项。不据此宣称新协调代码已通过 Windows / Linux 编译或运行。
+
+## P1-S04 认证读取 / 导出测试连线复核（2026-09-26）
+
+经批准仅增加 Source Vault → file-entry 的第一方 dev-dependency，Cargo 离线解析不改变 453 个 package 的 name / version / source / checksum 集合。生成器更新 notices 后，只有 Cargo.lock SHA-256 变为 `842cb554e10292c655feb0acddeb055650c781c6219f734b6c1f94a58aa9301f`；reviewed inventory digest、366 项清单、三目标数量 222 / 301 / 214 和所有 license option 保持不变。production 依赖图不新增 file-entry 连线；本次静态图复核不替代 Windows / Linux 编译或运行。
+
+## Windows provider 可见性补丁复核（2026-10-01）
+
+修复 PR #4 的 E0603：从经 checksum 核验的 `windows-native-keyring-store 1.1.0` 发布 archive 保留 11 个编译 / 归属文件，仅修改 `src/cred.rs` 的 `Cred` 可见性。没有增加第三方版本、feature、build script 或原生调用。选择 MIT 分发并保留两份原许可证全文，原始 archive、逐文件摘要与补丁见 vendor 记录。完整 lockfile 保持 453 个 package，只有该包的 source / checksum 变为 Cargo path 表示；notices 仍为 366 项，三目标数量 222 / 301 / 214。
+
+当前 Cargo.lock SHA-256 为 `93532ce597bb17b0ca879442685e7b1bd88dfb9fcc17b63ca866dc9b3eb4b195`，inventory digest 变为上述当前值，因为该项明确记录原 archive 与补丁 provenance 两个摘要，不伪装成原 registry checksum。生成器与回归测试覆盖源文件 / provenance 漂移、缺失 / 新增文件、symlink、补丁不漏列及未知 path 拒绝。三平台 locked 构建与合成测试由 PR #4 的候选 head checks 复验；这一证据仍不覆盖真实 key store 或宿主交互。

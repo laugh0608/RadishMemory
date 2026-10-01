@@ -5,7 +5,9 @@ use radishmemory_core::{
     Version, compute_exact_bytes_digest,
 };
 use radishmemory_file_entry as _;
-use radishmemory_sqlite::{SqliteDatabase, SqliteErrorCode, SqliteStorageReason};
+use radishmemory_sqlite::{
+    SourceVaultKeyDatabase, SqliteDatabase, SqliteErrorCode, SqliteStorageReason,
+};
 use rusqlite::{Connection, params};
 
 mod support;
@@ -449,4 +451,280 @@ fn source_version_relations_require_existing_same_namespace_lineage() {
         error.storage_reason(),
         Some(SqliteStorageReason::StoredIntegrityMismatch)
     );
+}
+
+const KEY_PROFILE: &str = "radishmemory.platform-key-store/1";
+
+fn bootstrap_fixture(label: &str) -> SyntheticDatabase {
+    let synthetic = SyntheticDatabase::new(label);
+    let mut database = SqliteDatabase::open(synthetic.path()).unwrap();
+    let original = source(
+        "bootstrap-source-1",
+        "bootstrap-lineage",
+        1,
+        "namespace-1",
+        "synthetic original",
+        vec![],
+    );
+    database.store_source_artifact(&original).unwrap();
+    database
+        .store_source_fragments(&[fragment(
+            &original,
+            "bootstrap-fragment-1",
+            0,
+            0,
+            original.params().content.utf8_len(),
+        )])
+        .unwrap();
+    let current = source(
+        "bootstrap-source-2",
+        "bootstrap-lineage",
+        2,
+        "namespace-1",
+        "synthetic current",
+        vec![id("bootstrap-source-1")],
+    );
+    database.store_source_artifact(&current).unwrap();
+    database
+        .store_source_fragments(&[fragment(
+            &current,
+            "bootstrap-fragment-2",
+            0,
+            0,
+            current.params().content.utf8_len(),
+        )])
+        .unwrap();
+    database.rebuild_recall_derivations().unwrap();
+    synthetic
+}
+
+#[test]
+fn key_checkpoint_preserves_v6_bodies_versions_and_fragments() {
+    let synthetic = bootstrap_fixture("key-checkpoint");
+    let raw = Connection::open(synthetic.path()).unwrap();
+    fn snapshot(raw: &Connection) -> Vec<(String, i64, Vec<u8>, String)> {
+        raw.prepare("SELECT a.source_id, a.version, b.content, a.content_digest_value
+                     FROM radishmemory_source_artifacts a JOIN radishmemory_source_bodies b USING(source_id)
+                     ORDER BY a.source_id").unwrap()
+            .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?, row.get(3)?))).unwrap()
+            .collect::<Result<Vec<_>, _>>().unwrap()
+    }
+    let before = snapshot(&raw);
+    let mut maintenance = key_maintenance(&synthetic);
+    let transaction = maintenance
+        .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+        .unwrap();
+    assert!(!transaction.key_already_initialized());
+    transaction.commit().unwrap();
+    assert_eq!(snapshot(&raw), before);
+    let transaction = maintenance
+        .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+        .unwrap();
+    assert!(transaction.key_already_initialized());
+    transaction.commit().unwrap();
+    let fragment_count: i64 = raw
+        .query_row(
+            "SELECT count(*) FROM radishmemory_source_fragments",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(fragment_count, 2);
+    assert_eq!(
+        SqliteDatabase::open(synthetic.path()).unwrap_err().code(),
+        SqliteErrorCode::UnsupportedSchemaVersion
+    );
+}
+
+#[test]
+fn key_eligibility_checks_noncurrent_bodies_and_fragments() {
+    for sql in [
+        "UPDATE radishmemory_source_bodies SET content = X'626164' WHERE source_id = 'bootstrap-source-1'",
+        "DELETE FROM radishmemory_source_bodies WHERE source_id = 'bootstrap-source-1'",
+        "UPDATE radishmemory_source_fragments SET byte_end = 1000 WHERE fragment_id = 'bootstrap-fragment-1'",
+    ] {
+        let synthetic = bootstrap_fixture("key-historical-corruption");
+        let raw = Connection::open(synthetic.path()).unwrap();
+        raw.execute(sql, []).unwrap();
+        let mut maintenance = key_maintenance(&synthetic);
+        maintenance
+            .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+            .unwrap_err();
+        assert_eq!(
+            raw.pragma_query_value::<i64, _>(None, "user_version", |row| row.get(0))
+                .unwrap(),
+            6
+        );
+    }
+}
+
+#[test]
+fn key_eligibility_rejects_wrong_namespace_and_changed_profile() {
+    let synthetic = bootstrap_fixture("key-profile-mismatch");
+    let mut maintenance = key_maintenance(&synthetic);
+    assert_eq!(
+        maintenance
+            .begin_key_initialization("namespace-other", "device-1", KEY_PROFILE)
+            .unwrap_err()
+            .storage_reason(),
+        Some(SqliteStorageReason::KeyProfileMismatch)
+    );
+    maintenance
+        .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+        .unwrap()
+        .commit()
+        .unwrap();
+    for (namespace, device, profile) in [
+        ("namespace-1", "device-2", KEY_PROFILE),
+        ("namespace-1", "device-1", "unknown/2"),
+    ] {
+        assert_eq!(
+            maintenance
+                .begin_key_initialization(namespace, device, profile)
+                .unwrap_err()
+                .storage_reason(),
+            Some(SqliteStorageReason::KeyProfileMismatch)
+        );
+    }
+}
+
+#[test]
+fn key_eligibility_rejects_schema_tampering_even_when_history_and_table_names_match() {
+    for sql in [
+        "CREATE VIEW synthetic_untracked AS SELECT * FROM radishmemory_source_bodies",
+        "CREATE TRIGGER synthetic_trigger AFTER INSERT ON radishmemory_source_bodies BEGIN SELECT 1; END",
+        "ALTER TABLE radishmemory_source_bodies ADD COLUMN synthetic_extra TEXT",
+    ] {
+        let synthetic = bootstrap_fixture("key-schema-drift");
+        let raw = Connection::open(synthetic.path()).unwrap();
+        raw.execute_batch(sql).unwrap();
+        let mut maintenance = key_maintenance(&synthetic);
+        assert_eq!(
+            maintenance
+                .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+                .unwrap_err()
+                .code(),
+            SqliteErrorCode::SchemaDrift
+        );
+    }
+}
+
+#[test]
+fn dropping_key_transaction_restores_fresh_and_v6_databases() {
+    for initialized in [false, true] {
+        let synthetic = SyntheticDatabase::new("key-rollback");
+        if initialized {
+            drop(SqliteDatabase::open(synthetic.path()).unwrap());
+        }
+        let mut maintenance = key_maintenance(&synthetic);
+        drop(
+            maintenance
+                .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+                .unwrap(),
+        );
+        let raw = Connection::open(synthetic.path()).unwrap();
+        assert_eq!(
+            raw.pragma_query_value::<i64, _>(None, "user_version", |row| row.get(0))
+                .unwrap(),
+            if initialized { 6 } else { 0 }
+        );
+        assert!(
+            !raw.prepare(
+                "SELECT 1 FROM sqlite_schema WHERE name = 'radishmemory_source_vault_key_profile'"
+            )
+            .unwrap()
+            .exists([])
+            .unwrap()
+        );
+    }
+}
+
+fn key_maintenance(synthetic: &SyntheticDatabase) -> SourceVaultKeyDatabase {
+    // macOS exposes the temp root through a symlink. The production host supplies
+    // a resolved application capability; preserve NOFOLLOW in the adapter.
+    let parent = std::fs::canonicalize(synthetic.path().parent().unwrap()).unwrap();
+    SourceVaultKeyDatabase::open(parent.join(synthetic.path().file_name().unwrap())).unwrap()
+}
+
+#[test]
+fn another_process_cannot_acquire_key_eligibility_until_the_first_writer_commits() {
+    use std::time::{Duration, Instant};
+    let synthetic = SyntheticDatabase::new("key-process-writer");
+    drop(SqliteDatabase::open(synthetic.path()).unwrap());
+    let mut maintenance = key_maintenance(&synthetic);
+    let transaction = maintenance
+        .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+        .unwrap();
+    let ready = synthetic.path().with_extension("child-ready");
+    let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        .args(["--exact", "key_writer_child_process", "--ignored"])
+        .env(
+            "RADISHMEMORY_KEY_TEST_DATABASE",
+            std::fs::canonicalize(synthetic.path()).unwrap(),
+        )
+        .env("RADISHMEMORY_KEY_TEST_READY", &ready)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut ready_seen = false;
+    while Instant::now() < deadline {
+        if ready.exists() {
+            ready_seen = true;
+            break;
+        }
+        if child.try_wait().unwrap().is_some() {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    if !ready_seen {
+        let _ = child.kill();
+        child.wait().unwrap();
+        panic!("synthetic child failed to reach writer lock");
+    }
+    std::thread::sleep(Duration::from_millis(100));
+    let blocked = child.try_wait().unwrap().is_none();
+    transaction.commit().unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let status = loop {
+        if let Some(status) = child.try_wait().unwrap() {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            break child.wait().unwrap();
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    std::fs::remove_file(ready).unwrap();
+    assert!(
+        blocked,
+        "child must wait while the first writer owns eligibility"
+    );
+    assert!(
+        status.success(),
+        "child must observe committed key_ready state"
+    );
+}
+
+// Executed by the parent test as an independent process, never against a real library.
+#[test]
+#[ignore = "subprocess helper invoked by the cross-process key checkpoint test"]
+fn key_writer_child_process() {
+    let path =
+        std::env::var_os("RADISHMEMORY_KEY_TEST_DATABASE").expect("synthetic database required");
+    let ready =
+        std::env::var_os("RADISHMEMORY_KEY_TEST_READY").expect("synthetic handshake required");
+    let mut database = SourceVaultKeyDatabase::open(std::path::Path::new(&path)).unwrap();
+    std::fs::write(ready, b"ready").unwrap();
+    let transaction = database
+        .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)
+        .unwrap();
+    assert!(
+        transaction.key_already_initialized(),
+        "child must recheck after writer commits"
+    );
+    transaction.commit().unwrap();
 }

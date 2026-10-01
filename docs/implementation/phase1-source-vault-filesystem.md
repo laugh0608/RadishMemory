@@ -1,0 +1,209 @@
+# Phase 1 Source Vault immutable object filesystem adapter
+
+更新时间：2026-09-15
+
+批次退出状态：`P1-S03b object filesystem platform acceptance complete — key provider next`
+
+后续进展：[P1-S03c-2 provider](phase1-source-vault-key-provider.md) 和 [P1-S04a 密钥初始化协调](phase1-source-vault-key-bootstrap.md)已落地；本记录中的各平台结果只覆盖相应基线。9 月 15 日日终结论与明日事项见[收尾记录](../status/2026-09-15-source-vault.md)，现行顺位以[当前状态](../status/current.md)为准。
+
+初始基线：`6581b59`，在 `dev` 上实施；实现提交依次为 `66dc1aa`、`6a6b611`、`2971fc9`。下文按批次保留当时测试数量与环境事实，日终汇总和明日事项见[2026-09-10 收尾记录](../status/2026-09-10-source-vault.md)。
+
+范围：落实 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)及 [P1-S03a](phase1-source-vault-portable-crypto.md)定义的 versioned envelope、应用专用 object / staging capability、durable no-overwrite publish、认证 read-back 与单次 attempt identity。初始实现只扩展 `radishmemory-source-vault`，未改变 manifest、`Cargo.lock` 或 notices；后续 Windows 身份修复按单独授权新增最小原生 adapter 与依赖边，见下文。各批次均不改变 frozen cipher / AAD profile、canonical schema，不接真实 key store、SQLite、application / UI，不处理真实资料。
+
+## 格式与参考契约
+
+对象格式为 adapter-private `RMOBJ\x01`，不属于 canonical schema。每个字段由 one-byte tag、unsigned 32-bit big-endian length 和原始 bytes 组成，tag 必须严格按 1 至 16 出现且各一次；不接受缺失、重复、重排、未知字段、尾随字节或长度越界。
+
+| Tag | 内容 |
+| --- | --- |
+| 1 | `radishmemory.phase1-encrypted-source-vault/1` |
+| 2 | 固定生成器 `radishmemory.source-object-writer/1` |
+| 3 | `radishmemory.xchacha20poly1305-stream-be32/1` |
+| 4 | `radishmemory.xchacha20poly1305-dek-wrap/1` |
+| 5 | `radishmemory.platform-key-store/1` |
+| 6 | `exact-bytes-v1` |
+| 7 / 8 | namespace / 精确 source ID 的 UTF-8 bytes |
+| 9 / 10 / 11 | 32-byte exact digest / 8-byte big-endian plaintext length / media type |
+| 12 | 4-byte big-endian segment size，固定 1 MiB |
+| 13 / 14 / 15 | 19-byte stream nonce prefix / 24-byte wrap nonce / 48-byte wrapped DEK |
+| 16 | 按原顺序拼接的 STREAM ciphertext segments，包括各段 16-byte tag |
+
+空对象仍有一个 final segment；其余段数为 `ceil(plaintext length / 1 MiB)`。非末段大小固定为 `1 MiB + 16`，末段由预期正文长度确定，不接受磁盘自报的替代 segment layout。正文上限继续为 8 MiB；本 envelope 的 namespace、source、media type 各限制为 4096 bytes，总读取上限为 `8 MiB + 3 × 4096 + 2048`，限制发生在非受信长度驱动分配之前。该局部上限不修改 canonical ID 语义或既有 AAD codec。
+
+读取要求调用方独立提供 `ObjectMetadata`；磁盘字段必须逐字匹配预期事实，随后通过既有 wrap / object AAD、全对象 AEAD、length / digest 验证。生成器和所有 profile 只接受上述常量，不能成为算法协商或 fallback。parser 为 crate-private，不把未认证磁盘 metadata 暴露为已确认事实。
+
+格式 oracle 使用独立 Python `struct.pack('>BI', tag, len(value))` 构造合成字段，不调用 Rust encoder：固定样本长度 463 bytes，SHA-256 为 `6fdab8f60cb1938cd9daaea3a88458b17928fe09446dc316ef74fdd43bbdf253`。这验证序列化布局，不代替 P1-S03a 已冻结的密码 known-answer vectors；两类 oracle 均保留。
+
+## 目录与私有标识
+
+`ObjectDirectory::open_application_directory` 必须显式接收受信平台调用方已解析、已准备的 RadishMemory 专用目录；不会默认选择目录，也不会修改现有目录权限。拒绝相对路径、parent traversal、最终 symlink / reparse point、非目录、文件系统根、当前目录、home 和系统临时根。测试使用独立 owner-only 合成临时子目录；这不是把临时根授权为永久 Source Vault。
+
+根下仅创建两个固定子目录：`source-objects-v1` 和 `source-staging-v1`。Unix 新目录为 `0700`、新对象为 `0600`，已有目录权限宽于 owner-only 时拒绝。目录 capability 持有打开的 handle；每个关键阶段重新验证 canonical path 和目录身份，读取拒绝 symlink / reparse point、非普通文件与超限文件，并复核读取前后身份、长度和修改时间。macOS / Linux 使用 no-follow、nonblocking open，避免最终文件替换成 symlink 或 FIFO 后跟随或阻塞。该路径实现不升级 ADR 0008 的威胁模型，不承诺对抗已解锁设备上的恶意进程在任意 syscall 间竞态替换路径。
+
+`ObjectLocator` 是 `SHA-256(domain || length-prefixed namespace || source || exact digest)` 的 64 字符小写 hex，domain 为 `radishmemory.object-locator/1\0`，三个 length 都为 4-byte big-endian。读取必须重新由预期 metadata 计算并核对 locator。不同 source 的相同正文不能共用对象；最终名为 `<locator>.rmo`，导入内容不能提供任意路径。
+
+`ObjectWrite::seal` 在内存中完成已有密码操作，随后生成 envelope 与 `AttemptId`；未持有 KEK 或明文缓冲。attempt 为 `SHA-256("radishmemory.object-attempt/1\0" || locator-ascii || authenticated-stream-nonce-prefix)` 的 64 字符小写 hex。通过现有 AEAD 绑定的随机 nonce 识别一次 sealing，不改变 AAD，也不向诊断暴露 nonce。staging 名为 `<locator>.<attempt>.stage`。
+
+`token()` 仅供后续 adapter-private reference / attempt 持久化；`from_token()` 只接受精确小写 hex，不授予路径、删除或来源授权。locator、attempt、write、directory、published result 的 `Debug` 全部脱敏。I/O 错误仅保留稳定 code / operation reason、`ErrorKind` 与可选 OS code，不保留原始带路径的 error text；未新增日志 sink。
+
+## 发布、读取与中断
+
+顺序为：
+
+1. 在磁盘变更前认证内存 envelope，拒绝错误 key；调用方已经可以取得本次 locator / attempt，以便未来 P1-S04 先持久化关系。
+2. `create_new` staging，直接写 envelope / ciphertext，`flush`、文件 `sync_all`、关闭写句柄并同步 staging 目录；没有持久化明文临时文件。
+3. 独立打开 staging，核对写入后的文件身份、完整 bytes、envelope、AEAD 与 length / digest。
+4. 再验证目录与 staging 身份，使用 `fs::hard_link` 原子建立最终名字，不覆盖已有目标；随后同步 objects 目录。
+5. 从最终名字重新读取，核对与 staging 相同的文件身份和完整 bytes，并再次认证。
+6. 只删除本次已验证 staging link，同步 staging 目录，再复核目录和最终对象身份，返回 `PublishedObject`。
+
+写句柄关闭前显式 `sync_all`，关闭后独立回读；身份引用句柄仍保留到比较结束以防 ID 重用。Rust `File` 的 `Drop` 不报告 close 错误，不能把 drop 当作持久化证据。参考：[Rust File](https://doc.rust-lang.org/std/fs/struct.File.html)、[Rust hard_link](https://doc.rust-lang.org/std/fs/fn.hard_link.html)。
+
+`PublishedObject` 仅证明本次 filesystem publish 的验证结果，不是 canonical capture receipt；SQLite reference commit、commit 后从正式 reference read-back、binding / audit / 幂等结果均留给 P1-S04 / P1-S05。同一目标再次 publish 返回 `ObjectExists`，不覆盖、不重新加密旧对象，也不假装完成业务层幂等。
+
+任何失败都保留已有的精确残留，不做自动 orphan cleanup。`inspect_attempt` 只检查给定 locator / attempt 对应的两个名字：返回 absent、authenticated staging、authenticated published candidate 或两者并存；不完整 / 损坏 envelope、错误 key、不同 attempt 的最终对象、目录 / 文件变化均报错，保留原状。存在可认证文件不等于此前失败的 sync 已具备 durable 保证，也不等于对象没有 committed reference。目录枚举、未知文件策略、业务重试、orphan reconciliation / 删除和崩溃恢复仍属于 P1-S04；本批没有第二套恢复器。
+
+## 验收与实际证据
+
+本机为 macOS ARM64，Rust `1.96.0`。全部数据是合成字节、固定测试 key / random 或系统随机生成的临时测试材料，根目录按测试实例隔离并在结束时清理。
+
+本批新增 20 个 unit tests，加上既有 12 个，package 共 32 个测试：
+
+- empty、短对象、1 MiB、跨段、8 MiB 的 publish → 关闭目录 capability → 重开 → exact read；
+- 独立 binary format oracle，每个字段的 missing / duplicate / reordered / oversized，所有前缀截断、尾随字节、未知 version / profile / generator；
+- metadata、ciphertext / tag / nonce / wrapped DEK、错误 key、locator 和 attempt 的失败关闭；
+- 不同 source 相同 bytes 的独立对象；重复目标、发布瞬间目标抢占及两个真实线程竞争时只有一个成功，失败方 staging 保留；
+- 11 个发布 checkpoint 中断后的精确状态，partial ciphertext write 后的 `StorageFull`，真实目录写权限撤销；
+- directory / object / staging symlink、非普通文件、目录替换、staging / final 文件替换与诊断脱敏；
+- production `ObjectWrite::seal` 使用系统随机，确定性 random 和故障操作只能由 crate-private unit test seam 注入。
+
+磁盘满是写入部分密文后返回 `ErrorKind::StorageFull` 的可控 I/O 注入；sync / publish 中断使用 crate-private checkpoint 注入，另有真实目标占用 / hard-link 竞争。没有填满实际磁盘、切断电源、强杀进程或进行物理介质持久化实验。关闭重开的是 filesystem capability，不是 SQLite / GUI 重启。
+
+实际验证：
+
+- `cargo test -p radishmemory-source-vault --locked --offline`：32 个测试通过；
+- `cargo clippy -p radishmemory-source-vault --all-targets --locked --offline -- -D warnings`：通过；
+- `./scripts/check-repo.sh`：162 个仓库文件检查、notices 再生成校验、workspace format / Clippy `-D warnings` 与 160 个 all-features Rust tests 全部通过；首次沙箱内运行在既有 `P1-F17` loopback observer bind 处遇到 `PermissionDenied`，经原命令沙箱外重跑通过，没有放宽检查；
+- `cargo check --workspace --all-targets --locked --offline`：默认 features 通过；
+- `git diff --check`：通过；manifest、`Cargo.lock`、notices 没有变化。
+
+ADR 场景对应的是 `P1-SF04`、`P1-SF06`、`P1-SF07`、`P1-SF10`、`P1-SF13`、`P1-SF18` 的 filesystem 子路径及 `P1-SF02` 的物理独立性，不宣称这些完整 production 场景已经全部通过；SQLite commit、中断协调、key provider、migration、删除和 host 行为均未由本批证明。
+
+## Windows ARM64 基线运行补证（2026-09-10）
+
+在既有 Windows 11 ARM64 测试 VM 的隔离副本运行提交 `66dc1aa`，没有修改该副本中的 production code。系统报告 `10.0.26200.0`，Rust / Cargo `1.96.0`，Rust host 为 `aarch64-pc-windows-msvc`，使用既有 MSVC ARM64 linker。执行通道的进程环境报告 `AMD64`，不能据此把 Rust target 记为 x64。guest agent 启动的进程明确报告 `elevated=true`，本节只建立提升权限环境的基线证据。
+
+首次 `--locked --offline` 构建在解析依赖时因缺少 `aead-stream` 的 registry 缓存停止，尚未编译。取得当前任务授权后，将本机已存在的 20 个精确锁定依赖缓存离线传入测试账户，逐项核对 `.crate` 的 SHA-256 与 `Cargo.lock` 一致；缓存包为 667812 bytes，SHA-256 为 `53e7ad7439314afe4f3b358e482935a87bf9c09f0406a6f8bc5d3269639c901a`。现有相关索引在修改前备份；没有联网下载、工具链安装、依赖版本变更或 lockfile 更新。
+
+原始基线结果：
+
+- `cargo check -p radishmemory-source-vault --all-targets --locked --offline`：通过；
+- `cargo test -p radishmemory-source-vault --locked --offline`：28 个测试通过，0 failed、0 ignored；
+- `cargo clippy -p radishmemory-source-vault --all-targets --locked --offline -- -D warnings`：通过。
+
+28 个测试包含真实目录同步、不可覆盖发布、hard-link 竞争、关闭重开后的认证读取、11 个中断 checkpoint、partial write 与失败关闭；它们使用合成材料，不能替代真实断电实验。与 macOS 的 32 个测试相比，4 个 `cfg(unix)` 测试未进入 Windows 二进制：symlink / 非普通文件、目录替换、staging / final 替换、私有权限及撤权。未执行不等于通过。
+
+UTM 命令接口一度返回空输出和零退出码，实际成功以客体脚本写出的完整日志及显式结果文件共同确认；基线结果为 `stage=completed, exitCode=0`。回收的日志 SHA-256 为 `e723bfd301c5b231d78d74b1e9f70a4b391f56fc69d1d6031a3603b7aa069994`。后续补测遇到虚拟机控制通道与正常关机超时；取得强制重启授权后恢复测试机，并继续完成下述补证。没有把空退出码、超时或未执行的探针记作通过。
+
+Windows 补充结果：
+
+- 确认本次测试盘为 NTFS；只读检查得到既有 `EnableLUA=0`，没有修改 UAC 或创建账户。本批没有普通用户权限证据。
+- [Windows filesystem integration tests](../../crates/radishmemory-source-vault/tests/windows_filesystem.rs)保留两个公共 API 测试：目录 capability 在持有期间禁止 root / objects / staging 改名，释放后可改名；root / objects / staging symlink、对象 symlink、staging symlink 和非普通对象均失败关闭且不改动外部合成 marker。
+- 为不再次改动已还原的 Cargo 缓存，使用固定工具链的 `rustc --test` 和 `clippy-driver -D warnings`，通过 `--extern` / `-L dependency` 链接提交 `66dc1aa` 的已构建库与依赖；显式带 `--include-ignored` 运行测试主体，2 个补充测试通过，0 failed、0 ignored。没有把这次直接链接复验表述为 Windows 全 workspace Cargo 验收。
+- 直接链接复验输入的 SHA-256 为 `3e4b2b616099792340abfb121223f89f56aa3d6bfd41bb4b23b1a30a4ae76600`，最终补测日志 SHA-256 为 `654c265e41b00e1dd5e034d057ad51b3db401f72d5e276e3a882f6ebe3689c6e`。symlink fixture 需要 Windows 创建符号链接权限，因此该项带明确 `ignore` 原因，不能把默认跳过计为通过；目录占用项是常规 Windows integration test。纳入 Cargo 入口时按仓库既有惯例补上跨平台依赖 lint 声明和 Windows 模块包裹，测试主体未变；入口包装在本机仓库门禁验证，未重跑 Windows Cargo 入口。
+
+后续在具备已授权符号链接权限及完整 locked 缓存的 Windows 环境，可通过常规 Cargo 入口复验：
+
+```powershell
+cargo test -p radishmemory-source-vault --test windows_filesystem --locked --offline -- --include-ignored
+```
+
+缓存收尾已实际核验：20 项索引恢复为备份值或原先不存在的状态，删除本批新增的 11 个 `.crate` 与 11 个解压源码目录；再次逐项验证后清理隔离 checkout、缓存备份、传输包及临时测试文件。没有还原 Cargo 自身的使用统计元数据，也没有改变 manifest、lockfile、notices 或系统设置。客体临时前缀零残留已核对，最后的结果文件也已删除；测试机随后正常关机并确认 `stopped`。本机收尾的 `./scripts/check-repo.sh` 通过 163 个文件检查、format / Clippy 与 160 个 Rust tests；没有执行远程 CI 或 Windows 全 workspace 门禁。
+
+## Windows 文件身份替换缺陷复现（2026-09-10）
+
+在 `6a6b611` 加一条合成回归的隔离源码副本中，使用同一 Windows 11 ARM64 / NTFS 测试环境及 Rust `1.96.0` 执行 `metadata_preserving_replacement_cannot_authorize_staging_cleanup`。在删除 staging 的 checkpoint 保留原文件，另建内容相同的文件，并将修改时间与创建时间设置为原值；长度与两个时间相等的前置断言全部通过。预期返回 `FilesystemChanged` 并保留替换文件，实际返回 `Ok(PublishedObject([REDACTED]))`，测试失败，退出码 `101`；原始日志 SHA-256 为 `06b6a893f8cf357f3642b6325574a3fc3dee8b0ef38789279846763efc7621fa`。这次是真实文件操作，未使用模拟返回值；不是普通用户验收。
+
+根因是 Windows `Identity` 仅比较可修改的 creation time，`Observation` 再比较长度和修改时间，三者相等不能证明是原文件。当时的清理检查因此会接受这个替换，违反精确 staging 身份要求。该用例在 macOS 通过，因为 Unix 比较 device / inode。该复现批次新增回归保持失败可见，未加 ignore、未放宽断言，当时尚未修复 production code；随后修复见下节。此前 28 个 Windows 基线测试通过的历史事实不覆盖这个新场景。
+
+本次使用任务专用 `CARGO_HOME`，从本机已有缓存复制并核对 20 个锁定依赖，离线编译；未修改共享缓存、manifest、lockfile、工具链、UAC、账户或系统权限。普通用户 / ACL 验收环境调整仍未授权执行。收尾已移除任务专用源码、缓存、传输文件及清理脚本，脚本核对临时前缀零残留后正常关机，VM 状态确认 `stopped`；本机临时诊断日志与待审批方案保留供审阅。
+
+本批本机 `./scripts/check-repo.sh` 通过 163 个文件检查、format / Clippy 和包含新增回归的 Rust 测试；这只证明 macOS 门禁通过，Windows 新用例仍失败。未执行 Windows 全 workspace、普通用户 / ACL 或 Linux 验收，没有提交或 push。
+
+修复需要从实际打开的句柄取得卷标识与完整文件 ID，并审查句柄生命周期与 ID 重用；创建时间和内容摘要均不能替代身份。[Microsoft 的同文件识别说明](https://devblogs.microsoft.com/oldnewthing/20220128-00/?p=106201)及 [GetFileInformationByHandleEx](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getfileinformationbyhandleex)提供该原生接口。固定工具链的 std-only 实现不足，新增原生 adapter / 依赖须先按 [ADR 0005](../adr/0005-m0-implementation-stack.md)和协作规则单独明确范围；本次未通过修改 lint 或引入 fallback 绕过该边界。
+
+## Windows 原生身份修复（2026-09-10）
+
+取得项目所有者的明确授权后，新增独立的 `radishmemory-windows-filesystem`；唯一安全入口从借用的 `File` 查询卷序号与 128 位文件 ID。只在此 adapter 的单一查询函数允许受审阅的 FFI，Source Vault 与 workspace 默认仍禁止 unsafe。依赖复用已锁定的 `windows-sys 0.61.2` / `windows-link 0.2.1`，没有新增或升级第三方 package；第一方 package 从 7 个变为 8 个，完整 lockfile 共 431 个 package，三目标 notices inventory 仍是原有 344 项。完整来源、许可证、替代方案和安全不变量见 [Rust 依赖基线](m0-rust-dependency-baseline.md)。
+
+目录身份和文件 `Observation` 均来自实际 no-follow 打开的句柄。Observation 在比较期间保留原文件引用以防 ID 重用；Windows 引用句柄请求零 data access 并允许 read / write / delete sharing，因此不会阻止测试中的实际替换，也不冒充读取或删除授权。实际写入 / 读取句柄必须与路径引用匹配，查询失败不回退到时间戳或低位 ID。Unix 同样保留引用，继续使用 device / inode。该修复没有将文件 ID 持久化为 canonical 字段，没有扩展恶意进程任意 syscall 竞态的威胁保证。
+
+Windows 11 ARM64 / NTFS / Rust `1.96.0` 在专用离线 `CARGO_HOME` 构建修复源码；源码包 SHA-256 为 `d5c8cd0ff4cde81dd3498e17b420703ae8325bce39c29ebf7454e1af88308f39`，22 个精确锁定的第三方依赖均从已有缓存复制并逐项验证，未联网下载、安装工具链或修改共享缓存。提升权限运行结果：
+
+- Source Vault 30 个 unit tests 全部通过，包含原 staging 清理失败用例，以及 staging read-back、publish、final read-back、cleanup 后 final 检查四个同内容 / 同时间戳替换边界；替换文件与保留的原文件仍在，不以禁止测试改名代替身份拒绝。
+- Windows directory / reparse integration 2 个测试通过；普通用户 ACL 项在本次提升权限运行显式过滤，另行验收。
+- native adapter 2 个测试通过：hard-link 的两个 handle 具有相同身份，保留旧 handle 时删除名字并新建文件获得不同身份；无文件身份的 `NUL` handle 返回错误。
+- 两个 package 的 `cargo check --all-targets --locked --offline` 与 Clippy `-D warnings` 通过；显式结果为 `stage=completed, exitCode=0`。
+- macOS `./scripts/check-repo.sh` 通过 165 个文件检查、notices 再生成、workspace format / Clippy 与 all-targets / all-features Rust tests；Source Vault 的两个新增替换用例通过。非 Windows 上 native adapter 不编译其平台实现，不能将 macOS 的零 native tests 记为原生 FFI 验证。
+
+普通用户 / ACL 实测使用同一组已构建测试二进制，未重新编译或替换 production code；回收的 9 个 manifest / lockfile / 源码输入 SHA-256 全部与本机工作区一致。测试环境临时启用 UAC 并正常重启，创建独立非管理员账户；控制目录仅 SYSTEM / Administrators 可写，测试账户只有读取 / 执行权，专用 run 子目录允许测试写入。一次性 S4U / Limited 任务无触发器，最长 30 分钟；跨账户 S4U 注册所需的合成密码明文仅在客体进程内存中生成并传给账户设置 / 任务注册，不写文件或日志；任务不保存密码，也不授予网络访问。账户描述长度与 S4U 注册校验先后失败过；随后发现该账户缺少批处理登录权利，精确补齐 `SeBatchLogonRight` 后才实际执行。没有把任务注册成功或未运行的状态计为通过。
+
+实际 token 核验为 `EnableLUA=1`、`administrator=false`、`mediumIntegrity=true`、合成 SID 与记录一致、`controlWriteDenied=true`。该身份下：
+
+- Source Vault 30 个 unit tests 全部通过，包括真实目录同步、完整发布 / read-back、文件替换失败关闭；
+- native adapter 2 个测试通过；
+- Windows integration 运行目录占用和普通用户 ACL 两项，均通过；需要 symlink 创建特权的另一项在此身份显式过滤，其通过证据来自前述提升权限运行。
+
+ACL 用例由普通测试账户真实设置并还原合成 fixture 的 DACL：专用根拒绝写入时不能打开 capability 且不创建子目录；持有 capability 后撤销 staging 创建权限，publish 返回 `Io / PermissionDenied / OS 5` 且两目录均无对象；撤销已发布对象的读取权限后 read / inspect 均以同一权限错误拒绝，恢复权限后加密 bytes 不变且可认证读取。不能将此证据扩展为 ACL 全组合、其它用户之间的数据隔离或安装器 owner 验收。
+
+普通用户脚本显式结果为 `stage=completed, exitCode=0`；任务实际退出码为 0，实例数为 0，run 下合成 fixture 目录零残留。事实文件 SHA-256 为 `68b17b06de4bc2ec3e66924df67a90bec0abe59e4b2e42a43a45f277404dd1ef`；Source Vault unit、native unit、Windows integration 日志分别为 `b9c27778218ec6390325b54123de8d41703e7f3b24588745975ad867bb1ed441`、`7f70643d2b3d61465b0fc23218ff4c56ed0907795e02449e514b1fa4de67667d`、`41535ac535e872c7b1f509823834a9c7547cdfa33c929a98deb8853103f04c1e`。完整合成证据包 SHA-256 为 `fd901332c1f643bd8db0a239056204245d212cbe135aad4d56cad8f150638dfe`。
+
+环境还原已完成：确认任务及测试子进程退出后移除一次性任务，撤销仅授予合成 SID 的 `SeBatchLogonRight`，导出核验 user-rights policy 已无该 SID。系统仍将 profile 标记为 loaded 时没有强制删除；先禁用临时账户、恢复 `EnableLUA` 为原 DWORD `0` 并正常重启，确认 profile 卸载后通过对应 SID 删除账户及 OS profile，再核验账户 / profile / 任务 / 用户权利均无残留。随后清理隔离源码、22 项专用缓存、二进制、合成 fixture、传输包和脚本；临时前缀零残留检查通过后正常关机，VM 状态确认 `stopped`。还原结果 SHA-256 为 `c7931d48bedbe11a1208ae213f1827f6e5780e5189646242ed377d82b985104f`。本机保留合成证据与源码输入包供审阅；没有清除事件日志，也不承诺虚拟机磁盘逐字节还原。
+
+最终 `python3 scripts/check-repo.py` 与 `git diff --check` 通过，检查器 27 个 unit tests 通过；实际源代码与前述 Windows 验收及本机完整仓库门禁相同。没有运行 Linux、ReFS、网络盘、真实断电、Windows 全 workspace、远程 CI 或产品 GUI / key-store / migration 验收；修复随后提交为 `2971fc9`，没有 push。
+
+## Linux ARM64 / ext4 普通用户验收（2026-09-15）
+
+基线为 `dev` 的 `9d88319`，该提交仅新增 `tests/linux_filesystem.rs` 的三个 Linux 公开 API 验收测试；production adapter 仍为 `2971fc9` 中的实现。没有新增依赖、修改 manifest / lockfile、修改密码格式或接入产品数据流。
+
+项目所有者在本任务确认精确 VM、专用目录、离线输入、普通用户测试、合成文件权限修改与清理范围后，使用既有 `Debian13-ARM64` 测试副本。UTM CLI 首次返回 `OSStatus -609`，第二次返回 `-1712`；复查均未启动，随后经 UTM 界面启动并确认 guest agent 可用。部分 guest exec 请求没有直接输出，因此本批以保存的阶段日志、真实退出码、输入复验与清理回执判断结果，不以宿主命令返回 0 冒充验收成功。
+
+### 环境与输入
+
+- Debian GNU/Linux 13.6 `trixie`，Linux `6.12.101+deb13-arm64`，Rust host `aarch64-unknown-linux-gnu`；复用已有 Rust / Cargo `1.96.0`、Clippy `0.1.96`，没有工具链安装或联网下载。
+- 测试在 ext4 上运行，mount options 为 `rw,relatime,errors=remount-ro`；现有普通账户的真实、有效、saved 与 filesystem UID 均为 1000，`CapEff=0000000000000000`。guest agent 的 root 身份只用于隔离准备和清理，不用于 Cargo 或权限验收。
+- 源码、专用 `CARGO_HOME`、target、`TMPDIR`、日志和合成 fixture 均在同一任务目录；没有修改共享缓存或既有 P1-H05 资料。离线包包含 167 个仓库文件与 Source Vault 的 21 个 Linux 可达锁定 registry archives；每个 `.crate` 的 SHA-256 均与 `Cargo.lock` 一致。
+- 输入包为 29573120 bytes，SHA-256 `0078602fe4912951447a265c1583acda4700cbbb205c884af53eb1a07a349784`；输入清单 SHA-256 `c64248beffead9c194c31181a3bd69f1bd2aa10f46717c56fc1c04d7c7531e20`，`Cargo.lock` SHA-256 `161f1d2a4539abab952293c6d708d7ae424ca983f532730aedb2b0ee126a398d`。执行前后清单逐项复验通过。
+
+### 运行结果与边界
+
+| 验证入口 | 实际结果 |
+| --- | --- |
+| `cargo check -p radishmemory-source-vault --all-targets --locked --offline` | 通过，exit 0 |
+| `cargo clippy -p radishmemory-source-vault --all-targets --locked --offline -- -D warnings` | 通过，exit 0 |
+| `cargo test -p radishmemory-source-vault --locked --offline` | 34 个 unit tests 与 3 个 Linux integration tests 通过；0 failed、0 ignored |
+| 输入复验与合成目录检查 | `input_recheck=passed fixture_residue=0 result=passed` |
+
+34 个 unit tests 在本机 ext4 上实际覆盖 0 / 37 bytes、1 MiB、跨段及 8 MiB 的 publish / reopen / exact read、目录 sync、no-overwrite 竞争、symlink / 非普通文件、目录替换、同内容同时间戳但不同 inode 的文件替换、认证失败、部分写入与精确 attempt 状态。中断与 `StorageFull` 使用已有测试 seam 注入，不代表真实磁盘满、断电或内核崩溃已实测。
+
+三个新增 integration tests 只使用公开 `ObjectDirectory` API：
+
+- `ordinary_user_creation_and_read_revocation_fail_closed_and_recover`：普通用户初始目录不可写、取得 capability 后 staging 不可写均返回 `PermissionDenied / OS 13`，不产生对象；撤销对象读取权限后 read / inspect 均拒绝，恢复权限后密文字节不变，重开可认证读取。
+- `fifo_object_and_staging_entries_are_rejected_without_consuming_them`：用系统 `mkfifo` 创建合成占位，final FIFO 的 publish / read 与 attempt 检查拒绝，staging FIFO 不被覆盖或消耗；没有读取 FIFO 的内容。该场景验证已存在 FIFO 的拒绝，不外推为任意 syscall 间替换竞态已穷尽。
+- `replacement_private_directories_do_not_inherit_open_capabilities`：objects / staging 被新的 `0700` 目录替换后，publish / read / inspect 均返回 `FilesystemChanged`，未知 marker 保持原状；恢复原目录后原对象仍可认证读取。
+
+新增测试会拒绝 root 或非零 effective capabilities，避免特权执行绕过权限测试；本批无需修改生产代码。实际环境、check / Clippy / test 日志与输入清单的证据包 SHA-256 为 `12522be5e5befb9c98e6aafdb43d277db81e1e8a98323f0f7dbcc94909c3fde3`。
+
+### 清理与退出范围
+
+取回证据后，确认任务进程与合成 fixture 零残留，精确移除本批源码、专用缓存、二进制、日志及两个传输文件；回执及逐路径不存在检查均通过。测试 VM 已正常关机并确认 `stopped`；未启动或修改 CleanBase / RadishLex VM，未修改账户、系统权限、代理或真实 key store。本机任务临时目录保留合成证据和输入包供复核，不进入 Git；不承诺 VM 磁盘逐字节还原。
+
+macOS 上完整 `./scripts/check-repo.sh` 已通过 167 个文件检查、format、Clippy 与 162 个 Rust tests。首次沙箱内运行因既有合成网络观察器无法绑定本机端口而失败，沙箱外离线重跑通过；这不是 production 或 Linux 测试失败，也没有放宽测试。文档与阶段检查器同步后，`python3 -m unittest discover -s scripts/tests` 的 35 个检查器测试通过，`git diff --check` 通过。
+
+P1-S03b 的对象 filesystem 范围现已具备 macOS 本机、Windows ARM64 / NTFS 和 Linux ARM64 / ext4 的运行证据。Windows 本批未重跑，继续引用 9 月 10 日同一 production adapter 的证据。Linux 全 workspace、其它 Linux 文件系统 / 架构、其它 Windows 文件系统、远程 CI、真实断电、key provider、SQLite migration 与产品宿主仍未在本批验收；三个 Linux 新测试也不替代其它平台专用用例。
+
+## 平台限制与下一步
+
+macOS 具备本机实际测试；Windows ARM64 提升权限与普通用户验收通过，文件身份替换缺陷已修复并通过回归；Linux ARM64 / ext4 普通用户验收通过。Windows 分支使用 `FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OPEN_REPARSE_POINT` 打开目录、禁止 delete sharing 保持目录 handle；普通读取禁止 write / delete sharing，并拒绝 reparse point。参照 [Microsoft Directory Handles](https://learn.microsoft.com/en-us/windows/win32/fileio/obtaining-a-handle-to-a-directory)和 [FlushFileBuffers](https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-flushfilebuffers)请求同步所需写访问；文件系统或权限不支持目录 `sync_all` 时直接失败，不返回假成功或执行 no-op。Windows 运行证据只覆盖这台 ARM64 / NTFS 测试机，Linux 只覆盖这台 ARM64 / ext4 测试机，不代表所有文件系统、ReFS、网络盘、架构或系统版本；此前原生依赖调整已单独评审，不意味着其它平台能力获得授权。
+
+P1-S03c-2 provider landing 与 P1-S04a 密钥初始化协调已完成对应实现；下一批推进 P1-S04b 正文对象 migration / 恢复，再完成 P1-S05 application / host acceptance。真实 key store、GUI / VM、依赖变更和远程动作仍需对应范围授权。本批不修复 R01 至 R06；SQLite v6 inline plaintext body、FTS 完整正文副本、中文找回与目录 / 维护缺口保持现行真实口径，PDF / 图片与模型仍不进入实现。

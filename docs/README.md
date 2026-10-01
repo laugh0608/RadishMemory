@@ -23,17 +23,31 @@
 17. [Phase 1 macOS 桌面宿主交互验收](implementation/phase1-macos-host-acceptance.md)：纯合成数据的真实窗口、AppKit picker、重启、重建、导出与删除 evidence。
 18. [Phase 1 Windows 桌面宿主交互验收](implementation/phase1-windows-host-acceptance.md)：Windows ARM64 可见窗口、原生 picker、重启、脱敏与应用数据 ACL 证据。
 19. [Phase 1 Linux 桌面宿主交互验收](implementation/phase1-linux-host-acceptance.md)：Debian ARM64 / GNOME Wayland 可见窗口、XDG Portal / GTK picker、重启、脱敏与 Unix ACL / mode 证据。
-20. [Phase 1 第三方 notices 与条件平台依赖复核](implementation/phase1-third-party-notices.md)：P1-H05 的 333 项历史基线及 P1-S03a 后两个分发根的 344 项当前清单、license option、默认字体、bundled SQLite 与 OS 条件面。
+20. [Phase 1 第三方 notices 与条件平台依赖复核](implementation/phase1-third-party-notices.md)：P1-H05 的 333 项、P1-S03a 的 344 项历史基线及当前两个分发根的 366 项清单、license option、默认字体、bundled SQLite 与 OS 条件面。
 21. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
 22. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
 23. [ADR 0008：阶段 1 加密内容寻址 Source Vault](adr/0008-phase1-encrypted-source-vault.md)：原始对象认证加密、内容地址、密钥边界、SQLite 协调、迁移、删除与合成验收。
 24. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
 25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
+    - [Phase 1 Source Vault filesystem adapter 落地记录](implementation/phase1-source-vault-filesystem.md)：P1-S03b envelope、目录 capability、不可覆盖发布、认证回读、attempt 状态与平台证据限制。
+    - [Phase 1 Source Vault key provider 落地记录](implementation/phase1-source-vault-key-provider.md)：精确平台依赖、严格读取、私有 bootstrap 编排与真实密钥库待验收边界。
+    - [Phase 1 Source Vault 密钥初始化协调](implementation/phase1-source-vault-key-bootstrap.md)：P1-S04a SQLite 事务资格、v7 维护 checkpoint、并发、提交失败与恢复限制。
+    - [Phase 1 Source Vault 正文迁移与恢复](implementation/phase1-source-vault-body-migration.md)：P1-S04b 首个维护切片、v8 状态契约、故障验收和未覆盖范围。
+    - [Phase 1 capture 显式放弃与 orphan retirement](implementation/phase1-source-vault-abandonment.md)：维护 v10、精确 target、不可逆决定、终态防重放与故障恢复。
+    - [Phase 1 object-backed verify / rebuild](implementation/phase1-source-vault-maintenance.md)：独立维护入口、派生行事务修复、失败关闭与中断恢复。
+    - [Phase 1 object-backed 删除执行](implementation/phase1-source-vault-deletion.md)：维护 v11、冻结请求、引用关闭、对象清理与十组件证据。
+    - [历史删除请求迁移兼容](implementation/phase1-source-vault-legacy-deletion.md)：维护 v12、原请求 / 闭包校验、旧正文执行凭据与失败恢复。
+    - [加密资料库读取切片](implementation/phase1-source-vault-reader.md)：认证读取会话、目录 / 检索复用、精确导出衔接与宿主接入限制。
+    - [Phase 1 Source Vault inventory reconciliation](implementation/phase1-source-vault-reconciliation.md)：独立 inventory 核对、pending 状态报告、committed staging link 清理与失败关闭边界。
+    - [Phase 1 Source Vault 加密 capture 协调](implementation/phase1-source-vault-capture.md)：v9 请求绑定、原子提交、认证回读、幂等恢复与剩余协调范围。
 26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 质量与历史记录
 
+- [2026-09-26 Source Vault 日终记录与明日事项](status/2026-09-26-source-vault.md)：当天七个实现提交、代码与文档复核、读取 / 导出验收及 application 生命周期接入安排。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
+- [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
+- [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。
 - [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。
 - [2026-09-03 阶段基线归档](status/2026-09-03-baseline.md)：M0 至 P1-S03a 的历史批次、CI 与依赖证据，不作为当前任务授权或顺位。
 

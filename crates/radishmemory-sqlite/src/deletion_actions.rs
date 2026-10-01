@@ -95,7 +95,7 @@ pub(crate) fn execute_component_action(
     )?;
     match component_type {
         radishmemory_core::DeletionComponentType::SourceBody => {
-            delete_source_bodies(transaction, &targets)
+            delete_source_bodies(transaction, request, &targets)
         }
         radishmemory_core::DeletionComponentType::SourceMetadata => {
             redact_source_metadata(transaction, &targets)
@@ -127,7 +127,7 @@ pub(crate) fn execute_component_action(
     }
 }
 
-fn load_execution_closure(
+pub(crate) fn load_execution_closure(
     connection: &Connection,
     request_id: &Identifier,
     component_type: radishmemory_core::DeletionComponentType,
@@ -152,9 +152,50 @@ fn load_execution_closure(
 
 fn delete_source_bodies(
     transaction: &Transaction<'_>,
+    request: &DeleteRequest,
     targets: &[ObjectRef],
 ) -> Result<ActionResult, SqliteError> {
     require_closure_type(targets, CanonicalObjectType::SourceArtifact)?;
+    let version: i64 = transaction
+        .pragma_query_value(None, "user_version", |r| r.get(0))
+        .map_err(SqliteError::storage)?;
+    if version >= 11 {
+        let mut legacy = false;
+        let mut retired_object = false;
+        for target in targets {
+            let retired: bool = transaction.query_row(
+                "SELECT EXISTS(SELECT 1 FROM radishmemory_source_vault_deletions d WHERE d.source_id=?1 AND d.delete_request_id=?2 AND d.state='deleted' AND NOT EXISTS(SELECT 1 FROM radishmemory_source_vault_references r WHERE r.source_id=d.source_id))",
+                params![target.object_id().as_str(),request.params().delete_request_id.as_str()], |r| r.get(0),
+            ).map_err(SqliteError::storage)?;
+            if !retired {
+                if version < 12 {
+                    return Err(SqliteError::deletion_invariant(
+                        SqliteStorageReason::DeletionExecution,
+                    ));
+                }
+                crate::legacy_deletion::verify_recorded_body_absence(
+                    transaction,
+                    request,
+                    target.object_id().as_str(),
+                )?;
+                legacy = true;
+            } else {
+                retired_object = true;
+            }
+        }
+        return Ok(ActionResult {
+            outcome: if !retired_object {
+                ComponentOutcome::NotFound
+            } else {
+                ComponentOutcome::Deleted
+            },
+            verification_method: if legacy {
+                "source-vault-and-legacy-body-absence-v1"
+            } else {
+                "source-vault-authenticated-absence-v1"
+            },
+        });
+    }
     let mut removed = 0;
     for target in targets {
         removed += transaction

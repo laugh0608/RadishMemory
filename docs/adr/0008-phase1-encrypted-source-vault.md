@@ -58,7 +58,7 @@
 
 namespace、`source_id`、摘要、长度、media type 与 envelope version 必须作为 AEAD associated data 或受等价认证保护，防止在不同来源或 metadata 之间交换合法密文。未知 version、cipher suite、key-wrap profile、缺失字段、重复字段、认证失败或 metadata 不匹配都必须失败关闭；不允许尝试其它算法、旧 key、明文 BLOB 或外部原件作为静默 fallback。
 
-本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。[P1-S03a portable crypto 落地](../implementation/phase1-source-vault-portable-crypto.md)随后把 portable manifest / lockfile、AAD codec、cipher / wrap 与合成向量落入独立第一方 package；三个 platform provider、filesystem envelope、SQLite coordination 与 production data flow 仍未落地。
+本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。[P1-S03a portable crypto 落地](../implementation/phase1-source-vault-portable-crypto.md)随后把 portable manifest / lockfile、AAD codec、cipher / wrap 与合成向量落入独立第一方 package；[P1-S03b filesystem adapter](../implementation/phase1-source-vault-filesystem.md)已实现 filesystem envelope、不可覆盖发布与认证回读并通过 macOS 合成验证及 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，[P1-S03c-2](../implementation/phase1-source-vault-key-provider.md) 已落地独立 platform provider，真实密钥库、SQLite coordination 与 production data flow 仍未验收。
 
 未来零知识同步可以为同一对象 DEK 增加经过独立协议评审的设备或空间 wrapper，但不得要求服务端获得明文 DEK，也不得把本文的设备本地 KEK 直接升级为同步根密钥。同步密钥、恢复、撤销和轮换继续由 ADR 0003 及后续同步协议负责。
 
@@ -126,8 +126,8 @@ KEK 缺失、锁定、拒绝授权、wrapper 损坏或错误 key 都是显式失
 
 1. `P1-S01 storage contract`：接受本文，冻结声明、identity、envelope、密钥、提交、迁移、删除和合成验收；不改 production code；
 2. `P1-S02 dependency and cipher review`：已由[专项评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)选择精确 AEAD / key-wrap / random / platform key provider，并冻结版本、test vector、许可证、native build、系统授权、维护和三平台影响；
-3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；下一步 `P1-S03b immutable object filesystem adapter` 独立评审应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误；
-4. `P1-S04 SQLite coordination and migration`：实现 object reference、capture attempt、v6 migration、orphan reconciliation、verify / rebuild 与 deletion execution；
+3. `P1-S03 encrypted object adapter`：`P1-S03a portable crypto dependency landing` 已落地 portable cipher / wrap、AAD codec 与合成测试；`P1-S03b immutable object filesystem adapter` 已实现应用专用目录、versioned envelope、immutable publish、认证读取和稳定脱敏错误并通过本机验证；Windows ARM64 / NTFS 提升权限、普通用户与 ACL 验收已通过，文件身份替换缺陷已修复；Linux ARM64 / ext4 普通用户验收也已通过；`P1-S03c-2 isolated platform key provider` 已落地精确依赖、读取及私有 bootstrap 编排，并通过 macOS 构建和合成测试；真实平台凭据验收仍待后续；
+4. `P1-S04 SQLite coordination and migration`：P1-S04a 已实现密钥初始化资格、事务串行化与 maintenance-only v7 `key_ready` checkpoint，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)；P1-S04b 首个切片已实现 object reference、migration attempt 和 v6 正文经 v7 checkpoint 到 v8 的迁移 / 恢复，见[落地记录](../implementation/phase1-source-vault-body-migration.md)；[加密 capture 切片](../implementation/phase1-source-vault-capture.md) 已实现维护 v9 attempt、原子 metadata commit 与认证回读；[inventory reconciliation](../implementation/phase1-source-vault-reconciliation.md) 已提供独立核对、pending 报告与 committed staging link 清理；[显式放弃切片](../implementation/phase1-source-vault-abandonment.md) 已实现维护 v10 的不可逆决定、精确 orphan retirement 和终态防重放；[独立 verify / rebuild](../implementation/phase1-source-vault-maintenance.md) 已实现 object-backed 全库校验及派生行原子重建；[删除执行切片](../implementation/phase1-source-vault-deletion.md) 已实现维护 v11 的引用关闭、精确对象退役与既有十组件结果；application / 宿主接入继续推进；
 5. `P1-S05 application and host acceptance`：接入 application service / UI，完成合成迁移、重启、key failure、故障注入和三平台 locked / 真实宿主证据。
 
 只有已经接受的 `P1-S02` 与后续 `P1-S03` 至 `P1-S05` 分别通过后，才评审 PDF / 图片的 media type、parser sandbox、页码 / 区域 citation、质量指标和派生数据治理。
@@ -199,11 +199,27 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 ## 当前实施状态与停止线
 
-`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，但 object directory、serialized envelope、key provider、SQLite migration 与 host integration 均未落地。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
+2026-09-15 项目所有者已授权 P1-S04a：复用现有 SQLite adapter，在 Source Vault coordinator 下实现真实存储资格检查、密钥初始化与事务 checkpoint，仅用合成资料 / 测试 provider 验证；不接入 application / UI 或访问真实系统 key store。v7 只保留初始化准备状态，后续正文迁移单独推进；默认 `SqliteDatabase::open` 仍只允许 v6。Windows / Linux 验证按[当前顺位](../status/current.md)后置集中执行。
 
-- 未经 `P1-S03b` 独立授权，不实现 object directory、serialized envelope、immutable publish 或认证 filesystem read-back；若该单元需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
-- 下一最小单元只允许实现 versioned envelope 与 immutable object filesystem adapter，并继续使用 synthetic key / random test seam；不得加入或访问 keychain / platform security provider；
+`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，正文对象 migration 首个维护切片已有合成证据；真实平台凭据与 host integration 均未验收。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
+
+- `P1-S03b` 当前证据不代表其它 Linux / Windows 文件系统、架构或真实断电持久化已通过，平台差异必须保留真实失败；若后续需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
+- filesystem adapter 继续使用 synthetic key / random test seam 验收；P1-S03c-2 只授权精确 provider 依赖与独立实现，未经真实平台授权不访问 keychain / platform security provider；
 - 未经独立实现授权，不修改 core port、SQLite schema、application service 或 UI；
 - 未经独立平台授权，不启动 GUI / VM、不访问系统 key store、不修改权限或签名配置；
 - 不使用真实个人资料、真实密钥或生产数据库；不进入 PDF / OCR、图片解析、Embedding、模型、网络、同步、发布或部署；
 - 不 push、不创建 PR、不触发远程 CI、不 merge，也不把文档契约外推为实现证据。
+
+2026-09-26 项目所有者授权推进 P1-S04b 首个正文迁移 / 中断恢复切片；仅使用合成资料和测试 key，不访问真实系统 key store，不接入 application / UI、不改依赖或远程状态。v8 `objects_ready` 仅表示本批 inventory 的正文已认证迁移，不代表 P1-S04 / P1-S05 或十八项产品场景全部通过。
+
+2026-09-26 后续授权继续推进新 capture，并明确批准 Source Vault → core 这一条既有第一方依赖。维护 v9 演进同一 attempts / references 表，以请求摘要约束精确重试，publish 后原子提交 canonical / binding / audit / FTS / reference，再按 committed reference 认证回读；详见[加密 capture 协调](../implementation/phase1-source-vault-capture.md)。该 capture 批次退出时普通入口仍为 v6，完整 orphan、维护修复、删除、真实密钥库与宿主验收尚未完成；同日后续进展见下文和[日终记录](../status/2026-09-26-source-vault.md)。
+
+2026-09-26 后续 inventory reconciliation 继续沿上述孤儿清理条件实施：v9 未提交对象仍有 active attempt，因此只报告待恢复，不删除；已提交对象的多余 staging link 必须同时认证并具有同一文件身份才可移除。无登记 / 解析失败 / 身份冲突保留并失败关闭，不新增取消或自动放弃语义；详见[核对记录](../implementation/phase1-source-vault-reconciliation.md)。
+
+2026-09-26 项目所有者确认显式放弃方案并授权实现：`prepared → abandoning → abandoned`，先将放弃决定与维护 v10 升级原子提交，再精确清理无 canonical source / reference 的认证对象，目录同步及缺失复验后提交终态。终态保留原 source / request digest / attempt；旧请求禁止复活，新导入使用新 source ID。全程保持 exclusive session；未完成清理不解除 capture 阻塞。未知、截断、身份冲突与终态后重现对象不自动删除。此状态只属于未提交 capture，不代替已提交资料的 `DeleteRequest`，实现与证据见[放弃记录](../implementation/phase1-source-vault-abandonment.md)。
+
+2026-09-26 后续删除执行复用上述 `DeleteRequest` / `DeletionEvidence` 与十组件边界。维护 v11 仅增加请求 / 闭包摘要和对象退役 checkpoint：请求提交先关闭召回及 committed reference，物理清理和目录同步完成后记录对象退役，再由既有执行器处理十组件并校验 evidence。中断保留请求，重试必须匹配冻结计划；终态重现对象、未知文件或认证损坏失败关闭。未销毁 library key，也不增加远端、备份或取证级清除声明，详见[删除记录](../implementation/phase1-source-vault-deletion.md)。
+
+2026-09-26 [历史请求兼容切片](../implementation/phase1-source-vault-legacy-deletion.md) 在上述协议内增加维护 v12：原请求精确匹配、冻结闭包复核及接管事务；有对象残留时使用既有精确退役链路，迁移前正文已消失时保存并复验原请求的旧成功组件结果引用。缺凭据、闭包漂移或文件重现继续失败关闭；不改变 canonical schema、十组件协议或删除保证。
+
+2026-09-26 [独立读取切片](../implementation/phase1-source-vault-reader.md) 复用上述协议建立 `LibraryReader`：维护 v8 至 v12 上加载既有 key、持有 exclusive session、查询前后认证对象，并复用原目录 / FTS 过滤规则。返回既有 canonical 来源供 ADR 0006 导出器消费；组合导出验收已通过，application 生命周期接入尚待完成。没有新增数据库版本或扩张加密范围。

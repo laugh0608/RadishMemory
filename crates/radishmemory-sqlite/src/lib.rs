@@ -5,17 +5,23 @@
 //! adapter boundary.
 
 mod capability;
+mod capture_fingerprint;
 mod deletion_actions;
 mod deletion_store;
 mod derived_index;
+mod encrypted_capture;
 mod error;
 #[cfg(feature = "fixture-runner")]
 mod fixture_runner;
+mod legacy_deletion;
 mod memory_store;
 mod migration;
 mod source_capture;
 mod source_catalog;
 mod source_store;
+mod source_vault_key;
+mod source_vault_migration;
+mod vault_session;
 
 use std::fmt;
 use std::path::Path;
@@ -26,12 +32,18 @@ use radishmemory_file_entry as _;
 use rusqlite::{Connection, TransactionBehavior};
 
 pub use capability::{REVIEWED_BUNDLED_SQLITE_VERSION, SqliteCapabilities};
+pub use encrypted_capture::{
+    CaptureAbandonmentTarget, CaptureObject, CaptureObjectState, EncryptedCaptureDatabase,
+    ObjectReadView,
+};
 pub use error::{
     SqliteCapability, SqliteConfigurationReason, SqliteError, SqliteErrorCode, SqliteStorageReason,
 };
 #[cfg(feature = "fixture-runner")]
 pub use fixture_runner::FixtureDeletionFailure;
 pub use migration::SQLITE_SCHEMA_VERSION;
+pub use source_vault_key::{KeyInitializationTransaction, SourceVaultKeyDatabase};
+pub use source_vault_migration::{BodyMigrationDatabase, BodyMigrationItem, BodyMigrationState};
 
 /// An initialized RadishMemory SQLite database.
 pub struct SqliteDatabase {

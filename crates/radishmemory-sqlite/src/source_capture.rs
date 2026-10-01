@@ -9,7 +9,6 @@ use rusqlite::{Connection, OptionalExtension, TransactionBehavior, params};
 
 use crate::source_store::{
     identifier, insert_source_artifact, insert_source_fragments, load_source_artifact,
-    load_source_fragments,
 };
 use crate::{SqliteDatabase, SqliteError, SqliteStorageReason};
 
@@ -39,63 +38,85 @@ where
     crate::derived_index::verify(&transaction)?;
     verify_origin_bindings(&transaction)?;
 
-    let candidate = capture.source();
-    let value = candidate.params();
-    let existing_lineage = load_origin_lineage(
-        &transaction,
-        &value.namespace_id,
-        capture.origin_binding_id(),
-    )?;
-
-    let (result_source, outcome) = if let Some(lineage_id) = existing_lineage {
-        if lineage_id != value.lineage_id {
-            return Err(capture_mismatch(SqliteStorageReason::OriginBindingMismatch));
-        }
-        let current = load_current_source(&transaction, &value.namespace_id, &lineage_id)?;
-        validate_existing_capture(&transaction, capture.origin_binding_id(), &current)?;
-        if same_capture_bytes(candidate, &current) {
-            if candidate.params().source_kind != current.params().source_kind
-                || candidate.params().media_type != current.params().media_type
-                || candidate.params().governance != current.params().governance
-            {
-                return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
-            }
-            (current, SourceCaptureOutcome::Idempotent)
-        } else {
-            if candidate.params().governance != current.params().governance {
-                return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
-            }
-            insert_source_artifact(&transaction, candidate)?;
-            advance_lineage_tip(&transaction, candidate)?;
-            insert_source_fragments(&transaction, capture.fragments())?;
-            insert_capture_audit(
-                &transaction,
-                capture.origin_binding_id(),
-                candidate,
-                SourceCaptureOutcome::Versioned,
-            )?;
-            (candidate.clone(), SourceCaptureOutcome::Versioned)
-        }
-    } else {
-        require_unused_lineage(&transaction, candidate)?;
-        insert_source_artifact(&transaction, candidate)?;
-        advance_lineage_tip(&transaction, candidate)?;
-        insert_origin_binding(&transaction, capture.origin_binding_id(), candidate)?;
-        insert_source_fragments(&transaction, capture.fragments())?;
-        insert_capture_audit(
-            &transaction,
-            capture.origin_binding_id(),
-            candidate,
-            SourceCaptureOutcome::Created,
-        )?;
-        (candidate.clone(), SourceCaptureOutcome::Created)
-    };
+    let (result_source, outcome) = decide_capture(&transaction, capture, &load_source_artifact)?;
+    if outcome != SourceCaptureOutcome::Idempotent {
+        insert_capture_facts(&transaction, capture, outcome, true)?;
+    }
 
     crate::derived_index::verify(&transaction)?;
     verify_origin_bindings(&transaction)?;
     before_commit(&transaction)?;
     transaction.commit().map_err(SqliteError::storage)?;
     Ok(SourceCaptureResult::from_source(&result_source, outcome))
+}
+
+pub(crate) fn decide_capture(
+    connection: &Connection,
+    capture: &SourceCapture,
+    load_source: crate::source_store::SourceLoader<'_>,
+) -> Result<(SourceArtifact, SourceCaptureOutcome), SqliteError> {
+    let candidate = capture.source();
+    let value = candidate.params();
+    if let Some(lineage_id) =
+        load_origin_lineage(connection, &value.namespace_id, capture.origin_binding_id())?
+    {
+        if lineage_id != value.lineage_id {
+            return Err(capture_mismatch(SqliteStorageReason::OriginBindingMismatch));
+        }
+        let current =
+            load_current_source_with(connection, &value.namespace_id, &lineage_id, load_source)?;
+        validate_existing_capture(connection, capture.origin_binding_id(), &current)?;
+        if value.governance != current.params().governance {
+            return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
+        }
+        if same_capture_bytes(candidate, &current) {
+            if value.source_kind != current.params().source_kind
+                || value.media_type != current.params().media_type
+            {
+                return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
+            }
+            return Ok((current, SourceCaptureOutcome::Idempotent));
+        }
+        Ok((candidate.clone(), SourceCaptureOutcome::Versioned))
+    } else {
+        require_unused_lineage(connection, candidate)?;
+        Ok((candidate.clone(), SourceCaptureOutcome::Created))
+    }
+}
+
+pub(crate) fn insert_capture_facts(
+    connection: &Connection,
+    capture: &SourceCapture,
+    outcome: SourceCaptureOutcome,
+    inline: bool,
+) -> Result<(), SqliteError> {
+    if outcome == SourceCaptureOutcome::Idempotent {
+        return Err(capture_mismatch(SqliteStorageReason::CaptureStateMismatch));
+    }
+    if inline {
+        insert_source_artifact(connection, capture.source())?;
+    } else {
+        crate::source_store::insert_source_metadata(connection, capture.source())?;
+    }
+    advance_lineage_tip(connection, capture.source())?;
+    if outcome == SourceCaptureOutcome::Created {
+        insert_origin_binding(connection, capture.origin_binding_id(), capture.source())?;
+    }
+    if inline {
+        insert_source_fragments(connection, capture.fragments())?;
+    } else {
+        crate::source_store::insert_fragments_for_source(
+            connection,
+            capture.fragments(),
+            capture.source(),
+        )?;
+    }
+    insert_capture_audit(
+        connection,
+        capture.origin_binding_id(),
+        capture.source(),
+        outcome,
+    )
 }
 
 pub(crate) fn advance_lineage_tip(
@@ -178,6 +199,12 @@ pub(crate) fn advance_lineage_tip(
 }
 
 pub(crate) fn verify_origin_bindings(connection: &Connection) -> Result<(), SqliteError> {
+    verify_origin_binding_rows(connection)?;
+    verify_active_file_captures(connection)
+}
+
+pub(crate) fn verify_origin_binding_rows(connection: &Connection) -> Result<(), SqliteError> {
+    // Bindings are canonical: their validation must not depend on repairable tips.
     let expected = expected_origin_bindings(connection)?;
     let actual = actual_origin_bindings(connection)?;
     if expected
@@ -210,7 +237,7 @@ pub(crate) fn verify_origin_bindings(connection: &Connection) -> Result<(), Sqli
             ));
         }
     }
-    verify_active_file_captures(connection)
+    Ok(())
 }
 
 fn verify_active_file_captures(connection: &Connection) -> Result<(), SqliteError> {
@@ -258,7 +285,7 @@ fn verify_active_file_captures(connection: &Connection) -> Result<(), SqliteErro
     Ok(())
 }
 
-fn validate_existing_capture(
+pub(crate) fn validate_existing_capture(
     connection: &Connection,
     origin_binding_id: &Identifier,
     source: &SourceArtifact,
@@ -275,12 +302,7 @@ fn validate_existing_capture(
             SqliteStorageReason::OriginBindingMismatch,
         ));
     }
-    let fragments = load_source_fragments(
-        connection,
-        &source.params().namespace_id,
-        &source.params().source_id,
-    )?
-    .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::StoredIntegrityMismatch))?;
+    let fragments = crate::source_store::load_fragments_for_source(connection, source)?;
     validate_complete_source_fragment_set(source, &fragments).map_err(|source| {
         SqliteError::invalid_stored_with_source(
             SqliteStorageReason::StoredIntegrityMismatch,
@@ -345,10 +367,11 @@ fn load_origin_lineage(
     })
 }
 
-fn load_current_source(
+fn load_current_source_with(
     connection: &Connection,
     namespace_id: &Identifier,
     lineage_id: &Identifier,
+    load_source: crate::source_store::SourceLoader<'_>,
 ) -> Result<SourceArtifact, SqliteError> {
     let source_id = connection
         .query_row(
@@ -366,7 +389,7 @@ fn load_current_source(
             source,
         )
     })?;
-    load_source_artifact(connection, namespace_id, &source_id)?
+    load_source(connection, namespace_id, &source_id)?
         .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::LineageTipMismatch))
 }
 
@@ -452,12 +475,18 @@ fn expected_origin_bindings(
 ) -> Result<BTreeMap<(String, String), String>, SqliteError> {
     let mut statement = connection
         .prepare(
-            "SELECT tip.namespace_id, source.origin_ref, tip.lineage_id
-             FROM radishmemory_source_lineage_tips AS tip
-             JOIN radishmemory_source_artifacts AS source ON source.source_id = tip.source_id
+            "SELECT source.namespace_id, source.origin_ref, source.lineage_id
+             FROM radishmemory_source_artifacts AS source
              WHERE source.origin_kind = 'explicit_user_input'
                AND source.origin_ref IS NOT NULL
-             ORDER BY tip.namespace_id, source.origin_ref",
+               AND source.deletion_state = 'active'
+               AND NOT EXISTS (
+                   SELECT 1 FROM radishmemory_source_artifacts AS newer
+                   WHERE newer.namespace_id = source.namespace_id
+                     AND newer.lineage_id = source.lineage_id
+                     AND newer.version > source.version
+               )
+             ORDER BY source.namespace_id, source.origin_ref",
         )
         .map_err(SqliteError::storage)?;
     let rows = statement
@@ -521,7 +550,7 @@ fn capture_mismatch(reason: SqliteStorageReason) -> SqliteError {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::error::Error as _;
 
     use radishmemory_core::{
@@ -562,7 +591,7 @@ mod tests {
         ProducerRef::new(producer_type, id(producer_id), text("1"))
     }
 
-    fn capture(
+    pub(crate) fn capture(
         source_id: &str,
         fragment_id: &str,
         version: u64,
