@@ -469,5 +469,24 @@ class GovernanceContractChecks(unittest.TestCase):
             )
 
 
+
+class HostLoggingPolicyChecks(unittest.TestCase):
+    def test_exact_policy_only_and_other_sources_still_reject_sinks(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "apps/radishmemory-desktop/src/logging.rs"
+            source.parent.mkdir(parents=True)
+            source.write_bytes((SCRIPT_PATH.parent.parent / "apps/radishmemory-desktop/src/logging.rs").read_bytes())
+            errors: list[str] = []
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+            self.assertEqual([], errors)
+            source.write_text(source.read_text() + 'fn leak() { log::error!("unreviewed"); }\n')
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+            self.assertIn("desktop logging policy differs from the reviewed sink-free implementation", errors)
+            other = source.with_name("unreviewed.rs")
+            other.write_text('fn leak() { log::error!("unreviewed"); }\n')
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+            self.assertIn("Phase 1 source introduces an unreviewed diagnostic sink: apps/radishmemory-desktop/src/unreviewed.rs", errors)
+
 if __name__ == "__main__":
     unittest.main()

@@ -22,6 +22,7 @@ struct State {
     failure: Cell<Option<SourceVaultErrorCode>>,
     wrong_key: Cell<bool>,
     loads: Cell<usize>,
+    fail_load: Cell<Option<usize>>,
     creations: Cell<usize>,
     interrupt_migration: Cell<bool>,
     interrupt_capture: Cell<Option<crate::capture::Step>>,
@@ -50,6 +51,11 @@ impl SyntheticLibraryProvider {
 
     pub fn use_wrong_key(&self, wrong: bool) {
         self.0.wrong_key.set(wrong);
+    }
+
+    /// Fail exactly one absolute key-load sequence, for post-commit refresh tests.
+    pub fn fail_on_key_load(&self, sequence: usize) {
+        self.0.fail_load.set(Some(sequence));
     }
 
     pub fn key_loads(&self) -> usize {
@@ -91,6 +97,13 @@ impl SyntheticLibraryProvider {
 
     fn load(&self, slot: &KeySlot) -> std::result::Result<KeyEncryptionKey, SourceVaultError> {
         self.0.loads.set(self.0.loads.get() + 1);
+        if self.0.fail_load.get() == Some(self.0.loads.get()) {
+            self.0.fail_load.set(None);
+            return Err(SourceVaultError::new(
+                SourceVaultErrorCode::KeyStoreLocked,
+                "synthetic one-shot key access",
+            ));
+        }
         if let Some(code) = self.0.failure.get() {
             return Err(SourceVaultError::new(code, "synthetic key access"));
         }

@@ -2744,7 +2744,9 @@ dependencies = [
  "directories",
  "eframe",
  "getrandom 0.4.3",
+ "log",
  "radishmemory-application",
+ "radishmemory-source-vault",
  "rfd",
  "time",
 ]

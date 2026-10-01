@@ -79,7 +79,7 @@ desktop 经 application 新增对既有 crypto / platform provider 的传递构�
 
 ## 限制与下一步
 
-默认桌面产品入口仍是 SQLite v6 inline plaintext body，`LocalLibrary` 和 UI 尚未切换到此显式加密入口。当前 application 已接入 import / update、lineage deletion、verify / rebuild，但尚未验收宿主的请求持有、崩溃后恢复和交互，不能据此宣称 P1-S05 完成。
+默认桌面产品入口仍是 SQLite v6 inline plaintext body，`LocalLibrary` 不自动切换；后续[桌面宿主接线](phase1-source-vault-host.md) 增加显式加密入口。当前 application 已接入 import / update、lineage deletion、verify / rebuild，后续宿主已用合成 key 验证请求持有与重启恢复，但尚未验收真实系统凭据和 GUI 交互，不能据此宣称 P1-S05 完成。
 
 下一步接入 macOS host，先落实原请求持有 / 恢复、显式维护与放弃交互，再按单独批准的范围进入真实 Keychain / logger 与多实例端到端验收，随后集中 Windows / Linux 编译和运行。真实系统操作另行授权。
 

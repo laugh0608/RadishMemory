@@ -1,10 +1,13 @@
+mod backend;
 mod controller;
 mod error;
+mod logging;
 mod paths;
 mod picker;
 mod profile;
 mod runtime;
 mod ui;
+mod worker;
 
 pub use controller::LibraryController;
 pub use error::{ApplicationFailureSummary, DesktopError, DesktopErrorCode, DesktopErrorReason};

@@ -12,11 +12,18 @@ use crate::{
 const CATALOG_PAGE_SIZE: usize = 200;
 const SEARCH_RESULT_LIMIT: usize = 50;
 
-pub struct LibraryController<R>
+pub struct LibraryController<R, P = radishmemory_source_vault::PlatformKeyProvider>
 where
     R: ApplicationRuntime,
+    P: radishmemory_source_vault::LibraryProvider,
 {
-    library: LocalLibrary<R>,
+    library: crate::backend::Library<R, P>,
+    pub(crate) refresh_error: Option<DesktopError>,
+    view: LibraryView,
+}
+
+#[derive(Clone, Default)]
+pub struct LibraryView {
     sources: Vec<SourceLineageSummary>,
     selected_lineage_id: Option<Identifier>,
     versions: Vec<SourceVersionSummary>,
@@ -24,54 +31,75 @@ where
     search_results: Vec<SourceSearchResult>,
 }
 
-impl<R> LibraryController<R>
+impl<R, P: radishmemory_source_vault::LibraryProvider> LibraryController<R, P>
 where
     R: ApplicationRuntime,
+    P: radishmemory_source_vault::LibraryProvider,
 {
-    pub fn bootstrap(paths: &ApplicationPaths, mut runtime: R) -> Result<Self, DesktopError> {
-        let profile = load_or_create_host_profile(paths, &mut runtime)?;
-        let config = LocalLibraryConfig::phase1_local(
-            profile.namespace_id().clone(),
-            profile.device_id().clone(),
-        )
-        .map_err(|source| DesktopError::application(&source))?;
-        let library = LocalLibrary::open(paths.database_path(), runtime, config)
-            .map_err(|source| DesktopError::application(&source))?;
+    pub(crate) fn from_library(
+        library: crate::backend::Library<R, P>,
+    ) -> Result<Self, DesktopError> {
         let mut controller = Self {
             library,
-            sources: Vec::new(),
-            selected_lineage_id: None,
-            versions: Vec::new(),
-            selected_source_id: None,
-            search_results: Vec::new(),
+            refresh_error: None,
+            view: LibraryView::default(),
         };
         controller.refresh_sources()?;
         Ok(controller)
     }
 
+    pub(crate) fn snapshot(&self) -> LibraryView {
+        self.view.clone()
+    }
+    pub(crate) fn backend(&mut self) -> &mut crate::backend::Library<R, P> {
+        &mut self.library
+    }
+    fn refresh_after_commit(&mut self, selected: Option<&Identifier>) {
+        self.refresh_error = self
+            .refresh_sources()
+            .and_then(|()| {
+                if let Some(lineage) = selected {
+                    self.select_lineage(lineage)
+                } else {
+                    Ok(())
+                }
+            })
+            .err();
+    }
+    fn require_no_original(&self) -> Result<(), DesktopError> {
+        if self.library.holds_original() {
+            Err(crate::backend::recovery_required())
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn refresh_sources(&mut self) -> Result<(), DesktopError> {
-        let previous = self.selected_lineage_id.clone();
-        self.sources = self
+        let previous = self.view.selected_lineage_id.clone();
+        self.view = LibraryView::default();
+        self.view.sources = self
             .library
             .list_sources(0, CATALOG_PAGE_SIZE)
             .map_err(|source| DesktopError::application(&source))?;
         let selected = previous
             .filter(|lineage_id| {
-                self.sources
+                self.view
+                    .sources
                     .iter()
                     .any(|source| source.lineage_id() == lineage_id)
             })
             .or_else(|| {
-                self.sources
+                self.view
+                    .sources
                     .first()
                     .map(|source| source.lineage_id().clone())
             });
         if let Some(lineage_id) = selected {
             self.select_lineage(&lineage_id)
         } else {
-            self.selected_lineage_id = None;
-            self.selected_source_id = None;
-            self.versions.clear();
+            self.view.selected_lineage_id = None;
+            self.view.selected_source_id = None;
+            self.view.versions.clear();
             Ok(())
         }
     }
@@ -87,9 +115,9 @@ where
             .library
             .list_source_versions(lineage_id)
             .map_err(|source| DesktopError::application(&source))?;
-        self.selected_lineage_id = Some(lineage_id.clone());
-        self.selected_source_id = Some(current_source_id);
-        self.versions = versions;
+        self.view.selected_lineage_id = Some(lineage_id.clone());
+        self.view.selected_source_id = Some(current_source_id);
+        self.view.versions = versions;
         Ok(())
     }
 
@@ -101,7 +129,7 @@ where
         {
             return Err(selection_invalid());
         }
-        self.selected_source_id = Some(source_id.clone());
+        self.view.selected_source_id = Some(source_id.clone());
         Ok(())
     }
 
@@ -109,13 +137,12 @@ where
         &mut self,
         request: &FileReadRequest,
     ) -> Result<FileCaptureReceipt, DesktopError> {
+        self.require_no_original()?;
         let receipt = self
             .library
             .import_new_source(request)
             .map_err(|source| DesktopError::application(&source))?;
-        let lineage_id = receipt.lineage_id().clone();
-        self.refresh_sources()?;
-        self.select_lineage(&lineage_id)?;
+        self.refresh_after_commit(Some(receipt.lineage_id()));
         Ok(receipt)
     }
 
@@ -127,12 +154,12 @@ where
             .selected_lineage_id
             .clone()
             .ok_or_else(selection_invalid)?;
+        self.require_no_original()?;
         let receipt = self
             .library
             .update_source(&lineage_id, request)
             .map_err(|source| DesktopError::application(&source))?;
-        self.refresh_sources()?;
-        self.select_lineage(&lineage_id)?;
+        self.refresh_after_commit(Some(receipt.lineage_id()));
         Ok(receipt)
     }
 
@@ -150,12 +177,13 @@ where
     }
 
     pub fn search(&mut self, query: &str) -> Result<(), DesktopError> {
+        self.view.search_results.clear();
         if query.trim().is_empty() {
-            self.search_results.clear();
+            self.view.search_results.clear();
             return Ok(());
         }
         let query = NonEmptyText::new(query.to_owned()).map_err(|_| selection_invalid())?;
-        self.search_results = self
+        self.view.search_results = self
             .library
             .search_sources(query, SEARCH_RESULT_LIMIT, [Sensitivity::Personal])
             .map_err(|source| DesktopError::application(&source))?;
@@ -167,15 +195,16 @@ where
             .selected_lineage_id
             .clone()
             .ok_or_else(selection_invalid)?;
+        self.require_no_original()?;
         let evidence = self
             .library
             .delete_source_lineage(&lineage_id)
             .map_err(|source| DesktopError::application(&source))?;
-        self.search_results.clear();
-        self.selected_lineage_id = None;
-        self.selected_source_id = None;
-        self.versions.clear();
-        self.refresh_sources()?;
+        self.view.search_results.clear();
+        self.view.selected_lineage_id = None;
+        self.view.selected_source_id = None;
+        self.view.versions.clear();
+        self.refresh_after_commit(None);
         Ok(evidence)
     }
 
@@ -189,9 +218,12 @@ where
         self.library
             .rebuild_recall()
             .map_err(|source| DesktopError::application(&source))?;
-        self.refresh_sources()
+        self.refresh_after_commit(None);
+        Ok(())
     }
+}
 
+impl LibraryView {
     #[must_use]
     pub fn sources(&self) -> &[SourceLineageSummary] {
         &self.sources
@@ -234,26 +266,49 @@ where
     }
 }
 
-impl<R> std::fmt::Debug for LibraryController<R>
+impl<R, P> std::fmt::Debug for LibraryController<R, P>
 where
     R: ApplicationRuntime,
+    P: radishmemory_source_vault::LibraryProvider,
 {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("LibraryController")
-            .field("source_count", &self.sources.len())
-            .field("version_count", &self.versions.len())
-            .field("search_result_count", &self.search_results.len())
+            .field("source_count", &self.view.sources.len())
+            .field("version_count", &self.view.versions.len())
+            .field("search_result_count", &self.view.search_results.len())
             .finish_non_exhaustive()
     }
 }
 
-fn selection_invalid() -> DesktopError {
+pub(crate) fn selection_invalid() -> DesktopError {
     DesktopError::without_source(
         DesktopErrorCode::LocalLibrary,
         DesktopErrorReason::SelectionInvalid,
         false,
     )
+}
+
+impl<R: ApplicationRuntime> LibraryController<R> {
+    pub fn bootstrap(paths: &ApplicationPaths, mut runtime: R) -> Result<Self, DesktopError> {
+        let profile = load_or_create_host_profile(paths, &mut runtime)?;
+        let config = LocalLibraryConfig::phase1_local(
+            profile.namespace_id().clone(),
+            profile.device_id().clone(),
+        )
+        .map_err(|source| DesktopError::application(&source))?;
+        let library = LocalLibrary::open(paths.database_path(), runtime, config)
+            .map_err(|source| DesktopError::application(&source))?;
+        Self::from_library(crate::backend::Library::Plain(library))
+    }
+}
+impl<R: ApplicationRuntime, P: radishmemory_source_vault::LibraryProvider> std::ops::Deref
+    for LibraryController<R, P>
+{
+    type Target = LibraryView;
+    fn deref(&self) -> &Self::Target {
+        &self.view
+    }
 }
 
 #[cfg(test)]

@@ -1,51 +1,66 @@
-# P1-S05 macOS 宿主接入准备
+# P1-S05 桌面加密宿主接入
 
-状态：`P1-S05 host recovery preparation — dependency approval pending`（2026-10-01）。
+状态：`P1-S05 encrypted desktop integration — native acceptance pending`（2026-10-01）。
 
-项目所有者已授权继续 macOS 宿主接入。本批先完成现有依赖范围内的恢复接口；桌面依赖连线、实际 UI 接入与真实平台验收分别记录，不把准备工作视为宿主已经切换。
+项目所有者已授权实现 macOS 宿主接入，并在本任务批准下述依赖连线。恢复前置改动已提交为 `b982cec`；本批继续完成 desktop worker、共用 controller、显式加密 / 维护界面和诊断抑制。默认启动保留 SQLite v6 入口，不以合成测试宣称真实系统凭据或 GUI 验收已完成。
 
-## 当前实现
+## 实现与操作边界
 
-application 已复用既有 Source Vault 精确放弃能力，提供 `inspect_capture_abandonment` 与 `abandon_capture`。前者只认证并选择不透明 target，不授权删除；后者必须在宿主获得针对该 target 的明确确认后调用，继续复验原 request / attempt / locator 与文件身份。不清理未知文件、不删除已提交来源、不修改 canonical 删除语义。location 和打开后的 library 均可调用；未完成的派生修复仍须先明确执行。
+所有存储、全库认证、迁移和 provider 操作均在一个串行 worker 内执行。UI 只发送显式动作并接收只读快照；系统文件选择器仍在主线程，选择结果作为一次性请求进入 worker，消费后不存入 host profile 或诊断。worker busy 时不接受第二条操作，退出时发送停止信号并 join；线程失败显示 `WorkerStopped`，不能伪造成功或空目录。
 
-`unfinished_delete_requests` 在认证 reader 内查询同 namespace 尚无 Completed 最新 evidence 的既有请求，包括已经执行完但尚未保存 evidence 的窗口。查询先通过既有 loader 复验最新 evidence 的身份、时间、计划及真实组件结果，再排除 Completed，不能只相信状态字段。它返回原 canonical `DeleteRequest`，只发现状态，不生成、扩大或自动执行请求。恢复不依赖 host 另存 request ID；后续执行仍校验原 device、授权和冻结计划。
+`LibraryController` 使用共用的目录、版本和选择逻辑，内部区分旧 `LocalLibrary` 与显式 `EncryptedLibrary`。桌面提供如下动作，初始化和迁移前销毁旧 controller / SQLite 连接；普通打开失败不自动执行准备、迁移、重建或明文 fallback。
 
-两项能力均不新增数据库 schema、依赖、明文 journal 或长期格式。`SourceCapture`、`DeleteRequest` 作为已有 application 方法的 canonical 输入 / 输出类型由 application 公开导出，宿主不需要另建请求结构。
+| 动作 | 真实行为 |
+| --- | --- |
+| Open legacy plaintext | 默认旧 v6 入口；遇 v7 至 v12 仍拒绝 |
+| Open encrypted objects | 只加载既有 key，认证打开已迁移库并发现恢复状态 |
+| Prepare key | 确认后调用既有初始化协调器；可能创建系统凭据，已有 checkpoint 缺 key 时不重新生成 |
+| Migrate / resume bodies | 确认后使用既有 key 执行 v7 / v8 正文迁移或精确恢复；之后须显式打开 |
+| Verify / Rebuild recall | 分别只核对或显式重建派生行；加密打开失败时仍使用同一目录 / profile，拒绝修复损坏 canonical 或自动推进 pending |
+| Refresh | 重新读取目录与恢复状态；不重复先前写入 |
 
-## 待接入的宿主流程
+界面明确显示 FTS 仍保留完整可读正文。初始化、迁移及放弃的确认窗口冻结其它操作，避免用户确认期间当前选择或 inspected target 被 UI 动作替换。各 coordinator 仍在实际执行时复验状态，抵抗其它进程在确认期间改变目录。
 
-1. 现有默认 v6 入口保留；提供显式加密打开、首次准备与迁移恢复动作。每个动作保留既有 namespace / device。迁移前关闭旧连接；打开失败不自动初始化 key、降级读取或新建空库。
-2. 存储、全库认证、迁移与系统 provider 操作移入单一串行 worker，界面只发送用户动作并接收状态。系统文件选择器保留一次性文件授权；路径消费后不写入 host state 或持久诊断。
-3. worker 在执行 capture 前持有完整原请求。提交返回失败时保留它并显示“重试原请求”；目录刷新失败须与提交失败区分，不能因刷新错误再次导入。新变更和重复点击在待恢复操作结束前被阻止。
-4. 进程重启后，已提交 capture 通过目录读取恢复可见；未提交 capture 若原快照丢失，不能从 fingerprint 或外部文件伪造精确重试。界面呈现真实 pending 状态，允许用户明确确认放弃当前精确 target，完成后才允许新导入。本批方案不添加磁盘快照 journal，不声称跨进程保存了原明文请求。
-5. 删除失败保留原请求，重启后通过数据库发现原授权，用户显式继续；操作完成但 evidence 未保存时沿原请求补全真实执行 / evidence，不根据当前选择重新规划。Failed / Partial / Completed 仍分别展示。
-6. 普通打开失败后保留原位置 / profile 的维护入口；verify 不修复，rebuild 仅修复已认证 canonical 的派生行。未知文件、对象缺失、错 key 与 canonical 损坏继续失败关闭。
-7. 显示稳定有界的 key missing、locked、denied、cancelled、authentication 与 database 原因。访问真实 provider 前安装经验证的日志抑制策略；不得输出路径、slot identity、原请求正文、密钥或上游诊断。
+## 原请求和恢复
 
-关闭期间不能静默丢弃待重试的内存快照；界面应提示关闭会失去当前快照及其后续恢复限制。worker 的 busy、错误和停止状态必须真实，不能通过空列表或成功通知掩盖任务尚在执行、线程失败或读取失败。
+worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失败保留同一快照和 provenance，阻止新写入、切换库和重新准备；“Retry original request”不重新读外部文件，也不生成新 ID。提交成功立即释放快照，之后目录 / 选择刷新失败单独显示，保留“已提交”的真实结果并引导 Refresh，不提供重复 capture 的错误暗示。一般读取错误隐藏旧 UI 数据，显式 Refresh / reopen 成功后再恢复显示。
 
-## 待批准的依赖连线
+原 capture 仅在内存持有，不新增明文磁盘 journal，不承诺在崩溃后保留快照或清零全部进程内副本。关闭时若仍有原请求，提示快照损失与后续限制；busy 时取消关闭请求，等待真实执行结果。进程被强制结束不具备该交互保证。重启后已提交 capture 通过目录恢复；未提交 capture 若快照丢失，不允许从 fingerprint 或外部文件伪造精确重试。认证 inspect 只保留不透明 target，明确确认后才调用精确放弃；没有自动清理。未知文件、已提交来源和其它库 target 不在其授权范围。
 
-按照 `AGENTS.md` 的依赖 / lockfile 授权规则，已请求以下精确范围，尚未修改 manifest 或 lockfile：
+删除失败保留原 `DeleteRequest`。`unfinished_delete_requests` 在认证 reader 内发现同 namespace 尚无 Completed 最新 evidence 的原授权，包括执行已结束但 evidence 尚未落盘的窗口。它先复验最新 evidence 的身份、时间、计划和真实持久化组件结果，再排除 Completed；不只过滤 status 字段。重启恢复按钮绑定原 request ID 和完整请求，明确继续时不重新规划当前选择的闭包。完成、失败或部分状态按真实 evidence 展示；外部原件、导出、备份和其它设备不属于本地回执。
+
+若请求在 durable mutation 之前因永久冲突失败，worker 仍保留它以免误判提交边界；用户可以保留窗口进行诊断，或确认关闭以丢弃内存副本。只有实际存在并认证通过的 uncommitted capture 才出现精确放弃入口，不能凭 UI 错误状态合成删除授权。
+
+## 有界诊断与日志策略
+
+`DesktopError` 只保留 application operation / code / reason、Source Vault code 以及数据库枚举和数值错误码。key missing、locked、denied、cancelled、authentication 与 database 原因可区分，不保存路径、slot identity、正文、密钥或上游错误链。
+
+创建生产 worker 前安装 process-wide 无输出 `log::Log`，设置等级 Off；即使上游提高等级，这个 logger 仍没有 sink。已有 logger 导致安装失败时不创建 worker、不访问 provider。panic hook 丢弃任意 payload，worker 通过 channel 断开报告线程失败。该策略牺牲进程原始 panic 诊断以保护可能携带私密内容的 payload；不新增文件、网络或 telemetry 输出。
+
+检查器对 `logging.rs` 的完整已审阅内容保存 SHA-256，变更必须重新审阅；只放行该精确文件，其余第一方源文件继续禁止 log / tracing / print sink。检查器回归覆盖精确实现通过、该文件追加输出被拒绝，以及其它文件的输出仍被拒绝。隔离子进程测试验证 logger、等级被上游提高与带合成敏感标记的 panic 都不输出该标记；另在已有 logger 的隔离进程证明安装失败会阻止 worker 创建。此证据不覆盖原生库 stderr、系统崩溃报告或真实 Keychain 的诊断行为，仍需原生验收。
+
+## 已批准的依赖连线
 
 | 位置 | 声明 | 用途与影响 |
 | --- | --- | --- |
-| desktop runtime | `radishmemory-source-vault.workspace = true`，workspace `=0.1.0` | 直接引用已构建可达的 sealed provider 和有界错误，不新增第三方 package |
-| desktop runtime / workspace | `log = "=0.4.34"`，沿用 lockfile 版本 | 在系统凭据调用前建立可测试的日志抑制策略；现有 MIT / Apache-2.0 依赖，不初始化文件、网络或 telemetry sink |
-| desktop dev-dependency | 既有 Source Vault `acceptance-test-support` | 使用固定合成 key 驱动同一 worker / controller 流程；默认生产构建不启用 |
+| desktop runtime | `radishmemory-source-vault.workspace = true`，workspace `=0.1.0` | 直接引用已经可达的 sealed provider 和有界错误，不新增第三方 package |
+| desktop runtime / workspace | `log = "=0.4.34"` | 沿用已锁定 MIT / Apache-2.0 版本，安装无输出策略 |
+| desktop dev-dependency | Source Vault `acceptance-test-support` | 以固定合成 key 驱动相同 worker / controller 流程；默认生产构建不启用 |
 
-批准后通过离线 Cargo 解析维护 lockfile 依赖边，逐项复核第三方 name / version / source / checksum 集合不变；同步依赖基线、notices 文件摘要和精确 manifest 检查。预计为分钟级本地解析与构建，不访问真实 Keychain，不启动 GUI，不改系统或远程状态。撤回本批声明及调用可恢复旧构建关系；不引入新许可或上游版本升级。
+离线 Cargo 解析仅增加 desktop 的两条 lockfile 边；全部 453 个 package 的 name / version / source / checksum 集合与改动前逐项一致。依赖基线、manifest 精确检查与 notices lockfile 摘要同步更新。没有下载或升级第三方包，没有访问真实系统密钥库，也没有新增持久 schema、依赖宿主 journal 或第二套删除算法。
 
-诊断检查器当前禁止所有未审阅日志入口。日志策略落地时须为精确抑制实现建立可复验的检查和回归，保留其余源文件的禁止规则，不能通过关闭或泛化豁免绕过正文 / 凭据日志门禁。
+## 验收证据
 
-## 验收与未完成范围
+前置 application 批次通过完整检查：245 个仓库文件、25 个 Rust test suites 共 334 项通过、10 个 ignored helper 由父测试调用，42 项 Python 检查器回归、M0 fixture（12 场景 / 86 操作 / 12 gate）及 compile-fail doctest 通过。本批 desktop 已通过 targeted fmt、locked all-targets / all-features Clippy 与 26 项测试（11 项新增）；另一个 ignored 日志子测试由父测试在隔离进程执行。
 
-application 合成测试覆盖：删除 intent 或 execution 后重启发现同一原请求；Completed 后不再列为未完成；丢失 capture 请求后只观察状态，不自动清理；显式放弃后保留旧来源并拒绝原请求复活；其它库 target 和未知文件拒绝且保持原文件；Completed evidence 的 device 与请求不符时返回错误，不能隐藏成无待恢复任务。
+新增覆盖：显式准备与缺 key 不重建；publish / commit 后原 bytes / provenance 重试；阻止新请求替换；提交成功但目录刷新失败不保留 retry；原请求重试成功后恢复检查失败单独回报；重启丢失 capture 后只观察并明确放弃；删除 intent / execution / evidence commit 前后四个恢复窗口；provider 失败诊断及旧视图隐藏；真实 worker 线程执行、串行 busy 拒绝、停止和 join；failed-open 后维护位置保留；加密更新、搜索和历史版本导出；隔离日志 / panic 抑制。
 
-复核另发现既有 `DeletionEvidence` loader 只检查 `evidence_digest` profile / 格式，不重算该摘要；历史 fixture 使用的摘要内容也不统一。本批不改变既有摘要语义或兼容性，不把该字段当作数据库未被恶意改写的密码学证明。摘要契约、历史兼容和统一复算需要独立收口；本批恢复判断依据经复验的请求、计划与持久化组件结果。
+最终 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 在沙箱外完整通过：249 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 Rust test suites 共 345 项通过；11 个 ignored helper 由父测试调用。43 项 Python 检查器回归、M0 fixture（12 场景 / 86 操作 / 12 gate）、1 个 compile-fail doctest、默认 desktop 构建和 `git diff --check` 通过。默认 normal / build / features 依赖图未启用 `acceptance-test-support`。首次完整检查仅在既有 P1-F17 临时端口处受沙箱拒绝，获准重跑；最终代码与已审阅日志源码摘要已复验。所有测试使用合成资料、固定测试 key 或随机合成 ID，清理自身隔离目录、子进程和临时端口；无长期测试服务。日志留在仓库外任务临时目录，不包含真实个人资料。
 
-最终 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 在沙箱外完整通过：245 个仓库文件、notices、fmt、locked all-targets / all-features Clippy、25 个 Rust test suites 共 334 项通过，10 个 ignored helper 由父测试调用。本批新增 4 项 application 回归；42 项 Python 检查器回归、M0 fixture（12 场景 / 86 操作 / 12 gate）、1 个 compile-fail doctest 与 `git diff --check` 通过。首次完整检查仅在既有 P1-F17 临时端口处被沙箱拒绝，经授权重跑；摘要篡改负例暴露上述既有摘要复算缺口，最终身份不符负例验证现有 canonical 契约，未扩大摘要保证。
+## 未完成范围
 
-测试只使用合成资料和固定测试 key，并清理自身隔离目录、子进程和临时端口；没有新增后台服务。验证日志保留在仓库外任务临时文件中。当前尚未完成 worker、controller / UI 接线、关闭提示或日志策略；默认桌面仍使用 SQLite v6 inline plaintext body。真实 Keychain、GUI、用户授权提示、取消 / 锁定、多实例和端到端验收未执行；Windows / Linux 保持后置集中检查点。
+既有 `DeletionEvidence` loader 只检查 `evidence_digest` profile / 格式，不重算摘要；历史 fixture 摘要内容不统一。本批不改变摘要语义或兼容性，不将该字段视作整库未被恶意改写的密码学证明。摘要契约、历史兼容与统一复算需要独立收口；恢复判断使用经复验的请求、计划与持久化组件结果。
 
-原始正文对象加密不等于整个资料库静态加密，FTS 仍保存完整可读正文。真实系统访问、桌面启动、slot 范围及测试后的清理另行说明并取得授权。
+真实 Keychain 读写、用户授权提示、取消 / 锁定、实际 GUI 关闭确认、多实例和端到端验收未执行；Windows / Linux 保持后置集中检查点。下一批需先列出隔离测试目录、合成 namespace / device 对应的精确 slot、运行命令、预计时长、系统提示及清理 / 保留方式，再取得当前任务授权。删除测试 slot 前必须确认对应合成对象库不再需要，不能将删除 key 当作普通回滚。
+
+默认启动仍是 SQLite v6 inline plaintext body；显式原始对象加密不等于整个资料库静态加密，FTS 保留完整正文，旧 SQLite 页、快照和备份也未证明物理清除。中文检索、目录第 201 条、性能和默认 v6 的 failed-open 修复等质量缺口不在本批闭环范围，不授权真实个人资料使用。

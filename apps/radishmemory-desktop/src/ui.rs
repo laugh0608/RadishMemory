@@ -1,284 +1,215 @@
+use crate::controller::LibraryView;
+use crate::worker::{Command, Snapshot, Worker};
+use crate::{DesktopError, NativeFilePicker, PickerOutcome};
 use eframe::egui;
-use radishmemory_application::{
-    DeletionOverallStatus, FileCaptureOutcome, Identifier, SourceLineageSummary,
-    SourceVersionSummary,
-};
-
-use crate::{
-    ApplicationPaths, DesktopError, LibraryController, NativeFilePicker, PickerOutcome,
-    ProductionRuntime,
-};
+use radishmemory_application::{Identifier, SourceLineageSummary};
 
 pub struct RadishMemoryApp {
-    controller: Option<LibraryController<ProductionRuntime>>,
-    startup_error: Option<DesktopError>,
+    worker: Option<Worker>,
+    controller: Option<LibraryView>,
+    state: Snapshot,
     search_query: String,
     notice: Option<Notice>,
+    refresh_notice: Option<String>,
     last_deletion: Option<radishmemory_application::DeletionEvidence>,
     confirm_delete: bool,
+    confirmation: Option<Confirmation>,
+    allow_close: bool,
+}
+#[derive(Clone, Copy)]
+enum Confirmation {
+    Initialize,
+    Migrate,
+    Abandon,
+    Close,
 }
 
 impl RadishMemoryApp {
     #[must_use]
     pub fn bootstrap() -> Self {
-        match open_production_controller() {
-            Ok(controller) => Self {
-                controller: Some(controller),
-                startup_error: None,
-                search_query: String::new(),
-                notice: None,
-                last_deletion: None,
-                confirm_delete: false,
-            },
-            Err(error) => Self {
-                controller: None,
-                startup_error: Some(error),
-                search_query: String::new(),
-                notice: None,
-                last_deletion: None,
-                confirm_delete: false,
-            },
+        let mut app = Self {
+            worker: None,
+            controller: None,
+            state: Snapshot::default(),
+            search_query: String::new(),
+            notice: None,
+            refresh_notice: None,
+            last_deletion: None,
+            confirm_delete: false,
+            confirmation: None,
+            allow_close: false,
+        };
+        match Worker::start() {
+            Ok(worker) => {
+                app.worker = Some(worker);
+                app.send(Command::OpenPlain);
+            }
+            Err(error) => app.notice = Some(Notice::error(&error)),
+        }
+        app
+    }
+    fn can_mutate(&self) -> bool {
+        self.state.recovery_known
+            && !self.state.holds_original
+            && !self.state.abandonment_available
+            && self.state.deletion_requests.is_empty()
+    }
+    fn busy(&self) -> bool {
+        self.worker.as_ref().is_some_and(|w| w.busy)
+    }
+    fn send(&mut self, command: Command) {
+        if let Some(worker) = &mut self.worker {
+            match worker.send(command) {
+                Ok(()) => {
+                    self.notice = Some(Notice::neutral("Working…"));
+                    self.refresh_notice = None;
+                }
+                Err(error) => self.notice = Some(Notice::error(&error)),
+            }
         }
     }
-
-    fn retry_startup(&mut self) {
-        match open_production_controller() {
-            Ok(controller) => {
-                self.controller = Some(controller);
-                self.startup_error = None;
-                self.notice = Some(Notice::success("Local library opened."));
-            }
-            Err(error) => {
-                self.startup_error = Some(error);
-                self.notice = None;
-            }
+    fn poll(&mut self) {
+        let Some(mut state) = self.worker.as_mut().and_then(Worker::poll) else {
+            return;
+        };
+        self.controller = state.view.take();
+        self.notice = if let Some(error) = state.error.take() {
+            Some(Notice::error(&error))
+        } else {
+            state.message.take().map(|message| Notice {
+                kind: NoticeKind::Success,
+                message,
+            })
+        };
+        self.refresh_notice = state.refresh_error.take().map(|error| format!("The operation completed, but the view could not refresh: {}. Use Refresh; do not repeat the write.", redacted_error(&error)));
+        if let Some(evidence) = state.last_deletion.take() {
+            self.last_deletion = Some(evidence);
         }
+        self.state = state;
     }
-
     fn execute(&mut self, action: UiAction) {
         match action {
-            UiAction::RetryStartup => self.retry_startup(),
-            UiAction::Import => self.import_source(),
-            UiAction::Update => self.update_source(),
-            UiAction::Export => self.export_source(),
-            UiAction::Verify => self.verify_library(),
-            UiAction::Rebuild => self.rebuild_library(),
-            UiAction::Search => self.search(),
-            UiAction::SelectLineage(lineage_id) => {
-                if let Some(controller) = self.controller.as_mut()
-                    && let Err(error) = controller.select_lineage(&lineage_id)
-                {
-                    self.notice = Some(Notice::error(&error));
+            UiAction::RetryStartup => self.send(Command::OpenPlain),
+            UiAction::Import | UiAction::Update => match NativeFilePicker::pick_import() {
+                Ok(PickerOutcome::Selected(request)) => {
+                    self.send(if matches!(action, UiAction::Import) {
+                        Command::Import(request)
+                    } else {
+                        Command::Update(request)
+                    })
+                }
+                Ok(PickerOutcome::Cancelled) => {
+                    self.notice = Some(Notice::neutral("Selection cancelled. No library changes."))
+                }
+                Err(error) => self.notice = Some(Notice::error(&error)),
+            },
+            UiAction::Export => {
+                let name = self
+                    .controller
+                    .as_ref()
+                    .and_then(LibraryView::selected_version)
+                    .and_then(|v| v.title())
+                    .map(|t| t.as_str().to_owned());
+                match NativeFilePicker::pick_export(name.as_deref()) {
+                    Ok(PickerOutcome::Selected(request)) => self.send(Command::Export(request)),
+                    Ok(PickerOutcome::Cancelled) => {
+                        self.notice = Some(Notice::neutral("Export cancelled."))
+                    }
+                    Err(error) => self.notice = Some(Notice::error(&error)),
                 }
             }
-            UiAction::SelectVersion(source_id) => {
-                if let Some(controller) = self.controller.as_mut()
-                    && let Err(error) = controller.select_source_version(&source_id)
-                {
-                    self.notice = Some(Notice::error(&error));
-                }
-            }
+            UiAction::Verify => self.send(Command::Verify),
+            UiAction::Rebuild => self.send(Command::Rebuild),
+            UiAction::Search => self.send(Command::Search(self.search_query.clone())),
+            UiAction::SelectLineage(id) => self.send(Command::SelectLineage(id)),
+            UiAction::SelectVersion(id) => self.send(Command::SelectVersion(id)),
             UiAction::SelectSearchResult {
                 lineage_id,
                 source_id,
-            } => {
-                if let Some(controller) = self.controller.as_mut() {
-                    let result = controller
-                        .select_lineage(&lineage_id)
-                        .and_then(|()| controller.select_source_version(&source_id));
-                    if let Err(error) = result {
-                        self.notice = Some(Notice::error(&error));
-                    }
-                }
-            }
+            } => self.send(Command::SelectResult(lineage_id, source_id)),
             UiAction::RequestDelete => self.confirm_delete = true,
             UiAction::CancelDelete => self.confirm_delete = false,
-            UiAction::ConfirmDelete => self.delete_source(),
+            UiAction::ConfirmDelete => {
+                self.confirm_delete = false;
+                self.send(Command::Delete);
+            }
+            UiAction::Command(command) => self.send(command),
+            UiAction::Confirm(confirmation) => self.confirmation = Some(confirmation),
         }
-    }
-
-    fn import_source(&mut self) {
-        let outcome = NativeFilePicker::pick_import();
-        match outcome {
-            Ok(PickerOutcome::Cancelled) => {
-                self.notice = Some(Notice::neutral("Import cancelled. No library changes."));
-            }
-            Ok(PickerOutcome::Selected(request)) => {
-                let Some(controller) = self.controller.as_mut() else {
-                    self.notice = Some(Notice::neutral("Local library is unavailable."));
-                    return;
-                };
-                let result = controller.import_source(&request);
-                self.notice = Some(match result {
-                    Ok(receipt) => match receipt.outcome() {
-                        FileCaptureOutcome::Created => Notice::success("Source imported."),
-                        FileCaptureOutcome::Idempotent => {
-                            Notice::neutral("The selected bytes are already current.")
-                        }
-                        FileCaptureOutcome::Versioned => {
-                            Notice::success("A new source version was recorded.")
-                        }
-                    },
-                    Err(error) => Notice::error(&error),
-                });
-            }
-            Err(error) => self.notice = Some(Notice::error(&error)),
-        }
-    }
-
-    fn update_source(&mut self) {
-        let outcome = NativeFilePicker::pick_import();
-        match outcome {
-            Ok(PickerOutcome::Cancelled) => {
-                self.notice = Some(Notice::neutral("Update cancelled. No library changes."));
-            }
-            Ok(PickerOutcome::Selected(request)) => {
-                let Some(controller) = self.controller.as_mut() else {
-                    self.notice = Some(Notice::neutral("Local library is unavailable."));
-                    return;
-                };
-                let result = controller.update_selected(&request);
-                self.notice = Some(match result {
-                    Ok(receipt) if receipt.outcome() == FileCaptureOutcome::Idempotent => {
-                        Notice::neutral("The selected bytes are already current.")
-                    }
-                    Ok(_) => Notice::success("Source version updated."),
-                    Err(error) => Notice::error(&error),
-                });
-            }
-            Err(error) => self.notice = Some(Notice::error(&error)),
-        }
-    }
-
-    fn export_source(&mut self) {
-        let suggested_name = self
-            .controller
-            .as_ref()
-            .and_then(LibraryController::selected_version)
-            .and_then(SourceVersionSummary::title)
-            .map(|title| title.as_str().to_owned());
-        match NativeFilePicker::pick_export(suggested_name.as_deref()) {
-            Ok(PickerOutcome::Cancelled) => {
-                self.notice = Some(Notice::neutral("Export cancelled. No file was written."));
-            }
-            Ok(PickerOutcome::Selected(request)) => {
-                let Some(controller) = self.controller.as_ref() else {
-                    self.notice = Some(Notice::neutral("Local library is unavailable."));
-                    return;
-                };
-                let result = controller.export_selected(&request);
-                self.notice = Some(match result {
-                    Ok(_) => Notice::success("Managed bytes exported without overwrite."),
-                    Err(error) => Notice::error(&error),
-                });
-            }
-            Err(error) => self.notice = Some(Notice::error(&error)),
-        }
-    }
-
-    fn verify_library(&mut self) {
-        let Some(controller) = self.controller.as_ref() else {
-            self.notice = Some(Notice::neutral("Local library is unavailable."));
-            return;
-        };
-        let result = controller.verify();
-        self.notice = Some(match result {
-            Ok(()) => Notice::success("Canonical facts and derived recall are consistent."),
-            Err(error) => Notice::error(&error),
-        });
-    }
-
-    fn rebuild_library(&mut self) {
-        let Some(controller) = self.controller.as_mut() else {
-            self.notice = Some(Notice::neutral("Local library is unavailable."));
-            return;
-        };
-        let result = controller.rebuild();
-        self.notice = Some(match result {
-            Ok(()) => Notice::success("Derived recall was rebuilt from verified facts."),
-            Err(error) => Notice::error(&error),
-        });
-    }
-
-    fn search(&mut self) {
-        let Some(controller) = self.controller.as_mut() else {
-            self.notice = Some(Notice::neutral("Local library is unavailable."));
-            return;
-        };
-        let result = controller.search(&self.search_query);
-        self.notice = Some(match result {
-            Ok(()) if self.search_query.trim().is_empty() => Notice::neutral("Search cleared."),
-            Ok(()) => Notice::success("Local-only search completed."),
-            Err(error) => Notice::error(&error),
-        });
-    }
-
-    fn delete_source(&mut self) {
-        self.confirm_delete = false;
-        let Some(controller) = self.controller.as_mut() else {
-            self.notice = Some(Notice::neutral("Local library is unavailable."));
-            return;
-        };
-        let result = controller.delete_selected_lineage();
-        self.notice = Some(match result {
-            Ok(evidence) => {
-                let notice = match evidence.params().overall_status {
-                    DeletionOverallStatus::Completed => Notice::success(
-                        "Local managed lineage deletion completed with persisted evidence.",
-                    ),
-                    DeletionOverallStatus::Pending => {
-                        Notice::neutral("Deletion remains pending and recall stays closed.")
-                    }
-                    DeletionOverallStatus::Partial | DeletionOverallStatus::Failed => {
-                        Notice::neutral(
-                            "Deletion did not fully complete; recall stays closed and evidence was retained.",
-                        )
-                    }
-                };
-                self.last_deletion = Some(evidence);
-                notice
-            }
-            Err(error) => Notice::error(&error),
-        });
     }
 }
 
 impl eframe::App for RadishMemoryApp {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.poll();
+        let context = ui.ctx().clone();
+        if self.busy() {
+            context.request_repaint_after(std::time::Duration::from_millis(80));
+        }
+        if context.input(|i| i.viewport().close_requested()) && !self.allow_close {
+            if self.busy() {
+                context.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.notice = Some(Notice::neutral(
+                    "An operation is still running. Wait for its real result before closing.",
+                ));
+            } else if self.state.holds_original {
+                context.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.confirmation = Some(Confirmation::Close);
+            }
+        }
+        let can_mutate = self.can_mutate();
         let mut action = None;
         egui::CentralPanel::default().show(ui, |ui| {
+            if self.confirmation.is_some() || self.confirm_delete { ui.disable(); }
+            if self.busy() { ui.spinner(); ui.label("Library worker is busy; repeated actions are disabled."); ui.disable(); }
+            if self.worker.as_ref().is_none_or(|w| w.stopped) { ui.label("Worker unavailable. Restart the app; no success is assumed."); ui.disable(); }
             ui.horizontal_wrapped(|ui| {
                 ui.heading("RadishMemory");
                 ui.separator();
                 ui.label("Local-only text library");
-                if self.controller.is_some() {
-                    if ui.button("Import file…").clicked() {
-                        action = Some(UiAction::Import);
-                    }
-                    if ui.button("Verify").clicked() {
-                        action = Some(UiAction::Verify);
-                    }
-                    if ui.button("Rebuild recall").clicked() {
-                        action = Some(UiAction::Rebuild);
-                    }
-                }
+                if self.controller.is_some() && ui.add_enabled(can_mutate, egui::Button::new("Import file…")).clicked() { action = Some(UiAction::Import); }
+                if ui.button("Refresh").clicked() { action = Some(UiAction::Command(Command::Refresh)); }
+                if ui.button("Verify").clicked() { action = Some(UiAction::Verify); }
+                if ui.button("Rebuild recall").clicked() { action = Some(UiAction::Rebuild); }
             });
+            ui.horizontal_wrapped(|ui| {
+                let can_switch = !self.state.holds_original;
+                if ui.add_enabled(can_switch, egui::Button::new("Open legacy plaintext")).clicked() { action = Some(UiAction::RetryStartup); }
+                if ui.add_enabled(can_switch, egui::Button::new("Open encrypted objects")).clicked() { action = Some(UiAction::Command(Command::OpenEncrypted)); }
+                if ui.add_enabled(can_switch, egui::Button::new("Prepare key…")).clicked() { action = Some(UiAction::Confirm(Confirmation::Initialize)); }
+                if ui.add_enabled(can_switch, egui::Button::new("Migrate / resume bodies…")).clicked() { action = Some(UiAction::Confirm(Confirmation::Migrate)); }
+            });
+            ui.small(if self.state.encrypted { "Encrypted object mode: FTS retains full readable text. This is not whole-library encryption." } else { "Default legacy mode: SQLite stores plaintext source bodies." });
+            if self.state.encrypted {
+                ui.horizontal_wrapped(|ui| {
+                    if ui.button("Inspect recovery").clicked() { action = Some(UiAction::Command(Command::InspectRecovery)); }
+                    if self.state.holds_original && ui.button("Retry original request").clicked() { action = Some(UiAction::Command(Command::RetryOriginal)); }
+                    if self.state.abandonment_available && ui.button("Abandon inspected capture…").clicked() { action = Some(UiAction::Confirm(Confirmation::Abandon)); }
+                });
+                if self.state.holds_capture { ui.label("Original plaintext snapshot is held in worker memory. Retry uses the same bytes and provenance."); }
+                if !self.state.recovery_known { ui.label("Recovery state is not verified. New mutations are disabled; inspect recovery or reopen after repair."); }
+                if self.state.abandonment_available && !self.state.holds_capture { ui.label("An unfinished capture exists, but its original snapshot is unavailable. It cannot be reconstructed from the selected file. Inspect and explicitly abandon to unblock it."); }
+                for id in &self.state.deletion_requests {
+                    if ui.add_enabled(!self.state.holds_original, egui::Button::new(format!("Continue persisted deletion {}", id.as_str()))).clicked() { action = Some(UiAction::Command(Command::ResumeDelete(id.clone()))); }
+                }
+            }
             if let Some(notice) = &self.notice {
                 ui.colored_label(notice.color(), &notice.message);
             }
+            if let Some(message) = &self.refresh_notice { ui.colored_label(egui::Color32::YELLOW, message); }
             ui.separator();
 
+            if let Some(evidence) = &self.last_deletion {
+                ui.label(format!("Latest local deletion: {:?}; {} real component results. Originals, exports and backups are outside this receipt.", evidence.params().overall_status, evidence.params().component_results.len()));
+            }
             let Some(controller) = self.controller.as_ref() else {
                 ui.vertical_centered(|ui| {
                     ui.add_space(80.0);
                     ui.heading("Local library unavailable");
-                    ui.label("RadishMemory failed closed before exposing library operations.");
-                    if let Some(error) = &self.startup_error {
-                        ui.monospace(redacted_error(error));
-                    }
+                    ui.label("Library data is unavailable. Use recovery, Refresh, or an explicit open action after preparation or repair.");
                     ui.add_space(12.0);
-                    if ui.button("Retry opening library").clicked() {
-                        action = Some(UiAction::RetryStartup);
+                    if ui.add_enabled(!self.state.holds_original, egui::Button::new(if self.state.encrypted { "Retry encrypted open" } else { "Retry legacy open" })).clicked() {
+                        action = Some(UiAction::Command(if self.state.encrypted { Command::OpenEncrypted } else { Command::OpenPlain }));
                     }
                 });
                 return;
@@ -337,13 +268,13 @@ impl eframe::App for RadishMemoryApp {
                         ui.label(format!("Versions: {}", source.version_count()));
                     });
                     content_ui.horizontal_wrapped(|ui| {
-                        if ui.button("Update from file…").clicked() {
+                        if ui.add_enabled(can_mutate, egui::Button::new("Update from file…")).clicked() {
                             action = Some(UiAction::Update);
                         }
                         if ui.button("Export selected version…").clicked() {
                             action = Some(UiAction::Export);
                         }
-                        if ui.button("Delete managed lineage…").clicked() {
+                        if ui.add_enabled(can_mutate, egui::Button::new("Delete managed lineage…")).clicked() {
                             action = Some(UiAction::RequestDelete);
                         }
                     });
@@ -475,15 +406,32 @@ impl eframe::App for RadishMemoryApp {
             }
         });
 
+        if let Some(confirmation) = self.confirmation {
+            egui::Window::new("Confirm explicit action").collapsible(false).resizable(false).show(&context, |ui| {
+                ui.label(match confirmation {
+                    Confirmation::Initialize => "Prepare a device-local key checkpoint for this library. This may write the system credential store. An existing missing key is never replaced. Continue with explicit body migration afterward.",
+                    Confirmation::Migrate => "Close the current library and migrate or resume its source bodies using the existing key. FTS remains plaintext. Do not delete the key afterward; it is required to reopen encrypted objects.",
+                    Confirmation::Abandon => "Permanently abandon exactly the inspected uncommitted capture. Its original request cannot be replayed afterward. Existing committed sources and unknown files are not targets.",
+                    Confirmation::Close => "Closing loses the original request held in memory. An unfinished capture then requires explicit abandonment or the exact original request from elsewhere. Persisted deletion authority can be discovered after restart.",
+                });
+                ui.horizontal(|ui| {
+                    if ui.button("Cancel").clicked() { self.confirmation = None; }
+                    if ui.button("Confirm").clicked() {
+                        self.confirmation = None;
+                        match confirmation {
+                            Confirmation::Initialize => action = Some(UiAction::Command(Command::InitializeKey)),
+                            Confirmation::Migrate => action = Some(UiAction::Command(Command::Migrate)),
+                            Confirmation::Abandon => action = Some(UiAction::Command(Command::Abandon)),
+                            Confirmation::Close => { self.allow_close = true; context.send_viewport_cmd(egui::ViewportCommand::Close); }
+                        }
+                    }
+                });
+            });
+        }
         if let Some(action) = action {
             self.execute(action);
         }
     }
-}
-
-fn open_production_controller() -> Result<LibraryController<ProductionRuntime>, DesktopError> {
-    let paths = ApplicationPaths::resolve()?;
-    LibraryController::bootstrap(&paths, ProductionRuntime)
 }
 
 fn source_label(source: &SourceLineageSummary) -> String {
@@ -520,6 +468,15 @@ fn redacted_error(error: &DesktopError) -> String {
             application.reason()
         ));
     }
+    if let Some(code) = error
+        .application_failure()
+        .and_then(|failure| failure.vault_code())
+    {
+        summary.push_str(&format!(" · vault={code:?}"));
+    }
+    if let Some(database) = error.vault_database() {
+        summary.push_str(&format!(" · database={database}"));
+    }
     if let Some(os_error_code) = error.os_error_code() {
         summary.push_str(&format!(" · os_error={os_error_code}"));
     }
@@ -527,6 +484,8 @@ fn redacted_error(error: &DesktopError) -> String {
 }
 
 enum UiAction {
+    Command(Command),
+    Confirm(Confirmation),
     RetryStartup,
     Import,
     Update,
@@ -557,13 +516,6 @@ struct Notice {
 }
 
 impl Notice {
-    fn success(message: &'static str) -> Self {
-        Self {
-            kind: NoticeKind::Success,
-            message: message.to_owned(),
-        }
-    }
-
     fn neutral(message: &'static str) -> Self {
         Self {
             kind: NoticeKind::Neutral,

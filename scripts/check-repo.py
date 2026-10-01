@@ -18,6 +18,8 @@ MAX_PATH_LENGTH = 180
 MAX_FILE_BYTES = 10 * 1024 * 1024
 MAX_AGENT_LINES = 180
 MAX_ACTIVE_DOC_LINES = 500
+# Reviewed sink-free logger + panic-payload suppression and isolated regression.
+HOST_LOGGING_POLICY_SHA256 = "22230b4a43bf5637a0522d75b5a2f1ed676b721a15834c9ecb519f95c2922a57"
 
 REQUIRED_FILES = (
     ".editorconfig",
@@ -42,6 +44,10 @@ REQUIRED_FILES = (
     "Cargo.toml",
     "apps/radishmemory-desktop/Cargo.toml",
     "apps/radishmemory-desktop/src/controller.rs",
+    "apps/radishmemory-desktop/src/logging.rs",
+    "apps/radishmemory-desktop/src/worker/tests.rs",
+    "apps/radishmemory-desktop/src/worker.rs",
+    "apps/radishmemory-desktop/src/backend.rs",
     "apps/radishmemory-desktop/src/error.rs",
     "apps/radishmemory-desktop/src/lib.rs",
     "apps/radishmemory-desktop/src/main.rs",
@@ -301,6 +307,7 @@ chacha20poly1305 = { version = \"=0.11.0\", default-features = false, features =
 directories = \"=6.0.0\"
 eframe = { version = \"=0.36.1\", default-features = false, features = [\"accesskit\", \"default_fonts\", \"wayland\", \"wgpu\", \"x11\"] }
 getrandom = { version = \"=0.4.3\", default-features = false }
+log = \"=0.4.34\"
 keyring-core = { version = \"=1.0.0\", default-features = false }
 radishmemory-application = { path = \"crates/radishmemory-application\", version = \"=0.1.0\" }
 radishmemory-core = { path = \"crates/radishmemory-core\", version = \"=0.1.0\" }
@@ -337,9 +344,14 @@ publish.workspace = true
 directories.workspace = true
 eframe.workspace = true
 getrandom.workspace = true
+log.workspace = true
+radishmemory-source-vault.workspace = true
 radishmemory-application.workspace = true
 rfd.workspace = true
 time.workspace = true
+
+[dev-dependencies]
+radishmemory-source-vault = { workspace = true, features = [\"acceptance-test-support\"] }
 
 [lints]
 workspace = true
@@ -1128,7 +1140,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 application encrypted use cases implemented; host integration next",
+            "Phase 1 encrypted desktop integration implemented; native acceptance next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1145,7 +1157,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 application encrypted use cases implemented; host integration next",
+            "Phase 1 encrypted desktop integration implemented; native acceptance next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1293,6 +1305,10 @@ def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None
     ):
         for path in sorted(source_root.rglob("*.rs")):
             text = path.read_text(encoding="utf-8")
+            if path.relative_to(repo_root).as_posix() == "apps/radishmemory-desktop/src/logging.rs":
+                if hashlib.sha256(path.read_bytes()).hexdigest() != HOST_LOGGING_POLICY_SHA256:
+                    errors.append("desktop logging policy differs from the reviewed sink-free implementation")
+                continue
             if diagnostic_sink.search(text):
                 errors.append(
                     f"Phase 1 source introduces an unreviewed diagnostic sink: "
@@ -1458,6 +1474,15 @@ def check_phase1_encrypted_source_vault_contract(
     repo_root: Path, errors: list[str]
 ) -> None:
     contracts = {
+        "docs/implementation/phase1-source-vault-host.md": (
+            "P1-S05 encrypted desktop integration — native acceptance pending",
+            "不新增明文磁盘 journal",
+            "单独显示",
+            "已有 logger 导致安装失败时不创建 worker",
+            "默认启动仍是 SQLite v6 inline plaintext body",
+            "FTS 保留完整正文",
+            "真实 Keychain",
+        ),
         "docs/implementation/phase1-source-vault-application.md": (
             "P1-S04 application encrypted use cases implemented — synthetic acceptance",
             "OriginalRequestRequired",
@@ -1545,7 +1570,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 application encrypted use cases implemented; host integration next",
+            "Phase 1 encrypted desktop integration implemented; native acceptance next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1632,7 +1657,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 application encrypted use cases implemented; host integration next",
+            "Phase 1 encrypted desktop integration implemented; native acceptance next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1707,7 +1732,7 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 application encrypted use cases implemented; host integration next",
+            "Phase 1 encrypted desktop integration implemented; native acceptance next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
             "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",

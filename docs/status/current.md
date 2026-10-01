@@ -4,9 +4,9 @@
 
 ## 当前阶段
 
-`Phase 1 application encrypted use cases implemented; host integration next`
+`Phase 1 encrypted desktop integration implemented; native acceptance next`
 
-M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，现已接入显式 application 加密用例，默认桌面宿主尚未切换。默认桌面产品入口仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 承载正文迁移状态与已迁移对象库，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；默认 `LocalLibrary` 入口拒绝 v7 / v8 / v9 / v10 / v11 / v12，显式加密入口只接受迁移完成的 v8 至 v12。项目具备受约束的工程原型，但中文找回、完整目录访问、启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
+M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，现已接入显式 application 加密用例与桌面 worker / 恢复界面，默认启动仍保留旧入口。默认桌面产品入口仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 承载正文迁移状态与已迁移对象库，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；默认 `LocalLibrary` 入口拒绝 v7 / v8 / v9 / v10 / v11 / v12，显式加密入口只接受迁移完成的 v8 至 v12。项目具备受约束的工程原型，但中文找回、完整目录访问、默认 v6 启动失败后的派生修复和生产验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
 
 P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../implementation/phase1-source-vault-key-provider.md)，三平台 locked CI 由下述 PR #4 复验；真实平台密钥库仍待验收。P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；实现范围为独立 Source Vault package 与 Windows 文件身份 adapter，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
 
@@ -17,15 +17,15 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 | M0 领域与存储 | canonical core、SQLite v6、来源 / 记忆 / 事件、FTS5、本地删除与真实 M0 runner 已经建立 | [ADR 0002](../adr/0002-m0-local-memory-loop.md)；runner 编排不等于 production 历史查询与上下文编译接口 |
 | 字段与 fixture | M0 字段级 canonical schema 定义九种顶层对象；fixture 固定 12 个场景的 86 个有序操作和 12 个指标 gate | [M0 Canonical Schema](../schema/m0-canonical-schema.md)不绑定数据库、生产 ID 编码或语言类型；[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md)说明实际证据限制 |
 | 文件入口 | `radishmemory-file-entry` 的 P1-I01 file snapshot contract、P1-I02 atomic source capture、P1-I03 exact export、P1-I04 lineage deletion 已落地 | [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md)；`SourceCaptureStore` 原子提交，`P1-F01` 至 `P1-F18` 已有三平台证据，故障 seam 仅 opt-in `acceptance-test-support`；不代表完整 importer / exporter 已实现 |
-| 本地宿主 | P1-H02 application service、P1-H03 source catalog、P1-H04 desktop UI、P1-H05 host acceptance 已有实现及合成宿主证据 | [ADR 0007](../adr/0007-phase1-local-library-host.md)的 `P1-HF01` 至 `P1-HF12` 保留历史记录；目录第 201 条和重启后损坏修复等缺口尚未关闭 |
-| 加密 Source Vault | P1-S01 storage contract、P1-S02 dependency and cipher review、P1-S03a portable crypto dependency landing 已完成对应范围；P1-S03b immutable object filesystem adapter 已通过 macOS 合成验证、Windows ARM64 / NTFS 提升权限与普通用户验收、Linux ARM64 / ext4 普通用户验收 | [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)的 `P1-SF01` 至 `P1-SF18` 尚未全部实现；object adapter 的 Windows 文件身份替换缺陷已修复并通过普通用户 / ACL 回归；P1-S03c-2 独立 key provider 已实现并有 macOS 构建与合成测试证据；P1-S04a 已建立密钥初始化 checkpoint；正文迁移 / 恢复、加密 capture、inventory reconciliation 及显式放弃 / 精确 orphan retirement 合成切片已落地；独立 object-backed verify / rebuild、删除执行及历史请求接管已实现；认证读取、目录 / 检索及精确导出组合验收已通过；显式 application 打开 / 恢复、读取、原请求 capture / 删除及派生维护已接入；真实密钥库与宿主接入仍待后续批次 |
+| 本地宿主 | P1-H02 application service、P1-H03 source catalog、P1-H04 desktop UI、P1-H05 host acceptance 已有实现及合成宿主证据 | [ADR 0007](../adr/0007-phase1-local-library-host.md)的 `P1-HF01` 至 `P1-HF12` 保留历史记录；目录第 201 条和默认 v6 重启后损坏修复等缺口尚未关闭；显式加密入口已具备 failed-open 维护通道，尚待真实 GUI 验收 |
+| 加密 Source Vault | P1-S01 storage contract、P1-S02 dependency and cipher review、P1-S03a portable crypto dependency landing 已完成对应范围；P1-S03b immutable object filesystem adapter 已通过 macOS 合成验证、Windows ARM64 / NTFS 提升权限与普通用户验收、Linux ARM64 / ext4 普通用户验收 | [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)的 `P1-SF01` 至 `P1-SF18` 尚未全部实现；object adapter 的 Windows 文件身份替换缺陷已修复并通过普通用户 / ACL 回归；P1-S03c-2 独立 key provider 已实现并有 macOS 构建与合成测试证据；P1-S04a 已建立密钥初始化 checkpoint；正文迁移 / 恢复、加密 capture、inventory reconciliation 及显式放弃 / 精确 orphan retirement 合成切片已落地；独立 object-backed verify / rebuild、删除执行及历史请求接管已实现；认证读取、目录 / 检索及精确导出组合验收已通过；显式 application 打开 / 恢复、读取、原请求 capture / 删除及派生维护已接入；桌面后台接线与原请求恢复已实现并通过合成测试；真实密钥库与 GUI 验收仍待后续批次 |
 | 用户价值 | 已能通过本地入口导入、版本化、搜索、精确导出和删除合成文本 | 尚无完整记忆控制台、模型问答、PDF / 图片解析、向量、同步、恢复或签名发行包 |
 
 ## 当前顺位
 
 1. `P1-S04a SQLite key bootstrap coordination` 已实现：在真实 SQLite `IMMEDIATE` transaction 内验真初始化资格，复验对象目录、创建 / 复用密钥并提交 maintenance-only v7 `key_ready` checkpoint。合成测试覆盖并发连接、独立子进程、真实 commit 失败、缺 key、历史正文损坏和 schema 漂移，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。普通产品入口继续使用 v6；该初始化步骤不迁移正文；后续迁移由独立 v8 维护入口承担。
-2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。macOS 宿主接入已开始准备：application 已补齐重启后的原删除请求发现与精确 capture 放弃接口，[宿主记录](../implementation/phase1-source-vault-host.md)保存 worker / UI 方案和待批准的依赖连线。下一步落实原请求持有 / 恢复及显式维护交互，再进入真实 Keychain 和端到端验收。具体真实系统操作仍单独授权。
-3. 按项目所有者 2026-09-15 的安排，Windows / Linux 编译与运行验证后置到上述链路形成阶段切片后的集中检查点；待验收状态保留，不能以 macOS 结果代替。真实系统 key store 与上游日志过滤仍须按具体测试范围授权和验证。PDF / 图片解析继续等待完整加密链路通过。
+2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。[桌面宿主接入](../implementation/phase1-source-vault-host.md) 已完成串行 worker、显式初始化 / 迁移 / 打开、内存原请求重试、重启发现原删除授权、精确放弃及 failed-open 维护入口。依赖连线已获批准；诊断采用无输出 logger 与 panic payload 抑制，并通过隔离子进程验证。下一步进入真实 Keychain 与 GUI 端到端验收；具体系统操作仍单独说明精确目标、副作用、持续时间和清理后取得授权。
+3. 按项目所有者 2026-09-15 的安排，Windows / Linux 编译与运行验证后置到上述链路形成阶段切片后的集中检查点；待验收状态保留，不能以 macOS 结果代替。真实系统 key store 与上游日志运行态仍须按具体测试范围授权和验证。PDF / 图片解析继续等待完整加密链路通过。
 4. R01 至 R06 的产品质量缺口继续跟踪：[本地资料库质量验收计划](../evaluation/phase1-local-library-quality.md)中的中文检索、目录分页、派生损坏维护入口、读取性能、runner 证据和回源 / 结果刷新仍未收口。本批基础存储实现不等于这些产品问题已经修复。
 5. 产品验证继续聚焦“同一个长期项目的资料、关键事实、更正与受控上下文”，完整阶段依赖以[MVP 路线图](../mvp-roadmap.md)为准。
 
@@ -61,7 +61,7 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
-2026-10-01 宿主恢复准备：补齐认证的原删除请求发现与精确 capture 放弃入口，新增 4 项 application 回归；本机完整检查、fmt / Clippy、334 项 Rust tests、42 项检查器回归、M0 fixture 和 compile-fail doctest 通过。P1-F17 沙箱端口限制经授权重跑解决。桌面依赖连线待批准，worker / UI、真实 Keychain / GUI 与跨平台验收未执行；删除证据摘要复算的既有缺口及范围见[宿主记录](../implementation/phase1-source-vault-host.md)。
+2026-10-01 桌面宿主接入：恢复前置接口已提交；新 worker、原请求恢复、显式加密 UI 和日志策略已完成本机合成验证；完整仓库检查、345 项 Rust tests、43 项检查器回归、M0 fixture、compile-fail doctest 与默认 desktop 构建通过。完整范围及尚未执行的真实 Keychain / GUI、Windows / Linux 集中验收见[宿主记录](../implementation/phase1-source-vault-host.md)。默认启动仍为 v6，显式加密模式的 FTS 也保留完整明文；既有删除证据摘要复算缺口单独记录，不扩大保证。
 
 2026-10-01 application 加密用例切片：本机完整仓库检查、notices、fmt、locked Clippy 与 330 项 Rust tests（写用例批次新增 9 项、此前读取批次新增 12 项）通过；42 项检查器回归、M0 fixture 和 compile-fail doctest 通过。P1-F17 合成本地端口的沙箱限制经授权在沙箱外完整重跑解决，全部使用合成资料和测试 key；范围、原请求恢复、派生修复与未验收边界见[application 记录](../implementation/phase1-source-vault-application.md)。默认桌面及真实系统密钥库仍未切换。
 
@@ -75,4 +75,4 @@ Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继�
 
 ## 后续事项
 
-当前首项是 macOS 宿主接入与原请求持有 / 恢复，再进入 P1-S05 真实密钥库与端到端验收；不能将显式 application 加密用例视为默认桌面产品已切换加密。具体完成范围和下一步见[application 记录](../implementation/phase1-source-vault-application.md)。9 月 15 日和 9 月 27 日建议保留为历史安排；R01 至 R06、宿主接入及集中跨平台验证继续遵循上述顺位与停止线。
+当前首项是 P1-S05 macOS 真实 Keychain / logger 与 GUI 端到端验收，随后进入集中跨平台检查点；桌面接线的合成测试不能代替原生验收。具体完成范围和下一步见[宿主记录](../implementation/phase1-source-vault-host.md)。9 月 15 日和 9 月 27 日建议保留为历史安排；R01 至 R06、宿主接入及集中跨平台验证继续遵循上述顺位与停止线。
