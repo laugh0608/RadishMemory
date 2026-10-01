@@ -441,7 +441,7 @@ class GovernanceContractChecks(unittest.TestCase):
             self.assertEqual([], errors)
 
             current = root / "docs/status/current.md"
-            fragment = "当前 production code 仍是 SQLite v6 inline plaintext body"
+            fragment = "默认桌面产品入口仍是 SQLite v6 inline plaintext body"
             current.write_text(
                 current.read_text(encoding="utf-8").replace(fragment, ""),
                 encoding="utf-8",

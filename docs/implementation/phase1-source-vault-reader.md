@@ -2,7 +2,7 @@
 
 状态：`P1-S04 object-backed read slice implemented — synthetic acceptance`（2026-09-26）。
 
-本批承接 `3dd312b` 的历史删除请求兼容，提供独立读取会话，复用既有来源、目录和检索规则。不改变 canonical schema、记忆状态或权限语义，不新增数据库迁移。普通 `SqliteDatabase::open` 仍只允许 v6；`LocalLibrary` / UI 尚未切换加密数据流。
+本批承接 `3dd312b` 的历史删除请求兼容，提供独立读取会话，复用既有来源、目录和检索规则。不改变 canonical schema、记忆状态或权限语义，不新增数据库迁移。普通 `SqliteDatabase::open` 仍只允许 v6；默认 `LocalLibrary` / UI 尚未切换加密数据流；2026-10-01 后续已完成[显式 application 读取接入](phase1-source-vault-application.md)，其证据与本批独立 reader 证据分开记录。
 
 ## 读取边界
 

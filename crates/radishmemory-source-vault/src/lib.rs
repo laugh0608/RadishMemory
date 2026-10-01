@@ -18,6 +18,11 @@ mod random;
 mod reader;
 mod reconciliation;
 
+/// Synthetic capabilities for isolated acceptance fixtures only. Not a production provider.
+#[cfg(feature = "acceptance-test-support")]
+#[doc(hidden)]
+pub mod acceptance;
+
 #[cfg(test)]
 mod test_support;
 
@@ -32,7 +37,7 @@ pub use error::{SourceVaultError, SourceVaultErrorCode};
 pub use filesystem::{
     AttemptId, AttemptState, ObjectDirectory, ObjectLocator, ObjectWrite, PublishedObject,
 };
-pub use provider::{KeySlot, PlatformKeyProvider};
+pub use provider::{KeySlot, LibraryProvider, PlatformKeyProvider};
 pub use reader::LibraryReader;
 pub use reconciliation::ReconciliationReport;
 

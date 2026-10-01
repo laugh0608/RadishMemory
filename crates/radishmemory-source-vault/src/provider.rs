@@ -89,6 +89,68 @@ fn valid_id(value: &str, prefix: &str) -> bool {
 #[derive(Debug, Default)]
 pub struct PlatformKeyProvider;
 
+pub(crate) mod sealed {
+    pub trait Sealed {}
+}
+
+/// Reviewed library coordination capabilities used by the application boundary.
+/// Sealed so an application cannot substitute an unauthenticated reader or turn
+/// recovery into key creation. Only the platform provider and the opt-in synthetic
+/// acceptance provider implement this boundary.
+pub trait LibraryProvider: sealed::Sealed {
+    fn initialize_library_key(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<KeyEncryptionKey, crate::KeyInitializationError>;
+
+    fn migrate_library_bodies(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::BodyMigrationReport, crate::VaultMaintenanceError>;
+
+    fn open_library_reader<'a>(
+        &self,
+        directory: &'a crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError>;
+}
+
+impl sealed::Sealed for PlatformKeyProvider {}
+
+impl LibraryProvider for PlatformKeyProvider {
+    fn initialize_library_key(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<KeyEncryptionKey, crate::KeyInitializationError> {
+        self.initialize_library_key(directory, namespace, device)
+    }
+
+    fn migrate_library_bodies(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::BodyMigrationReport, crate::VaultMaintenanceError> {
+        self.migrate_library_bodies(directory, namespace, device)
+    }
+
+    fn open_library_reader<'a>(
+        &self,
+        directory: &'a crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError> {
+        self.open_library_reader(directory, namespace, device)
+    }
+}
+
 impl PlatformKeyProvider {
     pub const fn new() -> Self {
         Self

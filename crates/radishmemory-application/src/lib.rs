@@ -1,9 +1,11 @@
 //! Production application boundary for the Phase 1 local library host.
 //!
 //! This crate composes the canonical core, the explicit local-file boundary,
-//! and the SQLite adapter. It does not own a desktop toolkit, platform picker,
+//! the SQLite adapter, and explicit encrypted-library coordination. It does not own
+//! a desktop toolkit, platform picker,
 //! persistent bookmark, network listener, model, or synchronization runtime.
 
+mod encrypted;
 mod error;
 mod read;
 
@@ -29,6 +31,7 @@ pub use radishmemory_file_entry::{
 use radishmemory_file_entry::{FileCapturePlan, build_source_capture, read_file_snapshot};
 use radishmemory_sqlite::SqliteDatabase;
 
+pub use encrypted::{EncryptedLibrary, EncryptedLibraryLocation};
 pub use error::{
     ApplicationError, ApplicationErrorCode, ApplicationErrorReason, ApplicationOperation,
 };

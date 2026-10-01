@@ -201,7 +201,7 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 2026-09-15 项目所有者已授权 P1-S04a：复用现有 SQLite adapter，在 Source Vault coordinator 下实现真实存储资格检查、密钥初始化与事务 checkpoint，仅用合成资料 / 测试 provider 验证；不接入 application / UI 或访问真实系统 key store。v7 只保留初始化准备状态，后续正文迁移单独推进；默认 `SqliteDatabase::open` 仍只允许 v6。Windows / Linux 验证按[当前顺位](../status/current.md)后置集中执行。
 
-`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，正文对象 migration 首个维护切片已有合成证据；真实平台凭据与 host integration 均未验收。当前代码仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
+`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，正文对象 migration 首个维护切片已有合成证据；真实平台凭据与 host integration 均未验收。默认桌面产品入口仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
 
 - `P1-S03b` 当前证据不代表其它 Linux / Windows 文件系统、架构或真实断电持久化已通过，平台差异必须保留真实失败；若后续需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
 - filesystem adapter 继续使用 synthetic key / random test seam 验收；P1-S03c-2 只授权精确 provider 依赖与独立实现，未经真实平台授权不访问 keychain / platform security provider；
@@ -223,3 +223,5 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 2026-09-26 [历史请求兼容切片](../implementation/phase1-source-vault-legacy-deletion.md) 在上述协议内增加维护 v12：原请求精确匹配、冻结闭包复核及接管事务；有对象残留时使用既有精确退役链路，迁移前正文已消失时保存并复验原请求的旧成功组件结果引用。缺凭据、闭包漂移或文件重现继续失败关闭；不改变 canonical schema、十组件协议或删除保证。
 
 2026-09-26 [独立读取切片](../implementation/phase1-source-vault-reader.md) 复用上述协议建立 `LibraryReader`：维护 v8 至 v12 上加载既有 key、持有 exclusive session、查询前后认证对象，并复用原目录 / FTS 过滤规则。返回既有 canonical 来源供 ADR 0006 导出器消费；组合导出验收已通过，application 生命周期接入尚待完成。没有新增数据库版本或扩张加密范围。
+
+2026-10-01 项目所有者授权 application 读取生命周期实现及其第一方依赖连线，落地记录见[显式 application 接入](../implementation/phase1-source-vault-application.md)。旧 v6 连接显式关闭后，独立执行准备或既有迁移恢复，再普通打开；完整读取 / 导出用例持有认证会话，结束或失败后释放锁与 key。默认桌面入口仍未切换；加密写用例、真实平台凭据及 P1-S05 host 验收继续后置。没有新 schema、密码 profile 或加密声明。

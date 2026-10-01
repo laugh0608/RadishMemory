@@ -54,6 +54,9 @@ REQUIRED_FILES = (
     "apps/radishmemory-m0/src/main.rs",
     "crates/radishmemory-application/Cargo.toml",
     "crates/radishmemory-application/src/error.rs",
+    "crates/radishmemory-application/src/encrypted.rs",
+    "crates/radishmemory-application/src/encrypted/tests.rs",
+    "crates/radishmemory-application/src/read.rs",
     "crates/radishmemory-application/src/lib.rs",
     "crates/radishmemory-application/tests/local_library.rs",
     "crates/radishmemory-core/Cargo.toml",
@@ -121,6 +124,8 @@ REQUIRED_FILES = (
     "crates/radishmemory-source-vault/src/deletion/legacy_tests.rs",
     "docs/implementation/phase1-source-vault-legacy-deletion.md",
     "docs/implementation/phase1-source-vault-reader.md",
+    "docs/implementation/phase1-source-vault-application.md",
+    "crates/radishmemory-source-vault/src/acceptance.rs",
     "crates/radishmemory-source-vault/src/reader.rs",
     "crates/radishmemory-source-vault/src/reader/tests.rs",
     "crates/radishmemory-sqlite/src/object_read.rs",
@@ -369,7 +374,12 @@ workspace = true
 [dependencies]
 radishmemory-core.workspace = true
 radishmemory-file-entry.workspace = true
+radishmemory-source-vault.workspace = true
 radishmemory-sqlite.workspace = true
+
+[dev-dependencies]
+radishmemory-source-vault = { workspace = true, features = [\"acceptance-test-support\"] }
+rusqlite.workspace = true
 """,
     "crates/radishmemory-core/Cargo.toml": """[package]
 name = \"radishmemory-core\"
@@ -415,6 +425,9 @@ publish.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+acceptance-test-support = []
 
 [dependencies]
 aead-stream.workspace = true
@@ -1115,7 +1128,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 Source Vault read slice implemented; application integration next",
+            "Phase 1 application read lifecycle implemented; write integration next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1132,7 +1145,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 Source Vault read slice implemented; application integration next",
+            "Phase 1 application read lifecycle implemented; write integration next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1445,6 +1458,14 @@ def check_phase1_encrypted_source_vault_contract(
     repo_root: Path, errors: list[str]
 ) -> None:
     contracts = {
+        "docs/implementation/phase1-source-vault-application.md": (
+            "P1-S04 application read lifecycle implemented — synthetic acceptance",
+            "默认桌面产品入口仍是 SQLite v6 inline plaintext body",
+            "不改变 canonical schema",
+            "FTS 仍含完整可读正文",
+            "不回退旧 BLOB 或外部原件",
+            "acceptance-test-support",
+        ),
         "docs/implementation/phase1-source-vault-reader.md": (
             "P1-S04 object-backed read slice implemented — synthetic acceptance",
             "普通 `SqliteDatabase::open` 仍只允许 v6",
@@ -1517,11 +1538,11 @@ def check_phase1_encrypted_source_vault_contract(
             "不新增 canonical 顶层对象",
             "`P1-SF01`",
             "`P1-SF18`",
-            "当前代码仍使用 SQLite v6 inline plaintext body",
+            "默认桌面产品入口仍使用 SQLite v6 inline plaintext body",
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 Source Vault read slice implemented; application integration next",
+            "Phase 1 application read lifecycle implemented; write integration next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1536,7 +1557,7 @@ def check_phase1_encrypted_source_vault_contract(
             "`P1-SF01` 至 `P1-SF18`",
             "SQLite metadata、FTS、派生数据",
             "不跨 provenance 物理去重",
-            "当前 production code 仍是 SQLite v6 inline plaintext body",
+            "默认桌面产品入口仍是 SQLite v6 inline plaintext body",
         ),
         "docs/architecture.md": (
             "阶段 1 加密内容寻址 Source Vault 边界",
@@ -1608,7 +1629,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault read slice implemented; application integration next",
+            "Phase 1 application read lifecycle implemented; write integration next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1683,7 +1704,7 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 Source Vault read slice implemented; application integration next",
+            "Phase 1 application read lifecycle implemented; write integration next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
             "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",

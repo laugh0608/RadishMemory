@@ -13,7 +13,7 @@
 | `radishmemory-core 0.1.0` | `serde_json`、`sha2`、`time`、`unicode-normalization` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-file-entry 0.1.0` | `radishmemory-core =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-sqlite 0.1.0` | runtime：`radishmemory-core =0.1.0`、`rusqlite`；test-only：`radishmemory-file-entry =0.1.0`（`acceptance-test-support`） | workspace path | 仓库 [LICENSE](../../LICENSE) |
-| `radishmemory-application 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-file-entry =0.1.0`、`radishmemory-sqlite =0.1.0` | workspace path | 仓库 [LICENSE](../../LICENSE) |
+| `radishmemory-application 0.1.0` | runtime：`radishmemory-core =0.1.0`、`radishmemory-file-entry =0.1.0`、`radishmemory-sqlite =0.1.0`、`radishmemory-source-vault =0.1.0`；test-only：`rusqlite`、Source Vault 的 `acceptance-test-support` feature | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-desktop 0.1.0` | `radishmemory-application =0.1.0`、`eframe`、`rfd`、`directories`、`getrandom`、`time` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-source-vault 0.1.0` | `aead-stream`、`chacha20poly1305`、`getrandom`、`sha2`、`zeroize`、`keyring-core`、`radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`；test-only：`rusqlite`、`radishmemory-file-entry =0.1.0`；macOS：`apple-native-keyring-store`、`security-framework`；Windows：`windows-native-keyring-store`、`radishmemory-windows-filesystem =0.1.0`；Linux：`zbus-secret-service-keyring-store`、`secret-service` | workspace path | 仓库 [LICENSE](../../LICENSE) |
 | `radishmemory-m0 0.1.0` | `radishmemory-core =0.1.0`、`radishmemory-sqlite =0.1.0`（`fixture-runner`）、`serde_json` | workspace path | 仓库 [LICENSE](../../LICENSE) |
@@ -128,3 +128,9 @@ Source Vault 为调用现有 SQLite maintenance transaction 增加 `radishmemory
 ## P1-S04 认证读取与导出测试连线
 
 2026-09-26 经项目所有者确认，Source Vault 仅在 dev-dependencies 增加 `radishmemory-file-entry.workspace = true`，用于真实密文对象认证读取与既有精确导出器的组合验收，避免复制导出实现或用测试替身代替证据。该 crate 是仓库内随 workspace 维护的第一方 package，使用同一项目许可证；离线解析不下载新包、不隐式联网。Cargo.lock 仅增加这一条第一方依赖边，453 个 package 的 name / version / source / checksum 集合不变，production 依赖图及第三方许可证不变。撤回该测试依赖与对应测试可恢复原连线；实现和实际验证见[读取切片](phase1-source-vault-reader.md)。
+
+## P1-S04 application 读取连线（2026-10-01）
+
+项目所有者批准 application → `radishmemory-source-vault =0.1.0` runtime 连线、现有 `rusqlite` 测试依赖及 Source Vault 的 opt-in `acceptance-test-support` 合成入口。Cargo 离线解析仅增加两条 application lockfile 依赖边，453 个 package 的 name / version / source / checksum 集合逐项未变；不新增或升级第三方、不下载依赖。第一方连线沿用项目维护与许可证；测试 feature 默认关闭。
+
+desktop 经 application 扩大到现有 crypto / platform provider 构建面，不能把“没有新 package”写成 desktop 构建图不变；两个分发根的三目标 notices 并集保持 366 项。真实系统 store 只在显式 provider 调用时访问，本批均用合成 provider。主要维护风险为现有平台 provider 的 native build / logger 边界，真实运行仍需单独验收。替代方案是复制读取或绕过协调器，均不符合单一真相与失败关闭原则；精确复用和回滚范围见[application 记录](phase1-source-vault-application.md)。

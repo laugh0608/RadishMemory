@@ -5,6 +5,8 @@ use std::fmt;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ApplicationOperation {
     OpenLibrary,
+    InitializeLibraryKey,
+    MigrateLibraryBodies,
     ImportNewSource,
     UpdateSource,
     ListSources,
@@ -25,6 +27,7 @@ pub enum ApplicationErrorCode {
     FileEntry,
     Canonical,
     Storage,
+    SourceVault,
     NotFound,
 }
 
@@ -38,6 +41,7 @@ pub enum ApplicationErrorReason {
     FileEntryRejected,
     CanonicalInvariant,
     StorageFailure,
+    SourceVaultFailure,
     LineageNotFound,
     SourceNotFound,
 }
@@ -145,6 +149,27 @@ impl ApplicationError {
         )
     }
 
+    pub(crate) fn vault(
+        operation: ApplicationOperation,
+        source: radishmemory_source_vault::VaultMaintenanceError,
+    ) -> Self {
+        // Retrying maintenance is an explicit decision based on the bounded cause;
+        // a generic retry must never bootstrap a key or invent a new request.
+        Self::with_source(
+            operation,
+            ApplicationErrorCode::SourceVault,
+            ApplicationErrorReason::SourceVaultFailure,
+            false,
+            source,
+        )
+    }
+
+    /// Bounded database/key/object cause, with no raw SQL or credential diagnostics.
+    #[must_use]
+    pub fn vault_failure(&self) -> Option<&radishmemory_source_vault::VaultMaintenanceError> {
+        self.source.as_deref()?.downcast_ref()
+    }
+
     pub(crate) const fn source_not_found(operation: ApplicationOperation) -> Self {
         Self::without_source(
             operation,
@@ -230,6 +255,7 @@ impl fmt::Display for ApplicationError {
             ApplicationErrorCode::FileEntry => "local file operation was rejected",
             ApplicationErrorCode::Canonical => "canonical application invariant failed",
             ApplicationErrorCode::Storage => "local library storage failed",
+            ApplicationErrorCode::SourceVault => "encrypted local library operation failed",
             ApplicationErrorCode::NotFound => "local library object was not found",
         })
     }

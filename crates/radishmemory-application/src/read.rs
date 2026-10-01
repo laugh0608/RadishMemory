@@ -10,6 +10,7 @@ use radishmemory_core::{
     SourceVault,
 };
 use radishmemory_file_entry::export_managed_source;
+use radishmemory_source_vault::LibraryReader;
 use radishmemory_sqlite::SqliteDatabase;
 
 /// A private read-only adapter boundary, not a second canonical storage port.
@@ -56,8 +57,34 @@ impl SourceReader for SqliteDatabase {
     }
 }
 
-pub(crate) fn list_sources(
-    reader: &impl SourceReader,
+impl SourceReader for LibraryReader<'_> {
+    fn source(
+        &self,
+        namespace: &Identifier,
+        source: &Identifier,
+        operation: ApplicationOperation,
+    ) -> Result<Option<SourceArtifact>, ApplicationError> {
+        self.load_source_artifact(namespace, source)
+            .map_err(|error| ApplicationError::vault(operation, error))
+    }
+
+    fn catalog_error(
+        operation: ApplicationOperation,
+        error: <Self as SourceCatalog>::Error,
+    ) -> ApplicationError {
+        ApplicationError::vault(operation, error)
+    }
+
+    fn search_error(
+        operation: ApplicationOperation,
+        error: <Self as LocalSearch>::Error,
+    ) -> ApplicationError {
+        ApplicationError::vault(operation, error)
+    }
+}
+
+pub(crate) fn list_sources<S: SourceReader>(
+    reader: &S,
     config: &LocalLibraryConfig,
     offset: u64,
     limit: usize,
@@ -65,27 +92,19 @@ pub(crate) fn list_sources(
     let operation = ApplicationOperation::ListSources;
     let request = SourceCatalogRequest::new(config.namespace_id.clone(), offset, limit)
         .map_err(|error| ApplicationError::canonical(operation, error))?;
-    catalog(reader, operation, |reader| {
-        reader.list_source_lineages(&request)
-    })
+    reader
+        .list_source_lineages(&request)
+        .map_err(|error| S::catalog_error(operation, error))
 }
 
-fn catalog<S: SourceReader, T>(
+pub(crate) fn list_source_versions<S: SourceReader>(
     reader: &S,
-    operation: ApplicationOperation,
-    query: impl FnOnce(&S) -> Result<T, <S as SourceCatalog>::Error>,
-) -> Result<T, ApplicationError> {
-    query(reader).map_err(|error| S::catalog_error(operation, error))
-}
-
-pub(crate) fn list_source_versions(
-    reader: &impl SourceReader,
     config: &LocalLibraryConfig,
     lineage: &Identifier,
 ) -> Result<Vec<SourceVersionSummary>, ApplicationError> {
-    catalog(reader, ApplicationOperation::ListSources, |reader| {
-        reader.list_source_versions(&config.namespace_id, lineage)
-    })
+    reader
+        .list_source_versions(&config.namespace_id, lineage)
+        .map_err(|error| S::catalog_error(ApplicationOperation::ListSources, error))
 }
 
 pub(crate) fn get_source(

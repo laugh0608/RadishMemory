@@ -2722,7 +2722,9 @@ version = "0.1.0"
 dependencies = [
  "radishmemory-core",
  "radishmemory-file-entry",
+ "radishmemory-source-vault",
  "radishmemory-sqlite",
+ "rusqlite",
 ]
 
 [[package]]

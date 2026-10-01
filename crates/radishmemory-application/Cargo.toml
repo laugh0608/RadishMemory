@@ -12,4 +12,9 @@ workspace = true
 [dependencies]
 radishmemory-core.workspace = true
 radishmemory-file-entry.workspace = true
+radishmemory-source-vault.workspace = true
 radishmemory-sqlite.workspace = true
+
+[dev-dependencies]
+radishmemory-source-vault = { workspace = true, features = ["acceptance-test-support"] }
+rusqlite.workspace = true

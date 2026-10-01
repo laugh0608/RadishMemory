@@ -14,7 +14,9 @@ use radishmemory_core::{
     Timestamp,
 };
 use radishmemory_file_entry::{FileCaptureOutcome, FileExportRequest, FileReadRequest};
+use radishmemory_source_vault as _;
 use radishmemory_sqlite as _;
+use rusqlite as _;
 
 static NEXT_TEMP_DIRECTORY: AtomicU64 = AtomicU64::new(0);
 
