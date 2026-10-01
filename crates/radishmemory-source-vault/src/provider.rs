@@ -152,6 +152,20 @@ pub trait LibraryProvider: sealed::Sealed {
         namespace: &str,
         device: &str,
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
+    fn inspect_library_capture_abandonment(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<Option<crate::CaptureAbandonmentTarget>, crate::VaultMaintenanceError>;
+
+    fn abandon_library_capture(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: &crate::CaptureAbandonmentTarget,
+    ) -> std::result::Result<crate::AbandonmentReport, crate::VaultMaintenanceError>;
 }
 
 impl sealed::Sealed for PlatformKeyProvider {}
@@ -228,6 +242,25 @@ impl LibraryProvider for PlatformKeyProvider {
         device: &str,
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
         self.rebuild_library_derivations(directory, namespace, device)
+    }
+    fn inspect_library_capture_abandonment(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<Option<crate::CaptureAbandonmentTarget>, crate::VaultMaintenanceError>
+    {
+        self.inspect_library_capture_abandonment(directory, namespace, device)
+    }
+
+    fn abandon_library_capture(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: &crate::CaptureAbandonmentTarget,
+    ) -> std::result::Result<crate::AbandonmentReport, crate::VaultMaintenanceError> {
+        self.abandon_library_capture(directory, namespace, device, target)
     }
 }
 

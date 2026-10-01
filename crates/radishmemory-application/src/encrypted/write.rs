@@ -145,6 +145,32 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
         })
     }
 
+    /// Discover durable unfinished deletion authority after restart. No new request
+    /// is generated, and results are never automatically executed.
+    pub fn unfinished_delete_requests(&self) -> Result<Vec<DeleteRequest>, ApplicationError> {
+        let operation = ApplicationOperation::InspectRecovery;
+        self.with_reader(operation, |reader| {
+            reader
+                .unfinished_delete_requests(&self.location.config.namespace_id)
+                .map_err(|error| ApplicationError::vault(operation, error))
+        })
+    }
+
+    pub fn inspect_capture_abandonment(
+        &self,
+    ) -> Result<Option<radishmemory_source_vault::CaptureAbandonmentTarget>, ApplicationError> {
+        self.location.inspect_capture_abandonment()
+    }
+
+    /// Caller must obtain explicit approval for exactly this opaque target. This is
+    /// irreversible abandonment, not cancellation of an already committed source.
+    pub fn abandon_capture(
+        &self,
+        target: &radishmemory_source_vault::CaptureAbandonmentTarget,
+    ) -> Result<radishmemory_source_vault::AbandonmentReport, ApplicationError> {
+        self.location.abandon_capture(target)
+    }
+
     pub fn get_deletion_evidence(
         &self,
         evidence: &Identifier,

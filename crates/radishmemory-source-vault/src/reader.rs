@@ -125,6 +125,12 @@ impl LibraryReader<'_> {
             view.load_deletion_evidence(namespace, evidence)
         })
     }
+    pub fn unfinished_delete_requests(
+        &self,
+        namespace: &Identifier,
+    ) -> Result<Vec<radishmemory_core::DeleteRequest>> {
+        self.read(namespace, |view| view.unfinished_delete_requests(namespace))
+    }
     pub fn latest_deletion_evidence(
         &self,
         namespace: &Identifier,

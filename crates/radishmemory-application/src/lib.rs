@@ -15,15 +15,15 @@ use std::fmt;
 use std::path::Path;
 
 use radishmemory_core::{
-    ActorRef, ActorType, ComponentStatus, DeleteRequest, DeleteRequestParams,
-    DeletionEvidenceParams, DeletionState, DeletionStore, EgressPolicy, EvidenceRef, EvidenceType,
-    Governance, LocalDeletionExecution, ProducerRef, ProducerType, RequestedGuarantee,
-    RetentionMode, RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceVault,
-    Version, build_local_purge_targets, compute_deletion_evidence_digest,
+    ActorRef, ActorType, ComponentStatus, DeleteRequestParams, DeletionEvidenceParams,
+    DeletionState, DeletionStore, EgressPolicy, EvidenceRef, EvidenceType, Governance,
+    LocalDeletionExecution, ProducerRef, ProducerType, RequestedGuarantee, RetentionMode,
+    RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceVault, Version,
+    build_local_purge_targets, compute_deletion_evidence_digest,
 };
 pub use radishmemory_core::{
-    DeletionEvidence, DeletionOverallStatus, Identifier, NonEmptyText, Sensitivity, SourceArtifact,
-    SourceLineageSummary, SourceVersionSummary, Timestamp,
+    DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, NonEmptyText, Sensitivity,
+    SourceArtifact, SourceCapture, SourceLineageSummary, SourceVersionSummary, Timestamp,
 };
 pub use radishmemory_file_entry::{
     FileCaptureOutcome, FileCaptureReceipt, FileExportReceipt, FileExportRequest, FileReadRequest,

@@ -24,7 +24,7 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 ## 当前顺位
 
 1. `P1-S04a SQLite key bootstrap coordination` 已实现：在真实 SQLite `IMMEDIATE` transaction 内验真初始化资格，复验对象目录、创建 / 复用密钥并提交 maintenance-only v7 `key_ready` checkpoint。合成测试覆盖并发连接、独立子进程、真实 commit 失败、缺 key、历史正文损坏和 schema 漂移，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。普通产品入口继续使用 v6；该初始化步骤不迁移正文；后续迁移由独立 v8 维护入口承担。
-2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。下一批进入 macOS 宿主，先落实原请求持有 / 恢复及显式维护交互，再进入真实 Keychain 和端到端验收。具体真实系统操作仍单独授权。
+2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。macOS 宿主接入已开始准备：application 已补齐重启后的原删除请求发现与精确 capture 放弃接口，[宿主记录](../implementation/phase1-source-vault-host.md)保存 worker / UI 方案和待批准的依赖连线。下一步落实原请求持有 / 恢复及显式维护交互，再进入真实 Keychain 和端到端验收。具体真实系统操作仍单独授权。
 3. 按项目所有者 2026-09-15 的安排，Windows / Linux 编译与运行验证后置到上述链路形成阶段切片后的集中检查点；待验收状态保留，不能以 macOS 结果代替。真实系统 key store 与上游日志过滤仍须按具体测试范围授权和验证。PDF / 图片解析继续等待完整加密链路通过。
 4. R01 至 R06 的产品质量缺口继续跟踪：[本地资料库质量验收计划](../evaluation/phase1-local-library-quality.md)中的中文检索、目录分页、派生损坏维护入口、读取性能、runner 证据和回源 / 结果刷新仍未收口。本批基础存储实现不等于这些产品问题已经修复。
 5. 产品验证继续聚焦“同一个长期项目的资料、关键事实、更正与受控上下文”，完整阶段依赖以[MVP 路线图](../mvp-roadmap.md)为准。
@@ -60,6 +60,8 @@ Windows：
 ```powershell
 pwsh ./scripts/check-repo.ps1
 ```
+
+2026-10-01 宿主恢复准备：补齐认证的原删除请求发现与精确 capture 放弃入口，新增 4 项 application 回归；本机完整检查、fmt / Clippy、334 项 Rust tests、42 项检查器回归、M0 fixture 和 compile-fail doctest 通过。P1-F17 沙箱端口限制经授权重跑解决。桌面依赖连线待批准，worker / UI、真实 Keychain / GUI 与跨平台验收未执行；删除证据摘要复算的既有缺口及范围见[宿主记录](../implementation/phase1-source-vault-host.md)。
 
 2026-10-01 application 加密用例切片：本机完整仓库检查、notices、fmt、locked Clippy 与 330 项 Rust tests（写用例批次新增 9 项、此前读取批次新增 12 项）通过；42 项检查器回归、M0 fixture 和 compile-fail doctest 通过。P1-F17 合成本地端口的沙箱限制经授权在沙箱外完整重跑解决，全部使用合成资料和测试 key；范围、原请求恢复、派生修复与未验收边界见[application 记录](../implementation/phase1-source-vault-application.md)。默认桌面及真实系统密钥库仍未切换。
 

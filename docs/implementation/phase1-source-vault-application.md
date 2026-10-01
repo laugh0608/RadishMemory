@@ -57,7 +57,7 @@ desktop 经 application 新增对既有 crypto / platform provider 的传递构�
 
 此批没有新增 dependency、feature 依赖边、lockfile、存储 schema 或密码 profile；sealed `LibraryProvider` 只扩展既有协调能力。新增 reader 查询仍在同一认证会话中复核数据库与对象。合成 seam 仅扩展既有 opt-in provider 的中断点，不进入默认桌面 runtime。
 
-`SourceCapture` 是调用方拥有的明文快照，不是新的可公开日志或持久化格式。本批不引入宿主 journal。进程退出后若原请求丢失，数据库内 fingerprint 不能重建完整快照；必须由可信宿主安全保留 / 提供原请求，或走既有明确授权的放弃流程，不能重新读取外部文件冒充原请求。删除恢复也要求宿主保留原 request ID。宿主接入前须收口这些请求的持有、恢复、用户提示和显式放弃交互。
+`SourceCapture` 是调用方拥有的明文快照，不是新的可公开日志或持久化格式。本批不引入宿主 journal。进程退出后若原请求丢失，数据库内 fingerprint 不能重建完整快照；必须由可信宿主安全保留 / 提供原请求，或走既有明确授权的放弃流程，不能重新读取外部文件冒充原请求。后续[宿主恢复准备](phase1-source-vault-host.md)已增加认证的 `unfinished_delete_requests`，可在重启后发现原删除请求，无需另存 request ID 日志；同批通过 application 暴露既有精确 capture 放弃入口。宿主接入前须收口这些请求的持有、恢复、用户提示和显式放弃交互。
 
 ## 写用例合成验收
 

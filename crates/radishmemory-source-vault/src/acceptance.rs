@@ -289,6 +289,26 @@ impl LibraryProvider for SyntheticLibraryProvider {
     ) -> Result<crate::VerificationReport> {
         self.rebuild(directory, namespace, device)
     }
+    fn inspect_library_capture_abandonment(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> Result<Option<crate::CaptureAbandonmentTarget>> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::abandonment::inspect(directory, namespace, device, || self.load(&slot))
+    }
+
+    fn abandon_library_capture(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: &crate::CaptureAbandonmentTarget,
+    ) -> Result<crate::AbandonmentReport> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::abandonment::abandon(directory, namespace, device, target, || self.load(&slot))
+    }
 }
 
 impl fmt::Debug for SyntheticLibraryProvider {

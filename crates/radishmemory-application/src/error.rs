@@ -7,6 +7,8 @@ pub enum ApplicationOperation {
     OpenLibrary,
     InitializeLibraryKey,
     MigrateLibraryBodies,
+    InspectRecovery,
+    AbandonCapture,
     ImportNewSource,
     UpdateSource,
     ListSources,

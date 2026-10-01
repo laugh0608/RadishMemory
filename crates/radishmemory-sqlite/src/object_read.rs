@@ -67,6 +67,46 @@ impl ObjectReadView<'_> {
         self.require_namespace(namespace)?;
         crate::deletion_store::load_evidence(&self.database.connection, namespace, evidence)
     }
+    /// Durable requests without a validated completed receipt, including execution
+    /// completed before evidence commit. Discovery never authorizes execution.
+    pub fn unfinished_delete_requests(
+        &self,
+        namespace: &Identifier,
+    ) -> Result<Vec<radishmemory_core::DeleteRequest>> {
+        self.require_namespace(namespace)?;
+        let mut statement = self
+            .database
+            .connection
+            .prepare(
+                "SELECT delete_request_id FROM radishmemory_delete_requests
+             WHERE namespace_id=?1 ORDER BY requested_at,delete_request_id",
+            )
+            .map_err(SqliteError::storage)?;
+        let ids = statement
+            .query_map([namespace.as_str()], |row| row.get::<_, String>(0))
+            .map_err(SqliteError::storage)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(SqliteError::storage)?;
+        let mut requests = Vec::new();
+        for id in ids {
+            let id = source_store::identifier(id)?;
+            let request = self
+                .load_delete_request(namespace, &id)?
+                .ok_or_else(invalid)?;
+            // A status cell alone cannot hide a request. Validate canonical evidence
+            // and its persisted component results before excluding completed work.
+            let completed =
+                self.latest_deletion_evidence(namespace, &id)?
+                    .is_some_and(|evidence| {
+                        evidence.params().overall_status
+                            == radishmemory_core::DeletionOverallStatus::Completed
+                    });
+            if !completed {
+                requests.push(request);
+            }
+        }
+        Ok(requests)
+    }
     pub fn latest_deletion_evidence(
         &self,
         namespace: &Identifier,

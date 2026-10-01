@@ -452,7 +452,12 @@ fn failed_legacy_deletion_resumes_original_request_and_extends_evidence_chain() 
             .unwrap(),
         Some(failed.clone())
     );
+    assert_eq!(
+        library.unfinished_delete_requests().unwrap(),
+        vec![original.clone()]
+    );
     let completed = library.execute_source_lineage_deletion(&original).unwrap();
+    assert!(library.unfinished_delete_requests().unwrap().is_empty());
     assert_eq!(
         completed.params().overall_status,
         crate::DeletionOverallStatus::Completed
@@ -469,4 +474,106 @@ fn failed_legacy_deletion_resumes_original_request_and_extends_evidence_chain() 
         library.execute_source_lineage_deletion(&original).unwrap(),
         completed
     );
+}
+
+#[test]
+fn restart_discovers_original_deletion_authority_even_after_execution_before_evidence() {
+    for after_execution in [false, true] {
+        let fixture = Fixture::migrated();
+        let mut library = writer(&fixture);
+        let original = library
+            .prepare_source_lineage_deletion(fixture.first.lineage_id())
+            .unwrap();
+        if after_execution {
+            fixture.provider.interrupt_next_deletion_after_execution();
+        } else {
+            fixture.provider.interrupt_next_deletion_after_intent();
+        }
+        assert!(library.execute_source_lineage_deletion(&original).is_err());
+        drop(library);
+        let mut reopened = writer(&fixture);
+        let requests = reopened.unfinished_delete_requests().unwrap();
+        assert_eq!(requests, vec![original]);
+        reopened
+            .execute_source_lineage_deletion(&requests[0])
+            .unwrap();
+        assert!(reopened.unfinished_delete_requests().unwrap().is_empty());
+        assert_eq!(count(&fixture, "radishmemory_delete_requests"), 1);
+    }
+}
+
+#[test]
+fn lost_capture_request_after_restart_requires_explicit_exact_abandonment() {
+    let fixture = Fixture::migrated();
+    let mut library = writer(&fixture);
+    let original = library
+        .prepare_update_source(fixture.first.lineage_id(), &input(&fixture, UPDATED))
+        .unwrap();
+    fixture.provider.interrupt_next_capture_after_publish();
+    assert!(library.capture_source(&original).is_err());
+    let before = fixture.objects();
+    drop(library);
+    let mut reopened = writer(&fixture);
+    let target = reopened.inspect_capture_abandonment().unwrap().unwrap();
+    assert_eq!(fixture.objects(), before);
+    assert_eq!(reopened.verify_library().unwrap().pending_captures, 1);
+    assert_eq!(
+        reopened
+            .prepare_import_new_source(&input(&fixture, "Synthetic changed origin"))
+            .err()
+            .unwrap()
+            .reason(),
+        ApplicationErrorReason::OriginalRequestRequired
+    );
+    reopened.abandon_capture(&target).unwrap();
+    assert!(reopened.inspect_capture_abandonment().unwrap().is_none());
+    assert_eq!(reopened.verify_library().unwrap().abandoned_attempts, 1);
+    assert_eq!(fixture.objects().len(), 1);
+    assert_eq!(
+        reopened
+            .get_source(fixture.first.source_id())
+            .unwrap()
+            .unwrap()
+            .params()
+            .content
+            .as_str(),
+        BODY
+    );
+    assert!(reopened.capture_source(&original).is_err());
+    assert!(reopened.abandon_capture(&target).unwrap().already_abandoned);
+}
+
+#[test]
+fn abandonment_does_not_delete_unknown_files_or_targets_from_another_library() {
+    let fixture = Fixture::migrated();
+    let mut library = writer(&fixture);
+    let request = library
+        .prepare_import_new_source(&input(&fixture, UPDATED))
+        .unwrap();
+    fixture.provider.interrupt_next_capture_after_publish();
+    assert!(library.capture_source(&request).is_err());
+    let target = library.inspect_capture_abandonment().unwrap().unwrap();
+    let other = Fixture::migrated();
+    let other_before = other.objects();
+    assert!(other.open().abandon_capture(&target).is_err());
+    assert_eq!(other.objects(), other_before);
+    let unknown = fixture.root.0.join("source-objects-v1/unknown-synthetic");
+    fs::write(&unknown, b"Synthetic unknown file").unwrap();
+    let before = fixture.objects();
+    assert!(library.abandon_capture(&target).is_err());
+    assert_eq!(fixture.objects(), before);
+    assert!(unknown.exists());
+}
+
+#[test]
+fn recovery_discovery_rejects_damaged_completed_evidence_instead_of_hiding_request() {
+    let fixture = Fixture::migrated();
+    let mut library = writer(&fixture);
+    let request = library
+        .prepare_source_lineage_deletion(fixture.first.lineage_id())
+        .unwrap();
+    library.execute_source_lineage_deletion(&request).unwrap();
+    assert!(library.unfinished_delete_requests().unwrap().is_empty());
+    fixture.sql("UPDATE radishmemory_deletion_evidence SET device_id='device-11111111111111111111111111111111'");
+    assert!(library.unfinished_delete_requests().is_err());
 }

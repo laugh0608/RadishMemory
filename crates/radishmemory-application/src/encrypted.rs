@@ -119,6 +119,34 @@ impl<P: LibraryProvider> EncryptedLibraryLocation<P> {
             .map_err(|error| ApplicationError::vault(ApplicationOperation::RebuildRecall, error))
     }
 
+    /// Select pending uncommitted work; selection does not authorize its removal.
+    pub fn inspect_capture_abandonment(
+        &self,
+    ) -> Result<Option<radishmemory_source_vault::CaptureAbandonmentTarget>, ApplicationError> {
+        self.provider
+            .inspect_library_capture_abandonment(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+            )
+            .map_err(|error| ApplicationError::vault(ApplicationOperation::InspectRecovery, error))
+    }
+
+    /// Explicitly authorized exact abandonment; original active sources are never targets.
+    pub fn abandon_capture(
+        &self,
+        target: &radishmemory_source_vault::CaptureAbandonmentTarget,
+    ) -> Result<radishmemory_source_vault::AbandonmentReport, ApplicationError> {
+        self.provider
+            .abandon_library_capture(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+                target,
+            )
+            .map_err(|error| ApplicationError::vault(ApplicationOperation::AbandonCapture, error))
+    }
+
     /// Authenticate a migrated library, then release the opening session before
     /// returning. Missing/unready/damaged libraries fail without fallback or repair.
     pub fn open<R: ApplicationRuntime>(
