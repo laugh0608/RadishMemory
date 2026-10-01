@@ -5,6 +5,7 @@
 //! persistent bookmark, network listener, model, or synchronization runtime.
 
 mod error;
+mod read;
 
 use std::error::Error;
 use std::fmt;
@@ -13,10 +14,10 @@ use std::path::Path;
 use radishmemory_core::{
     ActorRef, ActorType, ComponentStatus, DeleteRequest, DeleteRequestParams,
     DeletionEvidenceParams, DeletionState, DeletionStore, EgressPolicy, EvidenceRef, EvidenceType,
-    Governance, LocalDeletionExecution, LocalSearch, LocalSearchHit, LocalSearchRequest,
-    ProducerRef, ProducerType, RequestedGuarantee, RetentionMode, RetentionRule,
-    SourceCaptureStore, SourceCatalog, SourceCatalogRequest, SourceFragment, SourceVault, Version,
-    build_local_purge_targets, compute_deletion_evidence_digest, source_origin_binding_id_is_valid,
+    Governance, LocalDeletionExecution, ProducerRef, ProducerType, RequestedGuarantee,
+    RetentionMode, RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceVault,
+    Version, build_local_purge_targets, compute_deletion_evidence_digest,
+    source_origin_binding_id_is_valid,
 };
 pub use radishmemory_core::{
     DeletionEvidence, DeletionOverallStatus, Identifier, NonEmptyText, Sensitivity, SourceArtifact,
@@ -25,9 +26,7 @@ pub use radishmemory_core::{
 pub use radishmemory_file_entry::{
     FileCaptureOutcome, FileCaptureReceipt, FileExportReceipt, FileExportRequest, FileReadRequest,
 };
-use radishmemory_file_entry::{
-    FileCapturePlan, build_source_capture, export_managed_source, read_file_snapshot,
-};
+use radishmemory_file_entry::{FileCapturePlan, build_source_capture, read_file_snapshot};
 use radishmemory_sqlite::SqliteDatabase;
 
 pub use error::{
@@ -304,6 +303,20 @@ where
         })
     }
 
+    /// Close this legacy connection before explicit vault preparation or recovery.
+    /// The returned runtime and profile retain their existing identities. The host
+    /// must also suspend other users of the same library before starting maintenance.
+    #[must_use]
+    pub fn close(self) -> (R, LocalLibraryConfig) {
+        let Self {
+            database,
+            runtime,
+            config,
+        } = self;
+        drop(database);
+        (runtime, config)
+    }
+
     pub fn import_new_source(
         &mut self,
         request: &FileReadRequest,
@@ -382,32 +395,21 @@ where
         offset: u64,
         limit: usize,
     ) -> Result<Vec<SourceLineageSummary>, ApplicationError> {
-        let operation = ApplicationOperation::ListSources;
-        let request = SourceCatalogRequest::new(self.config.namespace_id.clone(), offset, limit)
-            .map_err(|source| ApplicationError::canonical(operation, source))?;
-        self.database
-            .list_source_lineages(&request)
-            .map_err(|source| ApplicationError::storage(operation, source))
+        read::list_sources(&self.database, &self.config, offset, limit)
     }
 
     pub fn list_source_versions(
         &self,
         lineage_id: &Identifier,
     ) -> Result<Vec<SourceVersionSummary>, ApplicationError> {
-        let operation = ApplicationOperation::ListSources;
-        self.database
-            .list_source_versions(&self.config.namespace_id, lineage_id)
-            .map_err(|source| ApplicationError::storage(operation, source))
+        read::list_source_versions(&self.database, &self.config, lineage_id)
     }
 
     pub fn get_source(
         &self,
         source_id: &Identifier,
     ) -> Result<Option<SourceArtifact>, ApplicationError> {
-        let operation = ApplicationOperation::GetSource;
-        self.database
-            .load_source_artifact(&self.config.namespace_id, source_id)
-            .map_err(|source| ApplicationError::storage(operation, source))
+        read::get_source(&self.database, &self.config, source_id)
     }
 
     pub fn search_sources(
@@ -416,32 +418,15 @@ where
         top_k: usize,
         allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
     ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
-        let operation = ApplicationOperation::SearchSources;
-        let request = LocalSearchRequest::new(
-            self.config.namespace_id.clone(),
+        let now = self.now(ApplicationOperation::SearchSources)?;
+        read::search_sources(
+            &self.database,
+            &self.config,
             query,
-            self.now(operation)?,
+            now,
             top_k,
             allowed_sensitivities,
         )
-        .map_err(|source| ApplicationError::canonical(operation, source))?;
-        let hits = self
-            .database
-            .search(&request)
-            .map_err(|source| ApplicationError::storage(operation, source))?;
-        let mut results = Vec::new();
-        for hit in hits {
-            let LocalSearchHit::SourceFragment(fragment) = hit else {
-                continue;
-            };
-            let source = self
-                .database
-                .load_source_artifact(&self.config.namespace_id, &fragment.params().source_id)
-                .map_err(|source| ApplicationError::storage(operation, source))?
-                .ok_or_else(|| ApplicationError::source_not_found(operation))?;
-            results.push(SourceSearchResult::from_resolved(&fragment, &source));
-        }
-        Ok(results)
     }
 
     pub fn export_source(
@@ -449,14 +434,7 @@ where
         source_id: &Identifier,
         request: &FileExportRequest,
     ) -> Result<FileExportReceipt, ApplicationError> {
-        let operation = ApplicationOperation::ExportSource;
-        let source = self
-            .database
-            .load_source_artifact(&self.config.namespace_id, source_id)
-            .map_err(|source| ApplicationError::storage(operation, source))?
-            .ok_or_else(|| ApplicationError::source_not_found(operation))?;
-        export_managed_source(&source, request)
-            .map_err(|source| ApplicationError::file_entry(operation, source))
+        read::export_source(&self.database, &self.config, source_id, request)
     }
 
     /// Deletes every active source version in one lineage and persists canonical evidence.

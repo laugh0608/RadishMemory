@@ -197,18 +197,12 @@ fn p1_hf01_hf02_hf03_import_search_export_and_reopen_file_database() {
         .unwrap();
     assert_eq!(fs::read(&first_export).unwrap(), body);
     let source_id = receipt.source_id().clone();
-    drop(library);
+    let (runtime, retained_config) = library.close();
+    assert_eq!(runtime.next_id, 4);
+    assert_eq!(retained_config.namespace_id(), config().namespace_id());
     fs::remove_file(&input).unwrap();
 
-    let mut reopened = LocalLibrary::open(
-        &database,
-        TestRuntime {
-            next_time: 20,
-            ..TestRuntime::default()
-        },
-        config(),
-    )
-    .unwrap();
+    let mut reopened = LocalLibrary::open(&database, runtime, retained_config).unwrap();
     assert_eq!(reopened.list_sources(0, 20).unwrap().len(), 1);
     assert!(reopened.get_source(&source_id).unwrap().is_some());
     assert_eq!(
