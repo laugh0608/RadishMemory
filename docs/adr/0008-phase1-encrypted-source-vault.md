@@ -222,6 +222,8 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 2026-09-26 [历史请求兼容切片](../implementation/phase1-source-vault-legacy-deletion.md) 在上述协议内增加维护 v12：原请求精确匹配、冻结闭包复核及接管事务；有对象残留时使用既有精确退役链路，迁移前正文已消失时保存并复验原请求的旧成功组件结果引用。缺凭据、闭包漂移或文件重现继续失败关闭；不改变 canonical schema、十组件协议或删除保证。
 
-2026-09-26 [独立读取切片](../implementation/phase1-source-vault-reader.md) 复用上述协议建立 `LibraryReader`：维护 v8 至 v12 上加载既有 key、持有 exclusive session、查询前后认证对象，并复用原目录 / FTS 过滤规则。返回既有 canonical 来源供 ADR 0006 导出器消费；组合导出验收已通过，application 生命周期接入尚待完成。没有新增数据库版本或扩张加密范围。
+2026-09-26 [独立读取切片](../implementation/phase1-source-vault-reader.md) 复用上述协议建立 `LibraryReader`：维护 v8 至 v12 上加载既有 key、持有 exclusive session、查询前后认证对象，并复用原目录 / FTS 过滤规则。返回既有 canonical 来源供 ADR 0006 导出器消费；该读取批次的组合导出验收已通过；application 生命周期当时尚待接入，后续进展见下文。没有新增数据库版本或扩张加密范围。
 
-2026-10-01 项目所有者授权 application 读取生命周期实现及其第一方依赖连线，落地记录见[显式 application 接入](../implementation/phase1-source-vault-application.md)。旧 v6 连接显式关闭后，独立执行准备或既有迁移恢复，再普通打开；完整读取 / 导出用例持有认证会话，结束或失败后释放锁与 key。默认桌面入口仍未切换；加密写用例、真实平台凭据及 P1-S05 host 验收继续后置。没有新 schema、密码 profile 或加密声明。
+2026-10-01 项目所有者授权 application 读取生命周期实现及其第一方依赖连线，落地记录见[显式 application 接入](../implementation/phase1-source-vault-application.md)。旧 v6 连接显式关闭后，独立执行准备或既有迁移恢复，再普通打开；完整读取 / 导出用例持有认证会话，结束或失败后释放锁与 key。该读取批次结束时默认桌面入口仍未切换，加密写用例与 host 接线尚待完成；同日后续进展见下段，真实平台凭据及 P1-S05 原生验收继续后置。没有新 schema、密码 profile 或加密声明。
+
+2026-10-01 后续授权完成 application 加密 import / update、原删除请求恢复、verify / rebuild，以及[桌面后台与恢复界面](../implementation/phase1-source-vault-host.md)。准备和执行分开以持有原 capture，重试不重读原件或扩大删除目标；重启发现原删除授权，桌面丢失 capture 快照后提供明确的精确放弃入口，不伪造原请求。默认启动仍为 v6，显式加密入口经用户动作使用既有协调器；线程、生命周期和诊断策略具备合成证据。该接线不新增 canonical schema、密码 profile、明文 journal 或加密范围，不表示真实 Keychain / GUI、全部 `P1-SF01` 至 `P1-SF18` 或生产验收已经通过。

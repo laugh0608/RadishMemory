@@ -36,7 +36,7 @@
 
 `radishmemory-file-entry` 只直接依赖第一方 `radishmemory-core`，复用 `exact-bytes-v1`、`SourceKind`、`MediaType`、稳定 Identifier / Version、`SourceCapture` 和敏感正文 Debug 边界。文件与路径操作全部使用 Rust 标准库；P1-I01 file snapshot、P1-I02 atomic source capture、P1-I03 exact export、P1-I04 lineage deletion 及 `P1-F01` 至 `P1-F18` 当时没有扩大 40 个第三方 package 的 headless 基础子图。SQLite package 仅在 integration test 中引用第一方 file-entry，以合成临时文件贯通真实 snapshot、atomic store、exact export、lineage deletion、拒绝、TOCTOU、无副作用与诊断边界；production dependency 方向仍是 file-entry → core 与 sqlite → core，没有 file-entry / SQLite runtime 耦合。
 
-`radishmemory-application` 只组合上述三个第一方 library package。它新增 file-backed `LocalLibrary`、`ApplicationRuntime`、脱敏 application error 和 body-free `SourceCatalog` 读取模型，复用既有 capture、search、export、deletion、verify / rebuild 语义；自身没有新增 crates.io package、feature、build script、proc macro、native code、平台权限或网络能力。UI 工具包、系统文件选择、应用数据目录与 production runtime 只位于下述 desktop package。
+P1-H02 初始批次的 `radishmemory-application` 组合 core、file-entry、SQLite 三个第一方 library package；2026-10-01 又经批准接入 Source Vault，当前为四个 runtime 第一方依赖，见本页后续连线记录。初始批次新增 file-backed `LocalLibrary`、`ApplicationRuntime`、脱敏 application error 和 body-free `SourceCatalog` 读取模型，复用既有 capture、search、export、deletion、verify / rebuild 语义；自身没有新增 crates.io package、feature、build script、proc macro、native code、平台权限或网络能力。UI 工具包、系统文件选择、应用数据目录与 production runtime 只位于下述 desktop package。
 
 ## Source Vault portable crypto 直接依赖
 

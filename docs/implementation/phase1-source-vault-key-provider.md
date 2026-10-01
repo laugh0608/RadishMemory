@@ -25,7 +25,7 @@
 | Windows | 明确构造 `Cred` 的 exact target、account 和 Local persistence；不能使用上游 explicit-target builder 丢失 account 的默认结果。secret 读取前后检查实际 `persistence=Local`、target 和 username；固定 label 映射 `comment` | 代码已落地，仅源码与目标图复核；未编译、未调用 Credential Manager。属性与 secret 是分开读取的，前后复验不等于 OS 原子快照；上游 setter 仍是 upsert，必须保留 P1-S04 串行化 |
 | Linux | `secret-service` 只读检查 default collection 存在且未锁定，并复验会话内 alias 身份；`zbus-secret-service-keyring-store` 不带 target，保留跨 collections 的 exact service / username 搜索和 ambiguity；固定 label 通过 concrete `Specifier` 读取 / 设置 | 代码已落地，仅源码与目标图复核；未编译、未连接 D-Bus。guard 会独立建立一个 DH session，不调用 unlock / create / get-any fallback；provider 另建会话，运行成本与服务重启待实测。暂存 path 只用于当前操作比对，不持久化、不用于绕过搜索 |
 
-具体 store 不使用全局 default store，也不提供 caller 注入的 production provider。macOS / Windows 使用上游 concrete credential，避免 `Entry` 的 identity debug 日志；Linux provider 内部仍可构造 `Entry` 并输出 identity。**真实调用前必须建立 upstream logger target 过滤，并验证 debug / trace 不会绕过**；本批没有引入 host logger 或把这一待验项描述为已解决。
+具体 store 不使用全局 default store，也不提供 caller 注入的 production provider。macOS / Windows 使用上游 concrete credential，避免 `Entry` 的 identity debug 日志；Linux provider 内部仍可构造 `Entry` 并输出 identity。**真实调用前必须抑制 upstream 敏感日志，并验证 debug / trace 不会绕过**；P1-S03c-2 初始批次未引入 host logger。2026-10-01 [桌面接线](phase1-source-vault-host.md) 已安装全局无输出 logger 与 panic payload 抑制，并有隔离子进程正反例；真实平台的原生输出和系统提示仍待验收，不把合成测试当作这一待验项全部解决。
 
 上表保留 9 月 15 日的证据范围。Windows 对 `Cred` 的直接构造需下述同版本可见性补丁；原记录的源码复核遗漏了其 `pub(crate)` 限制，不能将原实现视为当时已具备 Windows 编译证据。
 
@@ -45,7 +45,7 @@
 
 22 项的 MIT distribution basis、source / checksum、MSRV、已有 build script / proc macro 的可达性、Security framework / Win32 Credential / D-Bus native 面，以及 RustSec 快照 `e2e640471715167f73e22eaf761f2e547adafeec` 的复核见预检记录；两个补充直接依赖不扩大该集合。没有安装新全局工具或更换 Rust `1.96.0`。
 
-notices 生成器未放宽规则：当前 **366** 项，metadata 保守图分别为 macOS 222、Linux 301、Windows 214；对应正式 `Cargo.lock` SHA-256 `f009a52e68e78a5dc125fe329f6a976b028f84dce85a91e2e25ae028d7b5dd5d`，inventory SHA-256 `fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3`。实际 target compile feature 范围另由 Cargo tree 复验；metadata 的保守归属不当成实际 OS 构建证据。
+P1-S03c-2 初始批次的 notices 生成器未放宽规则：当时 **366** 项，metadata 保守图分别为 macOS 222、Linux 301、Windows 214；对应正式 `Cargo.lock` SHA-256 `f009a52e68e78a5dc125fe329f6a976b028f84dce85a91e2e25ae028d7b5dd5d`，inventory SHA-256 `fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3`。实际 target compile feature 范围另由 Cargo tree 复验；metadata 的保守归属不当成实际 OS 构建证据。
 
 检查器继续精确比较两个 manifest 和完整 lock identity digest；原“尚未授权 platform dependency”阶段禁令由已授权精确集合替代，未允许未知 provider、版本漂移、sample feature 或 fallback。
 
@@ -58,7 +58,7 @@ notices 生成器未放宽规则：当前 **366** 项，metadata 保守图分别
 - 22 个新增 archive 与 467 个发布文件已再次核验，正式 lockfile 与隔离 Cargo 生成结果一致。候选源码与独立 Cargo cache 已精确清理并复验不存在，隔离 target 从未创建；保留本地依赖图、hash、检查日志与清理 receipt。正式 Cargo cache 和 workspace target 作为本批依赖 / 构建产物保留。
 - 未启动后台服务、VM 或 GUI，未调用系统 key-store API，未改权限、凭据、全局工具或远程状态。P1-S03c-2 结束时改动尚未提交，随后已提交为 `146ea8f`；日终提交状态见[9 月 15 日记录](../status/2026-09-15-source-vault.md)。
 - P1-S03c-2 结束时原定先补齐 Windows / Linux locked compile；当前顺位以上述后续说明为准。真实凭据仍按测试账户、专用 slot、logger 过滤、prompt / 锁定 / 拒绝 / duplicate、重开和精确清理范围做 P1-S03c-3。真实 store 授权不由本批依赖 / 构建授权推导。
-- 后续 P1-S04a 已实现密钥初始化事务协调；2026-09-26 [P1-S04b 首个切片](phase1-source-vault-body-migration.md)已实现维护专用正文迁移 / 恢复，P1-S04 剩余协调链路及 P1-S05 宿主接入仍待完成。PDF / 图片解析继续等待完整 encrypted Source Vault 链路。
+- 后续 P1-S04 已完成密钥初始化、[正文迁移 / 恢复](phase1-source-vault-body-migration.md)、capture、放弃、维护、删除与认证读取；2026-10-01 又完成 [application 加密用例](phase1-source-vault-application.md) 与[桌面接线](phase1-source-vault-host.md)。P1-S05 的真实平台凭据和 GUI 验收仍待完成。PDF / 图片解析继续等待完整 encrypted Source Vault 链路。
 
 ## Windows 编译阻断与最小补丁（2026-10-01）
 

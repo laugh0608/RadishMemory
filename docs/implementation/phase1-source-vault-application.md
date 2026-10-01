@@ -57,7 +57,7 @@ desktop 经 application 新增对既有 crypto / platform provider 的传递构�
 
 此批没有新增 dependency、feature 依赖边、lockfile、存储 schema 或密码 profile；sealed `LibraryProvider` 只扩展既有协调能力。新增 reader 查询仍在同一认证会话中复核数据库与对象。合成 seam 仅扩展既有 opt-in provider 的中断点，不进入默认桌面 runtime。
 
-`SourceCapture` 是调用方拥有的明文快照，不是新的可公开日志或持久化格式。本批不引入宿主 journal。进程退出后若原请求丢失，数据库内 fingerprint 不能重建完整快照；必须由可信宿主安全保留 / 提供原请求，或走既有明确授权的放弃流程，不能重新读取外部文件冒充原请求。后续[宿主恢复准备](phase1-source-vault-host.md)已增加认证的 `unfinished_delete_requests`，可在重启后发现原删除请求，无需另存 request ID 日志；同批通过 application 暴露既有精确 capture 放弃入口。宿主接入前须收口这些请求的持有、恢复、用户提示和显式放弃交互。
+`SourceCapture` 是调用方拥有的明文快照，不是新的可公开日志或持久化格式。本批不引入宿主 journal。进程退出后若原请求丢失，数据库内 fingerprint 不能重建完整快照；必须由可信宿主安全保留 / 提供原请求，或走既有明确授权的放弃流程，不能重新读取外部文件冒充原请求。后续[宿主恢复准备](phase1-source-vault-host.md)已增加认证的 `unfinished_delete_requests`，可在重启后发现原删除请求，无需另存 request ID 日志；同批通过 application 暴露既有精确 capture 放弃入口。后续 `6a413f8` 已完成内存原请求持有、恢复、用户提示和显式放弃的桌面接线；合成证据与真实平台未验收范围见宿主记录。
 
 ## 写用例合成验收
 
@@ -81,6 +81,6 @@ desktop 经 application 新增对既有 crypto / platform provider 的传递构�
 
 默认桌面产品入口仍是 SQLite v6 inline plaintext body，`LocalLibrary` 不自动切换；后续[桌面宿主接线](phase1-source-vault-host.md) 增加显式加密入口。当前 application 已接入 import / update、lineage deletion、verify / rebuild，后续宿主已用合成 key 验证请求持有与重启恢复，但尚未验收真实系统凭据和 GUI 交互，不能据此宣称 P1-S05 完成。
 
-下一步接入 macOS host，先落实原请求持有 / 恢复、显式维护与放弃交互，再按单独批准的范围进入真实 Keychain / logger 与多实例端到端验收，随后集中 Windows / Linux 编译和运行。真实系统操作另行授权。
+下一步先准备隔离的原生验收入口与精确测试计划，再按单独批准的范围进入真实 Keychain / logger、GUI 关闭和多实例端到端验收，随后集中 Windows / Linux 编译和运行。桌面接线已实现，不重复开发；具体明日事项见[10 月 1 日日终记录](../status/2026-10-01-source-vault.md)。真实系统操作另行授权。
 
 FTS 仍含完整可读正文，原始对象加密不等于整库静态加密。每次读取仍全库认证，性能与 R01 至 R06 尚未收口；不扩大 PDF / 图片、模型、同步、备份恢复、生产可用或取证级删除声明。本批未访问真实密钥库、启动 GUI / VM / 长期服务或修改远程状态。

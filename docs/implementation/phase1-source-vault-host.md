@@ -2,7 +2,7 @@
 
 状态：`P1-S05 encrypted desktop integration — native acceptance pending`（2026-10-01）。
 
-项目所有者已授权实现 macOS 宿主接入，并在本任务批准下述依赖连线。恢复前置改动已提交为 `b982cec`；本批继续完成 desktop worker、共用 controller、显式加密 / 维护界面和诊断抑制。默认启动保留 SQLite v6 入口，不以合成测试宣称真实系统凭据或 GUI 验收已完成。
+项目所有者已授权实现 macOS 宿主接入，并在本任务批准下述依赖连线。恢复前置改动已提交为 `b982cec`；desktop worker、共用 controller、显式加密 / 维护界面和诊断抑制已提交为 `6a413f8`。默认启动保留 SQLite v6 入口，不以合成测试宣称真实系统凭据或 GUI 验收已完成。
 
 ## 实现与操作边界
 
@@ -64,3 +64,5 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 真实 Keychain 读写、用户授权提示、取消 / 锁定、实际 GUI 关闭确认、多实例和端到端验收未执行；Windows / Linux 保持后置集中检查点。下一批需先列出隔离测试目录、合成 namespace / device 对应的精确 slot、运行命令、预计时长、系统提示及清理 / 保留方式，再取得当前任务授权。删除测试 slot 前必须确认对应合成对象库不再需要，不能将删除 key 当作普通回滚。
 
 默认启动仍是 SQLite v6 inline plaintext body；显式原始对象加密不等于整个资料库静态加密，FTS 保留完整正文，旧 SQLite 页、快照和备份也未证明物理清除。中文检索、目录第 201 条、性能和默认 v6 的 failed-open 修复等质量缺口不在本批闭环范围，不授权真实个人资料使用。
+
+原生验收准备的静态缺口：当前 `main` 不解析测试目录参数，生产 `Worker::start` 直接调用 `ApplicationPaths::resolve`；`Engine` 测试虽能注入独立目录，该能力没有暴露为原生启动入口。因此明天先确定安全的独立测试根与 profile / slot 选择方式，再请求真实运行授权，不直接启动默认 GUI 访问日常资料库，也不通过替换用户 HOME 等宽泛全局设置制造隔离。此项只记录为待办，今天没有改动启动代码。

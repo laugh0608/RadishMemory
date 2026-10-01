@@ -74,8 +74,12 @@ Source Vault 直接复用已传递可达的 core 后，Cargo 离线更新 lockfi
 
 修复 PR #4 的 E0603：从经 checksum 核验的 `windows-native-keyring-store 1.1.0` 发布 archive 保留 11 个编译 / 归属文件，仅修改 `src/cred.rs` 的 `Cred` 可见性。没有增加第三方版本、feature、build script 或原生调用。选择 MIT 分发并保留两份原许可证全文，原始 archive、逐文件摘要与补丁见 vendor 记录。完整 lockfile 保持 453 个 package，只有该包的 source / checksum 变为 Cargo path 表示；notices 仍为 366 项，三目标数量 222 / 301 / 214。
 
-当前 Cargo.lock SHA-256 为 `93532ce597bb17b0ca879442685e7b1bd88dfb9fcc17b63ca866dc9b3eb4b195`，inventory digest 变为上述当前值，因为该项明确记录原 archive 与补丁 provenance 两个摘要，不伪装成原 registry checksum。生成器与回归测试覆盖源文件 / provenance 漂移、缺失 / 新增文件、symlink、补丁不漏列及未知 path 拒绝。三平台 locked 构建与合成测试由 PR #4 的候选 head checks 复验；这一证据仍不覆盖真实 key store 或宿主交互。
+Windows 补丁批次结束时的 Cargo.lock SHA-256 为 `93532ce597bb17b0ca879442685e7b1bd88dfb9fcc17b63ca866dc9b3eb4b195`，inventory digest 变为上述当前值，因为该项明确记录原 archive 与补丁 provenance 两个摘要，不伪装成原 registry checksum。生成器与回归测试覆盖源文件 / provenance 漂移、缺失 / 新增文件、symlink、补丁不漏列及未知 path 拒绝。三平台 locked 构建与合成测试由 PR #4 的候选 head checks 复验；这一证据仍不覆盖真实 key store 或宿主交互。
 
 ## P1-S04 application 读取连线复核（2026-10-01）
 
 经批准增加 application → Source Vault runtime 连线及既有 `rusqlite` 测试连线，重新生成 notices 后只有 Cargo.lock SHA-256 更新为 `1fe94baa871ab18322fba1cdf553473e4b0323dc0ca193b0c457746013919cdf`；366 项并集、三目标数量 222 / 301 / 214、reviewed inventory digest 和 license option 均不变。desktop 的传递构建可达面扩大至已有 Source Vault 依赖，但没有新第三方包、版本或分发许可证。合成 feature 仅由 application dev-dependency 启用；真实 key store 与 Windows / Linux 本批运行未验收。
+
+## P1-S05 desktop 连线复核（2026-10-01）
+
+`6a413f8` 按批准范围增加 desktop → Source Vault、desktop → `log =0.4.34` 直接依赖边，以及仅测试启用的 Source Vault `acceptance-test-support`。Cargo 离线解析后 453 个 package 的 name / version / source / checksum 集合未变；两个分发根的并集仍为 366 项，三目标数量仍为 222 / 301 / 214，reviewed inventory digest 保持 `cbfe990725226152442d4fc7bf917ed728edf4bbd13ed3cebc5d4331479d37a1`。notices 仅将 lockfile 摘要更新为 `a7d45a3df916f76fe0e1c7dcaf5e976c0e78cc471547ef36206e2ce162f3caf0`，没有新第三方版本、license option 或分发资产。默认 runtime 图不启用合成 provider；日志抑制与未完成的原生验收见[宿主记录](phase1-source-vault-host.md)。
