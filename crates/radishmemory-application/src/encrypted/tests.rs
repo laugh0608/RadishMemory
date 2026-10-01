@@ -1,3 +1,6 @@
+mod memory_deletion;
+mod write;
+
 use super::*;
 use crate::{ApplicationErrorCode, ApplicationIdentifierKind, LocalLibrary};
 use radishmemory_core::{

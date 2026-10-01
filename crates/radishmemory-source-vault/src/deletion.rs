@@ -10,7 +10,7 @@ use radishmemory_sqlite::{CaptureObjectState, EncryptedCaptureDatabase};
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 
 #[derive(Clone, Copy, Eq, PartialEq)]
-enum Step {
+pub(crate) enum Step {
     Validated,
     IntentCommitted,
     Filesystem(RetirementStep),
@@ -30,7 +30,7 @@ pub(crate) fn execute(
     execute_with_step(directory, request, execution, load_existing, |_| Ok(()))
 }
 
-fn execute_with_step(
+pub(crate) fn execute_with_step(
     directory: &ObjectDirectory,
     request: &DeleteRequest,
     execution: &LocalDeletionExecution,

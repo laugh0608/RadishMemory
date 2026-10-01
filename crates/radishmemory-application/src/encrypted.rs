@@ -1,5 +1,7 @@
 //! Explicit vault preparation and per-use-case sessions. The desktop's default
 //! v6 entry remains unchanged until host acceptance authorizes its transition.
+mod write;
+
 use std::{fmt, path::Path};
 
 use radishmemory_source_vault::{
@@ -90,6 +92,33 @@ impl<P: LibraryProvider> EncryptedLibraryLocation<P> {
             })
     }
 
+    /// Explicit verification is available even when ordinary open fails.
+    pub fn verify_library(
+        &self,
+    ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {
+        self.provider
+            .verify_library_objects(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+            )
+            .map_err(|error| ApplicationError::vault(ApplicationOperation::VerifyLibrary, error))
+    }
+
+    /// Repair only rebuildable derivations from authenticated canonical objects.
+    /// Never initializes a key, repairs canonical data, or resumes pending writes.
+    pub fn rebuild_recall(
+        &self,
+    ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {
+        self.provider
+            .rebuild_library_derivations(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+            )
+            .map_err(|error| ApplicationError::vault(ApplicationOperation::RebuildRecall, error))
+    }
+
     /// Authenticate a migrated library, then release the opening session before
     /// returning. Missing/unready/damaged libraries fail without fallback or repair.
     pub fn open<R: ApplicationRuntime>(
@@ -105,7 +134,7 @@ impl<P: LibraryProvider> EncryptedLibraryLocation<P> {
     }
 }
 
-/// Read-only application slice over the same canonical library and read use cases.
+/// Explicit application use cases over the same canonical migrated library.
 /// Each operation acquires a fresh authenticated session; no exclusive lock or key
 /// survives between operations. Returned values and exports are caller-owned plaintext.
 pub struct EncryptedLibrary<R, P = PlatformKeyProvider> {

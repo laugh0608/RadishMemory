@@ -94,6 +94,46 @@ impl LibraryReader<'_> {
         self.authenticated_sources()?;
         Ok(result)
     }
+    /// Authenticated pending work blocks preparing a different mutation.
+    pub fn mutation_pending(&self, namespace: &Identifier) -> Result<bool> {
+        self.read(namespace, |view| view.mutation_pending())
+    }
+    pub fn resolve_source_lineage_deletion_targets(
+        &self,
+        namespace: &Identifier,
+        lineage: &Identifier,
+    ) -> Result<Vec<radishmemory_core::ObjectRef>> {
+        self.read(namespace, |view| {
+            view.resolve_source_lineage_deletion_targets(namespace, lineage)
+        })
+    }
+    pub fn load_delete_request(
+        &self,
+        namespace: &Identifier,
+        request: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeleteRequest>> {
+        self.read(namespace, |view| {
+            view.load_delete_request(namespace, request)
+        })
+    }
+    pub fn load_deletion_evidence(
+        &self,
+        namespace: &Identifier,
+        evidence: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
+        self.read(namespace, |view| {
+            view.load_deletion_evidence(namespace, evidence)
+        })
+    }
+    pub fn latest_deletion_evidence(
+        &self,
+        namespace: &Identifier,
+        request: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
+        self.read(namespace, |view| {
+            view.latest_deletion_evidence(namespace, request)
+        })
+    }
     /// Resolves an active source by the session namespace and immutable ID.
     /// Missing and deletion-closed sources return None; corruption returns an error.
     pub fn load_source_artifact(

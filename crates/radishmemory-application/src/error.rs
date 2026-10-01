@@ -44,6 +44,8 @@ pub enum ApplicationErrorReason {
     SourceVaultFailure,
     LineageNotFound,
     SourceNotFound,
+    OriginalRequestRequired,
+    RequestProfileMismatch,
 }
 
 /// Redacted application failure with a local source chain.
@@ -56,6 +58,22 @@ pub struct ApplicationError {
 }
 
 impl ApplicationError {
+    pub(crate) const fn original_request_required(operation: ApplicationOperation) -> Self {
+        Self::without_source(
+            operation,
+            ApplicationErrorCode::InvalidRequest,
+            ApplicationErrorReason::OriginalRequestRequired,
+            false,
+        )
+    }
+    pub(crate) const fn request_profile_mismatch(operation: ApplicationOperation) -> Self {
+        Self::without_source(
+            operation,
+            ApplicationErrorCode::InvalidRequest,
+            ApplicationErrorReason::RequestProfileMismatch,
+            false,
+        )
+    }
     pub(crate) const fn invalid_configuration() -> Self {
         Self::without_source(
             ApplicationOperation::OpenLibrary,

@@ -1128,7 +1128,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 application read lifecycle implemented; write integration next",
+            "Phase 1 application encrypted use cases implemented; host integration next",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1145,7 +1145,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 application read lifecycle implemented; write integration next",
+            "Phase 1 application encrypted use cases implemented; host integration next",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1459,7 +1459,10 @@ def check_phase1_encrypted_source_vault_contract(
 ) -> None:
     contracts = {
         "docs/implementation/phase1-source-vault-application.md": (
-            "P1-S04 application read lifecycle implemented — synthetic acceptance",
+            "P1-S04 application encrypted use cases implemented — synthetic acceptance",
+            "OriginalRequestRequired",
+            "进程退出后若原请求丢失",
+            "不会扩大原请求",
             "默认桌面产品入口仍是 SQLite v6 inline plaintext body",
             "不改变 canonical schema",
             "FTS 仍含完整可读正文",
@@ -1542,7 +1545,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 application read lifecycle implemented; write integration next",
+            "Phase 1 application encrypted use cases implemented; host integration next",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1629,7 +1632,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 application read lifecycle implemented; write integration next",
+            "Phase 1 application encrypted use cases implemented; host integration next",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1704,7 +1707,7 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 application read lifecycle implemented; write integration next",
+            "Phase 1 application encrypted use cases implemented; host integration next",
             "P1-S03a 落地记录",
             "扩大到 344 项",
             "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",

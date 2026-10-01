@@ -24,7 +24,9 @@ struct State {
     loads: Cell<usize>,
     creations: Cell<usize>,
     interrupt_migration: Cell<bool>,
-    interrupt_capture: Cell<bool>,
+    interrupt_capture: Cell<Option<crate::capture::Step>>,
+    interrupt_deletion: Cell<Option<crate::deletion::Step>>,
+    interrupt_evidence: Cell<Option<bool>>,
 }
 
 /// Clones share a synthetic key-store state, never a database connection or KEK.
@@ -63,7 +65,28 @@ impl SyntheticLibraryProvider {
     }
 
     pub fn interrupt_next_capture_after_publish(&self) {
-        self.0.interrupt_capture.set(true);
+        self.0
+            .interrupt_capture
+            .set(Some(crate::capture::Step::Published));
+    }
+
+    pub fn interrupt_next_capture_after_commit(&self) {
+        self.0
+            .interrupt_capture
+            .set(Some(crate::capture::Step::Committed));
+    }
+    pub fn interrupt_next_deletion_after_intent(&self) {
+        self.0
+            .interrupt_deletion
+            .set(Some(crate::deletion::Step::IntentCommitted));
+    }
+    pub fn interrupt_next_deletion_after_execution(&self) {
+        self.0
+            .interrupt_deletion
+            .set(Some(crate::deletion::Step::Executed));
+    }
+    pub fn interrupt_next_deletion_evidence(&self, after_commit: bool) {
+        self.0.interrupt_evidence.set(Some(after_commit));
     }
 
     fn load(&self, slot: &KeySlot) -> std::result::Result<KeyEncryptionKey, SourceVaultError> {
@@ -91,7 +114,7 @@ impl SyntheticLibraryProvider {
         ))
     }
 
-    /// Execute a real capture outside the application's read-only slice.
+    /// Execute a real capture using public synthetic key material.
     pub fn capture(
         &self,
         directory: &ObjectDirectory,
@@ -100,7 +123,7 @@ impl SyntheticLibraryProvider {
         request: &SourceCapture,
     ) -> Result<SourceCaptureResult> {
         let slot = KeySlot::new(namespace, device)?;
-        let interrupt = self.0.interrupt_capture.replace(false);
+        let interrupt = self.0.interrupt_capture.take();
         crate::capture::capture_with_step(
             directory,
             namespace,
@@ -108,7 +131,7 @@ impl SyntheticLibraryProvider {
             request,
             || self.load(&slot),
             |step| {
-                if interrupt && step == crate::capture::Step::Published {
+                if interrupt == Some(step) {
                     Err(interrupted())
                 } else {
                     Ok(())
@@ -125,7 +148,20 @@ impl SyntheticLibraryProvider {
     ) -> Result<Vec<ComponentResult>> {
         let p = request.params();
         let slot = KeySlot::new(p.namespace_id.as_str(), p.device_id.as_str())?;
-        crate::deletion::execute(directory, request, execution, || self.load(&slot))
+        let interrupt = self.0.interrupt_deletion.take();
+        crate::deletion::execute_with_step(
+            directory,
+            request,
+            execution,
+            || self.load(&slot),
+            |step| {
+                if interrupt == Some(step) {
+                    Err(interrupted())
+                } else {
+                    Ok(())
+                }
+            },
+        )
     }
 
     pub fn rebuild(
@@ -142,7 +178,7 @@ impl SyntheticLibraryProvider {
 fn interrupted() -> VaultMaintenanceError {
     SourceVaultError::new(
         SourceVaultErrorCode::Io,
-        "synthetic interruption after publish",
+        "synthetic coordination interruption",
     )
     .into()
 }
@@ -197,6 +233,61 @@ impl LibraryProvider for SyntheticLibraryProvider {
     ) -> Result<LibraryReader<'a>> {
         let slot = KeySlot::new(namespace, device)?;
         crate::reader::open(directory, namespace, device, || self.load(&slot))
+    }
+    fn capture_library_source(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        capture: &radishmemory_core::SourceCapture,
+    ) -> Result<radishmemory_core::SourceCaptureResult> {
+        self.capture(directory, namespace, device, capture)
+    }
+
+    fn execute_library_deletion(
+        &self,
+        directory: &crate::ObjectDirectory,
+        request: &radishmemory_core::DeleteRequest,
+        execution: &radishmemory_core::LocalDeletionExecution,
+    ) -> Result<Vec<radishmemory_core::ComponentResult>> {
+        self.execute_deletion(directory, request, execution)
+    }
+
+    fn store_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        evidence: &radishmemory_core::DeletionEvidence,
+    ) -> Result<()> {
+        let p = evidence.params();
+        let slot = KeySlot::new(p.namespace_id.as_str(), p.device_id.as_str())?;
+        let interrupt = self.0.interrupt_evidence.take();
+        if interrupt == Some(false) {
+            return Err(interrupted());
+        }
+        crate::deletion::store_evidence(directory, evidence, || self.load(&slot))?;
+        if interrupt == Some(true) {
+            return Err(interrupted());
+        }
+        Ok(())
+    }
+
+    fn verify_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> Result<crate::VerificationReport> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::maintenance::maintain(directory, namespace, device, false, || self.load(&slot))
+    }
+
+    fn rebuild_library_derivations(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> Result<crate::VerificationReport> {
+        self.rebuild(directory, namespace, device)
     }
 }
 

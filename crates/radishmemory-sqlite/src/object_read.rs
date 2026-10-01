@@ -29,6 +29,58 @@ impl ObjectReadView<'_> {
         }
         Ok(())
     }
+    pub fn mutation_pending(&self) -> Result<bool> {
+        Ok(self.database.deletion_in_progress()?
+            || self.database.objects()?.iter().any(|item| {
+                matches!(
+                    item.state,
+                    CaptureObjectState::Prepared | CaptureObjectState::Abandoning
+                )
+            }))
+    }
+    pub fn resolve_source_lineage_deletion_targets(
+        &self,
+        namespace: &Identifier,
+        lineage: &Identifier,
+    ) -> Result<Vec<radishmemory_core::ObjectRef>> {
+        self.require_namespace(namespace)?;
+        crate::deletion_store::resolve_lineage_targets(
+            &self.database.connection,
+            namespace,
+            lineage,
+            &self.list_source_versions(namespace, lineage)?,
+        )
+    }
+    pub fn load_delete_request(
+        &self,
+        namespace: &Identifier,
+        request: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeleteRequest>> {
+        self.require_namespace(namespace)?;
+        crate::deletion_store::load_request(&self.database.connection, namespace, request)
+    }
+    pub fn load_deletion_evidence(
+        &self,
+        namespace: &Identifier,
+        evidence: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
+        self.require_namespace(namespace)?;
+        crate::deletion_store::load_evidence(&self.database.connection, namespace, evidence)
+    }
+    pub fn latest_deletion_evidence(
+        &self,
+        namespace: &Identifier,
+        request: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
+        self.require_namespace(namespace)?;
+        let tip: Option<String> = self.database.connection.query_row(
+            "SELECT deletion_evidence_id FROM radishmemory_deletion_evidence WHERE namespace_id=?1 AND delete_request_id=?2 ORDER BY execution_ordinal DESC LIMIT 1",
+            params![namespace.as_str(), request.as_str()], |row| row.get(0),
+        ).optional().map_err(SqliteError::storage)?;
+        tip.map(|tip| self.load_deletion_evidence(namespace, &source_store::identifier(tip)?))
+            .transpose()
+            .map(Option::flatten)
+    }
     pub fn load_source_artifact(
         &self,
         namespace: &Identifier,

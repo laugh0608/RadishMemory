@@ -97,69 +97,12 @@ impl DeletionStore for SqliteDatabase {
         namespace_id: &Identifier,
         lineage_id: &Identifier,
     ) -> Result<Vec<ObjectRef>, Self::Error> {
-        let versions = self.list_source_versions(namespace_id, lineage_id)?;
-        if versions.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        let mut targets = versions
-            .iter()
-            .map(|version| {
-                ObjectRef::new(
-                    CanonicalObjectType::SourceArtifact,
-                    version.source_id().clone(),
-                )
-            })
-            .collect::<BTreeSet<_>>();
-        let direct_memory_ids = query_ids(
+        resolve_lineage_targets(
             &self.connection,
-            "SELECT DISTINCT record.memory_id
-             FROM radishmemory_memory_records AS record
-             JOIN radishmemory_record_source_fragments AS link
-               ON link.memory_id = record.memory_id
-             JOIN radishmemory_source_fragments AS fragment
-               ON fragment.fragment_id = link.fragment_id
-             JOIN radishmemory_source_artifacts AS source
-               ON source.source_id = fragment.source_id
-             WHERE source.lineage_id = ?1 AND source.namespace_id = ?2
-               AND source.deletion_state = 'active'
-               AND fragment.deletion_state = 'active'
-               AND record.deletion_state = 'active'
-             ORDER BY record.memory_id",
-            lineage_id.as_str(),
-            namespace_id.as_str(),
-        )?
-        .into_iter()
-        .map(identifier)
-        .collect::<Result<BTreeSet<_>, _>>()?;
-        let mut memory_ids = direct_memory_ids.clone();
-        let mut pending = direct_memory_ids.into_iter().collect::<VecDeque<_>>();
-        while let Some(memory_id) = pending.pop_front() {
-            for dependent in query_ids(
-                &self.connection,
-                "SELECT record.memory_id
-                 FROM radishmemory_record_supersedes AS relation
-                 JOIN radishmemory_memory_records AS record
-                   ON record.memory_id = relation.memory_id
-                 WHERE relation.superseded_memory_id = ?1
-                   AND record.namespace_id = ?2
-                   AND record.deletion_state = 'active'
-                 ORDER BY record.memory_id",
-                memory_id.as_str(),
-                namespace_id.as_str(),
-            )? {
-                let dependent = identifier(dependent)?;
-                if memory_ids.insert(dependent.clone()) {
-                    pending.push_back(dependent);
-                }
-            }
-        }
-        targets.extend(
-            memory_ids
-                .into_iter()
-                .map(|memory_id| ObjectRef::new(CanonicalObjectType::MemoryRecord, memory_id)),
-        );
-        Ok(targets.into_iter().collect())
+            namespace_id,
+            lineage_id,
+            &self.list_source_versions(namespace_id, lineage_id)?,
+        )
     }
 
     fn store_delete_request(&mut self, request: &DeleteRequest) -> Result<(), Self::Error> {
@@ -210,6 +153,76 @@ impl DeletionStore for SqliteDatabase {
     ) -> Result<Option<DeletionEvidence>, Self::Error> {
         load_evidence(&self.connection, namespace_id, deletion_evidence_id)
     }
+}
+
+pub(crate) fn resolve_lineage_targets(
+    connection: &Connection,
+    namespace_id: &Identifier,
+    lineage_id: &Identifier,
+    versions: &[radishmemory_core::SourceVersionSummary],
+) -> Result<Vec<ObjectRef>, SqliteError> {
+    if versions.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut targets = versions
+        .iter()
+        .map(|version| {
+            ObjectRef::new(
+                CanonicalObjectType::SourceArtifact,
+                version.source_id().clone(),
+            )
+        })
+        .collect::<BTreeSet<_>>();
+    let direct_memory_ids = query_ids(
+        connection,
+        "SELECT DISTINCT record.memory_id
+             FROM radishmemory_memory_records AS record
+             JOIN radishmemory_record_source_fragments AS link
+               ON link.memory_id = record.memory_id
+             JOIN radishmemory_source_fragments AS fragment
+               ON fragment.fragment_id = link.fragment_id
+             JOIN radishmemory_source_artifacts AS source
+               ON source.source_id = fragment.source_id
+             WHERE source.lineage_id = ?1 AND source.namespace_id = ?2
+               AND source.deletion_state = 'active'
+               AND fragment.deletion_state = 'active'
+               AND record.deletion_state = 'active'
+             ORDER BY record.memory_id",
+        lineage_id.as_str(),
+        namespace_id.as_str(),
+    )?
+    .into_iter()
+    .map(identifier)
+    .collect::<Result<BTreeSet<_>, _>>()?;
+    let mut memory_ids = direct_memory_ids.clone();
+    let mut pending = direct_memory_ids.into_iter().collect::<VecDeque<_>>();
+    while let Some(memory_id) = pending.pop_front() {
+        for dependent in query_ids(
+            connection,
+            "SELECT record.memory_id
+                 FROM radishmemory_record_supersedes AS relation
+                 JOIN radishmemory_memory_records AS record
+                   ON record.memory_id = relation.memory_id
+                 WHERE relation.superseded_memory_id = ?1
+                   AND record.namespace_id = ?2
+                   AND record.deletion_state = 'active'
+                 ORDER BY record.memory_id",
+            memory_id.as_str(),
+            namespace_id.as_str(),
+        )? {
+            let dependent = identifier(dependent)?;
+            if memory_ids.insert(dependent.clone()) {
+                pending.push_back(dependent);
+            }
+        }
+    }
+    targets.extend(
+        memory_ids
+            .into_iter()
+            .map(|memory_id| ObjectRef::new(CanonicalObjectType::MemoryRecord, memory_id)),
+    );
+    Ok(targets.into_iter().collect())
 }
 
 pub(crate) fn validate_request_profile(request: &DeleteRequest) -> Result<(), SqliteError> {

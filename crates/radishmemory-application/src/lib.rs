@@ -5,6 +5,7 @@
 //! a desktop toolkit, platform picker,
 //! persistent bookmark, network listener, model, or synchronization runtime.
 
+mod capture;
 mod encrypted;
 mod error;
 mod read;
@@ -19,7 +20,6 @@ use radishmemory_core::{
     Governance, LocalDeletionExecution, ProducerRef, ProducerType, RequestedGuarantee,
     RetentionMode, RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceVault,
     Version, build_local_purge_targets, compute_deletion_evidence_digest,
-    source_origin_binding_id_is_valid,
 };
 pub use radishmemory_core::{
     DeletionEvidence, DeletionOverallStatus, Identifier, NonEmptyText, Sensitivity, SourceArtifact,
@@ -28,7 +28,6 @@ pub use radishmemory_core::{
 pub use radishmemory_file_entry::{
     FileCaptureOutcome, FileCaptureReceipt, FileExportReceipt, FileExportRequest, FileReadRequest,
 };
-use radishmemory_file_entry::{FileCapturePlan, build_source_capture, read_file_snapshot};
 use radishmemory_sqlite::SqliteDatabase;
 
 pub use encrypted::{EncryptedLibrary, EncryptedLibraryLocation};
@@ -325,30 +324,8 @@ where
         request: &FileReadRequest,
     ) -> Result<FileCaptureReceipt, ApplicationError> {
         let operation = ApplicationOperation::ImportNewSource;
-        let observed_at = self.now(operation)?;
-        let snapshot = read_file_snapshot(request)
-            .map_err(|source| ApplicationError::file_entry(operation, source))?;
-        let origin_binding_id =
-            self.next_identifier(operation, ApplicationIdentifierKind::OriginBinding)?;
-        if !source_origin_binding_id_is_valid(origin_binding_id.as_str()) {
-            return Err(ApplicationError::invalid_runtime_identifier(operation));
-        }
-        let plan = FileCapturePlan {
-            namespace_id: self.config.namespace_id.clone(),
-            origin_binding_id,
-            source_id: self.next_identifier(operation, ApplicationIdentifierKind::Source)?,
-            lineage_id: self.next_identifier(operation, ApplicationIdentifierKind::Lineage)?,
-            version: Version::new(1)
-                .map_err(|source| ApplicationError::canonical(operation, source))?,
-            supersedes_source_ids: Vec::new(),
-            fragment_id: self.next_identifier(operation, ApplicationIdentifierKind::Fragment)?,
-            observed_at,
-            captured_at: self.now(operation)?,
-            governance: self.config.governance.clone(),
-            source_producer: self.config.source_producer.clone(),
-            segmenter: self.config.segmenter.clone(),
-        };
-        self.capture(snapshot, plan, operation)
+        let capture = capture::prepare(&mut self.runtime, &self.config, request, None)?;
+        self.capture(&capture, operation)
     }
 
     pub fn update_source(
@@ -367,30 +344,13 @@ where
             .load_source_artifact(&self.config.namespace_id, state.current_source_id())
             .map_err(|source| ApplicationError::storage(operation, source))?
             .ok_or_else(|| ApplicationError::source_not_found(operation))?;
-        let observed_at = self.now(operation)?;
-        let snapshot = read_file_snapshot(request)
-            .map_err(|source| ApplicationError::file_entry(operation, source))?;
-        let next_version = state
-            .current_version()
-            .get()
-            .checked_add(1)
-            .ok_or_else(|| ApplicationError::invalid_runtime_identifier(operation))?;
-        let plan = FileCapturePlan {
-            namespace_id: self.config.namespace_id.clone(),
-            origin_binding_id: state.origin_binding_id().clone(),
-            source_id: self.next_identifier(operation, ApplicationIdentifierKind::Source)?,
-            lineage_id: state.lineage_id().clone(),
-            version: Version::new(next_version)
-                .map_err(|source| ApplicationError::canonical(operation, source))?,
-            supersedes_source_ids: vec![state.current_source_id().clone()],
-            fragment_id: self.next_identifier(operation, ApplicationIdentifierKind::Fragment)?,
-            observed_at,
-            captured_at: self.now(operation)?,
-            governance: current.params().governance.clone(),
-            source_producer: self.config.source_producer.clone(),
-            segmenter: self.config.segmenter.clone(),
-        };
-        self.capture(snapshot, plan, operation)
+        let capture = capture::prepare(
+            &mut self.runtime,
+            &self.config,
+            request,
+            Some((state, current)),
+        )?;
+        self.capture(&capture, operation)
     }
 
     pub fn list_sources(
@@ -556,15 +516,12 @@ where
 
     fn capture(
         &mut self,
-        snapshot: radishmemory_file_entry::ValidatedFileSnapshot,
-        plan: FileCapturePlan,
+        capture: &radishmemory_core::SourceCapture,
         operation: ApplicationOperation,
     ) -> Result<FileCaptureReceipt, ApplicationError> {
-        let capture = build_source_capture(snapshot, plan)
-            .map_err(|source| ApplicationError::canonical(operation, source))?;
         let result = self
             .database
-            .capture_source(&capture)
+            .capture_source(capture)
             .map_err(|source| ApplicationError::storage(operation, source))?;
         FileCaptureReceipt::from_capture_result(&result)
             .map_err(|source| ApplicationError::file_entry(operation, source))

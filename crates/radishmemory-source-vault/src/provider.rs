@@ -118,6 +118,40 @@ pub trait LibraryProvider: sealed::Sealed {
         namespace: &str,
         device: &str,
     ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError>;
+    fn capture_library_source(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        capture: &radishmemory_core::SourceCapture,
+    ) -> std::result::Result<radishmemory_core::SourceCaptureResult, crate::VaultMaintenanceError>;
+
+    fn execute_library_deletion(
+        &self,
+        directory: &crate::ObjectDirectory,
+        request: &radishmemory_core::DeleteRequest,
+        execution: &radishmemory_core::LocalDeletionExecution,
+    ) -> std::result::Result<Vec<radishmemory_core::ComponentResult>, crate::VaultMaintenanceError>;
+
+    fn store_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        evidence: &radishmemory_core::DeletionEvidence,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError>;
+
+    fn verify_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
+
+    fn rebuild_library_derivations(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
 }
 
 impl sealed::Sealed for PlatformKeyProvider {}
@@ -148,6 +182,52 @@ impl LibraryProvider for PlatformKeyProvider {
         device: &str,
     ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError> {
         self.open_library_reader(directory, namespace, device)
+    }
+    fn capture_library_source(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        capture: &radishmemory_core::SourceCapture,
+    ) -> std::result::Result<radishmemory_core::SourceCaptureResult, crate::VaultMaintenanceError>
+    {
+        self.capture_library_source(directory, namespace, device, capture)
+    }
+
+    fn execute_library_deletion(
+        &self,
+        directory: &crate::ObjectDirectory,
+        request: &radishmemory_core::DeleteRequest,
+        execution: &radishmemory_core::LocalDeletionExecution,
+    ) -> std::result::Result<Vec<radishmemory_core::ComponentResult>, crate::VaultMaintenanceError>
+    {
+        self.execute_library_deletion(directory, request, execution)
+    }
+
+    fn store_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        evidence: &radishmemory_core::DeletionEvidence,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError> {
+        self.store_library_deletion_evidence(directory, evidence)
+    }
+
+    fn verify_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        self.verify_library_objects(directory, namespace, device)
+    }
+
+    fn rebuild_library_derivations(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        self.rebuild_library_derivations(directory, namespace, device)
     }
 }
 
