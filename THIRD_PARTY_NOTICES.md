@@ -9,8 +9,8 @@ change that license.
 
 - Inventory entries: **366** unique crates
 - Target entries: macOS **222**, Linux **301**, Windows **214**
-- Cargo.lock SHA-256: `842cb554e10292c655feb0acddeb055650c781c6219f734b6c1f94a58aa9301f`
-- Reviewed inventory SHA-256: `fc17c7a1f4f93e93761c8668beb988fa83290fbbc81ef592f0ab0efe60692bf3`
+- Cargo.lock SHA-256: `93532ce597bb17b0ca879442685e7b1bd88dfb9fcc17b63ca866dc9b3eb4b195`
+- Reviewed inventory SHA-256: `cbfe990725226152442d4fc7bf917ed728edf4bbd13ed3cebc5d4331479d37a1`
 - Reproduce: `python3 scripts/generate-third-party-notices.py --check`
 
 The “distribution basis” column records the license branch selected when an
@@ -21,7 +21,7 @@ upstream project link provide the corresponding attribution and source location.
 
 ## Locked Rust dependency inventory
 
-| Package | Declared license | Distribution basis | Targets | Attribution / upstream | Cargo checksum |
+| Package | Declared license | Distribution basis | Targets | Attribution / upstream | Cargo checksum / reviewed source |
 | --- | --- | --- | --- | --- | --- |
 | `accesskit 0.24.1` | `MIT OR Apache-2.0` | `MIT` | macOS, Linux, Windows | [The AccessKit contributors](https://github.com/AccessKit/accesskit) | `d3b7f7f85a7e5f68090000ed7622545829afd484d210358702ae4cb97dd0c320` |
 | `accesskit_atspi_common 0.18.1` | `MIT OR Apache-2.0` | `MIT` | Linux | [The AccessKit contributors](https://github.com/AccessKit/accesskit) | `1e8c61bee90b42a772d39d06a740207dc71a4e780004ace1db8d99fb1baaa954` |
@@ -350,7 +350,7 @@ upstream project link provide the corresponding attribution and source location.
 | `windows-implement 0.60.2` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `053e2e040ab57b9dc951b72c264860db7eb3b0200ba345b4e4c3b14f67855ddf` |
 | `windows-interface 0.59.3` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `3f316c4a2570ba26bbec722032c4099d8c8bc095efccdc15688708623367e358` |
 | `windows-link 0.2.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `f0805222e57f7521d6a62e36fa9163bc891acd422f971defe97d64e70d0a4fe5` |
-| `windows-native-keyring-store 1.1.0` | `MIT OR Apache-2.0` | `MIT` | Windows | [Daniel Brotsky <dev@brotsky.com>](https://github.com/open-source-cooperative/windows-native-keyring-store.git) | `063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8` |
+| `windows-native-keyring-store 1.1.0` | `MIT OR Apache-2.0` | `MIT` | Windows | [Daniel Brotsky <dev@brotsky.com>](https://github.com/open-source-cooperative/windows-native-keyring-store.git) | `upstream:063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8; vendored:bff9ba4e39b7da5adf4f4a3ef1113e7730830e1644776718c4e966524662e013` |
 | `windows-numerics 0.3.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `6e2e40844ac143cdb44aead537bbf727de9b044e107a0f1220392177d15b0f26` |
 | `windows-result 0.4.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `7781fa89eaf60850ac3d2da7af8e5242a5ea78d1a11c49bf2910bb5a73853eb5` |
 | `windows-strings 0.5.1` | `MIT OR Apache-2.0` | `MIT` | Windows | [Upstream project](https://github.com/microsoft/windows-rs) | `7837d08f69c77cf6b07689544538e017c1bfcf57e34b4c0ff58e6c2cd3b37091` |
@@ -392,6 +392,12 @@ upstream project link provide the corresponding attribution and source location.
 
 ## Additional bundled material
 
+- `windows-native-keyring-store 1.1.0` uses the reviewed local visibility patch.
+  Its inventory entry records both the original crates.io archive SHA-256 and
+  the pinned per-file provenance SHA-256; it is not a registry checksum for
+  the modified source. Original MIT / Apache-2.0 texts and attribution are
+  retained. Source, patch and reproduction are documented in
+  [the vendor record](third_party/vendor/README.md).
 - `epaint_default_fonts 0.36.1` embeds Hack, Noto Emoji, Ubuntu Light and
   emoji-icon-font. Their package-specific copyright, public-domain and reserved
   font-name notices are preserved in

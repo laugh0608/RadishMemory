@@ -1,0 +1,55 @@
+{
+  "package": "windows-native-keyring-store",
+  "version": "1.1.0",
+  "source": "registry+https://github.com/rust-lang/crates.io-index",
+  "archive_sha256": "063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8",
+  "license": "MIT OR Apache-2.0",
+  "distribution_basis": "MIT",
+  "patch": "src/cred.rs: pub(crate) struct Cred -> pub struct Cred",
+  "files": {
+    "Cargo.toml": {
+      "upstream_sha256": "493b3382585d57904095865548f2c28833cca8e77ca782036a9df5ecb97bda92",
+      "vendored_sha256": "493b3382585d57904095865548f2c28833cca8e77ca782036a9df5ecb97bda92"
+    },
+    "LICENSE-APACHE": {
+      "upstream_sha256": "c50e49cbc9917204c7e1d9c046342069e839c4947ef8c6027d23a3184ae73706",
+      "vendored_sha256": "c50e49cbc9917204c7e1d9c046342069e839c4947ef8c6027d23a3184ae73706"
+    },
+    "LICENSE-MIT": {
+      "upstream_sha256": "1b9916aeb17b63b74372d5493b6c6ce828eef2853e1dc48ac2bba701f148920c",
+      "vendored_sha256": "1b9916aeb17b63b74372d5493b6c6ce828eef2853e1dc48ac2bba701f148920c"
+    },
+    "README.md": {
+      "upstream_sha256": "914cc99c9f77a59c592179ca285b745af565a8a5196e5ce1c606e36f6a92e9a5",
+      "vendored_sha256": "914cc99c9f77a59c592179ca285b745af565a8a5196e5ce1c606e36f6a92e9a5"
+    },
+    "examples/cleanup.rs": {
+      "upstream_sha256": "6e1f333e621c2c51b5fef647802ae8d2ea860bcd5a32a0a54df02355c69bc36c",
+      "vendored_sha256": "6e1f333e621c2c51b5fef647802ae8d2ea860bcd5a32a0a54df02355c69bc36c"
+    },
+    "examples/example.rs": {
+      "upstream_sha256": "36884b05d704bf0a0db1d83baf38b9fa5d6f32558da39d79344f540c7e64d4f5",
+      "vendored_sha256": "36884b05d704bf0a0db1d83baf38b9fa5d6f32558da39d79344f540c7e64d4f5"
+    },
+    "src/cred.rs": {
+      "upstream_sha256": "64c7a692bf61a192f5e76962b2d47ef55a528a054a699682538189c004ed15df",
+      "vendored_sha256": "05053bf850865d046e186b3e0d5b6ba7f84886204c7921558a458eb8f576ef4c"
+    },
+    "src/lib.rs": {
+      "upstream_sha256": "5b4068c0e4e5fb728e31d0228821d73dfbd2bfb3a4a797356c7bfab5a09aa002",
+      "vendored_sha256": "5b4068c0e4e5fb728e31d0228821d73dfbd2bfb3a4a797356c7bfab5a09aa002"
+    },
+    "src/store.rs": {
+      "upstream_sha256": "ee47aa2b1a615dde2d566b0e7db4770986a24c7e29fcb724ecbaefde6c720098",
+      "vendored_sha256": "ee47aa2b1a615dde2d566b0e7db4770986a24c7e29fcb724ecbaefde6c720098"
+    },
+    "src/tests.rs": {
+      "upstream_sha256": "3fcb08ed96b924612c802425f6de743c173dc03766ec573c1686a2a69be86e27",
+      "vendored_sha256": "3fcb08ed96b924612c802425f6de743c173dc03766ec573c1686a2a69be86e27"
+    },
+    "src/utils.rs": {
+      "upstream_sha256": "87704f2a4c55e18630ae830bd96de3c031cd17a6f365ee1d22925dab120c607e",
+      "vendored_sha256": "87704f2a4c55e18630ae830bd96de3c031cd17a6f365ee1d22925dab120c607e"
+    }
+  }
+}

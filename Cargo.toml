@@ -10,6 +10,10 @@ members = [
   "crates/radishmemory-windows-filesystem",
 ]
 resolver = "3"
+exclude = ["third_party/vendor/windows-native-keyring-store-1.1.0"]
+
+[patch.crates-io]
+windows-native-keyring-store = { path = "third_party/vendor/windows-native-keyring-store-1.1.0" }
 
 [workspace.package]
 version = "0.1.0"

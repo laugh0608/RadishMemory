@@ -27,3 +27,6 @@
 *.woff2 binary
 *.ttf binary
 *.otf binary
+
+# Preserve reviewed upstream bytes; provenance hashes guard this exact vendor copy.
+third_party/vendor/windows-native-keyring-store-1.1.0/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol

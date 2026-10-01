@@ -23,6 +23,50 @@ TARGETS = (
     ("Linux", "aarch64-unknown-linux-gnu"),
     ("Windows", "aarch64-pc-windows-msvc"),
 )
+VENDOR_PATH = "third_party/vendor/windows-native-keyring-store-1.1.0"
+VENDOR_PROVENANCE_SHA256 = "bff9ba4e39b7da5adf4f4a3ef1113e7730830e1644776718c4e966524662e013"
+VENDOR_ARCHIVE_SHA256 = "063426e76fdec7438d56bb777f67e318a84a25c707b07e575cb8b78e10c028f8"
+
+
+def check_reviewed_vendor(repo_root: Path) -> None:
+    """Pin the one authorized upstream patch, including its complete source inventory."""
+    root = repo_root / VENDOR_PATH
+    for parent in (repo_root / "third_party", root.parent, root):
+        if parent.is_symlink():
+            raise RuntimeError("reviewed vendor path must not be a symlink")
+    provenance_path = root / "provenance.json"
+    if provenance_path.is_symlink() or not provenance_path.is_file():
+        raise RuntimeError("reviewed vendor provenance is missing or is a symlink")
+    data = provenance_path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != VENDOR_PROVENANCE_SHA256:
+        raise RuntimeError("reviewed vendor provenance changed without review")
+    provenance = json.loads(data)
+    expected = set(provenance["files"]) | {"provenance.json"}
+    actual = set()
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            raise RuntimeError("reviewed vendor must not contain symlinks")
+        if path.is_file():
+            name = path.relative_to(root).as_posix()
+            actual.add(name)
+            if name != "provenance.json":
+                record = provenance["files"].get(name)
+                if (
+                    record is None
+                    or hashlib.sha256(path.read_bytes()).hexdigest() != record["vendored_sha256"]
+                ):
+                    raise RuntimeError(f"unreviewed vendor file or content: {name}")
+    if actual != expected:
+        raise RuntimeError("reviewed vendor source inventory is incomplete")
+
+
+def is_reviewed_vendor(package: dict[str, object]) -> bool:
+    return (
+        package["name"] == "windows-native-keyring-store"
+        and package["version"] == "1.1.0"
+        and package.get("source") is None
+        and Path(package["manifest_path"]) == REPO_ROOT / VENDOR_PATH / "Cargo.toml"
+    )
 
 # Cargo license expressions are upstream declarations. For OR expressions this
 # table records the terms selected for RadishMemory binary/source distribution;
@@ -161,15 +205,20 @@ def lock_checksums() -> dict[tuple[str, str, str], str]:
 
 
 def collect_packages() -> list[NoticePackage]:
+    check_reviewed_vendor(REPO_ROOT)
     target_membership: dict[str, set[str]] = {}
     package_records: dict[str, dict[str, object]] = {}
     for target_name, target_triple in TARGETS:
         metadata = cargo_metadata(target_triple)
         by_id = {package["id"]: package for package in metadata["packages"]}
+        workspace_members = set(metadata["workspace_members"])
         for package_id in reachable_package_ids(metadata):
             package = by_id[package_id]
             if package.get("source") is None:
-                continue
+                if package_id in workspace_members:
+                    continue
+                if not is_reviewed_vendor(package):
+                    raise RuntimeError(f"unreviewed path dependency: {package['name']}")
             package_records[package_id] = package
             target_membership.setdefault(package_id, set()).add(target_name)
 
@@ -178,7 +227,8 @@ def collect_packages() -> list[NoticePackage]:
     target_order = {name: index for index, (name, _) in enumerate(TARGETS)}
     for package_id, package in package_records.items():
         source = package.get("source")
-        if source != CRATES_IO_SOURCE:
+        vendored = is_reviewed_vendor(package)
+        if source != CRATES_IO_SOURCE and not vendored:
             raise RuntimeError(
                 f"{package['name']} {package['version']} is not from reviewed crates.io source: {source}"
             )
@@ -204,7 +254,11 @@ def collect_packages() -> list[NoticePackage]:
                 f"unreviewed upstream NOTICE for {package['name']} {package['version']}: "
                 + ", ".join(sorted(upstream_notices))
             )
-        checksum = checksums.get((package["name"], package["version"], source))
+        checksum = (
+            f"upstream:{VENDOR_ARCHIVE_SHA256}; vendored:{VENDOR_PROVENANCE_SHA256}"
+            if vendored
+            else checksums.get((package["name"], package["version"], source))
+        )
         if checksum is None:
             raise RuntimeError(
                 f"Cargo.lock checksum missing for {package['name']} {package['version']}"
@@ -282,7 +336,7 @@ def render(packages: list[NoticePackage]) -> str:
         "",
         "## Locked Rust dependency inventory",
         "",
-        "| Package | Declared license | Distribution basis | Targets | Attribution / upstream | Cargo checksum |",
+        "| Package | Declared license | Distribution basis | Targets | Attribution / upstream | Cargo checksum / reviewed source |",
         "| --- | --- | --- | --- | --- | --- |",
     ]
     for package in packages:
@@ -308,6 +362,12 @@ def render(packages: list[NoticePackage]) -> str:
             "",
             "## Additional bundled material",
             "",
+            "- `windows-native-keyring-store 1.1.0` uses the reviewed local visibility patch.",
+            "  Its inventory entry records both the original crates.io archive SHA-256 and",
+            "  the pinned per-file provenance SHA-256; it is not a registry checksum for",
+            "  the modified source. Original MIT / Apache-2.0 texts and attribution are",
+            "  retained. Source, patch and reproduction are documented in",
+            "  [the vendor record](third_party/vendor/README.md).",
             "- `epaint_default_fonts 0.36.1` embeds Hack, Noto Emoji, Ubuntu Light and",
             "  emoji-icon-font. Their package-specific copyright, public-domain and reserved",
             "  font-name notices are preserved in",

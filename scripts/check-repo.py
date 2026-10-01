@@ -277,6 +277,10 @@ members = [
   \"crates/radishmemory-windows-filesystem\",
 ]
 resolver = \"3\"
+exclude = [\"third_party/vendor/windows-native-keyring-store-1.1.0\"]
+
+[patch.crates-io]
+windows-native-keyring-store = { path = \"third_party/vendor/windows-native-keyring-store-1.1.0\" }
 
 [workspace.package]
 version = \"0.1.0\"
@@ -483,7 +487,7 @@ profile = \"minimal\"
 """
 
 EXPECTED_REVIEWED_LOCK_PACKAGE_COUNT = 453
-EXPECTED_REVIEWED_LOCK_DIGEST = "8e783f30212f43e573c959a0f6f32b2c8ce6efa8a83445718ac92a9908b2b3f2"
+EXPECTED_REVIEWED_LOCK_DIGEST = "f8028e8132aeea0cf7f3a6ef673d0cbfda10dbabce25839b63b777163289ba0d"
 FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-application",
     "radishmemory-core",
@@ -495,6 +499,7 @@ FIRST_PARTY_RUST_PACKAGES = {
     "radishmemory-windows-filesystem",
 }
 CRATES_IO_SOURCE = "registry+https://github.com/rust-lang/crates.io-index"
+REVIEWED_VENDOR_PATH = "third_party/vendor/windows-native-keyring-store-1.1.0"
 
 FORBIDDEN_DIRECTORY_NAMES = {
     "__pycache__",
@@ -608,7 +613,9 @@ def check_rust_workspace_contract(
         if path.name == "Cargo.toml"
         and not {".git", "target"}.intersection(path.relative_to(repo_root).parts)
     )
-    expected_manifests = sorted(EXPECTED_CARGO_MANIFESTS)
+    expected_manifests = sorted(
+        [*EXPECTED_CARGO_MANIFESTS, f"{REVIEWED_VENDOR_PATH}/Cargo.toml"]
+    )
     if manifests != expected_manifests:
         errors.append(
             "Rust workspace must contain only the reviewed root, M0, Phase 1 library, application, and desktop manifests: "
@@ -653,6 +660,11 @@ def check_rust_workspace_contract(
         if name in FIRST_PARTY_RUST_PACKAGES:
             if source_match is not None or checksum_match is not None:
                 errors.append(f"first-party lock package must remain a workspace path: {name}")
+        elif name == "windows-native-keyring-store" and version_match.group(1) == "1.1.0":
+            # Only this reviewed patch may omit registry identity. The root
+            # manifest pins its path; notices verify every vendored source byte.
+            if source_match is not None or checksum_match is not None:
+                errors.append("Windows keyring lock package must use the reviewed local patch")
         elif source_match is None or source_match.group(1) != CRATES_IO_SOURCE:
             errors.append(f"third-party lock package must come from crates.io: {name}")
         elif checksum_match is None:
@@ -720,6 +732,10 @@ def check_text_files(repo_root: Path, paths: list[Path], errors: list[str]) -> N
             continue
 
         name = relative(repo_root, path)
+        if name.startswith(f"{REVIEWED_VENDOR_PATH}/") and path.name != "provenance.json":
+            # Keep published CRLF/whitespace intact. This exact source inventory
+            # and its hashes are checked by the mandatory notices gate.
+            continue
         data = path.read_bytes()
         if data.startswith(b"\xef\xbb\xbf"):
             errors.append(f"UTF-8 BOM is not allowed: {name}")

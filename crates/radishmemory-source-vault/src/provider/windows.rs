@@ -108,6 +108,24 @@ impl KeyStore for Store {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn credential_construction_preserves_frozen_identity_without_system_access() {
+        let slot = KeySlot::new(
+            "namespace-0123456789abcdef0123456789abcdef",
+            "device-fedcba9876543210fedcba9876543210",
+        )
+        .unwrap();
+        let store = Store::connect(&slot).unwrap();
+        assert_eq!(store.credential.target_name, slot.windows_target);
+        assert_eq!(
+            store.credential.get_specifiers(),
+            Some((SERVICE.into(), slot.account.clone()))
+        );
+        assert_eq!(store.account, slot.account);
+        assert!(matches!(store.credential.persistence, CredPersist::Local));
+    }
+
     #[test]
     fn local_identity_is_required_without_system_access() {
         let mut attributes = HashMap::from([

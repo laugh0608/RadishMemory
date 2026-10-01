@@ -1,12 +1,12 @@
 # RadishMemory Rust 依赖基线
 
-更新时间：2026-09-26
+更新时间：2026-10-01
 
 范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、`P1-S03a portable crypto dependency landing`、`P1-S03b Windows file identity adapter`、`P1-S03c-2 isolated platform key provider`、`P1-S04a key bootstrap coordination`、P1-S04 capture 与认证读取 / 导出测试连线、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
 
 ## 当前解析结果
 
-`Cargo.lock` 由 Cargo `1.96.0` 生成，lockfile format 为 `4`。当前依赖图包含八个第一方 workspace package，以及从 crates.io 解析并带 checksum 的 445 个第三方 package；没有 Git dependency。数量包含 Linux、macOS、Windows、Android、WASM 和可选 renderer 的条件解析全集，不等于单个产物会编译或链接全部 package。
+`Cargo.lock` 由 Cargo `1.96.0` 生成，lockfile format 为 `4`。当前依赖图包含八个第一方 workspace package，以及 445 个第三方 package；其中 444 个从 crates.io 解析并带 checksum，`windows-native-keyring-store 1.1.0` 使用经批准的同版本本地可见性补丁和逐文件来源摘要；没有 Git dependency。数量包含 Linux、macOS、Windows、Android、WASM 和可选 renderer 的条件解析全集，不等于单个产物会编译或链接全部 package。
 
 | package | 直接依赖 | 来源 | 许可证 |
 | --- | --- | --- | --- |
@@ -61,6 +61,8 @@ Source Vault 的 `Observation` 保留原文件引用直到比较结束，避免�
 P1-S03c-2 经独立授权加入六项精确直接依赖：共同 `keyring-core =1.0.0`；macOS `apple-native-keyring-store =1.0.2` / `keychain` 与 `security-framework =3.7.0`；Windows `windows-native-keyring-store =1.1.0` / no defaults；Linux `zbus-secret-service-keyring-store =1.0.1` 与 `secret-service =5.2.0` / `crypto-rust`。六项均关闭自身 default features，但不能关闭其它 dependency edge 激活的上游默认 feature。
 
 22-package 增量的 checksum、MIT distribution basis、MSRV、native / runtime / build-script / proc-macro 面及固定 RustSec 快照已复核；没有旧版本漂移。两个分发根的三目标可达依赖 notices 当前为 366 项；精确 API、补充依赖用途、运行与未验证边界见[provider 落地记录](phase1-source-vault-key-provider.md)，不能把 portable 单元的无 FFI 历史结论扩展到整个 Source Vault。
+
+2026-10-01 [PR #4](https://github.com/laugh0608/RadishMemory/pull/4) 暴露 Windows `Cred` 为上游私有类型的编译阻断。项目所有者批准保留冻结 target/account，应用 [同版本最小补丁](../../third_party/vendor/README.md)：仅将 `Cred` 结构可见性改为 public，保留上游所有原生操作与版本 / feature。Cargo 离线解析仅把该条目改为受审阅 path source，未增加 package 或升级版本。root manifest 精确固定 patch 并从第一方 workspace 排除；原 archive checksum、原 / 改后文件摘要、MIT / Apache-2.0 文本及作者归属保持可追溯，notices 继续把它计为第三方。未知 path、内容漂移和缺失文件失败关闭；详见 provider 记录。真实 Credential Manager 及宿主日志过滤仍待授权验收。
 
 ## Desktop 直接依赖、平台面与当前目标
 

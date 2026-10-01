@@ -4,7 +4,7 @@
 
 状态：`P1-S03c-2 isolated provider implementation complete — native acceptance pending`
 
-后续：本文保留 P1-S03c-2 的实现范围与证据；[P1-S04a](phase1-source-vault-key-bootstrap.md) 已新增受 SQLite 事务约束的 library initializer，取代当时等待协调器的 dead-code 写入口。Windows / Linux 验证现按[当前状态](../status/current.md)后置集中执行。
+后续：本文保留 P1-S03c-2 的实现范围与证据；[P1-S04a](phase1-source-vault-key-bootstrap.md) 已新增受 SQLite 事务约束的 library initializer，取代当时等待协调器的 dead-code 写入口。2026-10-01 PR #4 的 Linux locked CI 已通过，Windows 暴露并修复上游 `Cred` 私有可见性阻断，详见本文末节；真实系统密钥库仍按[当前状态](../status/current.md)等待单独验收。
 
 范围：项目所有者确认 [P1-S03c-1 预检](2026-09-15-source-vault-provider-preflight.md#建议决策与下一批精确范围)后的六项精确依赖、平台映射和独立实现范围。本批只修改 Source Vault、相应依赖 / notices、检查器及正式文档；没有接入 SQLite、application 或 UI，没有访问系统密钥库。Windows / Linux provider 尚无 locked compile 证据，不能以本机通过代替三平台完成。
 
@@ -26,6 +26,8 @@
 | Linux | `secret-service` 只读检查 default collection 存在且未锁定，并复验会话内 alias 身份；`zbus-secret-service-keyring-store` 不带 target，保留跨 collections 的 exact service / username 搜索和 ambiguity；固定 label 通过 concrete `Specifier` 读取 / 设置 | 代码已落地，仅源码与目标图复核；未编译、未连接 D-Bus。guard 会独立建立一个 DH session，不调用 unlock / create / get-any fallback；provider 另建会话，运行成本与服务重启待实测。暂存 path 只用于当前操作比对，不持久化、不用于绕过搜索 |
 
 具体 store 不使用全局 default store，也不提供 caller 注入的 production provider。macOS / Windows 使用上游 concrete credential，避免 `Entry` 的 identity debug 日志；Linux provider 内部仍可构造 `Entry` 并输出 identity。**真实调用前必须建立 upstream logger target 过滤，并验证 debug / trace 不会绕过**；本批没有引入 host logger 或把这一待验项描述为已解决。
+
+上表保留 9 月 15 日的证据范围。Windows 对 `Cred` 的直接构造需下述同版本可见性补丁；原记录的源码复核遗漏了其 `pub(crate)` 限制，不能将原实现视为当时已具备 Windows 编译证据。
 
 默认 collection 被锁定时 Linux guard 直接返回 locked，用户需在系统环境解除后重试；其它 collection 中的 locked matches 仍可能使上游尝试 unlock / prompt。多项查找可能先遇到取消或 access failure，因此不保证所有锁定重复项都先返回 ambiguous。真实 GNOME 与 KDE / KWallet-compatible 验收仍不可省略。
 
@@ -57,3 +59,13 @@ notices 生成器未放宽规则：当前 **366** 项，metadata 保守图分别
 - 未启动后台服务、VM 或 GUI，未调用系统 key-store API，未改权限、凭据、全局工具或远程状态。P1-S03c-2 结束时改动尚未提交，随后已提交为 `146ea8f`；日终提交状态见[9 月 15 日记录](../status/2026-09-15-source-vault.md)。
 - P1-S03c-2 结束时原定先补齐 Windows / Linux locked compile；当前顺位以上述后续说明为准。真实凭据仍按测试账户、专用 slot、logger 过滤、prompt / 锁定 / 拒绝 / duplicate、重开和精确清理范围做 P1-S03c-3。真实 store 授权不由本批依赖 / 构建授权推导。
 - 后续 P1-S04a 已实现密钥初始化事务协调；2026-09-26 [P1-S04b 首个切片](phase1-source-vault-body-migration.md)已实现维护专用正文迁移 / 恢复，P1-S04 剩余协调链路及 P1-S05 宿主接入仍待完成。PDF / 图片解析继续等待完整 encrypted Source Vault 链路。
+
+## Windows 编译阻断与最小补丁（2026-10-01）
+
+[PR #4 首轮 CI](https://github.com/laugh0608/RadishMemory/actions/runs/36833340834) 在 candidate `43cd69c` 通过 Repo Hygiene、Linux / macOS Rust Quality；Windows 在 Clippy 阶段因 `cred::Cred` 为 `pub(crate)` 报 E0603，测试未执行。上游公共 explicit-target builder 会把 specifiers 丢弃，新写入 username 为空；直接改用该 builder 将破坏冻结 account 校验与 bootstrap 重试边界，因此不能只替换 import 或放宽校验。
+
+项目所有者确认修复后，保留 exact target/account 与 Local persistence，应用 [上游最小补丁](../../third_party/vendor/README.md)：`windows-native-keyring-store 1.1.0` 的 `Cred` 改为 public。补丁不改变任何 secret、attributes、Win32 操作或 setter 算法；仍承认 setter 是 upsert，真实使用前仍需要 SQLite writer 串行化与 logger 过滤。原 archive checksum、原 / 改后逐文件摘要、原许可证、作者与 source 归属可复验；补丁从 workspace 排除，不添加版本 / feature。
+
+新增 Windows 专用、无系统访问的 construction 回归，直接检查公开构造的 concrete credential 保留冻结 target、service/account specifiers、内部 account 与 Local persistence。仓库门禁同时验证这份 patch 源码完整性与 notices，不把 `source=None` 当作第一方代码而漏掉归属。当前候选三平台编译与合成运行结果以 PR #4 的 head checks 为准；真实 Credential Manager、logger、提示 / 取消 / 拒绝和生产宿主仍不在本批验收内。撤回补丁会恢复该依赖版本的 Windows 编译阻断，不能以改映射或临时成功替代。
+
+本地 macOS `./scripts/check-repo.sh --base-ref origin/master` 通过：235 个仓库文件、notices、fmt、all-targets / all-features locked Clippy、309 项 Rust tests；42 项 Python 检查器回归和 `cargo test --workspace --doc --all-features --locked` 的 compile-fail doctest 通过。独立从原 archive 重比 11 个文件的原 / 改后摘要，确认只有一处可见性变化。没有访问真实系统凭据，未安装新工具或新增 / 升级第三方版本。
