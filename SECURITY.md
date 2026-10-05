@@ -6,7 +6,7 @@ RadishMemory 面向长期个人资料、记忆、模型外发和多端同步。�
 
 请不要为未修复漏洞创建公开 Issue、Discussion 或 Pull Request，也不要公开粘贴利用代码、真实个人资料、凭据、密钥、原始记忆库或生产日志。
 
-优先使用 GitHub 仓库 `Security` 页面中的 Private vulnerability reporting。若该入口不可用，可发送邮件至 `laugh0608@foxmail.com`，主题包含 `[RadishMemory Security]`。
+优先使用 GitHub 仓库 `Security` 页面中的 Private vulnerability reporting。若该入口不可用，可发送邮件至 `luobo@radishx.com`，主题包含 `[RadishMemory Security]`。
 
 报告请尽量包含：
 
