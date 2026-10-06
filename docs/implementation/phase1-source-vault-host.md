@@ -65,4 +65,13 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 
 默认启动仍是 SQLite v6 inline plaintext body；显式原始对象加密不等于整个资料库静态加密，FTS 保留完整正文，旧 SQLite 页、快照和备份也未证明物理清除。中文检索、目录第 201 条、性能和默认 v6 的 failed-open 修复等质量缺口不在本批闭环范围，不授权真实个人资料使用。
 
-原生验收准备的静态缺口：当前 `main` 不解析测试目录参数，生产 `Worker::start` 直接调用 `ApplicationPaths::resolve`；`Engine` 测试虽能注入独立目录，该能力没有暴露为原生启动入口。因此明天先确定安全的独立测试根与 profile / slot 选择方式，再请求真实运行授权，不直接启动默认 GUI 访问日常资料库，也不通过替换用户 HOME 等宽泛全局设置制造隔离。此项只记录为待办，今天没有改动启动代码。
+2026-10-01 记录的原生隔离入口缺口已由 2026-10-06 的准备切片接线：原生启动严格解析独立根与两个合成身份参数，worker 每条命令复验既有 profile，不自动补建或切回默认库。正常无参数启动仍保持旧入口。具体参数、失败关闭边界、精确 slot 授权材料与待执行场景见[原生验收计划](../evaluation/phase1-source-vault-native-acceptance.md)。不替换 HOME 或全局配置，不新增依赖、持久 schema 或密钥映射。真实 Keychain / GUI 尚未执行。
+
+
+## 2026-10-06 隔离入口准备证据
+
+新增 `startup` 解析与目标绑定，通过既有路径、profile 和 worker 进入同一 production 链路；默认入口保留。新增 9 项合成回归覆盖参数不完整 / 重复 / 非法身份、缺失 / 错误 profile、运行期间 profile 丢失、默认目录重叠及别名、符号链接、Unix 权限、隔离旧库迁移 / 历史精确导出 / 重开。桌面单元测试共 35 项通过；日志子测试仍由父测试在隔离进程调用。
+
+本机完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：253 个仓库文件、notices、fmt、locked all-targets / all-features Clippy、25 个 Rust test suites 共 354 项通过，11 个 ignored helper 由父测试调用。另有 43 项 Python 检查器回归、M0 fixture（12 场景 / 86 操作 / 12 gate）、1 个 compile-fail doctest 和默认 desktop 构建通过；默认 normal / build / features 图不启用 `acceptance-test-support`。首轮完整检查仅在既有 P1-F17 本地观察端口处受沙箱拒绝，按权限流程在沙箱外重跑同一离线检查通过，没有跳过或放宽门禁。
+
+本批未修改 manifest / lockfile、canonical schema、slot 映射或 logger 实现；提前在原生窗口创建前安装同一诊断策略。已在忽略的任务目录准备合成输入、预建 profile、文件摘要及精确操作单，未创建验收数据库、启动 GUI 或访问系统 keychain。相关失败路径证据仍使用合成 provider，不能当作 macOS 原生验收；Windows / Linux 当前新增入口仍待集中检查点。未提交、未推送，不改变任务开始前已有提交。

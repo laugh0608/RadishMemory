@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-更新时间：2026-10-01
+更新时间：2026-10-06
 
 ## 当前阶段
 
@@ -61,6 +61,8 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
+2026-10-06 隔离原生入口准备：完整仓库检查、354 项 Rust tests（新增 9 项隔离入口 / worker 回归）、43 项检查器回归、M0 fixture、compile-fail doctest 和默认 desktop 构建通过。首轮 P1-F17 合成端口受沙箱拒绝后，按权限流程完整重跑通过；具体证据见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-06-隔离入口准备证据)。合成目录 / profile 与精确操作单已准备，真实 Keychain / GUI 仍待当前任务授权及执行，Windows / Linux 保留待验。
+
 2026-10-01 桌面宿主接入：恢复前置接口已提交；新 worker、原请求恢复、显式加密 UI 和日志策略已完成本机合成验证；完整仓库检查、345 项 Rust tests、43 项检查器回归、M0 fixture、compile-fail doctest 与默认 desktop 构建通过。完整范围及尚未执行的真实 Keychain / GUI、Windows / Linux 集中验收见[宿主记录](../implementation/phase1-source-vault-host.md)。默认启动仍为 v6，显式加密模式的 FTS 也保留完整明文；既有删除证据摘要复算缺口单独记录，不扩大保证。
 
 2026-10-01 application 加密用例切片：本机完整仓库检查、notices、fmt、locked Clippy 与 330 项 Rust tests（写用例批次新增 9 项、此前读取批次新增 12 项）通过；42 项检查器回归、M0 fixture 和 compile-fail doctest 通过。P1-F17 合成本地端口的沙箱限制经授权在沙箱外完整重跑解决，全部使用合成资料和测试 key；范围、原请求恢复、派生修复与未验收边界见[application 记录](../implementation/phase1-source-vault-application.md)。默认桌面及真实系统密钥库仍未切换。
@@ -75,6 +77,6 @@ Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继�
 
 ## 后续事项
 
-明日（2026-10-02）先准备隔离的 P1-S05 原生验收入口与精确授权计划，再进行 macOS 真实 Keychain / logger 与 GUI 端到端验收，随后进入集中跨平台检查点；桌面接线的合成测试不能代替原生验收。具体完成范围和下一步见[宿主记录](../implementation/phase1-source-vault-host.md)。9 月 15 日和 9 月 27 日建议保留为历史安排；R01 至 R06、宿主接入及集中跨平台验证继续遵循上述顺位与停止线。
+2026-10-06 已接入隔离的 P1-S05 原生验收入口，并形成[原生验收计划](../evaluation/phase1-source-vault-native-acceptance.md)：独立目录、既有合成 profile 身份绑定、逐命令复验与失败关闭。下一步在当前任务精确授权后进行 macOS 真实 Keychain / logger 与 GUI 端到端验收，随后进入集中跨平台检查点；桌面接线及隔离入口的合成测试不能代替原生验收。具体完成范围和下一步见[宿主记录](../implementation/phase1-source-vault-host.md)。9 月 15 日和 9 月 27 日建议保留为历史安排；R01 至 R06、宿主接入及集中跨平台验证继续遵循上述顺位与停止线。
 
-[10 月 1 日日终记录与明日事项](2026-10-01-source-vault.md)汇总当天八个提交及代码—文档复核。生产 worker 目前固定解析默认应用目录，原生 GUI 的独立测试根尚未接入；不能直接启动默认 GUI 代替隔离验收。既有 `evidence_digest` 复算缺口独立安排契约 / 兼容评审，不在验收准备中静默改变删除协议。今天停在文档提交，不安排自动化或后台继续开发。
+[10 月 1 日日终记录与明日事项](2026-10-01-source-vault.md)汇总当天八个提交及代码—文档复核。生产 worker 已支持显式验收根及 namespace / device 参数，参数不完整、路径不合格或 profile 身份漂移时拒绝，不回退默认目录；不能直接启动默认 GUI 代替隔离验收。既有 `evidence_digest` 复算缺口独立安排契约 / 兼容评审，不在验收准备中静默改变删除协议。10 月 1 日的文档停止点保留为历史记录；本批推进隔离入口与验收准备，不安排自动化。

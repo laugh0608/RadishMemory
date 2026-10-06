@@ -49,6 +49,7 @@ pub(crate) struct Snapshot {
 
 pub(crate) struct Engine<P: LibraryProvider, F: Fn() -> P> {
     paths: ApplicationPaths,
+    acceptance: Option<crate::startup::AcceptanceLocation>,
     provider: F,
     controller: Option<LibraryController<ProductionRuntime, P>>,
     encrypted: bool,
@@ -61,6 +62,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
     pub(crate) fn new(paths: ApplicationPaths, provider: F) -> Self {
         Self {
             paths,
+            acceptance: None,
             provider,
             controller: None,
             encrypted: false,
@@ -70,8 +72,14 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             view_valid: false,
         }
     }
+    fn profile(&self) -> Result<crate::HostProfile, DesktopError> {
+        match &self.acceptance {
+            Some(location) => location.load_profile(),
+            None => load_or_create_host_profile(&self.paths, &mut ProductionRuntime),
+        }
+    }
     fn location(&self) -> Result<EncryptedLibraryLocation<P>, DesktopError> {
-        let profile = load_or_create_host_profile(&self.paths, &mut ProductionRuntime)?;
+        let profile = self.profile()?;
         let config = LocalLibraryConfig::phase1_local(
             profile.namespace_id().clone(),
             profile.device_id().clone(),
@@ -126,6 +134,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             || !self.recovery_known
     }
     fn perform(&mut self, command: Command, snapshot: &mut Snapshot) -> Result<(), DesktopError> {
+        if let Some(location) = &self.acceptance {
+            location.load_profile()?;
+        }
         let changes_library = matches!(
             command,
             Command::OpenPlain | Command::OpenEncrypted | Command::InitializeKey | Command::Migrate
@@ -149,7 +160,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::OpenPlain => {
                 self.controller = None;
                 self.encrypted = false;
-                let profile = load_or_create_host_profile(&self.paths, &mut ProductionRuntime)?;
+                let profile = self.profile()?;
                 let config = LocalLibraryConfig::phase1_local(
                     profile.namespace_id().clone(),
                     profile.device_id().clone(),
@@ -338,11 +349,29 @@ pub(crate) struct Worker {
 }
 impl Worker {
     pub(crate) fn start() -> Result<Self, DesktopError> {
+        Self::start_with_startup(crate::startup::Startup::default())
+    }
+    pub(crate) fn start_with_startup(
+        startup: crate::startup::Startup,
+    ) -> Result<Self, DesktopError> {
         crate::logging::install()?;
-        Self::spawn(|| {
-            let paths = ApplicationPaths::resolve()?;
-            Ok(Engine::new(paths, PlatformKeyProvider::new))
-        })
+        Self::spawn(move || Self::engine(startup, PlatformKeyProvider::new))
+    }
+    fn engine<P: LibraryProvider, F: Fn() -> P>(
+        startup: crate::startup::Startup,
+        provider: F,
+    ) -> Result<Engine<P, F>, DesktopError> {
+        match startup {
+            crate::startup::Startup::Default => {
+                Ok(Engine::new(ApplicationPaths::resolve()?, provider))
+            }
+            crate::startup::Startup::Acceptance(location) => {
+                location.load_profile()?;
+                let mut engine = Engine::new(location.paths()?, provider);
+                engine.acceptance = Some(location);
+                Ok(engine)
+            }
+        }
     }
     fn spawn<P, F, B>(build: B) -> Result<Self, DesktopError>
     where

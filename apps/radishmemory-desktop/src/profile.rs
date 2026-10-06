@@ -162,7 +162,7 @@ fn publish_profile(
     Ok(())
 }
 
-fn load_profile(paths: &ApplicationPaths) -> Result<HostProfile, DesktopError> {
+pub(crate) fn load_profile(paths: &ApplicationPaths) -> Result<HostProfile, DesktopError> {
     let bytes = read_bounded_file(paths.profile_path()).map_err(|source| {
         DesktopError::io(
             DesktopErrorCode::HostProfile,

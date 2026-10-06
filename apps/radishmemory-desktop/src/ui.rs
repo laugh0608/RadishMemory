@@ -15,6 +15,7 @@ pub struct RadishMemoryApp {
     confirm_delete: bool,
     confirmation: Option<Confirmation>,
     allow_close: bool,
+    acceptance: bool,
 }
 #[derive(Clone, Copy)]
 enum Confirmation {
@@ -27,6 +28,9 @@ enum Confirmation {
 impl RadishMemoryApp {
     #[must_use]
     pub fn bootstrap() -> Self {
+        Self::bootstrap_with_startup(crate::startup::Startup::default())
+    }
+    pub(crate) fn bootstrap_with_startup(startup: crate::startup::Startup) -> Self {
         let mut app = Self {
             worker: None,
             controller: None,
@@ -38,8 +42,13 @@ impl RadishMemoryApp {
             confirm_delete: false,
             confirmation: None,
             allow_close: false,
+            acceptance: startup.is_acceptance(),
         };
-        match Worker::start() {
+        let worker = match startup {
+            crate::startup::Startup::Default => Worker::start(),
+            startup => Worker::start_with_startup(startup),
+        };
+        match worker {
             Ok(worker) => {
                 app.worker = Some(worker);
                 app.send(Command::OpenPlain);
@@ -167,6 +176,7 @@ impl eframe::App for RadishMemoryApp {
                 ui.heading("RadishMemory");
                 ui.separator();
                 ui.label("Local-only text library");
+                if self.acceptance { ui.label("Synthetic acceptance library"); }
                 if self.controller.is_some() && ui.add_enabled(can_mutate, egui::Button::new("Import file…")).clicked() { action = Some(UiAction::Import); }
                 if ui.button("Refresh").clicked() { action = Some(UiAction::Command(Command::Refresh)); }
                 if ui.button("Verify").clicked() { action = Some(UiAction::Verify); }

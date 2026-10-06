@@ -32,6 +32,8 @@ pub enum DesktopErrorReason {
     RecoveryRequired,
     WorkerStopped,
     LoggingUnavailable,
+    StartupArgumentsInvalid,
+    AcceptanceProfileMismatch,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

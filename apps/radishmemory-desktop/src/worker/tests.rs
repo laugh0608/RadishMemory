@@ -62,6 +62,85 @@ fn ready<P: LibraryProvider, F: Fn() -> P>(engine: &mut Engine<P, F>) {
 }
 
 #[test]
+fn native_startup_routes_migration_and_reopen_to_the_pinned_library() {
+    let fixture = crate::startup::tests::Fixture::new();
+    let input = Fixture::new();
+    let provider = SyntheticLibraryProvider::default();
+    let mut engine = Worker::engine(
+        crate::startup::Startup::parse(fixture.arguments()).unwrap(),
+        || provider.clone(),
+    )
+    .unwrap();
+    ok(engine.execute(Command::OpenPlain));
+    ok(engine.execute(Command::Import(
+        input.input("synthetic acceptance migration"),
+    )));
+    let profile = fs::read(fixture.root.join("host-profile-v1.txt")).unwrap();
+    ok(engine.execute(Command::InitializeKey));
+    ok(engine.execute(Command::Migrate));
+    ok(engine.execute(Command::OpenEncrypted));
+    ok(engine.execute(Command::Export(input.export())));
+    assert_eq!(
+        fs::read_to_string(input.root.join("export/result.md")).unwrap(),
+        "synthetic acceptance migration"
+    );
+    assert!(fixture.root.join("library.sqlite3").is_file());
+    assert_eq!(provider.key_creations(), 1);
+    drop(engine);
+    let mut reopened = Worker::engine(
+        crate::startup::Startup::parse(fixture.arguments()).unwrap(),
+        || provider.clone(),
+    )
+    .unwrap();
+    assert!(reopened.execute(Command::OpenPlain).error.is_some());
+    assert!(ok(reopened.execute(Command::OpenEncrypted)).view.is_some());
+    assert_eq!(provider.key_creations(), 1);
+    assert_eq!(
+        fs::read(fixture.root.join("host-profile-v1.txt")).unwrap(),
+        profile
+    );
+}
+
+#[test]
+fn native_startup_rechecks_profile_before_bootstrap_and_each_command() {
+    let fixture = crate::startup::tests::Fixture::new();
+    let provider = SyntheticLibraryProvider::default();
+    let startup = crate::startup::Startup::parse(fixture.arguments()).unwrap();
+    let profile_path = fixture.root.join("host-profile-v1.txt");
+    let profile = fs::read(&profile_path).unwrap();
+    fs::remove_file(&profile_path).unwrap();
+    assert!(Worker::engine(startup, || provider.clone()).is_err());
+    assert!(!fixture.root.join("library.sqlite3").exists());
+    fs::write(&profile_path, &profile).unwrap();
+    let mut engine = Worker::engine(
+        crate::startup::Startup::parse(fixture.arguments()).unwrap(),
+        || provider.clone(),
+    )
+    .unwrap();
+    ok(engine.execute(Command::OpenPlain));
+    fs::remove_file(&profile_path).unwrap();
+    for command in [
+        Command::InitializeKey,
+        Command::OpenPlain,
+        Command::OpenEncrypted,
+        Command::Rebuild,
+        Command::RetryOriginal,
+    ] {
+        let snapshot = engine.execute(command);
+        assert_eq!(
+            snapshot.error.unwrap().reason(),
+            DesktopErrorReason::ProfileReadFailed
+        );
+        assert!(snapshot.view.is_none());
+        assert!(!profile_path.exists());
+        assert_eq!(provider.key_creations(), 0);
+    }
+    fs::write(&profile_path, &profile).unwrap();
+    ok(engine.execute(Command::InitializeKey));
+    assert_eq!(provider.key_creations(), 1);
+}
+
+#[test]
 fn explicit_preparation_closes_legacy_and_missing_key_never_bootstraps() {
     let fixture = Fixture::new();
     let mut engine = fixture.engine();
