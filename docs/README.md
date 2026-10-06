@@ -30,7 +30,7 @@
 24. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
 25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
     - [Phase 1 Source Vault filesystem adapter 落地记录](implementation/phase1-source-vault-filesystem.md)：P1-S03b envelope、目录 capability、不可覆盖发布、认证回读、attempt 状态与平台证据限制。
-    - [Phase 1 Source Vault key provider 落地记录](implementation/phase1-source-vault-key-provider.md)：精确平台依赖、严格读取、私有 bootstrap 编排与真实密钥库待验收边界。
+    - [Phase 1 Source Vault key provider 落地记录](implementation/phase1-source-vault-key-provider.md)：精确平台依赖、严格读取、私有 bootstrap 编排与真实密钥库分批验收边界。
     - [Phase 1 Source Vault 密钥初始化协调](implementation/phase1-source-vault-key-bootstrap.md)：P1-S04a SQLite 事务资格、v7 维护 checkpoint、并发、提交失败与恢复限制。
     - [Phase 1 Source Vault 正文迁移与恢复](implementation/phase1-source-vault-body-migration.md)：P1-S04b 首个维护切片、v8 状态契约、故障验收和未覆盖范围。
     - [Phase 1 capture 显式放弃与 orphan retirement](implementation/phase1-source-vault-abandonment.md)：维护 v10、精确 target、不可逆决定、终态防重放与故障恢复。
@@ -45,6 +45,8 @@
 26. [参考系统与研究问题](references.md)：可借鉴的公开实现和需要自行验证的问题。
 
 ## 质量与历史记录
+
+- [2026-10-06 Source Vault 日终记录与明日事项](status/2026-10-06-source-vault.md)：当天三个提交、隔离入口与原生正常 / 受损库验收复核，以及 10 月 7 日恢复交互安排。
 
 - [2026-10-01 Source Vault 日终记录与明日事项](status/2026-10-01-source-vault.md)：当天八个提交、Windows 补丁与 application / 桌面接线复核，以及原生验收准备和 10 月 2 日安排。
 

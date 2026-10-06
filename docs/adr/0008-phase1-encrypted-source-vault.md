@@ -58,7 +58,7 @@
 
 namespace、`source_id`、摘要、长度、media type 与 envelope version 必须作为 AEAD associated data 或受等价认证保护，防止在不同来源或 metadata 之间交换合法密文。未知 version、cipher suite、key-wrap profile、缺失字段、重复字段、认证失败或 metadata 不匹配都必须失败关闭；不允许尝试其它算法、旧 key、明文 BLOB 或外部原件作为静默 fallback。
 
-本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。[P1-S03a portable crypto 落地](../implementation/phase1-source-vault-portable-crypto.md)随后把 portable manifest / lockfile、AAD codec、cipher / wrap 与合成向量落入独立第一方 package；[P1-S03b filesystem adapter](../implementation/phase1-source-vault-filesystem.md)已实现 filesystem envelope、不可覆盖发布与认证回读并通过 macOS 合成验证及 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，[P1-S03c-2](../implementation/phase1-source-vault-key-provider.md) 已落地独立 platform provider，真实密钥库、SQLite coordination 与 production data flow 仍未验收。
+本文冻结密钥层级和必须满足的行为，不自行发明 cipher。[P1-S02 依赖与密码套件评审](../implementation/phase1-encrypted-source-vault-dependency-review.md)已将对象 profile 冻结为 `radishmemory.xchacha20poly1305-stream-be32/1`，将 DEK wrap profile 冻结为 `radishmemory.xchacha20poly1305-dek-wrap/1`，并选择系统随机、secret zeroization 与 macOS / Windows / Linux 精确 key provider。[P1-S03a portable crypto 落地](../implementation/phase1-source-vault-portable-crypto.md)随后把 portable manifest / lockfile、AAD codec、cipher / wrap 与合成向量落入独立第一方 package；[P1-S03b filesystem adapter](../implementation/phase1-source-vault-filesystem.md)已实现 filesystem envelope、不可覆盖发布与认证回读并通过 macOS 合成验证及 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，[P1-S03c-2](../implementation/phase1-source-vault-key-provider.md) 已落地独立 platform provider，后续 SQLite coordination 与显式 application / host 链路已经落地，macOS 最小真实密钥库与两类受损库验收见本文末节；完整原生与其它平台验收仍待完成。
 
 未来零知识同步可以为同一对象 DEK 增加经过独立协议评审的设备或空间 wrapper，但不得要求服务端获得明文 DEK，也不得把本文的设备本地 KEK 直接升级为同步根密钥。同步密钥、恢复、撤销和轮换继续由 ADR 0003 及后续同步协议负责。
 
@@ -201,7 +201,7 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 2026-09-15 项目所有者已授权 P1-S04a：复用现有 SQLite adapter，在 Source Vault coordinator 下实现真实存储资格检查、密钥初始化与事务 checkpoint，仅用合成资料 / 测试 provider 验证；不接入 application / UI 或访问真实系统 key store。v7 只保留初始化准备状态，后续正文迁移单独推进；默认 `SqliteDatabase::open` 仍只允许 v6。Windows / Linux 验证按[当前顺位](../status/current.md)后置集中执行。
 
-`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，正文对象 migration 首个维护切片已有合成证据；真实平台凭据与 host integration 均未验收。默认桌面产品入口仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
+`P1-S01 storage contract`、`P1-S02 dependency and cipher review` 与 `P1-S03a portable crypto dependency landing` 已完成；精确 crypto / key-provider profile 已冻结，portable dependency / cipher / wrap / AAD / 合成测试已落地，P1-S03b 已实现 object directory、serialized envelope、no-overwrite publish、认证 read-back 与精确 attempt 检查，已具备 macOS 与 Windows ARM64 / NTFS 提升权限、普通用户运行证据，以及 Linux ARM64 / ext4 普通用户运行证据；独立 key provider 与 P1-S04a 密钥初始化 checkpoint 已实现并通过相应合成验证，正文对象 migration 首个维护切片已有合成证据；macOS 最小真实凭据 / host 正常链路和两类受损库扩展已在后续批次验收，其余平台及完整恢复路径仍未完成。默认桌面产品入口仍使用 SQLite v6 inline plaintext body，不能因为 portable crypto 已存在而宣称加密 Source Vault 已经可用。
 
 - `P1-S03b` 当前证据不代表其它 Linux / Windows 文件系统、架构或真实断电持久化已通过，平台差异必须保留真实失败；若后续需要新增第三方依赖或改变已冻结 crypto / AAD profile，先重新评审；
 - filesystem adapter 继续使用 synthetic key / random test seam 验收；P1-S03c-2 只授权精确 provider 依赖与独立实现，未经真实平台授权不访问 keychain / platform security provider；
@@ -227,3 +227,6 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 2026-10-01 项目所有者授权 application 读取生命周期实现及其第一方依赖连线，落地记录见[显式 application 接入](../implementation/phase1-source-vault-application.md)。旧 v6 连接显式关闭后，独立执行准备或既有迁移恢复，再普通打开；完整读取 / 导出用例持有认证会话，结束或失败后释放锁与 key。该读取批次结束时默认桌面入口仍未切换，加密写用例与 host 接线尚待完成；同日后续进展见下段，真实平台凭据及 P1-S05 原生验收继续后置。没有新 schema、密码 profile 或加密声明。
 
 2026-10-01 后续授权完成 application 加密 import / update、原删除请求恢复、verify / rebuild，以及[桌面后台与恢复界面](../implementation/phase1-source-vault-host.md)。准备和执行分开以持有原 capture，重试不重读原件或扩大删除目标；重启发现原删除授权，桌面丢失 capture 快照后提供明确的精确放弃入口，不伪造原请求。默认启动仍为 v6，显式加密入口经用户动作使用既有协调器；线程、生命周期和诊断策略具备合成证据。该接线不新增 canonical schema、密码 profile、明文 journal 或加密范围，不表示真实 Keychain / GUI、全部 `P1-SF01` 至 `P1-SF18` 或生产验收已经通过。
+
+
+2026-10-06 新增显式隔离根与合成 profile 绑定入口，逐命令复验目标，非法参数不回退默认库；不改变 slot 映射、canonical schema 或密码 profile。经精确授权完成 macOS 真实 Keychain / GUI 最小正常闭环，以及派生损坏重启后显式重建、密文认证失败拒绝修复两项扩展，见[宿主记录](../implementation/phase1-source-vault-host.md)。默认 v6、FTS 完整明文、历史页 / 备份删除限制不变；其余原请求恢复、系统密钥失败与 Windows / Linux 待验，P1-S05 和全部 P1-SF 场景未整体关闭。

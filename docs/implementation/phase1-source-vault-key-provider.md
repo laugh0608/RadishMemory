@@ -2,9 +2,9 @@
 
 日期：2026-09-15
 
-状态：`P1-S03c-2 isolated provider implementation complete — native acceptance pending`
+当批状态（2026-09-15）：`P1-S03c-2 isolated provider implementation complete — native acceptance pending`
 
-后续：本文保留 P1-S03c-2 的实现范围与证据；[P1-S04a](phase1-source-vault-key-bootstrap.md) 已新增受 SQLite 事务约束的 library initializer，取代当时等待协调器的 dead-code 写入口。2026-10-01 PR #4 的 Linux locked CI 已通过，Windows 暴露并修复上游 `Cred` 私有可见性阻断，详见本文末节；真实系统密钥库仍按[当前状态](../status/current.md)等待单独验收。
+后续：本文保留 P1-S03c-2 的实现范围与证据；[P1-S04a](phase1-source-vault-key-bootstrap.md) 已新增受 SQLite 事务约束的 library initializer，取代当时等待协调器的 dead-code 写入口。2026-10-01 PR #4 的 Linux locked CI 已通过，Windows 暴露并修复上游 `Cred` 私有可见性阻断，详见本文末节；2026-10-06 已完成 macOS 真实 Keychain 最小正常链路及受损库恢复扩展，见[宿主记录](phase1-source-vault-host.md#2026-10-06-受损库重启与恢复扩展)。其它平台、真实取消 / 拒绝 / 锁定 / ambiguity 仍按[当前状态](../status/current.md)待验。
 
 范围：项目所有者确认 [P1-S03c-1 预检](2026-09-15-source-vault-provider-preflight.md#建议决策与下一批精确范围)后的六项精确依赖、平台映射和独立实现范围。本批只修改 Source Vault、相应依赖 / notices、检查器及正式文档；没有接入 SQLite、application 或 UI，没有访问系统密钥库。Windows / Linux provider 尚无 locked compile 证据，不能以本机通过代替三平台完成。
 
@@ -25,7 +25,7 @@
 | Windows | 明确构造 `Cred` 的 exact target、account 和 Local persistence；不能使用上游 explicit-target builder 丢失 account 的默认结果。secret 读取前后检查实际 `persistence=Local`、target 和 username；固定 label 映射 `comment` | 代码已落地，仅源码与目标图复核；未编译、未调用 Credential Manager。属性与 secret 是分开读取的，前后复验不等于 OS 原子快照；上游 setter 仍是 upsert，必须保留 P1-S04 串行化 |
 | Linux | `secret-service` 只读检查 default collection 存在且未锁定，并复验会话内 alias 身份；`zbus-secret-service-keyring-store` 不带 target，保留跨 collections 的 exact service / username 搜索和 ambiguity；固定 label 通过 concrete `Specifier` 读取 / 设置 | 代码已落地，仅源码与目标图复核；未编译、未连接 D-Bus。guard 会独立建立一个 DH session，不调用 unlock / create / get-any fallback；provider 另建会话，运行成本与服务重启待实测。暂存 path 只用于当前操作比对，不持久化、不用于绕过搜索 |
 
-具体 store 不使用全局 default store，也不提供 caller 注入的 production provider。macOS / Windows 使用上游 concrete credential，避免 `Entry` 的 identity debug 日志；Linux provider 内部仍可构造 `Entry` 并输出 identity。**真实调用前必须抑制 upstream 敏感日志，并验证 debug / trace 不会绕过**；P1-S03c-2 初始批次未引入 host logger。2026-10-01 [桌面接线](phase1-source-vault-host.md) 已安装全局无输出 logger 与 panic payload 抑制，并有隔离子进程正反例；真实平台的原生输出和系统提示仍待验收，不把合成测试当作这一待验项全部解决。
+具体 store 不使用全局 default store，也不提供 caller 注入的 production provider。macOS / Windows 使用上游 concrete credential，避免 `Entry` 的 identity debug 日志；Linux provider 内部仍可构造 `Entry` 并输出 identity。**真实调用前必须抑制 upstream 敏感日志，并验证 debug / trace 不会绕过**；P1-S03c-2 初始批次未引入 host logger。2026-10-01 [桌面接线](phase1-source-vault-host.md) 已安装全局无输出 logger 与 panic payload 抑制，并有隔离子进程正反例；后续 macOS 正常调用已观察原生输出和用户授权后的成功访问，保留 TSM CapsLock 诊断；其它平台与取消 / 拒绝等异常路径继续待验，不把无输出 logger 或正常路径当作系统诊断已全部覆盖。
 
 上表保留 9 月 15 日的证据范围。Windows 对 `Cred` 的直接构造需下述同版本可见性补丁；原记录的源码复核遗漏了其 `pub(crate)` 限制，不能将原实现视为当时已具备 Windows 编译证据。
 
