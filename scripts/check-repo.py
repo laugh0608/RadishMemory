@@ -1140,7 +1140,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "不引入 `tokio`",
         ),
         "docs/status/current.md": (
-            "Phase 1 encrypted desktop integration implemented; native acceptance next",
+            "Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending",
             "ADR 0005",
             "首个工具链固定为 Rust `1.96.0`",
         ),
@@ -1157,7 +1157,7 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
             "已完成：精确 Rust 工具链、三 package workspace",
         ),
         "README.md": (
-            "Phase 1 encrypted desktop integration implemented; native acceptance next",
+            "Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending",
             "SQLite v6 connection / migration",
             "真实 M0 runner",
             "不授权本任务使用真实个人资料",
@@ -1570,7 +1570,7 @@ def check_phase1_encrypted_source_vault_contract(
         ),
         "README.md": (
             "[ADR 0008]",
-            "Phase 1 encrypted desktop integration implemented; native acceptance next",
+            "Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending",
             "一 source version 一密文对象",
             "SQLite v6 inline plaintext body",
             "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
@@ -1657,7 +1657,7 @@ def check_phase1_encrypted_source_vault_dependency_review(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 encrypted desktop integration implemented; native acceptance next",
+            "Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending",
             "XChaCha20-Poly1305 + STREAM-BE32",
             "P1-S03a 已完成 portable manifest / `Cargo.lock`",
         ),
@@ -1732,10 +1732,10 @@ def check_phase1_source_vault_portable_crypto(
             "P1-S03b immutable object filesystem adapter",
         ),
         "README.md": (
-            "Phase 1 encrypted desktop integration implemented; native acceptance next",
+            "Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending",
             "P1-S03a 落地记录",
             "扩大到 344 项",
-            "独立 platform provider 已实现；真实密钥库与宿主加密数据流尚未验收；正文 migration 首个维护切片已有合成证据",
+            "独立 platform provider 已实现；macOS 最小真实密钥库与宿主加密闭环已通过，恢复 / 失败扩展与跨平台仍待验收",
         ),
         "docs/status/current.md": (
             "P1-S03a portable crypto dependency landing",

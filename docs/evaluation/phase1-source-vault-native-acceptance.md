@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-日期：2026-10-06。状态：隔离入口已实现，真实系统操作待当前任务授权；不是原生验收通过记录。
+日期：2026-10-06。状态：隔离入口已实现，macOS 最小正常链路已获授权并完成；恢复 / 失败扩展与集中跨平台检查仍待执行。实际范围见[宿主证据](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -21,6 +21,7 @@
 - Unix 验收根必须没有 group / other 权限，准备时使用 `0700`；入口不自动改权限。Windows ACL 与 reparse 行为仍须平台验证。
 - `host-profile-v1.txt` 必须已经存在、格式合法且与两个显式身份完全相同；不自动生成、修复或替换。数据库文件的符号链接 / 非普通文件也拒绝。
 - 参数解析、worker 创建及每条命令执行前复验目录和 profile；重开、原请求重试、failed-open 维护复用同一目标。profile 丢失或换身份时隐藏旧视图并失败关闭，恢复原 profile 后才可继续。
+- 原生 UI 工具绑定后先检查窗口身份；正常关闭后通过原进程退出状态确认，不再查询已关闭应用的界面，以免工具重新启动无参数入口。发现默认窗口立即正常关闭并记录副作用。
 - 窗口标题和界面标记 Synthetic acceptance；不显示路径、namespace、device 或 slot。无输出 logger / panic 策略提前到原生窗口创建之前安装，worker 内仍复验安装结果。
 
 这提供显式目标绑定与运行前检查，不是抵抗同用户恶意并发替换、硬链接别名或所有 OS 文件别名的文件系统沙箱；不扩张已有 adapter 的保证。文件选择器仍沿用一次性选文件授权，验收操作只选择本任务的合成文件。不能复制日常库 profile 作为“合成”身份。

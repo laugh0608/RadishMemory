@@ -231,7 +231,7 @@ impl eframe::App for RadishMemoryApp {
                 source_ui.heading("Sources");
                 source_ui.label(format!("{} active lineage(s)", controller.sources().len()));
                 source_ui.separator();
-                egui::ScrollArea::vertical().show(source_ui, |ui| {
+                egui::ScrollArea::vertical().id_salt("source-catalog").show(source_ui, |ui| {
                     for source in controller.sources() {
                         let selected =
                             controller.selected_lineage_id() == Some(source.lineage_id());
@@ -250,17 +250,21 @@ impl eframe::App for RadishMemoryApp {
 
                 let content_ui = &mut content_columns[0];
                 content_ui.horizontal(|ui| {
-                    let response = ui.add(
-                        egui::TextEdit::singleline(&mut self.search_query)
-                            .hint_text("Search managed text locally")
-                            .desired_width(f32::INFINITY),
-                    );
-                    if ui.button("Search").clicked()
-                        || (response.lost_focus()
-                            && ui.input(|input| input.key_pressed(egui::Key::Enter)))
-                    {
-                        action = Some(UiAction::Search);
-                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        // Reserve the button before allowing the editor to fill the remaining row.
+                        let search_clicked = ui.button("Search").clicked();
+                        let response = ui.add(
+                            egui::TextEdit::singleline(&mut self.search_query)
+                                .hint_text("Search managed text locally")
+                                .desired_width(ui.available_width()),
+                        );
+                        if search_clicked
+                            || (response.lost_focus()
+                                && ui.input(|input| input.key_pressed(egui::Key::Enter)))
+                        {
+                            action = Some(UiAction::Search);
+                        }
+                    });
                 });
                 content_ui.separator();
 
@@ -326,7 +330,7 @@ impl eframe::App for RadishMemoryApp {
                 if controller.search_results().is_empty() {
                     content_ui.label("No local search results to show.");
                 } else {
-                    egui::ScrollArea::vertical().show(content_ui, |ui| {
+                    egui::ScrollArea::vertical().id_salt("search-results").show(content_ui, |ui| {
                         for result in controller.search_results() {
                             ui.group(|ui| {
                                 let title = result

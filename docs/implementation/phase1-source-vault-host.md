@@ -61,11 +61,11 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 
 既有 `DeletionEvidence` loader 只检查 `evidence_digest` profile / 格式，不重算摘要；历史 fixture 摘要内容不统一。本批不改变摘要语义或兼容性，不将该字段视作整库未被恶意改写的密码学证明。摘要契约、历史兼容与统一复算需要独立收口；恢复判断使用经复验的请求、计划与持久化组件结果。
 
-真实 Keychain 读写、用户授权提示、取消 / 锁定、实际 GUI 关闭确认、多实例和端到端验收未执行；Windows / Linux 保持后置集中检查点。下一批需先列出隔离测试目录、合成 namespace / device 对应的精确 slot、运行命令、预计时长、系统提示及清理 / 保留方式，再取得当前任务授权。删除测试 slot 前必须确认对应合成对象库不再需要，不能将删除 key 当作普通回滚。
+截至 2026-10-01，真实 Keychain 读写、用户授权提示、取消 / 锁定、实际 GUI 关闭确认、多实例和端到端验收未执行；Windows / Linux 保持后置集中检查点。下一批需先列出隔离测试目录、合成 namespace / device 对应的精确 slot、运行命令、预计时长、系统提示及清理 / 保留方式，再取得当前任务授权。删除测试 slot 前必须确认对应合成对象库不再需要，不能将删除 key 当作普通回滚。
 
 默认启动仍是 SQLite v6 inline plaintext body；显式原始对象加密不等于整个资料库静态加密，FTS 保留完整正文，旧 SQLite 页、快照和备份也未证明物理清除。中文检索、目录第 201 条、性能和默认 v6 的 failed-open 修复等质量缺口不在本批闭环范围，不授权真实个人资料使用。
 
-2026-10-01 记录的原生隔离入口缺口已由 2026-10-06 的准备切片接线：原生启动严格解析独立根与两个合成身份参数，worker 每条命令复验既有 profile，不自动补建或切回默认库。正常无参数启动仍保持旧入口。具体参数、失败关闭边界、精确 slot 授权材料与待执行场景见[原生验收计划](../evaluation/phase1-source-vault-native-acceptance.md)。不替换 HOME 或全局配置，不新增依赖、持久 schema 或密钥映射。真实 Keychain / GUI 尚未执行。
+2026-10-01 记录的原生隔离入口缺口已由 2026-10-06 的准备切片接线：原生启动严格解析独立根与两个合成身份参数，worker 每条命令复验既有 profile，不自动补建或切回默认库。正常无参数启动仍保持旧入口。具体参数、失败关闭边界、精确 slot 授权材料与待执行场景见[原生验收计划](../evaluation/phase1-source-vault-native-acceptance.md)。不替换 HOME 或全局配置，不新增依赖、持久 schema 或密钥映射。准备切片结束时真实 Keychain / GUI 尚未执行；后续结果见下文最小真实闭环。
 
 
 ## 2026-10-06 隔离入口准备证据
@@ -75,3 +75,35 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 本机完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：253 个仓库文件、notices、fmt、locked all-targets / all-features Clippy、25 个 Rust test suites 共 354 项通过，11 个 ignored helper 由父测试调用。另有 43 项 Python 检查器回归、M0 fixture（12 场景 / 86 操作 / 12 gate）、1 个 compile-fail doctest 和默认 desktop 构建通过；默认 normal / build / features 图不启用 `acceptance-test-support`。首轮完整检查仅在既有 P1-F17 本地观察端口处受沙箱拒绝，按权限流程在沙箱外重跑同一离线检查通过，没有跳过或放宽门禁。
 
 本批未修改 manifest / lockfile、canonical schema、slot 映射或 logger 实现；提前在原生窗口创建前安装同一诊断策略。已在忽略的任务目录准备合成输入、预建 profile、文件摘要及精确操作单，未创建验收数据库、启动 GUI 或访问系统 keychain。相关失败路径证据仍使用合成 provider，不能当作 macOS 原生验收；Windows / Linux 当前新增入口仍待集中检查点。未提交、未推送，不改变任务开始前已有提交。
+
+
+## 2026-10-06 macOS 最小真实闭环
+
+隔离入口提交为 `85a1722`。项目所有者在本任务确认精确操作单及真实系统范围后，在独立合成目录、随机合成 namespace / device 和一个精确 User Keychain slot 上执行原生验收。启动前 metadata-only 查询确认该 slot 不存在；未输出 secret、未导出全 keychain，也未锁定或修改默认 keychain / ACL。
+
+裸 Cargo 可执行文件能够打开隔离 v6，但 UI 工具无法绑定无 bundle 的进程；项目所有者正常关闭它后，在忽略的任务目录生成临时 `.app` 元数据并复制同一二进制，字节摘要一致。包装未安装、未签名，验收进程的启动命令均显式携带三个验收参数；默认目录未作为测试目标。此项是本机验收适配，不是发行包证据。
+
+在原二进制上经真实 GUI / native picker 完成：
+
+- 导入 139 字节合成 Markdown v1，`nebula` 检索返回来源；Prepare key 创建唯一 slot 并完成 checkpoint；正文迁移、加密打开成功。
+- 加密导入另一份 71 字节合成资料，原来源更新为 151 字节 v2；目录为两个 lineage，版本历史保留 v1 / v2，`nebula` 和 `comet` 分别返回预期来源。
+- 选择 v1 经 native save panel 精确导出；SHA-256 与导入前合成 v1 一致，与已经更正的外部 v2 不同。
+- 正常退出且进程返回 0；用同一参数重开。默认旧入口拒绝维护库属预期，显式加密打开使用既有 key，来源 / 版本恢复；Verify 显示 3 个对象、0 pending capture / deletion，未隐式 rebuild。重启后第二份资料的导出与输入 bytes 一致。
+- 分别确认删除两条合成 lineage；两份 `DeletionEvidence` 均为 Completed，各有 10 项真实组件结果。多版本来源的正文 / fragment 为 2/2；最终目录为零，`nebula` / `comet` 无结果，Verify 为 0 对象、0 待处理。
+- 关闭后只读复核维护 v11：三条对象删除 checkpoint 为 `deleted`，body / fragment / committed reference / FTS 行均为零；20 项持久化组件结果均为 succeeded。attempt 身份及最小审计按既有删除契约保留，不把 attempt 行数非零当作正文仍存活，也不删除这些记录来迎合验收计数。
+- 两次包装进程均正常返回 0，profile 摘要未变，原输入与两份导出保留。精确 metadata-only 查询再次确认同一默认 User Keychain 下 service / account / label 匹配，slot 保留；没有删除 key。
+
+原二进制的创建和重开未观察到系统授权提示，因此不据此声称取消、拒绝或锁定通过。stdout 为空；两次包装进程的 stderr 各有一条 150 字节 macOS TSM CapsLock 诊断，未发现合成正文、namespace / device、slot account 或测试数据目录标记。Rust 无输出 logger 不抑制这些原生诊断；此检查不覆盖 secret 的所有可能编码、系统崩溃报告或 OS 内部副本。
+
+此次窗口截图暴露了三个真实 UI 缺口：Search 输入框的无限期望宽度挤出按钮；目录和结果的 ScrollArea 共用默认 ID，在两区同时存在时出现调试警告；中文正文以缺字方框显示。前两项以预留按钮宽度和独立 ID 作局部修复，不新增依赖；中文字体及其跨平台来源 / 许可证仍需质量批次解决。最终布局构建在同一隔离库 / slot 复验：搜索行保持单行高度，重新加密导入 71 字节资料，经可见 Search 按钮检索命中；目录与结果同时存在时未再显示 ID 冲突。随后删除本次新 lineage，第三份 Completed 回执含 10 项真实组件结果，Verify 与检索再次确认 0 对象、0 pending 和无结果，正常退出码为 0。修改二进制后系统再次请求访问，项目所有者报告选择仅本次允许，随后既有 key 打开成功；这不构成取消 / 拒绝的通过证据。
+
+本次只证明 macOS 合成资料的最小正常链路。busy / 关闭原快照、原请求重试、精确放弃、原删除授权恢复、真实损坏维护、多实例、缺 key / 锁定 / ambiguity、Windows / Linux、中文质量及生产发行仍未关闭；不宣布整个 P1-S05、Q01 至 Q08 或全部 P1-SF 场景完成。FTS 仍有完整正文，删除也不代表历史页、快照、备份或外部副本被清除。
+
+
+### 原生复验收尾与异常
+
+局部修复迭代中，关闭验收窗口后调用 UI 状态查询，额外出现无 Synthetic acceptance 标识的默认空库窗口；已立即正常关闭，未导入资料或执行凭据操作。只读文件元数据确认默认应用目录下 profile 与 SQLite 文件在该时刻新建。未读取其正文、未自动删除或修改目录；因此不能声称此次工具操作完全没有默认目录副作用。后续关闭后仅等待原进程退出，不再对已关闭应用查询界面。该异常属于验收工具 / 应用启动边界，未发现显式参数解析回退的证据；下次绑定工具前仍需确认窗口身份。
+
+合成输入、精确导出、隔离库、验收日志、临时应用包装与唯一测试 slot 保留，未执行 key 删除、系统锁定、ACL 调整、安装或远程写入。最终只读复核：三份 Completed evidence、30 项 succeeded 组件结果、四条 deleted 对象 checkpoint；body / fragment / committed reference / FTS 均为零。run 4 / 5 均正常返回 0，最终进程核对未发现仍运行的 desktop；run 4 诊断为空，run 5 仅有同类 150 字节 TSM 诊断，合成正文 / 身份标记检查未命中。
+
+布局修复后完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：253 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 354 项 Rust tests 通过，11 个 ignored helper 由父测试调用；43 项 Python 检查器回归、M0 fixture 与默认 desktop 构建通过。compile-fail doctest 使用同日准备切片的通过证据；本批未改变其接口。最终文档检查和 `git diff --check` 通过，未新增依赖或改变 manifest / lockfile。
