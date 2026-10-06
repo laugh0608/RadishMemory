@@ -438,6 +438,95 @@ fn failed_open_keeps_explicit_maintenance_location_and_never_repairs_implicitly(
 }
 
 #[test]
+fn native_restart_rejects_object_damage_without_repair_or_origin_fallback() {
+    for missing in [false, true] {
+        let fixture = crate::startup::tests::Fixture::new();
+        let input = Fixture::new();
+        let provider = SyntheticLibraryProvider::default();
+        let mut engine = Worker::engine(
+            crate::startup::Startup::parse(fixture.arguments()).unwrap(),
+            || provider.clone(),
+        )
+        .unwrap();
+        ready(&mut engine);
+        let imported = ok(engine.execute(Command::Import(
+            input.input("synthetic authenticated recovery needle"),
+        )));
+        let source_id = imported.view.unwrap().selected_source_id().unwrap().clone();
+        drop(engine);
+
+        let profile = fs::read(fixture.root.join("host-profile-v1.txt")).unwrap();
+        let mut objects = fs::read_dir(fixture.root.join("source-objects-v1")).unwrap();
+        let object = objects.next().unwrap().unwrap().path();
+        assert!(objects.next().is_none());
+        let original = fs::read(&object).unwrap();
+        let mut damaged = original.clone();
+        *damaged.last_mut().unwrap() ^= 1;
+        let held = fixture.root.join("held-synthetic-object");
+        if missing {
+            fs::rename(&object, &held).unwrap();
+        } else {
+            fs::write(&object, &damaged).unwrap();
+        }
+        fs::write(input.root.join("input/note.md"), "external replacement").unwrap();
+
+        let mut reopened = Worker::engine(
+            crate::startup::Startup::parse(fixture.arguments()).unwrap(),
+            || provider.clone(),
+        )
+        .unwrap();
+        assert!(reopened.execute(Command::OpenPlain).error.is_some());
+        for command in [
+            Command::OpenEncrypted,
+            Command::Verify,
+            Command::Rebuild,
+            Command::Search("needle".into()),
+            Command::Export(input.export()),
+        ] {
+            let rejected = reopened.execute(command);
+            assert!(rejected.error.is_some());
+            assert!(rejected.view.is_none());
+            assert!(rejected.message.is_none());
+            assert!(!input.root.join("export/result.md").exists());
+            if missing {
+                assert!(!object.exists());
+                assert_eq!(fs::read(&held).unwrap(), original);
+            } else {
+                assert_eq!(fs::read(&object).unwrap(), damaged);
+            }
+            assert_eq!(provider.key_creations(), 1);
+        }
+        assert_eq!(
+            fs::read(fixture.root.join("host-profile-v1.txt")).unwrap(),
+            profile
+        );
+        drop(reopened);
+
+        // Restore only this test's original ciphertext; the product must not repair it.
+        if missing {
+            fs::rename(&held, &object).unwrap();
+        } else {
+            fs::write(&object, &original).unwrap();
+        }
+        let mut restored = Worker::engine(
+            crate::startup::Startup::parse(fixture.arguments()).unwrap(),
+            || provider.clone(),
+        )
+        .unwrap();
+        let opened = ok(restored.execute(Command::OpenEncrypted));
+        assert_eq!(opened.view.unwrap().selected_source_id(), Some(&source_id));
+        let searched = ok(restored.execute(Command::Search("needle".into())));
+        assert_eq!(searched.view.unwrap().search_results().len(), 1);
+        ok(restored.execute(Command::Export(input.export())));
+        assert_eq!(
+            fs::read_to_string(input.root.join("export/result.md")).unwrap(),
+            "synthetic authenticated recovery needle"
+        );
+        assert_eq!(provider.key_creations(), 1);
+    }
+}
+
+#[test]
 fn encrypted_worker_updates_searches_and_exports_selected_history() {
     let fixture = Fixture::new();
     let mut engine = fixture.engine();

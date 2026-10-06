@@ -107,3 +107,23 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 合成输入、精确导出、隔离库、验收日志、临时应用包装与唯一测试 slot 保留，未执行 key 删除、系统锁定、ACL 调整、安装或远程写入。最终只读复核：三份 Completed evidence、30 项 succeeded 组件结果、四条 deleted 对象 checkpoint；body / fragment / committed reference / FTS 均为零。run 4 / 5 均正常返回 0，最终进程核对未发现仍运行的 desktop；run 4 诊断为空，run 5 仅有同类 150 字节 TSM 诊断，合成正文 / 身份标记检查未命中。
 
 布局修复后完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：253 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 354 项 Rust tests 通过，11 个 ignored helper 由父测试调用；43 项 Python 检查器回归、M0 fixture 与默认 desktop 构建通过。compile-fail doctest 使用同日准备切片的通过证据；本批未改变其接口。最终文档检查和 `git diff --check` 通过，未新增依赖或改变 manifest / lockfile。
+
+
+## 2026-10-06 受损库重启与恢复扩展
+
+在 `6376def` 基线上，项目所有者确认了独立操作单后，复用前批的合成 profile、隔离目录及唯一 Keychain slot，以默认 production 构建完成两项原生扩展。没有启用故障 provider；派生行和对象字节由任务脚本在 GUI 正常退出后精确注入，不能当作自然故障、真实断电或全部恢复窗口证据。输入为 96 字节合成 Markdown，初始导出、派生修复后导出和对象还原后导出的 SHA-256 均相同。
+
+| 场景 | 实际观察 | 复核 |
+| --- | --- | --- |
+| 派生损坏后重启 | 仅删除唯一 lineage tip 派生行并替换唯一 FTS 内容；加密打开与 Verify 均返回 `DerivedDataMismatch`，目录 / 正文隐藏；显式 Rebuild 返回 1 个认证对象与 `derivations rebuilt: true`；再打开恢复同一来源，检索命中且精确导出成功 | 打开 / Verify 后磁盘仍保留注入状态；重建后排除 FTS / tips 的表逐行摘要与全部密文 bytes 均未变，原 source / version 未重建 |
+| 密文损坏失败关闭 | 保存唯一对象原字节后翻转最后一个字节，长度不变；重启后打开、Verify、Rebuild 均返回 `AuthenticationFailed`；界面无正文和导出入口 | 应用未改写损坏 bytes，canonical 表摘要不变；正常退出后由任务按损坏摘要核对并还原原字节，再打开 / 检索 / 导出恢复同一 source。任务还原不表示产品提供自动密文修复 |
+
+本轮新增一项 desktop worker 回归，分别覆盖对象缺失和最后一个字节损坏：使用真实隔离启动解析、重建 Engine 生命周期和 opt-in 合成 key provider；旧入口、加密打开、Verify、Rebuild、Search 与 Export 全部拒绝。外部原件替换也不回源，不新建 key、不修改损坏对象；只恢复测试原密文字节后，原 source 与精确导出才恢复。该自动化证据没有访问真实系统凭据，不能替代上述原生运行。
+
+收尾通过 GUI 删除本轮唯一 lineage，得到一份 Completed evidence、10 项 succeeded 组件结果；Verify 为 0 对象 / 0 pending，检索无结果。关闭后只读复核 body、fragment、committed reference、lineage tip、FTS 均为零，活动对象目录为空；原有最小审计与终态记录保留。未点击 Prepare key，未新增或删除凭据，profile 摘要不变。四轮进程均正常返回 0，关闭后未查询已退出应用界面。保留合成输入、三份导出、注入前数据库 / 对象备份和日志；这些测试备份位于受管库外，不计入删除回执。
+
+四轮 stdout 均为空，第二、四轮 stderr 各有同类 150 字节 macOS TSM CapsLock 诊断，其余为空；合成正文 / namespace / device / 数据路径标记未命中，不据此推断 OS 内部副本或 secret 任意编码没有泄露。系统凭据访问成功不替代取消 / 拒绝 / 锁定测试。额外默认空库仍按前批记录保留，本批未以其为测试目标。
+
+完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：253 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 355 项 Rust tests，11 个 ignored helper 仍由父测试调用；默认 desktop 构建、最终文档检查及 `git diff --check` 通过。本批只增加回归和验收文档，没有依赖、持久 schema 或生产行为变化；未重复运行未受影响的 Python 检查器回归、M0 fixture 与 compile-fail doctest，沿用同日上批证据。
+
+本批补齐显式加密入口的两条真实故障边界；Q03 的默认 v6 failed-open、canonical / binding 损坏及取消路径仍未完整覆盖，Q07 / Q08 和 P1-S05 不整体关闭。busy / 关闭快照、原请求重试、精确放弃、原删除授权恢复、多实例、真实密钥失败及 Windows / Linux 当前代码集中检查仍待后续具体批次。中文质量、FTS 完整明文及历史页 / 备份删除限制保持不变。
