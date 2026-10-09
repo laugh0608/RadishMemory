@@ -230,3 +230,5 @@ fallback 会隐藏篡改、key 错误和 migration 漂移，并可能绕过用�
 
 
 2026-10-06 新增显式隔离根与合成 profile 绑定入口，逐命令复验目标，非法参数不回退默认库；不改变 slot 映射、canonical schema 或密码 profile。经精确授权完成 macOS 真实 Keychain / GUI 最小正常闭环，以及派生损坏重启后显式重建、密文认证失败拒绝修复两项扩展，见[宿主记录](../implementation/phase1-source-vault-host.md)。默认 v6、FTS 完整明文、历史页 / 备份删除限制不变；其余原请求恢复、系统密钥失败与 Windows / Linux 待验，P1-S05 和全部 P1-SF 场景未整体关闭。
+
+2026-10-09 后续验收新增四项 desktop worker 回归：三项 Unix 权限故障与一项 SQLite 锁竞争，均使用合成 key；对应 macOS 原生原请求恢复、外部锁失败恢复及双 GUI 交替另有实际证据。真实系统交互在既有空合成库显式打开时返回 `KeyStoreCancelled` 并失败关闭；首次误加的 Prompt 常许许可已精确撤销，原四项与 key 保留。没有观察原始 OSStatus，不将该结果扩张到 `KeyStoreDenied` / locked、已有正文视图或写操作中途。详见[10 月 9 日日终复核](../status/2026-10-09-source-vault.md)及宿主记录；上述 10 月 6 日待验结论保留当批范围，剩余验收以当前状态为准，P1-S05 仍未整体关闭。
