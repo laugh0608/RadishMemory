@@ -3,6 +3,9 @@ use radishmemory_source_vault::{SourceVaultErrorCode, acceptance::SyntheticLibra
 use std::fs;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+#[cfg(unix)]
+mod filesystem_failures;
+
 static NEXT: AtomicU64 = AtomicU64::new(1);
 struct Fixture {
     root: std::path::PathBuf,

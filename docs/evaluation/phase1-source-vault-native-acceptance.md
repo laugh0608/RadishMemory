@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-日期：2026-10-06。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已获授权并完成；其余恢复 / 失败扩展与集中跨平台检查仍待执行。实际范围见[宿主证据](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)，本计划不等于全部场景已通过。
+日期：2026-10-09。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；本日另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复。其余失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)与[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -62,6 +62,18 @@
 ## 后续恢复和失败扩展
 
 按可安全构造的状态单独安排：busy 下重复动作、关闭时原快照提示、提交后刷新失败、原请求重试、重启精确放弃、原删除授权继续、failed-open 派生维护、多实例锁，以及真实提示的取消 / 拒绝。需要故障 seam 的场景必须标记为合成注入，不将默认 production 构建无法构造的状态记为通过。
+
+2026-10-09 先完成恢复场景的本机自动化预演：仅在测试创建的 Unix 合成对象目录暂时撤销 owner 写权限（`0700 → 0500`），由真实 hard-link 发布 / unlink 删除返回失败，再恢复原权限。三项回归使用既有合成 key provider，不启用 coordinator 中断回调、不手写 checkpoint，也不修改 schema。随后项目所有者批准精确原生操作单，复用既有合成库 / 唯一系统 key / 默认 production 二进制完成下表 GUI 路径；两类证据分别记录，新增系统操作仍须具体授权。
+
+| 2026-10-09 已执行的原生场景 | 构造及判据 | 证据边界 |
+| --- | --- | --- |
+| 发布失败后原请求重试 | 专用对象目录临时设为 `0500`，保留可写 staging；失败后原快照留在 worker，Inspect 不清理，关闭提示可取消；替换外部原件、恢复目录权限后，Retry 发布原 staging 密文，导出仍等于最初 bytes | 是受控文件系统权限故障，不是 publish 后 SQLite commit 失败或真实断电 |
+| 重启后精确放弃 | 已提交版本的更新在发布时失败；确认关闭、恢复权限后重开，原快照不可伪造，Verify / Rebuild 不清理 pending；Cancel 保留 target，明确 Confirm 后只移除待处理 attempt，既有对象 / 版本不变 | 覆盖 staging-only attempt 和关闭 / 确认交互；其它文件状态仍按各自证据解释 |
+| 原删除授权恢复 | 多版本 lineage 删除在 unlink 时失败，intent 已持久化；重启发现原 request，恢复权限后按该按钮继续；当前选择另一 lineage 时也不得重新规划闭包，原回执完成且对照来源 bytes 不变 | 不覆盖 evidence 写入前后中断；这些窗口继续保留原有合成回调证据 |
+
+权限恢复必须核对同一专用目录、profile、inode 和原 mode，仅恢复本批撤销的权限；不修改用户资料库、父目录、ACL 或系统凭据。完整路径、唯一既有 slot、二进制摘要、逐步操作、预计时长及失败收尾只写在忽略的任务操作单。额外 SQL trigger 会被加密会话 schema 验真拒绝，不用于伪装提交阶段故障；提交成功但刷新失败仍保留既有合成测试边界。
+
+本日三轮 GUI 正常退出，精确权限已恢复，本批来源经 GUI 删除并复核两份 Completed 回执、20 项 succeeded 组件结果及零活动资料。busy 时动作禁用已有原生可见证据；busy 与关闭竞争、SQLite commit / evidence 中断、真实系统密钥失败、多实例及其它平台仍未收口，见[实际记录](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)。保留输入、4 份导出、证据及原 key，不将本地删除回执扩大到备份 / 导出。
 
 2026-10-06 已按下表完成受损库重启后的两条边界，实际结果见[恢复扩展记录](../implementation/phase1-source-vault-host.md#2026-10-06-受损库重启与恢复扩展)。该批次复用已验收的合成 profile 和唯一 slot，不复制日常资料、不创建新 key。GUI 正常关闭后才注入状态；每次重开保留完整验收参数并核对窗口身份。具体路径、摘要、SQL、时长、备份及保留方式写入本批操作单，并对新增 GUI / 故障范围取得授权。
 

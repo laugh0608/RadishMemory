@@ -127,3 +127,39 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：253 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 355 项 Rust tests，11 个 ignored helper 仍由父测试调用；默认 desktop 构建、最终文档检查及 `git diff --check` 通过。本批只增加回归和验收文档，没有依赖、持久 schema 或生产行为变化；未重复运行未受影响的 Python 检查器回归、M0 fixture 与 compile-fail doctest，沿用同日上批证据。
 
 本批补齐显式加密入口的两条真实故障边界；Q03 的默认 v6 failed-open、canonical / binding 损坏及取消路径仍未完整覆盖，Q07 / Q08 和 P1-S05 不整体关闭。busy / 关闭快照、原请求重试、精确放弃、原删除授权恢复、多实例、真实密钥失败及 Windows / Linux 当前代码集中检查仍待后续具体批次。中文质量、FTS 完整明文及历史页 / 备份删除限制保持不变。
+
+## 2026-10-09 原请求恢复的文件系统故障预演
+
+本批先核对 worker / backend / controller / UI 与既有合成中断测试，没有另造恢复入口或改变生产语义。加密会话逐次检查精确 schema，额外 SQL trigger 无法作为安全的 commit 故障构造。改为在测试创建的 Unix 合成对象目录撤销 owner 写权限，保留读取和 staging 写入，使真实发布或删除返回 Io；作用域 guard 在正常结束和断言失败时恢复原权限，再由 fixture 清理自身目录。
+
+新增三项 desktop worker 回归，使用既有合成 key provider，不设置 coordinator 中断回调：
+
+- 发布失败留下单份 staging；Inspect 与再次失败重试均保持密文，替换并移除外部原件后，恢复权限并 Retry，最终对象 bytes 与原 staging 一致，精确导出保留 BOM / CRLF / Unicode 原文，只有一次 key 创建。
+- 已提交版本的更新发布失败；销毁并重建 Engine 后没有原快照，只能观察和精确放弃。Verify / Rebuild 不移除 pending，放弃只清理该 staging，原 committed 对象、source ID 和精确导出保持不变；重复放弃被拒绝。
+- 两版本 lineage 删除在 unlink 失败前已保存原授权；重启后继续失败仍持有该请求，恢复权限后精确重试得到同一 request ID 的 Completed 十组件回执。目录当前选择是另一 lineage，恢复不重新规划它；对照对象与导出 bytes 不变，外部输入保留。
+
+本机三项 targeted 回归通过，默认 locked / offline desktop 构建通过。当前 production 二进制与前批保留的原生包装摘要相同；本批只增加测试，没有修改生产代码、依赖、lockfile、schema 或系统凭据。这里只证明真实 Unix 文件系统故障经过 worker 的恢复行为，不证明原生窗口、Keychain 提示、Windows / Linux 或完整 P1-S05 通过。
+
+完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过：255 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 358 项 Rust tests；11 个 ignored helper 仍由父测试调用。首轮仅在既有 P1-F17 合成本地观察端口因沙箱 PermissionDenied 失败，按权限流程在沙箱外重跑同一离线检查通过，没有跳过门禁。最终文档检查与 `git diff --check` 通过；未重复未受影响的 Python 检查器回归、M0 fixture 或 compile-fail doctest，未执行 GUI / 真实 key store / 其它平台验收。测试自行退出并清理临时 fixture；本批忽略目录内的输入、原生操作单和验证日志保留，改动未提交、未推送。
+
+已只读核对前批合成库：profile 匹配，schema v11，active references / bodies / fragments / tips / FTS 及对象 / staging 均为空。已在忽略目录准备本批输入、独立导出目标、权限 guard 与精确原生操作单，尚未启动 GUI、查询系统 slot、改变该原生库权限或修改其资料。下一步是在当前任务精确授权后复用原目录和唯一既有 key，执行[恢复场景](../evaluation/phase1-source-vault-native-acceptance.md#后续恢复和失败扩展)；不重新初始化 key。关闭提示 / Cancel、放弃确认 / Cancel、重启后原删除按钮及 busy 可见交互继续待验，提交后刷新失败沿用既有合成证据。
+
+## 2026-10-09 原请求恢复的 macOS 原生验收
+
+项目所有者在本任务明确批准上述精确操作单后，复用前批合成库、profile、唯一既有 User Keychain slot 和默认 production 包装二进制执行三条恢复路径。二进制 SHA-256 与 10 月 6 日恢复批次相同；未启用合成 provider 或 coordinator 中断回调。精确元数据查询首次在沙箱返回 44，按权限流程在沙箱外复验 service / account / label 匹配；未请求或输出 secret，不将沙箱错误记为真实缺 key 验收。三轮显式加密打开均成功，未观察到系统授权提示。
+
+| 场景 | 原生观察 | 磁盘 / 导出复核 |
+| --- | --- | --- |
+| 发布失败后原请求重试 | 仅将专用对象目录 mode 从 `0700` 改为 `0500`，Import 返回 `ImportNewSource / SourceVaultFailure / Io`；原快照仍持有、切换库禁用；Inspect 保留 target；关闭提示出现，Cancel 后原请求仍在；未恢复权限时 Retry 再次失败 | 替换外部输入、恢复原权限后 Retry 成功，发布密文与失败时 staging bytes 一致；68 字节 BOM / CRLF 原文精确导出，与初始输入一致且与替换内容不同；仅一条新来源 |
+| 重启后精确放弃 | 第二条已提交来源的 Update 因同类权限错误失败；确认关闭丢失内存快照，进程正常退出；恢复权限后同参数重开，无原 Retry 按钮，明确提示快照不可从文件重建；Verify / Rebuild 仍显示 1 pending；放弃 Cancel 保留，Confirm 后成功 | 两份 committed 密文在失败、重启、维护及放弃后逐字节不变；只移除该 pending staging；放弃前后两份 58 字节导出与原已提交版本完全一致，确认期间其它操作禁用 |
+| 原删除授权恢复 | 第二条来源正常更新至 v2 后撤销对象目录写权限；删除返回 `DeleteSourceLineage / SourceVaultFailure / Io`，未虚构 Completed；确认关闭再重启，当前选中第一条对照来源，恢复按钮仍绑定第二条来源的原 request ID；恢复权限后点 Continue，得到同 request 的 Completed 十组件回执 | 失败时三份密文不变，两个版本的 deletion intent 已持久化；完成后只剩原对照密文，导出仍等于最初 68 字节；`comet` 无结果。原生观察到执行期间 busy 文案、恢复及其它按钮禁用 |
+
+故障是任务主动撤销专用合成目录 owner 写权限，不是自然断电或 SQLite commit 故障。权限 guard 每次复验固定 profile、目录 inode、mode 和预期数量，收尾恢复原 `0700`；未改父目录、staging 权限、系统 ACL 或凭据。每次重启均保留完整隔离参数，核对 Synthetic acceptance 标识；三轮只在原进程启动后操作 UI，正常退出后不再查询已关闭应用界面。
+
+最后仅经 GUI 删除本批剩余对照来源，得到另一份 Completed 十组件回执；`nebula` 无结果，Verify 为 0 对象、0 pending capture / deletion、无 abandonment。三轮进程退出码均为 0。只读复核两份本批 evidence 各仅一条、20 项持久化组件结果均 succeeded；active references / bodies / fragments / tips / FTS 与对象 / staging 均为空，profile 摘要不变。最小审计、abandoned / deleted 终态、输入、4 份导出、旧备份、日志、临时应用包装和原 key 继续保留，不计作已物理清除。未操作默认资料库、创建或删除 key、安装、启动 VM、push 或写入远程状态。
+
+三轮 stdout 为空，前两轮 stderr 为空，第三轮仅一条 macOS TSM CapsLock 原生诊断；本批合成正文、namespace / device、account 和数据目录标记未命中。这不覆盖 secret 任意编码、系统崩溃报告或 OS 内部副本。部分 egui 文本框的 AX 赋值未改变实际输入，改用原生聚焦 / 键盘输入后复核实际检索词与结果；未将未生效动作记为通过。
+
+本批关闭上述权限故障对应的三条 macOS 原生恢复路径及关闭 Cancel / 明确关闭、放弃 Cancel / Confirm；busy 动作禁用已有可见证据，但 busy 与关闭的竞争时序仍待验。publish 后 SQLite commit 失败、提交成功后刷新失败、evidence 写入前后中断仍仅有既有合成证据；Keychain 取消 / 拒绝 / 锁定、多实例、Windows / Linux 当前代码验收、中文质量及完整 P1-S05 继续待验。没有生产代码、依赖、schema 或默认 v6 入口变化，FTS 仍保存完整明文。
+
+原生收尾后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 再次完整通过：255 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 358 项 Rust tests，11 个 ignored helper 由父测试调用。已知 P1-F17 沙箱端口限制按权限流程使用沙箱外离线检查；最终文档检查和 `git diff --check` 通过。默认构建沿用本日准备阶段证据，未重复 Python 检查器回归、M0 fixture、doctest 或其它平台验收；本批测试与文档仍未提交、未推送，没有遗留本批运行进程。
