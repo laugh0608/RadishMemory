@@ -191,3 +191,15 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 A 的 stdout / stderr 和 B 的 stdout 为空；B stderr 仅原生输入法 / TSM 诊断，本批合成正文、profile 身份、account 和目录标记未命中。不覆盖 OS 崩溃报告、任意编码的 secret 或系统内部副本。双 GUI 交替与真实 Keychain 取消 / 拒绝仍待另行构造，本批没有改变生产代码、依赖、schema 或默认 v6 入口，不关闭 P1-S05。
 
 原生收尾后再次完整通过 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh`：256 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用。沿用本会话已确认的 P1-F17 沙箱端口限制，按权限流程在沙箱外离线执行；最终文本 / 链接检查与 `git diff --check` 通过。未另跑默认构建、Python 检查器回归、M0 fixture、doctest 或其它平台验收；本批新增锁回归与验收文档仍未提交、未推送。
+
+## 2026-10-09 实例身份与系统拒绝方案准备
+
+上一批在 `7724ac2` 提交后，继续准备双实例可区分操作及实际系统拒绝构造。新增内容仅为验收文档和忽略目录内的三个临时 app 包装、两份合成输入、只读 metadata 工具及精确操作单；production 代码、依赖、schema、默认启动和系统凭据均未改动。
+
+A、B、Prompt 分别采用不同 bundle ID / 显示名，可执行文件 SHA-256 与原基线一致；签名 inspection 成功，但完整 bundle verification 对原包装及所有副本均报告缺少资源封装。没有把该已存在的包装限制隐藏成通过，也未为其改动产品发布流程。GUI 工具能否按新身份分别绑定，仍需本轮明确授权后的原生验证。
+
+只读工具已使用公开 macOS SDK 编译，并运行无参数说明分支；未触发其固定目标查询。工具仅可核对唯一既有合成项的 ACL 元数据，不能读取 secret 或写回访问控制。公开路径信息不包含完整存储代码身份，无法作为四个同名应用条目的可恢复 ACL 备份；因此不实施去重或基于路径的重建。
+
+拟执行范围为 A/B 跨窗口版本可见性及精确导出，再单独为 Prompt 临时副本更换 ad-hoc 签名身份，尝试触发真实系统拒绝；原 ACL 保持不变、无需依赖不完整的恢复快照。此方案尚未重签、启动 GUI 或访问 Keychain；提示是否出现、实际 OSStatus 和失败后恢复均未验证。完整判断依据、授权范围和停止条件见[验收计划](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-09-可区分实例与拒绝构造准备)。
+
+本轮完整离线 `./scripts/check-repo.sh` 通过：256 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用。因已确认的 P1-F17 合成本地端口限制，经权限流程在沙箱外执行。最终文本 / 链接检查和 `git diff --check` 通过；未另跑 Python 检查器回归、M0 fixture、doctest、默认构建或其它平台。当前三份验收文档未提交，既有两个本地提交未推送；没有本批启动的 GUI 或系统操作残留。

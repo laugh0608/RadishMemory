@@ -107,3 +107,17 @@
 Keychain Access 仅核对匹配的唯一项：选择“允许访问之前确认”，未允许所有应用，常许应用列表显示四个同名验收 app 条目，名称不足以确认各条目的具体代码身份。本轮未显示密码、修改访问控制或保存变更，正常读取没有出现系统授权提示，所以实际取消 / 拒绝仍待验。一个坐标重试误打开 Prepare key 确认，随即 Cancel，未执行初始化；后续精确凭据元数据未变。最终 GUI 删除唯一 v1 来源得到 Completed 十组件回执、检索 `nebula` 为空、Verify 零对象 / 零 pending；两个 GUI 与 helper 均正常退出，Keychain Access 已退出。具体保留物、日志与证据限制见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)。
 
 macOS 闭环完成后再按当前代码准备 Windows / Linux locked 构建、合成运行与真实 provider / 宿主验收，分别记录架构、文件系统、普通用户权限、系统 store 和诊断证据。`evidence_digest` 统一复算仍独立评审；PDF / 图片解析、默认加密切换、模型和同步不在此计划内。
+
+### 2026-10-09 可区分实例与拒绝构造准备
+
+上轮相同 bundle / path 的两个进程无法被工具分别绑定。本轮只在忽略的验收目录准备 A、B 和 Prompt 三个包装：分别设置 `CFBundleIdentifier` / 显示名，三份可执行文件与已验收默认构建逐字节一致。未增加产品参数或修改 production 代码；新 bundle ID 是否足以独立定位窗口 / PID 尚待原生验证，不能提前标记双实例通过。
+
+签名静态复核发现，既有包装使用 linker ad-hoc 签名、`Info.plist` 未绑定；完整 `codesign --verify` 对原包装及三份副本均报告 `code has no resources but signature indicates they must be present`。这不是本次复制引入的 executable 差异，但限制了签名证据：仅确认相同构建字节和可检查的代码签名信息，不声明包装签名验证通过或可发行。
+
+系统凭据方面，已编译固定唯一测试项的只读 metadata 工具，仅运行无参数说明分支。其查询只请求 item reference，再读取 ACL authorizations、prompt flags、应用路径信息摘要；关闭本进程认证交互，不请求 secret、不含修改 ACL 的操作，目标不唯一或默认 keychain 改变时失败关闭。该工具尚未访问 Keychain，不能记作本轮 metadata 验收。
+
+[Apple 的公开实现](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_keychain/lib/SecTrustedApplication.cpp)显示 `SecTrustedApplicationCopyData` 返回路径字符串；路径摘要不是完整代码身份或可恢复的 ACL 备份。四个同名 / 同路径条目不能据此确认相同、去重、删除或重建。调用依据另以本机公开 Security SDK 的 `SecACL.h` / `SecAccess.h` / `SecTrustedApplication.h` 核对；上游源码仅阅读参考（APSL 2.0），未复制实现、引入依赖或采用私有接口。
+
+因此下一原生批次采用保留既有 ACL 的方案：A/B 执行跨窗口导入、更新、显式刷新和历史 / 当前精确导出；另仅对任务专用 Prompt 副本以新 identifier 做无证书、无时间戳服务的 ad-hoc 重签名，记录变化后的 SHA-256 / cdhash 并要求该副本完整签名验证通过，再观察读取唯一测试 key 是否出现提示。真实提示由用户选择拒绝 / 取消；没有提示、没有相应按钮或发生 app 启动拦截均不能记作 provider 取消 / 拒绝。重签副本的构建来源可追溯，但不可继续称为原可执行文件的相同字节。
+
+精确操作单已列出三个包装路径、唯一合成库 / slot、输入摘要、命令、停止条件、预计 30–45 分钟与收尾方式；原生启动和 Prompt 重签尚未执行，须就该具体范围取得授权。不修改 trusted applications、ACL、默认 keychain 或整个 keychain 锁定状态，不创建 / 删除 key，不选择“始终允许”。退出 Prompt 后由正常实例显式刷新 / 精确导出验证恢复，经 GUI 删除本批 lineage 并核对真实回执；输入、导出、包装、日志、原 key 及旧备份保留。不能把退出进程表述为抹去全部测试副本，也不能据此关闭其它 P1-S05 缺口。
