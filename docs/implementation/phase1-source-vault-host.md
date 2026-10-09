@@ -203,3 +203,35 @@ A、B、Prompt 分别采用不同 bundle ID / 显示名，可执行文件 SHA-25
 拟执行范围为 A/B 跨窗口版本可见性及精确导出，再单独为 Prompt 临时副本更换 ad-hoc 签名身份，尝试触发真实系统拒绝；原 ACL 保持不变、无需依赖不完整的恢复快照。此方案尚未重签、启动 GUI 或访问 Keychain；提示是否出现、实际 OSStatus 和失败后恢复均未验证。完整判断依据、授权范围和停止条件见[验收计划](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-09-可区分实例与拒绝构造准备)。
 
 本轮完整离线 `./scripts/check-repo.sh` 通过：256 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用。因已确认的 P1-F17 合成本地端口限制，经权限流程在沙箱外执行。最终文本 / 链接检查和 `git diff --check` 通过；未另跑 Python 检查器回归、M0 fixture、doctest、默认构建或其它平台。当前三份验收文档未提交，既有两个本地提交未推送；没有本批启动的 GUI 或系统操作残留。
+
+## 2026-10-09 双实例原生验收与 Prompt 许可变化
+
+准备文档提交为 `9e184ec` 后，按项目所有者当前任务授权执行。复用原合成 profile、schema 11、唯一既有系统 key 和默认构建；未修改 production 代码、依赖、schema 或默认入口。A 首次窗口控制服务连接失败，重试后成功；不同 bundle ID 的 A/B 两个进程能分别绑定，A 的模式切换不影响 B，已解除上一批工具定位限制。
+
+| 实际场景 | 结果及限制 |
+| --- | --- |
+| A/B 交替读写 | A 导入 v1，B 打开 / 显式刷新并导出；A 更新 v2，B 刷新后导出历史 v1 和当前 v2。三份 bytes 分别为 60 / 60 / 54，与合成输入完全一致；B Verify 两个对象、零 pending。未构造重叠 GUI 事务 |
+| Prompt 新签名身份 | B 退出后，只重签任务副本；完整 bundle verification 通过，identifier / cdhash / SHA-256 改变，原始包装与 A/B 字节未变。该临时签名不等于正式签名发行验收 |
+| 实际系统交互 | Prompt 打开时 busy 且重复动作禁用；工具未能读取系统提示，项目所有者报告选择“始终允许”。最终打开成功，没有拒绝 / 取消 error。助手的按钮提醒晚于触发，未完成预定拒绝测试 |
+| 凭据访问控制变化 | 只读输出显示五项常许应用，原为四项；新增路径摘要对应 Prompt bundle。原四项路径摘要及输出的 ACL 数量 / authorizations / flags 未变，但不是完整 ACL 身份备份。新增永久许可保留，未擅自撤销；不能记为访问控制已恢复或保持原样 |
+| 对照与收尾 | Prompt 读取前后数据库、profile、两个密文对象摘要一致；退出后 A Refresh / Verify 和第四份 v2 精确导出通过。GUI 删除本轮两版本来源为 Completed、十组件 succeeded；检索为空、Verify 零对象 / 零 pending。三个进程退出码均为 0 |
+
+磁盘最终为零活动 references / bodies / fragments / tips / FTS、零对象 / staging，schema 11、profile 摘要及目录权限保持原值；删除证据与十项持久化组件结果按本轮 request 复核。保留两份输入、四份导出、三个包装、日志、原 key、历史审计 / 旧备份及新增 Prompt 常许条目。凭据变化由本轮手动“始终允许”产生，不归入已完成的删除回执；撤销这一许可须另行精确授权。
+
+A stderr 含一条原生 TSM 诊断，其余本批 stdout / stderr 为空；已核对的合成正文 / 身份 / account / 数据目录标记未命中，不扩大到系统崩溃报告或任意编码 secret。文件对话框首轮路径快捷操作未到目标，重新读取实际路径框后选中精确输入；检索框 AX 点击未聚焦，坐标聚焦后复核可见 `nebula` 再执行搜索。上述工具重试未改动额外资料。
+
+双窗口交替与精确导出已通过；实际系统拒绝 / 取消、busy 关闭竞争、提交 / evidence 中断及集中跨平台检查仍未收口。新增 Prompt 常许许可的保留 / 撤销范围须先明确，后续系统提示应在触发前完成具体按钮交接，不能把允许成功当作拒绝覆盖。
+
+## 2026-10-09 Prompt 许可精确撤销与拒绝重验
+
+项目所有者另行明确批准仅撤销新增 Prompt 项并重验。Keychain Access 中按唯一 service / account / label 复核目标，访问控制列表只选择并移除 `RadishMemory Acceptance Prompt.app`，保留原四项及原 key。首次保存认证被用户拒绝，只读核对仍为五项，没有记作撤销成功；明确区分“允许保存”与后续“拒绝读取”并取得准备确认后，第二次保存完成。
+
+保存后列表为四项，新增 Prompt 路径摘要消失；按 authorizations 集合匹配五组 ACL，其 prompt flags、应用列表类型 / 数量及路径摘要与原基线一致。API 返回的两个 ACL 组顺序交换，不能直接把原始输出逐字节相同作为判据。仍不声明存储代码身份或完整 ACL 二进制快照完全相同；没有重建原四项、删除 key 或修改其它项。Keychain Access 正常退出。
+
+再次启动同一已重签 Prompt，先停在未打开界面；向用户明确交接只点“拒绝”，收到已准备好后才触发 Open encrypted objects。busy 期间重复动作禁用；随后界面实际显示 `OpenLibrary / SourceVault / SourceVaultFailure · vault=KeyStoreCancelled`、`Local library unavailable` 和新写入禁用，没有回退打开。该观察验证真实系统交互返回取消类错误后的失败关闭，不把它改称为 `KeyStoreDenied` 或 `KeyStoreLocked`。界面未直显原始 OSStatus，不将代码映射表当作独立运行态采集。
+
+本次重验使用已经清理为空的既有合成库，因此只覆盖显式打开的系统 key 失败，不覆盖已有正文视图撤回或 capture / export 中途的系统失败。拒绝后数据库 / profile bytes 不变，objects / staging 均为零；ACL metadata 与撤销后输出一致，未重新添加 Prompt。Prompt 正常退出 0；原 A 对照免提示打开同一加密库、Verify 零对象 / 零 pending 后正常退出 0，数据库 / profile 仍未变。进程复核无本轮 GUI 或 Keychain Access 残留，两轮后续 stdout / stderr 均为空。
+
+最终新增 Prompt 永久许可已撤销、原 key 与四项保留。两份输入、四份导出、三个临时包装、历史审计 / 旧备份和证据继续保留；上一节“新增许可保留”是首次子批次的中间状态，最终以本节为准。双 GUI 交替与本次真实 `KeyStoreCancelled` 打开失败已覆盖，其它系统错误分支、其它操作阶段、busy 关闭竞争、提交 / evidence 中断及集中跨平台检查仍待后续范围。
+
+本轮完整离线 `./scripts/check-repo.sh` 在首轮原生收尾后通过：256 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用；已确认的 P1-F17 端口限制按权限流程处理。随后修正仅涉及已授权原生操作及记录更新，未改动代码或依赖；最终再次运行文本 / 链接检查和 `git diff --check`，不重复未受影响的 Rust 全量测试。未另跑 Python 检查器回归、M0 fixture、doctest、默认构建或其它平台。本轮五份验收记录按当前任务的提交要求单独提交，未执行 push。

@@ -79,8 +79,8 @@ desktop 经 application 新增对既有 crypto / platform provider 的传递构�
 
 ## 限制与下一步
 
-默认桌面产品入口仍是 SQLite v6 inline plaintext body，`LocalLibrary` 不自动切换；后续[桌面宿主接线](phase1-source-vault-host.md) 增加显式加密入口。当前 application 已接入 import / update、lineage deletion、verify / rebuild，后续宿主已用合成 key 验证请求持有与重启恢复，2026-10-06 又完成 macOS 真实 Keychain 最小正常链路、派生损坏重启恢复与密文损坏拒绝的 GUI 验收，见[宿主证据](phase1-source-vault-host.md#2026-10-06-受损库重启与恢复扩展)。2026-10-09 后续宿主批次又完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，见[原生恢复证据](phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)。其它提交 / evidence 中断窗口和系统密钥失败仍待原生覆盖，不能据此宣称 P1-S05 完成。
+默认桌面产品入口仍是 SQLite v6 inline plaintext body，`LocalLibrary` 不自动切换；后续[桌面宿主接线](phase1-source-vault-host.md) 增加显式加密入口。当前 application 已接入 import / update、lineage deletion、verify / rebuild，后续宿主已用合成 key 验证请求持有与重启恢复，2026-10-06 又完成 macOS 真实 Keychain 最小正常链路、派生损坏重启恢复与密文损坏拒绝的 GUI 验收，见[宿主证据](phase1-source-vault-host.md#2026-10-06-受损库重启与恢复扩展)。2026-10-09 后续宿主批次又完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，见[原生恢复证据](phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)。其它提交 / evidence 中断窗口及下述尚未覆盖的系统错误 / 操作阶段仍待原生验证，不能据此宣称 P1-S05 完成。
 
-隔离入口、最小原生闭环和上述三条权限故障恢复路径已完成；后续宿主又补充[外部 SQLite 锁下的 GUI 失败恢复与测试 key 只读核对](phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，双 GUI 交替和实际系统取消 / 拒绝仍未覆盖。下一步按[当前状态](../status/current.md)准备真实系统密钥失败、多实例与集中 Windows / Linux 检查，区分既有合成证据和实际原生范围；桌面接线与已验收路径不重复开发。10 月 6 日日终建议保留为历史交接，新增真实系统操作按精确范围授权。
+隔离入口、最小原生闭环和上述三条权限故障恢复路径已完成；后续宿主又补充[外部 SQLite 锁下的 GUI 失败恢复与测试 key 只读核对](phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，随后[不同 bundle ID 的双 GUI 交替与四份精确导出](phase1-source-vault-host.md#2026-10-09-双实例原生验收与-prompt-许可变化)已通过；Prompt 首次误加的常许许可已精确撤销，[重新交接拒绝后的空库显式打开](phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)返回真实 `KeyStoreCancelled` 并失败关闭，原 A 对照仍可读。下一步按[当前状态](../status/current.md)准备其它系统错误 / 操作阶段、重叠 GUI 事务与集中 Windows / Linux 检查，区分既有合成证据和实际原生范围；桌面接线与已验收路径不重复开发。10 月 6 日日终建议保留为历史交接，新增真实系统操作按精确范围授权。
 
 FTS 仍含完整可读正文，原始对象加密不等于整库静态加密。每次读取仍全库认证，性能与 R01 至 R06 尚未收口；不扩大 PDF / 图片、模型、同步、备份恢复、生产可用或取证级删除声明。本批未访问真实密钥库、启动 GUI / VM / 长期服务或修改远程状态。

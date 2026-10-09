@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-日期：2026-10-09。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；本日另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。双 GUI 交替、实际系统取消 / 拒绝、其余失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
+日期：2026-10-09。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；本日另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。其它系统错误 / 操作阶段、其余失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -121,3 +121,21 @@ macOS 闭环完成后再按当前代码准备 Windows / Linux locked 构建、�
 因此下一原生批次采用保留既有 ACL 的方案：A/B 执行跨窗口导入、更新、显式刷新和历史 / 当前精确导出；另仅对任务专用 Prompt 副本以新 identifier 做无证书、无时间戳服务的 ad-hoc 重签名，记录变化后的 SHA-256 / cdhash 并要求该副本完整签名验证通过，再观察读取唯一测试 key 是否出现提示。真实提示由用户选择拒绝 / 取消；没有提示、没有相应按钮或发生 app 启动拦截均不能记作 provider 取消 / 拒绝。重签副本的构建来源可追溯，但不可继续称为原可执行文件的相同字节。
 
 精确操作单已列出三个包装路径、唯一合成库 / slot、输入摘要、命令、停止条件、预计 30–45 分钟与收尾方式；原生启动和 Prompt 重签尚未执行，须就该具体范围取得授权。不修改 trusted applications、ACL、默认 keychain 或整个 keychain 锁定状态，不创建 / 删除 key，不选择“始终允许”。退出 Prompt 后由正常实例显式刷新 / 精确导出验证恢复，经 GUI 删除本批 lineage 并核对真实回执；输入、导出、包装、日志、原 key 及旧备份保留。不能把退出进程表述为抹去全部测试副本，也不能据此关闭其它 P1-S05 缺口。
+
+### 2026-10-09 可区分实例的原生结果与许可偏差
+
+项目所有者随后明确要求提交准备文档并继续，准备记录已提交 `9e184ec`，按上述精确操作单执行。A/B 的不同 bundle ID / 显示名解决了本轮工具绑定问题：两个独立 PID、相同固定合成 profile、各自可操作的 Synthetic acceptance 窗口均已核对；A 打开加密库时 B 仍保持未打开状态。A 导入 v1 后 B 显式打开 / 刷新；A 更新 v2 后 B 再刷新，历史 v1、当前 v2 和版本关系均可见。三份 B 导出分别为 60、60、54 字节，与对应输入完全一致，Verify 为两个对象、零 pending。该结果覆盖交替操作和显式刷新，不代表 GUI 提交事务重叠。
+
+B 正常退出后，仅对 Prompt 副本执行已批准的 ad-hoc 重签名：新 identifier / cdhash / SHA-256 已记录，完整 bundle verification 通过，原包装及 A/B 字节未变。Prompt 显式打开后停留 busy、重复动作禁用；控制工具不能读取系统提示窗口，项目所有者随后报告选择了“始终允许”。助手在触发前未明确提醒具体按钮，实际手动操作偏离了预定拒绝场景。Prompt 最终成功打开 v2；没有取得拒绝 / 取消 error 或对应 OSStatus，不能记作系统失败验收通过。
+
+只读 metadata 对比确认常许应用从四项增至五项，新增路径摘要匹配本批 Prompt bundle（含结尾 NUL 的路径字符串）；原四项路径摘要、ACL 数量 / authorizations / prompt flags 在该有限输出中未变。该证据仍不能证明全部存储代码身份相同。新增永久许可保留，未自动删除、重建 ACL 或声称已恢复；所以本轮实际结果不再满足计划中的“访问控制未变”。后续若撤销，须精确限定这条新增许可并另行取得授权，不得删除原 key 或据同名路径重建原四项。
+
+Prompt 读取前后数据库、profile 和两个密文对象摘要一致；Prompt 正常退出后，A 显式 Refresh / Verify 成功，第四份 54 字节导出与 v2 一致。A 经 GUI 删除本轮两版本 lineage，获得 Completed、十项 succeeded 回执；`nebula` 检索为空，Verify 零对象 / 零待处理，磁盘只读复核零活动 references / bodies / fragments / tips / FTS、零对象 / staging，profile 和目录权限不变。A/B/Prompt 均正常退出，保留两份输入、四份导出、三个包装、日志、原 key、旧备份及新增 Prompt 常许许可。真实取消 / 拒绝和其它未覆盖平台 / 失败窗口继续待验，见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-09-双实例原生验收与-prompt-许可变化)。
+
+### 2026-10-09 新增许可撤销与拒绝重验
+
+首次误允许后，项目所有者另行批准只撤销新增 Prompt 常许项并重验。通过 Keychain Access 唯一定位该项，保留原四项和原 key；第一次保存认证被拒绝，没有记作撤销完成。第二次在“允许保存”交接后保存成功，列表恢复四项。按授权集合匹配的五组 ACL 元数据与原基线一致，仅组顺序改变；这不是完整代码身份备份。新增永久许可最终已撤销，原条目未重建。
+
+关闭 Keychain Access 后重启同一 Prompt。收到用户已准备好点击拒绝，再触发读取；实际 UI 返回 `KeyStoreCancelled`，资料库不可用且新写入禁用，无回退打开。原始 OSStatus 未直接显示，不能额外宣称原生 `KeyStoreDenied` / locked 分支已通过。该重验发生在来源已清理的空合成库，覆盖显式打开失败，不扩张到已有正文视图或写操作中途。
+
+拒绝后 ACL metadata、数据库 / profile 保持，零对象 / staging；Prompt 退出，原 A 仍能免提示打开并 Verify 零对象 / 零 pending，随后正常关闭，所有本轮进程已退出。最终状态、首次误允许偏差、精确撤销过程及证据限制见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)。后续系统交互必须在触发前完成具体按钮交接，不同时混淆权限保存与拒绝测试。
