@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-日期：2026-10-09。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；本日另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复。其余失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)与[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)，本计划不等于全部场景已通过。
+日期：2026-10-09。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；本日另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。双 GUI 交替、实际系统取消 / 拒绝、其余失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -85,5 +85,25 @@
 桌面 worker 另以 opt-in 合成 provider 覆盖对象缺失及字节损坏后的重启：旧入口、显式打开、Verify、Rebuild、Search 和 Export 失败关闭，外部原件更改也不回源；只恢复测试原字节后才可恢复原 source 与精确导出。该回归不访问系统 key store，不代替上表真实 GUI 证据。
 
 缺 key、锁定、duplicate / ambiguity、真实中断需要额外对象库与精确系统操作方案；本批不通过删除唯一 key、锁定用户整个 keychain 或改系统配置制造故障。不能安全复现的项继续待验。
+
+### 2026-10-09 Keychain 与多实例准备
+
+代码复核确认 `LibraryReader` / 共用 vault session 持有真实 SQLite 排他锁，但桌面空闲窗口不长期持有该会话。因此分别记录双 GUI 交替操作、受控外部锁竞争与已有独立子进程协调器测试；两个窗口同时存在不等于已经观察到两次 GUI 命令的并发竞争。
+
+新增桌面回归以合成 provider 和真实竞争 reader 验证：Export / Refresh 遇锁失败、key load 数量不增加、旧视图隐藏、导出文件不创建；失败的竞争连接不释放持锁 reader；释放后 Inspect 不恢复旧视图，明确 Refresh 才重新显示原来源，精确导出保持 BOM / CRLF 原 bytes。该测试不是 GUI 或系统 Keychain 证据。
+
+准备时提出的原生范围如下，具体绝对路径、profile / 二进制摘要、输入和命令写入忽略的任务操作单；项目所有者随后明确批准，实际结果另列于本节末尾：
+
+| 场景 | 具体操作与通过条件 | 授权和证据边界 |
+| --- | --- | --- |
+| 两个原生实例 | 同一默认构建、同一隔离 profile 启动两个进程；A 导入 v1，B 显式刷新、导出，A 更新 v2，B 刷新、导出历史 v1 和当前 v2；核对版本、精确 bytes 与各进程退出 | 两实例交替工作不冒充重叠提交；无法可靠区分窗口 / PID 时停止 |
+| GUI 遇到真实数据库锁 | v1 导入后，固定目标 helper 开启不执行 DML 的 `BEGIN EXCLUSIVE`，最长 120 秒自动 rollback；GUI 的导出 / 刷新遇锁不得释放旧正文或生成成功文件；释放后显式刷新和精确导出恢复 | 外部持锁进程是验收夹具，不是第二个 GUI 的业务事务；临时 helper 已在独立合成 SQLite 上验证竞争拒绝、显式释放、超时释放与数据库 bytes 不变 |
+| 唯一既有 Keychain 项的只读核对 | 仅按已记录 service / account 定位既有合成项，查看 metadata 与 Access Control，不显示 secret、不保存修改；若正常读取实际出现系统提示，由用户处理取消 / 拒绝并记录真实结果 | 现有读取未出现提示，不能保证可构造取消 / 拒绝；不改变 trusted applications、ACL、默认 keychain 或整库锁定状态。需要改变访问策略时，先按实际基线另行明确范围和恢复方式 |
+
+操作单预计 30–45 分钟；要求正常退出本批窗口，精确释放 helper，保留输入 / 导出 / 证据及原 key，仅通过 GUI 删除本批新增 lineage 并检查真实回执，历史审计和旧备份继续保留。准备阶段没有启动 GUI、访问系统凭据或在既有原生库上持锁，原生执行发生在后续明确授权之后。macOS 的 `KeyStoreCancelled` / `KeyStoreDenied` 依真实 OSStatus 记录，不把某个按钮名称或通用 access failure 推断为 `KeyStoreLocked`。
+
+本批实际执行：A 导入 v1 后，B 同参数启动；工具按相同 bundle / path 仍绑定 A，窗口清单查询超时，未能独立定位两个实例。按停止条件正常关闭 A、确认退出后绑定仍在运行的 B，后续为单 GUI 与外部 SQLite helper 的竞争，不是双 GUI 交替或重叠提交。B 的 Export / Refresh 在持锁时分别返回 `ExportSource` / `ListSources`、`SourceVaultFailure` 和 `SQLite Some(5)`；旧视图隐藏、失败导出不存在、busy 动作禁用。helper 提前释放且退出码 0；Inspect 不恢复旧视图，显式 Refresh 后同一来源恢复，两份 60 字节 BOM / CRLF 导出与 v1 完全一致，密文未变。
+
+Keychain Access 仅核对匹配的唯一项：选择“允许访问之前确认”，未允许所有应用，常许应用列表显示四个同名验收 app 条目，名称不足以确认各条目的具体代码身份。本轮未显示密码、修改访问控制或保存变更，正常读取没有出现系统授权提示，所以实际取消 / 拒绝仍待验。一个坐标重试误打开 Prepare key 确认，随即 Cancel，未执行初始化；后续精确凭据元数据未变。最终 GUI 删除唯一 v1 来源得到 Completed 十组件回执、检索 `nebula` 为空、Verify 零对象 / 零 pending；两个 GUI 与 helper 均正常退出，Keychain Access 已退出。具体保留物、日志与证据限制见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)。
 
 macOS 闭环完成后再按当前代码准备 Windows / Linux locked 构建、合成运行与真实 provider / 宿主验收，分别记录架构、文件系统、普通用户权限、系统 store 和诊断证据。`evidence_digest` 统一复算仍独立评审；PDF / 图片解析、默认加密切换、模型和同步不在此计划内。

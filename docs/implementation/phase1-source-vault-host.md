@@ -162,4 +162,32 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 
 本批关闭上述权限故障对应的三条 macOS 原生恢复路径及关闭 Cancel / 明确关闭、放弃 Cancel / Confirm；busy 动作禁用已有可见证据，但 busy 与关闭的竞争时序仍待验。publish 后 SQLite commit 失败、提交成功后刷新失败、evidence 写入前后中断仍仅有既有合成证据；Keychain 取消 / 拒绝 / 锁定、多实例、Windows / Linux 当前代码验收、中文质量及完整 P1-S05 继续待验。没有生产代码、依赖、schema 或默认 v6 入口变化，FTS 仍保存完整明文。
 
-原生收尾后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 再次完整通过：255 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 358 项 Rust tests，11 个 ignored helper 由父测试调用。已知 P1-F17 沙箱端口限制按权限流程使用沙箱外离线检查；最终文档检查和 `git diff --check` 通过。默认构建沿用本日准备阶段证据，未重复 Python 检查器回归、M0 fixture、doctest 或其它平台验收；本批测试与文档仍未提交、未推送，没有遗留本批运行进程。
+原生收尾后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 再次完整通过：255 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 358 项 Rust tests，11 个 ignored helper 由父测试调用。已知 P1-F17 沙箱端口限制按权限流程使用沙箱外离线检查；最终文档检查和 `git diff --check` 通过。默认构建沿用本日准备阶段证据，未重复 Python 检查器回归、M0 fixture、doctest 或其它平台验收；验收收尾时测试与文档未提交、未推送，没有遗留本批运行进程。随后按项目所有者要求提交为 `347058f`，未推送。
+
+## 2026-10-09 Keychain 与多实例准备
+
+沿当前顺位检查实际会话锁与 macOS provider：桌面每次加密操作使用排他数据库会话，空闲窗口本身不占锁；provider 绑定 User domain 默认 keychain 的唯一 service / account，当前接口不支持另选独立测试 keychain。既有系统 key 连续免提示成功读取，不能把再次成功当成真实取消 / 拒绝。下一原生范围与分类判据见[操作计划](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-09-keychain-与多实例准备)。
+
+新增 `worker::tests::locking::competing_reader_blocks_export_and_hides_stale_view_until_explicit_refresh`，通过独立 reader 的真实排他锁覆盖桌面 Export / Refresh 的失败关闭、无 key 读取、无导出、失败连接不破坏锁、释放后显式刷新与精确 bytes 导出。使用既有合成 provider，没有依赖、生产代码或 schema 变化。任务专用 helper 仅操作固定合成数据库的空 `BEGIN EXCLUSIVE` transaction，最长 120 秒释放；独立临时 SQLite 的子进程预演已验证 SQLITE_BUSY、提前释放、超时释放及数据库 bytes 不变。
+
+准备阶段仅只读复核既有合成 profile、默认二进制摘要、零活动资料 / 对象 / staging，并创建新合成输入与精确操作单；未启动 GUI、访问 Keychain、在该原生库持锁或变更任何访问策略。计划限定先观察目标项访问控制，不为了制造提示而删除唯一 key、修改 ACL 或锁定整个 keychain。真实取消 / 拒绝、多实例 GUI 与其它平台仍待执行。
+
+准备验证：新增桌面定向测试、helper 两条释放预演通过；完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过 256 个仓库文件、notices、fmt、locked Clippy 及 25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用。首轮仍只因 P1-F17 合成本地端口被沙箱拒绝而失败，经权限流程在沙箱外完整离线重跑通过。未重复默认 desktop 构建、Python 检查器回归、M0 fixture、doctest 或其它平台运行；本批新增测试与文档未提交，无遗留本批进程。
+
+## 2026-10-09 原生锁竞争与 Keychain 只读核对
+
+项目所有者明确批准上述精确操作单后，复核既有 profile、默认 production binary、输入摘要和唯一既有 key 元数据。A 在空的显式加密合成库导入 v1、Verify 成功；B 以同一完整参数另进程启动，但原生 UI 工具通过 bundle / path 仍绑定 A，完整窗口清单查询超时。按操作单停止条件未继续双 GUI 交替；先经 UI 正常关闭 A、确认退出码 0，再绑定尚未退出的 B。B 打开并精确导出 A 已提交的 v1，只能证明跨进程顺序读取，不能声明两个存活窗口之间的交替刷新或重叠提交通过。v2 更新和跨窗口历史导出未执行。
+
+| 场景 | 实际结果 | 边界 |
+| --- | --- | --- |
+| GUI 遇锁 | B 保留 v1 视图，外部 helper 对固定合成库取得空 `BEGIN EXCLUSIVE`；Export / Refresh 分别失败于 `ExportSource` / `ListSources`，均保留 `SourceVaultFailure / database=Migration / None / SQLite Some(5)`；busy 按钮禁用，返回错误后旧来源视图隐藏，导出文件不存在 | 真实 SQLite 锁与 production GUI / Keychain；持锁者是专用夹具，不是第二个 GUI 的业务事务 |
+| 释放后恢复 | 两项失败均在 release 前核对；helper 收到精确释放文件后 rollback，退出码 0；Inspect 成功但不恢复旧视图，显式 Refresh 恢复同一 v1；前后两个 60 字节 BOM / CRLF 导出完全等于初始合成输入，对象摘要不变、staging 为空 | 原生执行验证提前释放；120 秒超时释放沿用独立临时 SQLite 子进程预演证据 |
+| Keychain 只读核对 | 仅目标 generic-password 项的 service / account / label 匹配；Access Control 为“允许访问之前确认”、未允许所有应用、未勾选询问钥匙串密码，常许列表有四个同名验收 app 条目；Save changes 禁用，未显示 secret 或修改任何权限 | 名称不足以唯一识别代码签名 / 路径；没有 RadishMemory 系统授权提示，所以不覆盖实际取消 / 拒绝，更不推断为 locked |
+
+本轮有一次坐标重试误打开 Prepare key 确认；只选择 Cancel，未运行初始化或迁移。检索输入曾受焦点与输入法影响，最终使用实际聚焦和粘贴，确认可见词为 `nebula` 才执行搜索。没有将未生效的动作记作成功。目标 key 的创建 / 修改元数据在收尾时与预检相同，未删除或创建 key、修改 ACL、锁定整个 keychain 或改系统默认项。
+
+最终仅通过 B 的 GUI 删除本轮唯一来源，得到一份 Completed evidence，十项持久化组件结果全为 succeeded；`nebula` 无结果，Verify 为 0 objects、0 pending capture、无 abandonment、0 pending deletion。只读复核 active references / bodies / fragments / tips / FTS、objects / staging 均为空，schema 仍为 11，profile 摘要和对象目录原 `0700` 权限不变。A / B 及 helper 退出码均 0，本轮启动的 Keychain Access 正常退出，进程检查无残留。保留两个输入、两份精确导出、证据、日志、历史审计、旧备份、应用包装和原 key，不将本地回执扩大为这些副本已删除。
+
+A 的 stdout / stderr 和 B 的 stdout 为空；B stderr 仅原生输入法 / TSM 诊断，本批合成正文、profile 身份、account 和目录标记未命中。不覆盖 OS 崩溃报告、任意编码的 secret 或系统内部副本。双 GUI 交替与真实 Keychain 取消 / 拒绝仍待另行构造，本批没有改变生产代码、依赖、schema 或默认 v6 入口，不关闭 P1-S05。
+
+原生收尾后再次完整通过 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh`：256 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用。沿用本会话已确认的 P1-F17 沙箱端口限制，按权限流程在沙箱外离线执行；最终文本 / 链接检查与 `git diff --check` 通过。未另跑默认构建、Python 检查器回归、M0 fixture、doctest 或其它平台验收；本批新增锁回归与验收文档仍未提交、未推送。
