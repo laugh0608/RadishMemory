@@ -5,7 +5,7 @@
 RadishMemory 必须同时满足：
 
 - 单机离线可用；
-- 用户自部署多端同步；
+- 官方端点可选、用户可自部署的多端同步；同一官方客户端运行时选择目标，无需重新编译；
 - 原始资料、结构化记忆和派生索引相互分离；
 - 模型、Embedding、数据库和 Provider 可替换；
 - 权限、敏感度和外发策略在检索前执行；
@@ -44,10 +44,10 @@ Model Adapter / RadishMind ── GPT / Gemini / Claude / Grok / DeepSeek / Loca
         └──────────────► 规则校验 / 用户确认 / 记忆状态变更
 ```
 
-多端同步独立于模型调用：
+多端同步独立于模型调用；下图的同步服务可由官方提供或用户自部署，二者都遵守首个零知识模式，连接与切换要求见[客户端连接规划](client-server-connection-plan.md)：
 
 ```text
-Device A Local Store ── encrypted operation/object sync ── Self-hosted Server
+Device A Local Store ── encrypted operation/object sync ── Sync Server
                                                            │
 Device B Local Store ◄── encrypted operation/object sync ──┘
 ```
@@ -268,6 +268,8 @@ sources/
 
 1. **可信私有服务器**：用户信任自己的服务器解密、索引和运行后台任务。
 2. **零知识同步服务**：服务器只保存密文对象与加密操作日志，解密和语义索引在受信设备执行。
+
+官方端点与用户自部署是服务归属选择，不是信任模式切换；实例 / 同步域、设备授权、密钥封装、cursor 和删除 / 恢复状态须按[客户端连接规划](client-server-connection-plan.md)隔离。
 
 首个多设备同步已经通过 [ADR 0003](adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务；可信私有服务器不进入首个同步批次。未来支持两种模式时，必须在配置、UI、密钥和部署声明中明确区分，不能静默降级，也不能把“自托管”自动宣传为“零知识”。
 
