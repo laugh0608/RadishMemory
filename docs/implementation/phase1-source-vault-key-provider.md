@@ -70,3 +70,48 @@ P1-S03c-2 初始批次的 notices 生成器未放宽规则：当时 **366** 项�
 新增 Windows 专用、无系统访问的 construction 回归，直接检查公开构造的 concrete credential 保留冻结 target、service/account specifiers、内部 account 与 Local persistence。仓库门禁同时验证这份 patch 源码完整性与 notices，不把 `source=None` 当作第一方代码而漏掉归属。当前候选三平台编译与合成运行结果以 PR #4 的 head checks 为准；真实 Credential Manager、logger、提示 / 取消 / 拒绝和生产宿主仍不在本批验收内。撤回补丁会恢复该依赖版本的 Windows 编译阻断，不能以改映射或临时成功替代。
 
 本地 macOS `./scripts/check-repo.sh --base-ref origin/master` 通过：235 个仓库文件、notices、fmt、all-targets / all-features locked Clippy、309 项 Rust tests；42 项 Python 检查器回归和 `cargo test --workspace --doc --all-features --locked` 的 compile-fail doctest 通过。独立从原 archive 重比 11 个文件的原 / 改后摘要，确认只有一处可见性变化。没有访问真实系统凭据，未安装新工具或新增 / 升级第三方版本。
+
+## 2026-10-13 合并会话后九次提示的静态诊断与修复提案
+
+状态：诊断 / 设计，未实施 provider 修改，也未启动 GUI 或访问真实 key。三份既有原生记录已先复核并提交为 `1cf3931`；现场事实仍以[局部原生结果](phase1-source-vault-host.md#2026-10-13-新构建原生入口取消与提示预算停止)为准。本节依据 `89d53b0` 实现、锁定的 `apple-native-keyring-store 1.0.2` / `security-framework 3.7.0` 本地源码、已保存的 A01 栈及公开第一方文档；未重新查询凭据、ACL 或系统日志。
+
+### 已证实的调用预算与证据边界
+
+`worker::perform(OpenEncrypted)` 只调用 `open_with_snapshot`，安装 controller 时只复制完整快照；`execute` 取 view 也是内存 clone，没有追加 Inspect 或 reader。`Worker::send` 在 busy 时拒绝派发，完成后没有自动重试。既有 worker 合成测试分别验证空库 / 有资料的 OpenEncrypted 和显式 Refresh 各两次 loader；provider snapshot 测试验证每动作四次 secret 读取。静态控制流和现有测试支持会话合并已生效，不支持“仍走旧的四次 loader”这个解释；A02 没有逐调用遥测，不能宣称已经测得它的真实 API 总数。
+
+正常成功路径展开如下；计数是调用预算，均不是系统提示计数：
+
+| 层级 / 操作 | 每动作次数 | 依据 |
+| --- | --- | --- |
+| 固定 read snapshot | 1 | `worker.rs` 的 OpenEncrypted 分支；Refresh 使用同入口 |
+| `load_existing` | 2 | `reader/snapshot.rs:43` 的 open 与 `:60` 的交付前检查 |
+| `KeyStore::read_secret` | 4 | 每 loader 在 `provider.rs:546` / `:549` 双读 |
+| `attributes → SecItemCopyMatching` | 12 | 四次 read 的前后检查共 8 次，加四次独立 label 检查 |
+| `SecKeychainFindGenericPassword` | 4 | `macos.rs:102 → Cred::get_secret → security-framework`，上游没有 Rust 重试循环 |
+| User domain 默认 keychain 获取 | 29 | connect 1 次，12 次 attributes 的前后检查 24 次，四次上游 secret 获取前重新解析 domain 4 次 |
+
+`Store` 只保存 `Cred` 和 `SecKeychain`，没有 `LAContext`、授权票据或系统会话令牌。合并的是应用读取 / 锁 / key 生命周期，不是 OS 的许可生命周期。Apple 说明 Allow Once 仅授权本次获取，下一次需要密码时仍可能询问，见 [Keychain Access 指南](https://support.apple.com/guide/keychain-access/if-youre-asked-for-access-to-your-keychain-kyca1243/mac)。因此重复提示的结构性原因仍存在；保留四次独立 secret 读取的当前契约本身不能承诺一次提示。
+
+metadata 查询只设置 `load_attributes(true)`，没有 data / ref；锁定版本源码默认布尔值为 false，`search` 直接调用 `SecItemCopyMatching`，`simplify_dict` 只转换返回值，没有第二次系统查询。secret 路径使用另一个 legacy API；`Cred::get_secret` 每次重新解析 User keychain，调用 `SecKeychainFindGenericPassword` 后复制字节，未复用一个 OS 授权上下文。不能把十二次 metadata 查询叫作十二次 secret 读取，也不能仅因未请求 data 就断言系统永不提示。
+
+现有 A01 唯一采样正向确认首个提示卡在入口的第一个 `SecKeychainFindGenericPassword`；A02 只有用户汇总九次、最终成功和前后状态相同，没有每个提示的文案、调用点或 begin/end。故九次的精确分解仍未知。候选是 metadata 查询的系统交互、单次 secret API 内多重系统授权 / 挑战，或两者组合；不把它写成“4 + 4 + 1”、label 触发已证实、权限损坏或用户误操作。Mozilla 的[原始故障记录 comment 4](https://bugzilla.mozilla.org/show_bug.cgi?id=1582486#c4)曾直接观察到单次 `SecItemCopyMatching` 产生两个不同提示，这只证明 API 与弹窗不必一一对应，不证明本机也是同因。公开 Apple [Security 源码](https://github.com/apple-oss-distributions/Security/blob/main/OSX/libsecurity_keychain/lib/SecKeychain.cpp)显示 find-password 进入 item data 获取；公开 main 不是本机系统二进制的精确源码，不据此推算九次。
+
+### 建议顺序与候选修复
+
+首选先执行另行批准的、保持原默认二进制不变的逐提示观测单，仅一次空库打开。逐次结合系统提示类型与正向源码调用点，区分入口 / 末轮、第一次 / 第二次 read、pre / post metadata 和 label。保留最多八次 Allow Once，第九次只采样后拒绝，不再要求用户连续点击再回忆总数；同一提示采样一次，未知调用点即停止。详见[观测单边界](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-单动作逐提示观测提案)。
+
+若采样不能区分精确调用实例，下一步应先单独批准最小可观测性补丁：只在现有隔离 acceptance 入口显式启用，记录动作序号、entry / release、read 1 / 2、metadata pre / post / label、domain / secret、call begin / end、单调时间及有界结果。默认关闭，不记录 slot、路径、对象 ID、key 长度 / 字节 / 摘要、metadata 值、原始 OS 错误文本或用户输入。观测失败应中止该次诊断而非静默丢记录；不得添加等待放行、重试、跳过校验或更长 key 生命周期。不是新增业务 schema 或生产审计协议。该补丁尚未实现 / 授权，不能在本次计划中当作已经存在的能力。
+
+| 观测结论 | 候选改动 | 安全及验证条件 |
+| --- | --- | --- |
+| 独立 label metadata 查询确实触发额外提示 | 将已完成的 read 后 metadata 校验与 label 校验设计为一个可验证读结果，减少独立重复查询 | 不从早先结果盲目缓存 label；需重审检查时点及删除 / 替换竞争，保留 secret 前后唯一性、domain、身份与 label 校验，首尾双读保持；当前 shared trait / bootstrap 也使用 label 校验，不能直接删调用或改成无条件成功 |
+| 多个提示落在同一 legacy secret 获取内 | 评估仅 macOS `read_secret` 改用现有 `security-framework` 的精确查询，固定 `self.keychain`，`Limit::Max(1)` 只取 data | 四次读取和独立全量唯一性查询保持，单条 data 查询不替代 ambiguity 检查；不设 label filter 隐藏错误项；不将 data 与 Limit::All 混用。全部错误保留 OSStatus、有界分类，返回类型 / 数量不符失败关闭；secret 立即置于 Zeroizing，禁止 stringify / Debug data 结果，不新增 fallback。此候选也可能多次提示，不宣称换 API 即修复 |
+| 单次读取无多余 provider 访问，系统确实逐次要求许可 | 保留当前语义并明确交互成本；若产品要求一次提示，单独评审 OS 授权模型与密钥复验契约 | 不把合并读会话包装成一次授权，不减少首尾双读、不跨动作缓存、不要求永久许可。迁移凭据、稳定签名 / ACL 或另一 keychain 信任模式须单独决策，均不在本提案的最小修复范围 |
+
+第二项候选不需要引入新 crate：当前 `security-framework 3.7.0` 已暴露 query、data 返回及 Limit；现有 metadata 前后查询和 `Store::check_domain` 继续存在，避免混合 domain 重新解析导致的数据路径漂移。它会影响使用同一 macOS provider 的其它读取 / bootstrap 复验，必须列入影响面，不能只测试桌面 OpenEncrypted。是否实施必须由新观测证据决定，不能把未确认的性能 / 提示收益当作理由。
+
+Apple [TN3137](https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains)明确区分 file-based 与 data protection keychain 的访问控制；当前 User domain legacy 项不能凭一个 `LAContext` 字段就假定拥有动作级可复用授权。不得通过 authentication UI skip 排除受保护项、禁止系统交互后重试、改默认 keychain 或删除重建唯一测试 key 来降低计数。
+
+实施前冻结选定改动范围。合成验证须覆盖四次 secret 的每个错误位置、首尾 key 不同、各 metadata 检查的缺失 / 多项 / label / domain 变化、错误类型与零化、日志无内容、无 setter / fallback / 自动重试，以及 bootstrap、写入、导出、恢复等共用 provider 路径；沿用 worker 和 reader 的失败关闭回归，追加 fmt / Clippy、完整仓库检查和默认无 acceptance feature 的构建。合成调用次数不能替代原生提示证据，原生再按新二进制 / dSYM 摘要单独批准。
+
+本次诊断记录的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：263 个文件，notices、fmt、locked Clippy、25 个 suites 共 379 项 Rust tests 通过，11 个 ignored helper 由父测试执行；沿用合成本地端口权限在沙箱外离线运行。补记后文本 / 链接检查与 `git diff --check` 再次通过；未重跑未受影响的默认构建或其它平台。本次无实现、依赖或 lockfile 改动，未访问真实 key / ACL、启动 GUI、修改权限或执行远程写入；诊断新增的三份文档未提交，`dev` 领先本地 `origin/dev` 五个提交，未 push。新观测单仅准备，检查进程已退出。
