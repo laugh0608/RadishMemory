@@ -25,7 +25,7 @@
 
 worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失败保留同一快照和 provenance，阻止新写入、切换库和重新准备；“Retry original request”不重新读外部文件，也不生成新 ID。提交成功立即释放快照，之后目录 / 选择刷新失败单独显示，保留“已提交”的真实结果并引导 Refresh，不提供重复 capture 的错误暗示。一般读取错误隐藏旧 UI 数据，显式 Refresh / reopen 成功后再恢复显示。
 
-原 capture 仅在内存持有，不新增明文磁盘 journal，不承诺在崩溃后保留快照或清零全部进程内副本。关闭时若仍有原请求，提示快照损失与后续限制；busy 时取消关闭请求，等待真实执行结果。进程被强制结束不具备该交互保证。重启后已提交 capture 通过目录恢复；未提交 capture 若快照丢失，不允许从 fingerprint 或外部文件伪造精确重试。认证 inspect 只保留不透明 target，明确确认后才调用精确放弃；没有自动清理。未知文件、已提交来源和其它库 target 不在其授权范围。
+原 capture 仅在内存持有，不新增明文磁盘 journal，不承诺在崩溃后保留快照或清零全部进程内副本。关闭时若仍有原请求，提示快照损失与后续限制；busy 时取消关闭请求，等待真实执行结果；2026-10-13 起，关闭帧开始仍 busy 时，即使本帧收到结果也取消这次关闭，保留结果供查看，用户须再次请求关闭。同一帧多次布局保持取消决定，接受关闭后不再派发同帧动作。进程被强制结束不具备该交互保证。重启后已提交 capture 通过目录恢复；未提交 capture 若快照丢失，不允许从 fingerprint 或外部文件伪造精确重试。认证 inspect 只保留不透明 target，明确确认后才调用精确放弃；没有自动清理。未知文件、已提交来源和其它库 target 不在其授权范围。
 
 删除失败保留原 `DeleteRequest`。`unfinished_delete_requests` 在认证 reader 内发现同 namespace 尚无 Completed 最新 evidence 的原授权，包括执行已结束但 evidence 尚未落盘的窗口。它先复验最新 evidence 的身份、时间、计划和真实持久化组件结果，再排除 Completed；不只过滤 status 字段。重启恢复按钮绑定原 request ID 和完整请求，明确继续时不重新规划当前选择的闭包。完成、失败或部分状态按真实 evidence 展示；外部原件、导出、备份和其它设备不属于本地回执。
 
@@ -235,3 +235,20 @@ A stderr 含一条原生 TSM 诊断，其余本批 stdout / stderr 为空；已�
 最终新增 Prompt 永久许可已撤销、原 key 与四项保留。两份输入、四份导出、三个临时包装、历史审计 / 旧备份和证据继续保留；上一节“新增许可保留”是首次子批次的中间状态，最终以本节为准。双 GUI 交替与本次真实 `KeyStoreCancelled` 打开失败已覆盖，其它系统错误分支、其它操作阶段、busy 关闭竞争、提交 / evidence 中断及集中跨平台检查仍待后续范围。
 
 本轮完整离线 `./scripts/check-repo.sh` 在首轮原生收尾后通过：256 个仓库文件、notices、fmt、locked Clippy、25 个 suites 共 359 项 Rust tests，11 个 ignored helper 由父测试调用；已确认的 P1-F17 端口限制按权限流程处理。随后修正仅涉及已授权原生操作及记录更新，未改动代码或依赖；最终再次运行文本 / 链接检查和 `git diff --check`，不重复未受影响的 Rust 全量测试。未另跑 Python 检查器回归、M0 fixture、doctest、默认构建或其它平台。本轮五份验收记录按当前任务的提交要求单独提交，未执行 push。
+
+
+## 2026-10-13 busy 关闭竞争修复与剩余窗口核对
+
+本批在干净的 `dev` 工作区开始，领先本地 `origin/dev` 一个文档提交，未刷新远程。项目所有者授权核对、必要修复、仓库内验证和文档更新；GUI、系统凭据和 VM 留待具体范围另行确认。
+
+复现并修复两处 UI 时序问题：原实现先 `poll` 再检查 busy，完成结果与关闭事件在同帧到达时可直接关闭，使成功 / 刷新失败或 worker 停止结果尚未展示就退出；原实现接受空闲关闭后仍绘制并处理按钮释放，可在该帧额外派发 Refresh 等命令。现在以本次渲染开始时的 busy 和帧号保留关闭取消决定；同帧多个布局 pass 不覆盖该决定，真正完成的消息不被等待提示替换。取消不会延期自动关闭；用户再请求关闭时，仍持有原请求才进入既有明确确认。接受关闭后立即停止 UI 动作处理。
+
+为直接测试 production 界面，将 `eframe::App::ui` 的原界面体保留在私有 `render` 方法并由原入口调用。新增六项 headless egui 回归，控制测试 channel 的结果交付，覆盖持续 busy、提交成功与刷新错误同时交付、失败原请求及实际 Cancel / Confirm 点击、worker channel 断开、空闲关闭与按钮释放同帧、同一帧多次布局。测试在取得输出时清空无需渲染的纹理增量，避免失败断言触发纹理析构二次 panic；不建立原生窗口。另加真实 worker 的 Drop 回归：初始化测试门限有超时，已接受的 OpenPlain 完成后 engine 释放，Drop 返回前线程已 join，临时 SQLite 可重开；不以强制终止模拟关机。
+
+回归对照临时恢复原关闭逻辑：六项 UI 测试中五项失败，持续 busy 取消一项通过；随即恢复修复代码。初次对照暴露了测试输出纹理未在断言前清理导致的析构 abort，修正测试资源处理后取得上述正常失败结果。worker 新测试初次将数据库文件名写错，修正为现有 `library.sqlite3` 后通过，未改变产品路径。修复后的 desktop 测试 47 项通过、1 项日志 helper ignored 并由父测试调用。
+
+提交 / evidence 中断和成功写入后刷新失败的既有 worker 回归已核对，未发现本批需要改变恢复语义的缺口；不重复建立存储测试入口。逐窗口的触发、持久状态、UI 判据、原生限制与有限跨平台检查点见[验收矩阵](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)。合成回调错误不等于真实 commit 失败、进程中断或断电。
+
+本批 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整通过：259 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 366 项 Rust tests；11 个 ignored helper 由父测试调用。首轮仅在既有 P1-F17 合成本地观察端口被沙箱拒绝，按权限流程在沙箱外离线重跑同一完整检查通过，未跳过门禁。默认 `cargo build -p radishmemory-desktop --locked` 离线构建通过。补记结果后的文本 / 链接检查与 `git diff --check` 亦通过；本轮未单独重跑未受影响的 Python 检查器回归、M0 fixture runner 或 compile-fail doctest。未启动 GUI、调用系统 key store、改变保留合成库 / 测试 slot、运行 VM 或远程动作。无新依赖、lockfile、canonical schema、加密 profile、删除契约、默认 v6 入口或日志策略变化；默认构建无新增故障入口。本批只收口关闭竞争的实现和合成证据，原生窗口行为、其它系统错误 / 操作阶段与 Windows / Linux 当前代码验收仍待完成，P1-S05 不整体关闭。
+
+实现切片结束时变更尚未暂存、提交或推送，保留任务前领先本地 tracking ref 的一个提交；检查和构建均正常退出，没有本轮后台服务。测试自身临时库按 fixture 清理，核验日志保留在任务专用临时文件中。

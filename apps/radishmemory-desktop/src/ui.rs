@@ -15,6 +15,7 @@ pub struct RadishMemoryApp {
     confirm_delete: bool,
     confirmation: Option<Confirmation>,
     allow_close: bool,
+    deferred_close_frame: Option<u64>,
     acceptance: bool,
 }
 #[derive(Clone, Copy)]
@@ -42,6 +43,7 @@ impl RadishMemoryApp {
             confirm_delete: false,
             confirmation: None,
             allow_close: false,
+            deferred_close_frame: None,
             acceptance: startup.is_acceptance(),
         };
         let worker = match startup {
@@ -148,22 +150,36 @@ impl RadishMemoryApp {
     }
 }
 
-impl eframe::App for RadishMemoryApp {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+impl RadishMemoryApp {
+    fn render(&mut self, ui: &mut egui::Ui) {
+        if self.allow_close {
+            return;
+        }
+        let was_busy = self.busy();
         self.poll();
         let context = ui.ctx().clone();
         if self.busy() {
             context.request_repaint_after(std::time::Duration::from_millis(80));
         }
-        if context.input(|i| i.viewport().close_requested()) && !self.allow_close {
-            if self.busy() {
+        if context.input(|i| i.viewport().close_requested()) {
+            let frame = context.cumulative_frame_nr();
+            // A result received in this frame has not yet been shown to the user.
+            // Keep the cancellation across egui layout passes of the same frame.
+            if was_busy || self.deferred_close_frame == Some(frame) {
+                self.deferred_close_frame = Some(frame);
                 context.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                self.notice = Some(Notice::neutral(
-                    "An operation is still running. Wait for its real result before closing.",
-                ));
+                if self.busy() {
+                    self.notice = Some(Notice::neutral(
+                        "An operation is still running. Wait for its real result before closing.",
+                    ));
+                }
             } else if self.state.holds_original {
                 context.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 self.confirmation = Some(Confirmation::Close);
+            } else {
+                // Do not dispatch a click delivered together with an accepted close.
+                self.allow_close = true;
+                return;
             }
         }
         let can_mutate = self.can_mutate();
@@ -447,6 +463,15 @@ impl eframe::App for RadishMemoryApp {
         }
     }
 }
+
+impl eframe::App for RadishMemoryApp {
+    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+        self.render(ui);
+    }
+}
+
+#[cfg(test)]
+mod close_tests;
 
 fn source_label(source: &SourceLineageSummary) -> String {
     source.title().map_or_else(

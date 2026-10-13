@@ -579,3 +579,80 @@ fn retry_commit_survives_recovery_inspection_failure_without_becoming_a_write_er
     let refreshed = ok(engine.execute(Command::Refresh));
     assert_eq!(refreshed.view.unwrap().sources().len(), 1);
 }
+
+// Control result delivery at the UI boundary without a native window or key store.
+pub(crate) fn channel_worker() -> (Worker, Sender<Snapshot>, Receiver<Command>) {
+    let (sender, commands) = mpsc::channel();
+    let (results, receiver) = mpsc::channel();
+    (
+        Worker {
+            sender,
+            receiver,
+            thread: None,
+            busy: false,
+            stopped: false,
+        },
+        results,
+        commands,
+    )
+}
+
+#[test]
+fn dropping_busy_worker_finishes_accepted_command_and_joins_engine() {
+    use std::sync::{Arc, atomic::AtomicBool};
+    use std::time::Duration;
+
+    struct EngineLifetime(Arc<AtomicBool>);
+    impl Drop for EngineLifetime {
+        fn drop(&mut self) {
+            self.0.store(true, Ordering::SeqCst);
+        }
+    }
+    let fixture = Fixture::new();
+    let data = fixture.root.join("drop-thread-data");
+    let worker_data = data.clone();
+    let ended = Arc::new(AtomicBool::new(false));
+    let lifetime = EngineLifetime(ended.clone());
+    let (entered, entry) = mpsc::channel();
+    let (release, gate) = mpsc::channel();
+    let mut worker = Worker::spawn(move || {
+        entered.send(()).unwrap();
+        // Bounded test gate, not a production interruption or system key operation.
+        gate.recv_timeout(Duration::from_secs(10)).unwrap();
+        let provider = SyntheticLibraryProvider::default();
+        Ok(Engine::new(
+            ApplicationPaths::from_data_directory(worker_data).unwrap(),
+            move || {
+                let _ = &lifetime;
+                provider.clone()
+            },
+        ))
+    })
+    .unwrap();
+    entry.recv_timeout(Duration::from_secs(5)).unwrap();
+    worker.send(Command::OpenPlain).unwrap();
+    assert!(worker.busy);
+    let (dropping, drop_started) = mpsc::channel();
+    let waiter = thread::spawn(move || {
+        dropping.send(()).unwrap();
+        drop(worker);
+        // Drop must join even though the UI has not polled the accepted command.
+        assert!(ended.load(Ordering::SeqCst));
+    });
+    drop_started.recv_timeout(Duration::from_secs(5)).unwrap();
+    release.send(()).unwrap();
+    waiter.join().unwrap();
+    assert!(data.join("library.sqlite3").is_file());
+    let provider = SyntheticLibraryProvider::default();
+    let mut reopened = Engine::new(
+        ApplicationPaths::from_data_directory(data).unwrap(),
+        move || provider.clone(),
+    );
+    assert!(
+        ok(reopened.execute(Command::OpenPlain))
+            .view
+            .unwrap()
+            .sources()
+            .is_empty()
+    );
+}

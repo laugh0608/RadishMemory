@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-更新时间：2026-10-09
+更新时间：2026-10-13
 
 ## 当前阶段
 
@@ -28,7 +28,7 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 ## 当前顺位
 
 1. `P1-S04a SQLite key bootstrap coordination` 已实现：在真实 SQLite `IMMEDIATE` transaction 内验真初始化资格，复验对象目录、创建 / 复用密钥并提交 maintenance-only v7 `key_ready` checkpoint。合成测试覆盖并发连接、独立子进程、真实 commit 失败、缺 key、历史正文损坏和 schema 漂移，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。普通产品入口继续使用 v6；该初始化步骤不迁移正文；后续迁移由独立 v8 维护入口承担。
-2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。[桌面宿主接入](../implementation/phase1-source-vault-host.md) 已完成串行 worker、显式初始化 / 迁移 / 打开、内存原请求重试、重启发现原删除授权、精确放弃及 failed-open 维护入口。依赖连线已获批准；诊断采用无输出 logger 与 panic payload 抑制，并通过隔离子进程验证。2026-10-06 已按精确授权完成 macOS 真实 Keychain / GUI 的最小正常闭环；随后完成派生损坏重启恢复与密文损坏拒绝的真实 GUI 扩展；2026-10-09 又完成权限故障下的原请求重试、重启精确放弃及原删除授权恢复；随后外部 SQLite 持锁下的 GUI 失败恢复通过，并只读核对测试 key 访问控制。随后不同 bundle ID 的 A/B 已完成独立定位、跨窗口版本刷新与精确导出；Prompt 首次“始终允许”新增许可已按追加授权精确撤销；在触发前交接拒绝后，空合成库打开返回真实 `KeyStoreCancelled` 并失败关闭，原 A 读取对照通过。其余提交 / evidence 中断窗口、busy 关闭竞争、其它系统密钥错误 / 操作阶段、重叠 GUI 事务、中文显示与集中跨平台验收仍待收口。详见[宿主证据](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)，新增系统操作继续按具体范围授权。
+2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。[桌面宿主接入](../implementation/phase1-source-vault-host.md) 已完成串行 worker、显式初始化 / 迁移 / 打开、内存原请求重试、重启发现原删除授权、精确放弃及 failed-open 维护入口。依赖连线已获批准；诊断采用无输出 logger 与 panic payload 抑制，并通过隔离子进程验证。2026-10-06 已按精确授权完成 macOS 真实 Keychain / GUI 的最小正常闭环；随后完成派生损坏重启恢复与密文损坏拒绝的真实 GUI 扩展；2026-10-09 又完成权限故障下的原请求重试、重启精确放弃及原删除授权恢复；随后外部 SQLite 持锁下的 GUI 失败恢复通过，并只读核对测试 key 访问控制。随后不同 bundle ID 的 A/B 已完成独立定位、跨窗口版本刷新与精确导出；Prompt 首次“始终允许”新增许可已按追加授权精确撤销；在触发前交接拒绝后，空合成库打开返回真实 `KeyStoreCancelled` 并失败关闭，原 A 读取对照通过。2026-10-13 已修复关闭事件与 worker 结果同帧到达、接受关闭后仍派发动作的 UI 竞争，并补齐 headless UI 和真实 worker 退出回归；新构建原生关闭行为尚未验收。其余提交 / evidence 中断窗口、其它系统密钥错误 / 操作阶段、重叠 GUI 事务、中文显示与集中跨平台验收仍待收口。详见[宿主证据](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)，新增系统操作继续按具体范围授权。
 3. 按项目所有者 2026-09-15 的安排，Windows / Linux 编译与运行验证后置到上述链路形成阶段切片后的集中检查点；待验收状态保留，不能以 macOS 结果代替。真实系统 key store 与上游日志运行态仍须按具体测试范围授权和验证。PDF / 图片解析继续等待完整加密链路通过。
 4. R01 至 R06 的产品质量缺口继续跟踪：[本地资料库质量验收计划](../evaluation/phase1-local-library-quality.md)中的中文检索、目录分页、派生损坏维护入口、读取性能、runner 证据和回源 / 结果刷新仍未收口。本批基础存储实现不等于这些产品问题已经修复。
 5. 产品验证继续聚焦“同一个长期项目的资料、关键事实、更正与受控上下文”，完整阶段依赖以[MVP 路线图](../mvp-roadmap.md)为准。
@@ -65,6 +65,8 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
+2026-10-13 关闭竞争切片：修复同帧完成 / 关闭与退出前派发动作问题，新增六项 headless UI 和一项真实 worker Drop / join 回归。完整离线检查、locked Clippy 与 366 项 Rust tests、默认 desktop 构建通过；首轮 P1-F17 沙箱端口限制经权限流程完整重跑解决。没有启动 GUI 或访问系统 key store；新构建的原生关闭竞争仍待验，见[本批证据](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)。
+
 2026-10-09 双实例原生验收：A/B 独立定位、跨窗口版本刷新与四份精确导出通过，三个进程正常退出，来源删除 Completed 十组件、零活动资料。Prompt 新签名验证通过；首次误加的常许许可已精确撤销，重新交接后空库打开返回 `KeyStoreCancelled` 并失败关闭，原 A 对照成功；后续两个进程也已退出，见[最终结果](../implementation/phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)。
 
 2026-10-09 原生锁 / 凭据核对：已授权范围中，外部 SQLite 锁下 Export / Refresh 失败关闭、释放后显式恢复与两份精确导出通过；Keychain Access 只读核对完成，未改变权限或 secret。该子批次尚未覆盖双 GUI 交替和实际系统取消 / 拒绝，后续覆盖范围见上段最终结果。两个 GUI、helper 与 Keychain Access 均退出，本轮来源删除 Completed、十组件 succeeded、零活动资料，见[原生记录](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)。
@@ -95,8 +97,10 @@ Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继�
 
 [10 月 9 日日终记录与明日事项](2026-10-09-source-vault.md)汇总当天全部四个提交、代码—文档复核及 **2026-10-10** 的具体建议；[10 月 6 日记录](2026-10-06-source-vault.md)和更早安排保留为历史交接。
 
-下一批先梳理剩余宿主窗口的判据与可控构造方式，优先准备 busy 关闭竞争、提交 / evidence 中断及成功写入后刷新失败的精确验收；已有权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库 `KeyStoreCancelled` 打开失败不重复列为未完成任务。其它真实系统错误与有正文 / 写操作阶段另按具体范围准备；无法安全构造的场景保留待验，不通过删除唯一 key、锁定整个用户 keychain 或不受控结束进程制造证据。
+2026-10-13 已完成[剩余窗口核对与 busy 关闭竞争修复](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)：关闭与完成结果同帧到达时保留窗口和真实结果；接受关闭后不再派发同帧按钮动作。六项 headless UI 回归及一项真实 worker Drop / join 回归已补齐，提交 / evidence 中断与写入后刷新失败沿用已核对的既有合成测试，不将回调错误扩大为原生中断证据。[验收矩阵](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)已明确触发、持久状态、恢复判据和有限跨平台准备条件。
 
-形成有明确完成条件的剩余切片后，按阶段推进 Windows / Linux 当前代码集中检查点；macOS 结果不替代其它平台。R01 至 R06、中文显示、默认 v6 failed-open 和 `evidence_digest` 复算 / 历史兼容仍独立跟踪，后者先做契约评审。新增系统操作及远程动作仍须精确授权，P1-S05 不整体关闭。
+下一步按精确范围准备新构建的原生关闭行为复验，并准备 Windows / Linux 当前代码集中检查；不能以 headless UI 代替真实窗口 / 系统密钥库。已有权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库 `KeyStoreCancelled` 打开失败不重复列为未完成任务。其它真实系统错误与有正文 / 写操作阶段另按具体范围准备；无法安全构造的场景保留待验，不通过删除唯一 key、锁定整个用户 keychain 或不受控结束进程制造证据。
 
-今晚到日终文档提交为止。明日事项仅为交接建议，不安排提醒、自动化或后台开发；忽略目录中的合成输入 / 导出 / 备份 / 包装及原测试 key 继续保留，新增 Prompt 常许许可已撤销。
+以验收矩阵中的有限条件为检查点，按阶段推进 Windows / Linux 当前代码集中检查；macOS 结果不替代其它平台。R01 至 R06、中文显示、默认 v6 failed-open 和 `evidence_digest` 复算 / 历史兼容仍独立跟踪，后者先做契约评审。新增系统操作及远程动作仍须精确授权，P1-S05 不整体关闭。
+
+10 月 9 日停止安排保留在当日日终记录；本轮按项目所有者新任务推进，不安排提醒、自动化或后台开发。忽略目录中的历史合成输入 / 导出 / 备份 / 包装及原测试 key 继续保留，本轮未修改这些产物；新增 Prompt 常许许可已在前批撤销。

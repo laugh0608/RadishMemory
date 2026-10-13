@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-日期：2026-10-09。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；本日另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。其它系统错误 / 操作阶段、其余失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
+日期：2026-10-13。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；本次未启动原生窗口。其它系统错误 / 操作阶段、其余原生失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -139,3 +139,22 @@ Prompt 读取前后数据库、profile 和两个密文对象摘要一致；Promp
 关闭 Keychain Access 后重启同一 Prompt。收到用户已准备好点击拒绝，再触发读取；实际 UI 返回 `KeyStoreCancelled`，资料库不可用且新写入禁用，无回退打开。原始 OSStatus 未直接显示，不能额外宣称原生 `KeyStoreDenied` / locked 分支已通过。该重验发生在来源已清理的空合成库，覆盖显式打开失败，不扩张到已有正文视图或写操作中途。
 
 拒绝后 ACL metadata、数据库 / profile 保持，零对象 / staging；Prompt 退出，原 A 仍能免提示打开并 Verify 零对象 / 零 pending，随后正常关闭，所有本轮进程已退出。最终状态、首次误允许偏差、精确撤销过程及证据限制见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)。后续系统交互必须在触发前完成具体按钮交接，不同时混淆权限保存与拒绝测试。
+
+
+## 2026-10-13 剩余宿主窗口核对与有限检查点
+
+本批先核对 production UI、worker、controller 与既有合成 provider 回归。headless 测试运行真实界面渲染和 viewport 命令处理，仅以测试 channel 控制结果到达；不会创建原生窗口或访问系统密钥库。worker 退出另用真实线程、合成 provider 和临时 SQLite 验证。实现与验证结果见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)。
+
+| 剩余窗口 | 可控构造与持久状态 | UI / 恢复判据 | 当前证据及原生限制 |
+| --- | --- | --- | --- |
+| busy 与关闭竞争 | 测试 channel 分别保持执行中、在关闭帧前排入完成结果、断开结果通道；不写虚假数据库 checkpoint | 本帧处理结果前仍 busy，就取消该次关闭；结果 / 错误和刷新失败提示不能被覆盖。完成后不自动退出，用户再次关闭时再按是否持有原请求决定确认。多次布局不改变该判断 | 新增 headless UI 回归通过；原生 busy 动作禁用和原请求关闭确认有历史证据，但新构建的真实窗口关闭竞争仍待验 |
+| 接受关闭与按钮事件同帧 | 无原请求、worker 空闲，关闭事件与 Refresh 按钮释放同时输入 | 接受关闭后不再派发操作；正常销毁 worker 等待已接受命令执行及 engine 释放 | 新增真实输入事件回归与真实线程 Drop / join 回归通过；不代表强制终止 / 系统关机或永久阻塞 provider 的退出保证 |
+| capture 发布后、提交后中断 | 既有 `interrupt_next_capture_after_publish` / `interrupt_next_capture_after_commit`；分别留下已发布 pending 或已提交状态，由协调器真实写入 | 失败保持原请求和 provenance，拒绝替换；重试精确原 bytes，已提交请求不得重复创建来源。内存快照丢失时走认证发现与显式放弃 | `capture_retry_keeps_original_bytes_and_provenance_and_blocks_replacement` 已覆盖；回调返回错误不是进程崩溃、真实 commit 失败或断电。默认构建无稳定原生注入方式，保留该边界 |
+| 写入成功后刷新 / recovery inspection 失败 | 既有合成 provider 在指定 key load 返回失败；正文已提交、原请求已释放 | 显示已提交与独立刷新失败，旧视图隐藏，不能提供重复 capture；显式 Refresh 恢复一个来源。关闭同帧到达也保留结果供查看 | `committed_capture_refresh_failure_reports_success_and_does_not_retain_retry`、`retry_commit_survives_recovery_inspection_failure_without_becoming_a_write_error` 和新增 UI 交付竞争测试；不是实际系统 key store 中途失败证据 |
+| 删除 intent / execution / evidence 前后中断 | 既有删除和 evidence 回调覆盖四个边界；持久状态分别是原请求、执行结果或已提交 evidence | 错误不虚构 Completed；重启前三类继续同一 request ID，evidence 提交后的已完成请求不再列入待恢复；外部原件保留 | `restart_discovers_original_deletion_and_resumes_all_interruption_windows` 已覆盖；与此前权限故障原生恢复互补，不能记作真实 evidence commit 失败或掉电验收 |
+
+本轮不新增生产故障 seam、SQL trigger 或持久格式，不用删除唯一 key、锁定整个 keychain、不受控结束进程来扩充原生覆盖。测试 channel 只验证 UI 交付时序，不证明存储中断语义；后者继续由对应引擎 / 协调器回归证明。`evidence_digest` 复算与历史兼容仍单独评审。
+
+进入集中跨平台准备的有限条件为：上述窗口全部有明确判据、既有和新增合成回归通过、默认 desktop 构建通过、原生待验项及限制明列。达到这些条件即可准备 Windows / Linux 当前代码的 locked 编译与合成检查，无需无限追加难以安全构造的 macOS 故障；真实平台 provider / GUI 与 VM 操作仍分别取得具体授权。这个检查点不关闭 P1-S05，也不解除 PDF / 图片停止线。
+
+下一原生批次只验证新构建的关闭行为：空闲正常关闭；可实际观察到 busy 时请求关闭并保留窗口；收到结果后再次关闭；失败保留原请求时 Cancel / Confirm 及最终进程退出。执行前须核对复用的隔离目录、profile、唯一既有 slot、构建摘要和操作方式，给出精确目标、时长和保留 / 收尾方式再请求授权。若操作太快不能稳定观察 busy，记录未覆盖；不能仅凭窗口正常退出判定竞争通过，也不以本节泛化计划作为系统操作授权。
