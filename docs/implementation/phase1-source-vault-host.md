@@ -252,3 +252,18 @@ A stderr 含一条原生 TSM 诊断，其余本批 stdout / stderr 为空；已�
 本批 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整通过：259 个仓库文件、notices、fmt、locked all-targets / all-features Clippy，25 个 suites 共 366 项 Rust tests；11 个 ignored helper 由父测试调用。首轮仅在既有 P1-F17 合成本地观察端口被沙箱拒绝，按权限流程在沙箱外离线重跑同一完整检查通过，未跳过门禁。默认 `cargo build -p radishmemory-desktop --locked` 离线构建通过。补记结果后的文本 / 链接检查与 `git diff --check` 亦通过；本轮未单独重跑未受影响的 Python 检查器回归、M0 fixture runner 或 compile-fail doctest。未启动 GUI、调用系统 key store、改变保留合成库 / 测试 slot、运行 VM 或远程动作。无新依赖、lockfile、canonical schema、加密 profile、删除契约、默认 v6 入口或日志策略变化；默认构建无新增故障入口。本批只收口关闭竞争的实现和合成证据，原生窗口行为、其它系统错误 / 操作阶段与 Windows / Linux 当前代码验收仍待完成，P1-S05 不整体关闭。
 
 实现切片结束时变更尚未暂存、提交或推送，保留任务前领先本地 tracking ref 的一个提交；检查和构建均正常退出，没有本轮后台服务。测试自身临时库按 fixture 清理，核验日志保留在任务专用临时文件中。
+
+
+## 2026-10-13 原生首轮的重复密钥提示与收尾
+
+关闭竞争修复已提交 `f37078d`。项目所有者随后确认精确操作单，批准新构建 GUI、唯一既有测试 key 读取、临时 SQLite 持锁和指定对象目录权限变更。预检核对默认构建与独立包装摘要、profile、零活动资料 / pending、`0700` 权限及精确 key metadata；未请求 secret 的系统 metadata 预检通过。
+
+第一轮启动后停在预期的 v11 legacy-open 拒绝界面；触发前交接只允许本次访问、不点“始终允许”，收到用户已准备好后只点击一次 Open encrypted objects。用户报告“允许之后又弹出来”，反复提示十几次。工具没有获得系统提示逐次计数；稍后用户报告当前无提示，GUI 实际显示加密打开成功、`0 active lineage(s)`。本次不是取消 / 拒绝通过，也不能把“单次允许”描述为整个桌面动作只弹一次。
+
+静态调用链确认：空库 OpenEncrypted 依次进行 `EncryptedLibrary::open`、controller 的 `list_sources`、`inspect_capture_abandonment` 和 `unfinished_delete_requests`，各自加载现有 key；`provider::load_existing` 每次执行两次 `read_secret` 和 label 复验。四次加载对应八次 secret 读取调用，旨在维持独立认证用例和 key 替换检查；这是静态正常路径，不等于现场提示数量。原生体验暴露出桌面动作拆成多次认证会话的交互成本，不能归因于用户误操作或助手多次点击。操作单低估了该成本。
+
+在导入前停止继续触发认证，正常关闭唯一窗口，进程退出码为 0。数据库与 profile 的 SHA-256 与读取前一致；五项活动表计数、对象 / staging、pending capture / deletion 均零，对象目录 inode 和 `0700` 权限保持。stdout / stderr 均为空。没有启动持锁 helper、撤销目录权限、创建 / 删除 key、导入 / 导出、放弃或删除来源，因此没有本批删除回执，不虚构 Completed。保留原 key、历史产物、新包装、输入、预检和诊断证据；本轮未操作 ACL，不以此声明已完成全部 ACL 身份审计。
+
+busy 关闭竞争及原请求 Cancel / Confirm 的本批原生验收尚未执行。继续加密原生流程前，先评审桌面动作级认证会话、交互次数和取消 / key 变化时的失败关闭契约；不得简单删除二次复验、暗中跨动作缓存 key 或要求永久许可。密钥生命周期与安全边界变化需要明确范围后再实现；当前生产代码、依赖、schema 和信任模式未改变。
+
+记录更新后，`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整通过，退出码 0：259 个仓库文件，25 个 suites 共 366 项 Rust tests，11 个 ignored subprocess helper 由父测试调用。沿用此前已确认的合成本地端口所需权限，在沙箱外离线运行，未跳过检查。补记后的文本 / 链接检查和 `git diff --check` 通过。新增三份文档记录未暂存、未提交；`dev` 领先本地 `origin/dev` 两个提交，未 push。本批 GUI 和检查进程均已退出，未启动持锁 helper；合成验收产物与日志保留在任务专用忽略目录及临时目录。
