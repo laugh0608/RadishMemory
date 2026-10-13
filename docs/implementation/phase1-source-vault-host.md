@@ -13,11 +13,11 @@
 | 动作 | 真实行为 |
 | --- | --- |
 | Open legacy plaintext | 默认旧 v6 入口；遇 v7 至 v12 仍拒绝 |
-| Open encrypted objects | 只加载既有 key，认证打开已迁移库并发现恢复状态 |
+| Open encrypted objects | 只加载既有 key，在一次只读会话内认证打开、目录 / 版本及恢复状态，首尾复验后交付快照 |
 | Prepare key | 确认后调用既有初始化协调器；可能创建系统凭据，已有 checkpoint 缺 key 时不重新生成 |
 | Migrate / resume bodies | 确认后使用既有 key 执行 v7 / v8 正文迁移或精确恢复；之后须显式打开 |
 | Verify / Rebuild recall | 分别只核对或显式重建派生行；加密打开失败时仍使用同一目录 / profile，拒绝修复损坏 canonical 或自动推进 pending |
-| Refresh | 重新读取目录与恢复状态；不重复先前写入 |
+| Refresh | 显式加密刷新合并目录 / 版本与恢复状态并首尾复验 key；不重复先前写入，写后刷新仍为原独立路径 |
 
 界面明确显示 FTS 仍保留完整可读正文。初始化、迁移及放弃的确认窗口冻结其它操作，避免用户确认期间当前选择或 inspected target 被 UI 动作替换。各 coordinator 仍在实际执行时复验状态，抵抗其它进程在确认期间改变目录。
 
@@ -267,3 +267,17 @@ A stderr 含一条原生 TSM 诊断，其余本批 stdout / stderr 为空；已�
 busy 关闭竞争及原请求 Cancel / Confirm 的本批原生验收尚未执行。继续加密原生流程前，先评审桌面动作级认证会话、交互次数和取消 / key 变化时的失败关闭契约；不得简单删除二次复验、暗中跨动作缓存 key 或要求永久许可。密钥生命周期与安全边界变化需要明确范围后再实现；当前生产代码、依赖、schema 和信任模式未改变。
 
 记录更新后，`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整通过，退出码 0：259 个仓库文件，25 个 suites 共 366 项 Rust tests，11 个 ignored subprocess helper 由父测试调用。沿用此前已确认的合成本地端口所需权限，在沙箱外离线运行，未跳过检查。补记后的文本 / 链接检查和 `git diff --check` 通过。新增三份文档记录未暂存、未提交；`dev` 领先本地 `origin/dev` 两个提交，未 push。本批 GUI 和检查进程均已退出，未启动持锁 helper；合成验收产物与日志保留在任务专用忽略目录及临时目录。
+
+## 2026-10-13 只读动作认证会话实现与合成验证
+
+此前三份原生验收记录已按项目所有者要求提交为 `4ecd775`。随后完成认证边界评审，项目所有者明确批准仅实现 `OpenEncrypted` 和显式 `Refresh` 的组合只读会话，并禁止本轮 GUI / 真实系统密钥库访问。[完整契约](phase1-source-vault-application.md#2026-10-13-只读动作认证会话)冻结首尾 double-read、同 store 身份观察、最终对象 / 数据库复验及无跨动作缓存。
+
+实现复用现有 reader 和查询，在 Source Vault 内构造固定目录 / 版本 / 恢复快照；application 提供 `open_with_snapshot` 与 `read_snapshot`，desktop 仅将两个批准的 command 接入。成功后才安装完整 view 和恢复状态，错误路径撤回旧恢复选择并隐藏旧 view，仍保留原 capture / DeleteRequest；pinned profile 检查先失败时也撤回旧 target，不保留看似可操作的恢复状态。原生提示数量尚未测量，不能把代码级四次 secret 读取写成四次或一次弹窗。
+
+新增 provider 合成测试使用现有 fake store，逐次验证两轮 double-read 的四次 secret / label 校验、每个 secret 读取位置的取消 / 拒绝 / 锁定 / 缺失 / ambiguity / metadata / unavailable、同轮与首尾 key 替换、无写入与下一动作重新认证。新增 reader 测试覆盖版本选择、精确 pending target、跨进程持锁、末次 key 读取期间对象损坏 / 消失与 Unix 数据库替换、profile 先于 key、unwind 后释放。desktop 合成测试覆盖空库 / 有资料库两轮加载、旧视图撤回、首尾失败分类、空库 key 替换、原 capture 与删除授权保留、pinned profile 失败时恢复状态失效，以及其它读用例未共用认证。
+
+本批未改依赖、lockfile、canonical schema、加密 profile、bootstrap / 普通 load 双读算法、写入 / 删除 / 导出事务、默认 v6 入口、日志策略或 busy 关闭规则。Windows / Linux 当前代码和真实宿主验收仍待完成；本地合成结果不关闭 P1-S05，也不解除 PDF / 图片停止线。原 key、保留合成库及历史原生验收产物未触及。
+
+验证完成：`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0，263 个仓库文件、notices、fmt、locked all-targets / all-features Clippy 和 25 个 suites 共 379 项 Rust tests 通过；新增 13 项回归，11 个 ignored subprocess helper 仍由父测试执行。完整检查沿用既有合成本地端口所需权限，在沙箱外离线执行，未跳过门禁。此前三个相关 package 的定向测试、7 项 snapshot 和首批 4 项 desktop read-session 定向测试亦通过；后补的两项 desktop 回归包含在完整检查中。`cargo build -p radishmemory-desktop --locked --offline` 默认构建退出 0；默认 normal / build / features 图不含 `acceptance-test-support`。补记后的仓库文本 / 链接检查及 `git diff --check` 通过。本轮未单独重跑未受影响的 Python 检查器回归、M0 fixture runner 或 compile-fail doctest，未运行 Windows / Linux 当前目标。
+
+本批实现、测试及七份相关文档未暂存、未提交、未推送；`dev` 保留领先本地 `origin/dev` 的三个既有提交。测试 / 构建进程已正常退出，无 GUI 或长期后台进程；合成 fixture 按自身清理逻辑收尾，验证日志保留在任务专用临时文件中。未访问真实系统 key store、启动 VM、改变既有权限 / ACL 或执行远程动作。

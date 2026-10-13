@@ -1,4 +1,5 @@
 //! Explicit read session for a migrated library, with no plaintext fallback.
+mod snapshot;
 use crate::filesystem_support::DatabaseObservation;
 use crate::{
     KeyEncryptionKey, ObjectDirectory, PROVIDER_PROFILE, SourceVaultError, SourceVaultErrorCode,
@@ -10,6 +11,8 @@ use radishmemory_core::{
     SourceVersionSummary,
 };
 use radishmemory_sqlite::{EncryptedCaptureDatabase, ObjectReadView};
+pub use snapshot::LibraryReadSnapshot;
+pub(crate) use snapshot::snapshot;
 use std::fmt;
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 

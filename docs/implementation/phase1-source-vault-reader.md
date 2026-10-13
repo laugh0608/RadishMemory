@@ -13,6 +13,8 @@
 - `SourceCatalog` 复用相同 SQL、版本连续性检查、captured-time / lineage 稳定排序及 offset / limit 切页逻辑。`LocalSearch` 复用相同 FTS 查询和候选校验，namespace、敏感度、可用时间、retention 和记忆 valid-time 在 top-k 前过滤；未确认 proposal 不成为搜索记忆。
 - 会话关闭释放锁和 key；会话期间其他数据库写入失败。读取结果是调用方持有的明文 canonical 值，会话不跨查询缓存解密正文；不承诺撤回先前返回的副本或进程明文取证清除。
 
+2026-10-13 的[只读动作认证会话](phase1-source-vault-application.md#2026-10-13-只读动作认证会话)在上述 reader 上增加固定目录 / 版本 / 恢复快照入口：首尾使用同一 store 连接分别双读 key，比较首尾值并在交付前再次认证对象和数据库。它只服务桌面显式打开与刷新，不改变其它 reader / 写用例的生命周期，也不跨动作保留 key 或锁。
+
 ## 本批发现并修复的 Unix 锁问题
 
 独立子进程回归在修复前复现：`LibraryReader` 仍存活时，第二进程能够通过数据库打开检查并进入 key loader。同进程 SQLite 连接检查此前仍返回锁冲突，不能据此证明跨进程互斥。根因是共用 `Observation::verify_identity` 打开并关闭数据库的额外文件描述符；Unix 的 POSIX 文件锁会因同进程关闭该 inode 的任意描述符而释放。这与 [SQLite 官方锁风险说明](https://www.sqlite.org/howtocorrupt.html) 一致。

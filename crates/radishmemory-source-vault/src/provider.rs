@@ -98,6 +98,17 @@ pub(crate) mod sealed {
 /// recovery into key creation. Only the platform provider and the opt-in synthetic
 /// acceptance provider implement this boundary.
 pub trait LibraryProvider: sealed::Sealed {
+    /// Bounded catalog/recovery snapshot with fresh double-read key validation at
+    /// entry and before release. No key or database session escapes this call.
+    fn read_library_snapshot(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        request: &radishmemory_core::SourceCatalogRequest,
+        preferred_lineage: Option<&radishmemory_core::Identifier>,
+    ) -> std::result::Result<crate::LibraryReadSnapshot, crate::VaultMaintenanceError>;
+
     fn initialize_library_key(
         &self,
         directory: &crate::ObjectDirectory,
@@ -171,6 +182,47 @@ pub trait LibraryProvider: sealed::Sealed {
 impl sealed::Sealed for PlatformKeyProvider {}
 
 impl LibraryProvider for PlatformKeyProvider {
+    fn read_library_snapshot(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        request: &radishmemory_core::SourceCatalogRequest,
+        preferred_lineage: Option<&radishmemory_core::Identifier>,
+    ) -> std::result::Result<crate::LibraryReadSnapshot, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace, device)?;
+        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+        {
+            let mut store = None;
+            crate::reader::snapshot(
+                directory,
+                namespace,
+                device,
+                request,
+                preferred_lineage,
+                || {
+                    if store.is_none() {
+                        store = Some(platform::Store::connect(&slot)?);
+                    }
+                    // Preserve the original User keychain/default collection identity
+                    // through the final check; reconnecting could accept a replacement.
+                    load_existing(store.as_ref().expect("connected snapshot store"))
+                },
+            )
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        {
+            crate::reader::snapshot(
+                directory,
+                namespace,
+                device,
+                request,
+                preferred_lineage,
+                || self.load_existing(&slot),
+            )
+        }
+    }
+
     fn initialize_library_key(
         &self,
         directory: &crate::ObjectDirectory,

@@ -11,6 +11,7 @@
 - `initialize_key` 显式复用 SQLite 初始化资格与 v7 checkpoint；已有 checkpoint 只加载原 key，缺 key 不重新生成。初始化成功后立即丢弃本次 key capability。不得以打开失败为理由自动调用初始化。
 - `migrate_bodies` 单独复用 v7 / v8 正文迁移与精确恢复；只加载原 key，发布后中断可复用已登记对象。v9 至 v12 已迁移库直接打开，不重新执行旧迁移入口。
 - `open` 只对已完成迁移的 v8 至 v12 执行认证读取验证，成功后释放该会话，再返回 `EncryptedLibrary`。缺库、未完成迁移、profile 错配、缺 key、坏对象及派生漂移均失败关闭；不回退旧 BLOB 或外部原件，不自动修复、删除 pending 或放弃 capture。
+- 2026-10-13 起，桌面的 `OpenEncrypted` 改用 `open_with_snapshot`，显式 `Refresh` 改用 `read_snapshot`，按[只读动作会话契约](#2026-10-13-只读动作认证会话)合并目录、版本与恢复检查；既有 `open` 和其它独立用例保持原生命周期。
 - `EncryptedLibrary` 是显式加密应用句柄，提供目录、历史版本、来源读取、搜索回源、精确导出及下述写用例。它与原 `LocalLibrary` 共用私有读取用例和已有 core / file-entry 契约，不建立第二套来源、查询或导出协议。
 - 每次读取用例重新取得认证 `LibraryReader`，一个 exclusive session 覆盖完整搜索及来源解析或完整导出发布；正常返回、错误和 unwind 都释放锁与 key。句柄空闲时没有数据库连接、缓存 key 或解密正文，已有 capture / 删除 / maintenance 协调器可取得同库会话。返回值和用户导出是调用方持有的明文副本，关闭句柄不撤回这些副本。
 
@@ -84,3 +85,33 @@ desktop 经 application 新增对既有 crypto / platform provider 的传递构�
 隔离入口、最小原生闭环和上述三条权限故障恢复路径已完成；后续宿主又补充[外部 SQLite 锁下的 GUI 失败恢复与测试 key 只读核对](phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，随后[不同 bundle ID 的双 GUI 交替与四份精确导出](phase1-source-vault-host.md#2026-10-09-双实例原生验收与-prompt-许可变化)已通过；Prompt 首次误加的常许许可已精确撤销，[重新交接拒绝后的空库显式打开](phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)返回真实 `KeyStoreCancelled` 并失败关闭，原 A 对照仍可读。下一步按[当前状态](../status/current.md)准备其它系统错误 / 操作阶段、重叠 GUI 事务与集中 Windows / Linux 检查，区分既有合成证据和实际原生范围；桌面接线与已验收路径不重复开发。10 月 6 日日终建议保留为历史交接，新增真实系统操作按精确范围授权。
 
 FTS 仍含完整可读正文，原始对象加密不等于整库静态加密。每次读取仍全库认证，性能与 R01 至 R06 尚未收口；不扩大 PDF / 图片、模型、同步、备份恢复、生产可用或取证级删除声明。本批未访问真实密钥库、启动 GUI / VM / 长期服务或修改远程状态。
+
+## 2026-10-13 只读动作认证会话
+
+项目所有者在静态评审后明确批准首批只合并 `OpenEncrypted` 与显式 `Refresh`，保留双读及交付前 key 复验、不跨动作缓存，并仅运行合成测试、仓库检查和默认构建。此契约不扩张为 GUI 或真实系统凭据授权。
+
+### 范围与决策
+
+复用 Source Vault 的 `LibraryReader`、SQLite exclusive session、现有目录 / 版本查询和精确 pending target / 原删除请求查询。新增固定结果 `LibraryReadSnapshot` 仅包含这些已有领域值，无序列化、持久化 schema 或第二套恢复语义。固定读取入口不向调用方暴露回调或中间候选，application 在完整认证后才返回 handle 与初始快照，desktop 不再额外执行一次打开验真或随后独立的恢复检查。
+
+目录仍取第一页 200 项，优先保留该页内此前选中的 lineage，否则选择第一项；版本选择仍回到 current source，搜索结果清空。此变更不解决 R02 分页 UI。导入、更新、删除、导出、搜索、单独 Inspect、初始化、迁移、Verify / Rebuild、Retry / Resume / Abandon 以及写后刷新不接入这个组合会话；原请求、实际提交及写后刷新失败的语义保持。
+
+### 生命周期与交付边界
+
+1. worker 在处理动作前撤回旧恢复选择；profile、数据库 schema / namespace / device / provider、目录与数据库身份、exclusive session 资格均在 key 访问前检查。未满足条件不连接系统 store，不创建或修复库。
+2. 第一次加载延迟创建 store；执行现有两次 secret 读取、一致性和 label 复验。各平台的 identity、唯一性、persistence / User keychain / default collection 检查保持。
+3. 同一 reader 完成目录、选中 lineage 的版本、精确 capture abandonment target 和 unfinished deletion requests；每个查询仍在前后认证对象及 canonical / 派生事实，复验数据库身份。pending 不进入活动目录，检查 target 不持久化放弃决定。
+4. 候选生成后，沿用第一次连接的 store 身份观察，再完整执行两次 secret 读取和 label 校验，并在 Source Vault 内比较首尾 key；不导出 key 字节或可复用指纹。即使空库也必须一致。再认证对象与数据库身份，覆盖末次系统提示等待期间的损坏或替换。
+5. 全部通过才返回完整快照。正常、错误和 unwind 均释放 reader、锁和 key；key 及临时 secret 沿用 `Zeroizing`。Drop 不调用 provider、不重试、不触发额外提示。UI 收到结果和句柄空闲时没有 key / 数据库会话，下一动作重新认证。
+
+正常路径代码级预算：空库 OpenEncrypted 从 8 次 secret 读取减到 4 次，有资料时从 10 次减到 4 次；显式 Refresh 从 6 / 8 次减到 4 次。两轮 double-read 都保留，metadata 访问另计。该预算不等于原生弹窗计数，也不承诺只弹一次。全库认证没有删减，系统提示等待可能延长持锁时间；没有后台续期、TTL 缓存或为超时强行中断 provider。
+
+### 取消、变化与失败关闭
+
+- 任一读取或 metadata 检查发生 cancelled / denied / locked / missing / ambiguous / unavailable 等错误，立即终止当前动作并保留原有有界分类；不继续读取、不自动重试、重新 bootstrap、修复 label 或回退明文。
+- 同轮双读或首尾 key 不一致返回 `KeyReadbackMismatch`；store 身份或 metadata 异常沿用真实错误。不能用新的 key 继续执行，不能因空库没有解密失败而接受变化。
+- 对象认证、事实核对、数据库身份或最终 key 检查失败时不交付部分目录 / 版本 / 恢复信息；worker 隐藏旧视图，恢复状态变为未知，旧 target / deletion 选择失效。失败打开不安装 controller；失败刷新仍保留先前原 capture / DeleteRequest 与持久化 pending，后续只能显式重试 / 检查。
+- key 取消不等于业务放弃或删除；busy 关闭继续等待真实结果。没有改变写入、导出或实际删除边界，不能把它们后续的认证失败描述为已经回滚。
+- SQLite 与系统 store 没有跨系统原子事务；检查之间替换后恢复、最终检查之后撤销，以及已交付明文副本仍不具备即时撤回保证。zeroization 不承诺 OS 内部副本、交换区或全部进程明文取证清除。信任模式、密码 profile 和权限边界保持。
+
+合成证据与原生待验范围见[本批宿主记录](phase1-source-vault-host.md#2026-10-13-只读动作认证会话实现与合成验证)。

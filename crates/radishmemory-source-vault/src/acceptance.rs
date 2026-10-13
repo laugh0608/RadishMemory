@@ -22,7 +22,8 @@ struct State {
     failure: Cell<Option<SourceVaultErrorCode>>,
     wrong_key: Cell<bool>,
     loads: Cell<usize>,
-    fail_load: Cell<Option<usize>>,
+    fail_load: Cell<Option<(usize, SourceVaultErrorCode)>>,
+    replace_load: Cell<Option<usize>>,
     creations: Cell<usize>,
     interrupt_migration: Cell<bool>,
     interrupt_capture: Cell<Option<crate::capture::Step>>,
@@ -55,7 +56,17 @@ impl SyntheticLibraryProvider {
 
     /// Fail exactly one absolute key-load sequence, for post-commit refresh tests.
     pub fn fail_on_key_load(&self, sequence: usize) {
-        self.0.fail_load.set(Some(sequence));
+        self.fail_on_key_load_with(sequence, SourceVaultErrorCode::KeyStoreLocked);
+    }
+
+    /// Inject an exact bounded provider error at one synthetic load boundary.
+    pub fn fail_on_key_load_with(&self, sequence: usize, code: SourceVaultErrorCode) {
+        self.0.fail_load.set(Some((sequence, code)));
+    }
+
+    /// Replace the public fixed test key at one synthetic load boundary.
+    pub fn replace_on_key_load(&self, sequence: usize) {
+        self.0.replace_load.set(Some(sequence));
     }
 
     pub fn key_loads(&self) -> usize {
@@ -97,12 +108,15 @@ impl SyntheticLibraryProvider {
 
     fn load(&self, slot: &KeySlot) -> std::result::Result<KeyEncryptionKey, SourceVaultError> {
         self.0.loads.set(self.0.loads.get() + 1);
-        if self.0.fail_load.get() == Some(self.0.loads.get()) {
+        if let Some((sequence, code)) = self.0.fail_load.get()
+            && sequence == self.0.loads.get()
+        {
             self.0.fail_load.set(None);
-            return Err(SourceVaultError::new(
-                SourceVaultErrorCode::KeyStoreLocked,
-                "synthetic one-shot key access",
-            ));
+            return Err(SourceVaultError::new(code, "synthetic one-shot key access"));
+        }
+        if self.0.replace_load.get() == Some(self.0.loads.get()) {
+            self.0.replace_load.set(None);
+            self.0.wrong_key.set(true);
         }
         if let Some(code) = self.0.failure.get() {
             return Err(SourceVaultError::new(code, "synthetic key access"));
@@ -199,6 +213,25 @@ fn interrupted() -> VaultMaintenanceError {
 impl crate::provider::sealed::Sealed for SyntheticLibraryProvider {}
 
 impl LibraryProvider for SyntheticLibraryProvider {
+    fn read_library_snapshot(
+        &self,
+        directory: &ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        request: &radishmemory_core::SourceCatalogRequest,
+        preferred_lineage: Option<&radishmemory_core::Identifier>,
+    ) -> Result<crate::LibraryReadSnapshot> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::reader::snapshot(
+            directory,
+            namespace,
+            device,
+            request,
+            preferred_lineage,
+            || self.load(&slot),
+        )
+    }
+
     fn initialize_library_key(
         &self,
         directory: &ObjectDirectory,

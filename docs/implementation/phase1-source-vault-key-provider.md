@@ -12,6 +12,7 @@
 
 - `KeySlot::new` 只接受 `namespace-` / `device-` 各加 32 位 lowercase hex，构成冻结的 account 和 Windows target；它只校验语法，不证明用户权限、library 所有权或 bootstrap 资格。`Debug` 不输出 identity。
 - `PlatformKeyProvider::new` 没有系统副作用；公开的 `load_existing` 才连接明确平台 store，返回 zeroizing `KeyEncryptionKey`。读取不调用 setter、标签修复或替代 key 生成；missing / corrupt / ambiguous / metadata mismatch 均失败关闭。
+- 2026-10-13 的固定 `read_library_snapshot` 在数据库资格检查后延迟连接 store，同一连接身份贯穿首尾两轮 `load_existing` 双读；第二轮失败或 key 不同拒绝整个快照。普通 `load_existing` 和 bootstrap 算法未改动；具体作用域、取消及不可原子撤销的限制见[动作会话契约](phase1-source-vault-application.md#2026-10-13-只读动作认证会话)。
 - value 使用三平台相同的 70 个 ASCII bytes：`rmkek1:` 加 64 个小写 hex；使用 secret bytes API，避免 Windows password API 的 UTF-16LE 转码。解码拒绝非 UTF-8、空白、尾随、错误长度和大小写替代；读回值必须一致。
 - 唯一 production 写入口 `create_if_absent_for_bootstrap` 保持 **private**，没有 public setter、删除、rotation、恢复或 boolean eligibility 参数。它的窄 `expect(dead_code)` 明确记录等待 P1-S04；compile-fail doctest 保护当前不可从 package 外部调用的边界，不为消除 lint 而公开未授权写入。
 - 私有 bootstrap 对合法既有 key 复用，对 corrupt / provider failure 停止；只有 missing 才生成，写前再读一次，写后复验 secret，必要时补齐固定 label，再验证 label / value。label 写入失败保留已写入的同 slot KEK，合成重试证明不生成 replacement。已正确的 label 不重写，避免 Windows attribute updater 再次保存 secret。

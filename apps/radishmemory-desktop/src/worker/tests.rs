@@ -6,6 +6,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(unix)]
 mod filesystem_failures;
 mod locking;
+mod read_session;
 
 static NEXT: AtomicU64 = AtomicU64::new(1);
 struct Fixture {

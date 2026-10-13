@@ -9,7 +9,7 @@ use crate::{
     load_or_create_host_profile,
 };
 
-const CATALOG_PAGE_SIZE: usize = 200;
+pub(crate) const CATALOG_PAGE_SIZE: usize = 200;
 const SEARCH_RESULT_LIMIT: usize = 50;
 
 pub struct LibraryController<R, P = radishmemory_source_vault::PlatformKeyProvider>
@@ -36,6 +36,39 @@ where
     R: ApplicationRuntime,
     P: radishmemory_source_vault::LibraryProvider,
 {
+    pub(crate) fn from_encrypted_snapshot(
+        library: radishmemory_application::EncryptedLibrary<R, P>,
+        snapshot: &radishmemory_source_vault::LibraryReadSnapshot,
+    ) -> Self {
+        Self {
+            library: crate::backend::Library::Encrypted {
+                library,
+                capture: None,
+                deletion: None,
+            },
+            refresh_error: None,
+            view: LibraryView::from_read_snapshot(snapshot),
+        }
+    }
+
+    /// Only the explicit encrypted Refresh command uses this combined action.
+    /// Post-write refresh keeps its existing independent session semantics.
+    pub(crate) fn refresh_encrypted_snapshot(
+        &mut self,
+    ) -> Result<radishmemory_source_vault::LibraryReadSnapshot, DesktopError> {
+        let previous = self.view.selected_lineage_id.clone();
+        self.view = LibraryView::default();
+        self.refresh_error = None;
+        let crate::backend::Library::Encrypted { library, .. } = &self.library else {
+            return Err(crate::backend::recovery_required());
+        };
+        let snapshot = library
+            .read_snapshot(previous.as_ref(), CATALOG_PAGE_SIZE)
+            .map_err(crate::backend::app_error)?;
+        self.view = LibraryView::from_read_snapshot(&snapshot);
+        Ok(snapshot)
+    }
+
     pub(crate) fn from_library(
         library: crate::backend::Library<R, P>,
     ) -> Result<Self, DesktopError> {
@@ -220,6 +253,18 @@ where
             .map_err(|source| DesktopError::application(&source))?;
         self.refresh_after_commit(None);
         Ok(())
+    }
+}
+
+impl LibraryView {
+    fn from_read_snapshot(snapshot: &radishmemory_source_vault::LibraryReadSnapshot) -> Self {
+        Self {
+            sources: snapshot.sources.clone(),
+            selected_lineage_id: snapshot.selected_lineage_id.clone(),
+            selected_source_id: snapshot.selected_source_id.clone(),
+            versions: snapshot.versions.clone(),
+            search_results: Vec::new(),
+        }
     }
 }
 

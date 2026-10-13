@@ -134,6 +134,15 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             || !self.recovery_known
     }
     fn perform(&mut self, command: Command, snapshot: &mut Snapshot) -> Result<(), DesktopError> {
+        // Invalidate recovery even if the pinned profile check fails before the
+        // action starts. A previous target must not remain actionable on failure.
+        if matches!(command, Command::OpenEncrypted)
+            || (self.encrypted && matches!(command, Command::Refresh))
+        {
+            self.recovery_known = false;
+            self.target = None;
+            self.deletions.clear();
+        }
         if let Some(location) = &self.acceptance {
             location.load_profile()?;
         }
@@ -176,16 +185,17 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::OpenEncrypted => {
                 self.controller = None;
                 self.encrypted = true;
-                let library = self
+                let (library, read_snapshot) = self
                     .location()?
-                    .open(ProductionRuntime)
+                    .open_with_snapshot(ProductionRuntime, crate::controller::CATALOG_PAGE_SIZE)
                     .map_err(app_error)?;
-                self.controller = Some(LibraryController::from_library(Library::Encrypted {
+                self.controller = Some(LibraryController::from_encrypted_snapshot(
                     library,
-                    capture: None,
-                    deletion: None,
-                })?);
-                self.inspect()?;
+                    &read_snapshot,
+                ));
+                self.target = read_snapshot.abandonment_target;
+                self.deletions = read_snapshot.deletion_requests;
+                self.recovery_known = true;
                 snapshot.message = Some(
                     "Encrypted source objects opened. FTS still contains full plaintext.".into(),
                 );
@@ -232,8 +242,15 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 }
             }
             Command::Refresh => {
-                self.controller()?.refresh_sources()?;
-                self.inspect()?;
+                if self.encrypted {
+                    let read_snapshot = self.controller()?.refresh_encrypted_snapshot()?;
+                    self.target = read_snapshot.abandonment_target;
+                    self.deletions = read_snapshot.deletion_requests;
+                    self.recovery_known = true;
+                } else {
+                    self.controller()?.refresh_sources()?;
+                    self.inspect()?;
+                }
             }
             Command::Import(request) => {
                 self.controller()?.import_source(&request)?;

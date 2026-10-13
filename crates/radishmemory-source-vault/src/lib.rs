@@ -38,7 +38,7 @@ pub use filesystem::{
     AttemptId, AttemptState, ObjectDirectory, ObjectLocator, ObjectWrite, PublishedObject,
 };
 pub use provider::{KeySlot, LibraryProvider, PlatformKeyProvider};
-pub use reader::LibraryReader;
+pub use reader::{LibraryReadSnapshot, LibraryReader};
 pub use reconciliation::ReconciliationReport;
 
 pub const ENVELOPE_PROFILE: &str = "radishmemory.phase1-encrypted-source-vault/1";

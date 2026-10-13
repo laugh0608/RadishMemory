@@ -160,6 +160,52 @@ impl<P: LibraryProvider> EncryptedLibraryLocation<P> {
         library.with_reader(ApplicationOperation::OpenLibrary, |_| Ok(()))?;
         Ok(library)
     }
+
+    /// Open and obtain the initial catalog/recovery view in one bounded read
+    /// action. Both key checks complete and the session drops before returning.
+    pub fn open_with_snapshot<R: ApplicationRuntime>(
+        self,
+        runtime: R,
+        limit: usize,
+    ) -> Result<
+        (
+            EncryptedLibrary<R, P>,
+            radishmemory_source_vault::LibraryReadSnapshot,
+        ),
+        ApplicationError,
+    > {
+        let snapshot = self.read_snapshot(ApplicationOperation::OpenLibrary, None, limit)?;
+        Ok((
+            EncryptedLibrary {
+                location: self,
+                runtime,
+            },
+            snapshot,
+        ))
+    }
+
+    fn read_snapshot(
+        &self,
+        operation: ApplicationOperation,
+        preferred_lineage: Option<&Identifier>,
+        limit: usize,
+    ) -> Result<radishmemory_source_vault::LibraryReadSnapshot, ApplicationError> {
+        let request = radishmemory_core::SourceCatalogRequest::new(
+            self.config.namespace_id.clone(),
+            0,
+            limit,
+        )
+        .map_err(|error| ApplicationError::canonical(operation, error))?;
+        self.provider
+            .read_library_snapshot(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+                &request,
+                preferred_lineage,
+            )
+            .map_err(|error| ApplicationError::vault(operation, error))
+    }
 }
 
 /// Explicit application use cases over the same canonical migrated library.
@@ -171,6 +217,17 @@ pub struct EncryptedLibrary<R, P = PlatformKeyProvider> {
 }
 
 impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
+    /// Explicit catalog refresh only. Does not share authentication with a write,
+    /// export, retry, maintenance operation, or a later user action.
+    pub fn read_snapshot(
+        &self,
+        preferred_lineage: Option<&Identifier>,
+        limit: usize,
+    ) -> Result<radishmemory_source_vault::LibraryReadSnapshot, ApplicationError> {
+        self.location
+            .read_snapshot(ApplicationOperation::ListSources, preferred_lineage, limit)
+    }
+
     fn with_reader<T>(
         &self,
         operation: ApplicationOperation,
