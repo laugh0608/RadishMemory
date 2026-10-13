@@ -281,3 +281,20 @@ busy 关闭竞争及原请求 Cancel / Confirm 的本批原生验收尚未执行
 验证完成：`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0，263 个仓库文件、notices、fmt、locked all-targets / all-features Clippy 和 25 个 suites 共 379 项 Rust tests 通过；新增 13 项回归，11 个 ignored subprocess helper 仍由父测试执行。完整检查沿用既有合成本地端口所需权限，在沙箱外离线执行，未跳过门禁。此前三个相关 package 的定向测试、7 项 snapshot 和首批 4 项 desktop read-session 定向测试亦通过；后补的两项 desktop 回归包含在完整检查中。`cargo build -p radishmemory-desktop --locked --offline` 默认构建退出 0；默认 normal / build / features 图不含 `acceptance-test-support`。补记后的仓库文本 / 链接检查及 `git diff --check` 通过。本轮未单独重跑未受影响的 Python 检查器回归、M0 fixture runner 或 compile-fail doctest，未运行 Windows / Linux 当前目标。
 
 本批实现、测试及七份相关文档未暂存、未提交、未推送；`dev` 保留领先本地 `origin/dev` 的三个既有提交。测试 / 构建进程已正常退出，无 GUI 或长期后台进程；合成 fixture 按自身清理逻辑收尾，验证日志保留在任务专用临时文件中。未访问真实系统 key store、启动 VM、改变既有权限 / ACL 或执行远程动作。
+
+## 2026-10-13 新构建原生入口取消与提示预算停止
+
+只读动作认证会话经复核后按项目所有者要求提交为 `89d53b0`。提交后的默认 locked 离线构建通过，独立包装与默认二进制逐字节一致，生成匹配 UUID 的本地 dSYM，未额外签名或安装。项目所有者随后明确批准新操作单的 GUI、唯一既有合成 key、限定调用栈采样、SQLite 持锁及精确目录权限操作；每次系统认证前交接，阶段不明或提示超限停止新增场景。
+
+预检确认提交、包装 / 输入摘要、原合成 profile、空库与目录身份 / 权限均匹配；只读解析 User domain 默认 keychain，再核对精确 service / account 的 metadata，没有使用 secret 输出选项。首轮仅启动本批一个 Synthetic acceptance 窗口，启动时 legacy v11 打开拒绝符合预期。
+
+- A01：交接后仅点击一次 `Open encrypted objects`，用户让首个目标提示停留。对核对后的唯一 GUI PID 执行一次 1 秒、20ms 间隔的只读 sample；worker 的 39 个采样命中同一链。使用同 UUID 的 dSYM 离线符号化，正向确认 `snapshot.rs:43 → reader.rs:44 → provider.rs:546 → macos.rs:102 → SecKeychainFindGenericPassword`，因此首轮入口阶段已确认。用户确认首个提示点拒绝并消失；GUI 返回 `KeyStoreCancelled`、资料视图不可用、恢复状态未验证，没有自动重试。数据库 / profile 摘要与基线一致。
+- A02：再次交接，仅点击一次空库加密打开。用户报告“一共九次，我都点了允许”；GUI 最终显示成功、`0 active lineage(s)`。实际报告 9 次超过操作单的 8 次上限；收到报告时提示已全部处理，不能写成第 9 次已拒绝。计数台账按用户汇总记录，单提示阶段与耗时未逐一观察；A02 没有采样，不能将额外提示确定归因于 metadata 或某个 secret 调用，也不能据此证明末轮阶段。四次 secret API 调用仍不能等同于四次系统提示。
+
+按超限停止线，不执行 A03 及以后场景，也不进入 B/C。空库 Refresh、有资料 OpenEncrypted / Refresh、末轮取消、busy 关闭竞争和原请求 Cancel / Confirm 本轮均未覆盖。A01 的真实入口取消结果不扩张为其它阶段通过；本批仍未满足完整原生验收。
+
+正常关闭窗口，GUI 及 sample 均退出 0，GUI stdout / stderr 为空。最终数据库 / profile 的 SHA-256 与预检及 A01 后一致；五项活动表、objects / staging、pending capture / deletion 均零，对象目录身份与 `0700` 权限保持。未导入 / 导出、启动持锁 helper、改变目录权限、放弃或删除来源，也未创建 / 替换 / 删除 key 或修改 ACL；因此没有本批删除回执，不虚构 Completed 或完整回滚。保留原 key、数据库历史、新旧包装、输入、dSYM、原始栈、符号化结果、台账与日志，仅正式摘要进入文档，不提交原始运行产物。
+
+后续先诊断一次已合并只读动作内的真实提示来源，重新制定可接受的交互预算与分阶段观测方案；不自行提高上限、重复触发、要求永久许可或削弱首尾复验。任何新原生操作仍需具体范围与交接，当前实现与安全契约未改变。
+
+记录更新后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整退出 0：263 个文件、notices、fmt、locked Clippy 与 25 个 suites 共 379 项 Rust tests 通过，11 个 ignored helper 由父测试调用。按已知合成本地端口需求在沙箱外离线运行，未跳过检查；补记后文本 / 链接和 `git diff --check` 再次通过。本轮未重跑未受影响的默认构建、Python 检查器回归、M0 fixture runner、compile-fail doctest 或其它平台。三份新增记录未暂存、未提交；`dev` 领先本地 `origin/dev` 四个提交，未 push。GUI、采样和检查进程均已退出，无本批后台进程。
