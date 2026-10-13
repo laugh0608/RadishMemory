@@ -298,3 +298,26 @@ busy 关闭竞争及原请求 Cancel / Confirm 的本批原生验收尚未执行
 后续先诊断一次已合并只读动作内的真实提示来源，重新制定可接受的交互预算与分阶段观测方案；不自行提高上限、重复触发、要求永久许可或削弱首尾复验。任何新原生操作仍需具体范围与交接，当前实现与安全契约未改变。
 
 记录更新后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整退出 0：263 个文件、notices、fmt、locked Clippy 与 25 个 suites 共 379 项 Rust tests 通过，11 个 ignored helper 由父测试调用。按已知合成本地端口需求在沙箱外离线运行，未跳过检查；补记后文本 / 链接和 `git diff --check` 再次通过。本轮未重跑未受影响的默认构建、Python 检查器回归、M0 fixture runner、compile-fail doctest 或其它平台。三份新增记录未暂存、未提交；`dev` 领先本地 `origin/dev` 四个提交，未 push。GUI、采样和检查进程均已退出，无本批后台进程。
+
+## 2026-10-13 单次空库打开的八提示逐次定位
+
+三份诊断文档已按项目所有者要求复核并提交为 `dffb40d`。随后获得新操作单的精确授权，仅启动指定默认构建、读取唯一既有测试 key，并对本批 GUI PID 进行限定调用栈采样；不承接此前 A/B/C 的写入、锁和权限场景。默认运行实现仍为 `89d53b0`；包装摘要、二进制 / dSYM UUID、数据库 / profile、零活动状态及目录身份均通过只读预检，没有运行额外 security metadata 或 ACL 探针。
+
+本次只启动一个 Synthetic acceptance 窗口、点击一次 `Open encrypted objects`。用户在每个系统提示出现后保持未选择；核对目标和类型后，对同一个已核对 PID 各做一次 1 秒、20ms 间隔 sample，使用匹配 dSYM 离线 atos。每次取得正向调用点后，才分别交接用户仅允许当前一次并停住下一个提示。实际共八个提示、八次用户确认的 Allow Once、八次正常退出的 sample；第八次后用户报告无新提示，GUI 显示加密打开成功、`0 active lineage(s)`。没有第九个提示，因此没有执行拒绝，不记作本轮取消用例通过。
+
+| 提示序号 | 已确认的读取阶段 | 正向源码调用点 | 系统 API |
+| --- | --- | --- | --- |
+| 1、2 | 入口第一读 | `snapshot.rs:43 → reader.rs:44 → provider.rs:546 → macos.rs:102` | `SecKeychainFindGenericPassword` |
+| 3、4 | 入口第二读 | `snapshot.rs:43 → reader.rs:44 → provider.rs:549 → macos.rs:102` | `SecKeychainFindGenericPassword` |
+| 5、6 | 交付前末轮第一读 | `snapshot.rs:60 → provider.rs:546 → macos.rs:102` | `SecKeychainFindGenericPassword` |
+| 7、8 | 交付前末轮第二读 | `snapshot.rs:60 → provider.rs:549 → macos.rs:102` | `SecKeychainFindGenericPassword` |
+
+第一个栈有 45 个 worker 采样，其余各 44 个；每对的 Security framework 栈相同，均经过 item data / content 获取和 `SecurityServer::ClientSession::decrypt` 等待。末轮定位来自 `snapshot.rs:60` 的正向符号证据，完整 worker 链不经过 `reader::open`，不是按提示序号猜测。用户逐次确认目标 / 类型相同，未提供口令或 secret；原始栈、符号化输出、八份逐提示记录和台账仅本地保留。
+
+这次运行把八个可见提示全部定位在四个 legacy secret 静态调用位置，每处观察到两个提示；没有可见提示的采样落在 `attributes` / `SecItemCopyMatching`。因此本次重复提示的调查优先级转向 legacy secret 获取路径内部的系统交互，不支持先删除 metadata 校验。采样没有 API begin/end 实例标识，也没有 securityd 内部授权原因；不能把相同静态调用位置直接表述为已证明的系统调用实例 / 两项 ACL 原因。上一批 A02 用户汇总的九次没有在本次逐次观测中重现，保留原记录，不把额外一次归为误报、解锁或 metadata。新证据不保证其它状态、动作或系统版本也固定八次。
+
+GUI 正常关闭、退出码 0，stdout / stderr 均为空。最终只读核对：数据库与 profile 摘要完全等于本轮基线；五项活动表、objects / staging、pending capture / deletion 均零，目录身份及 `0700` 权限保持。未导入 / 导出、持锁、chmod、初始化 / 替换 / 删除 key、修改 ACL、放弃或删除来源，无删除回执、无清理数据或回写数据库。原 key、历史资料、原包装 / dSYM 与全部本批证据保留；无强杀、安装、系统设置或远程动作，GUI 和采样进程已全部退出。
+
+本次完成的是单动作正常打开的逐提示定位。末轮阶段已观察到，但末轮取消、有资料视图撤回、显式 Refresh、busy 关闭与 pending 原请求关闭均未在本单执行，P1-S05 不整体关闭。下一步针对 legacy secret API 路径评审最小候选改动及可测指标，沿用[修复提案](phase1-source-vault-key-provider.md#2026-10-13-合并会话后九次提示的静态诊断与修复提案)的完整安全约束；本次授权不扩张为替换 API、删减复验或改 key / ACL。
+
+本轮记录更新后，`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：263 个文件，notices、fmt、locked Clippy 和 25 个 suites 共 379 项 Rust tests 通过，11 个 ignored helper 由父测试执行；沿用已知合成本地端口权限在沙箱外离线运行。补记后文本 / 链接检查及 `git diff --check` 通过。本轮未重跑未受影响的默认构建、Python 检查器回归、M0 fixture runner、compile-fail doctest 或其它平台。四份本轮观测记录未暂存、未提交；`dev` 领先本地 `origin/dev` 六个提交，未 push。29 份本地证据文件已建立 SHA-256 索引，GUI、全部 sample 与检查进程均已退出。

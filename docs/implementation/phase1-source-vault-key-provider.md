@@ -115,3 +115,9 @@ Apple [TN3137](https://developer.apple.com/documentation/technotes/tn3137-on-mac
 实施前冻结选定改动范围。合成验证须覆盖四次 secret 的每个错误位置、首尾 key 不同、各 metadata 检查的缺失 / 多项 / label / domain 变化、错误类型与零化、日志无内容、无 setter / fallback / 自动重试，以及 bootstrap、写入、导出、恢复等共用 provider 路径；沿用 worker 和 reader 的失败关闭回归，追加 fmt / Clippy、完整仓库检查和默认无 acceptance feature 的构建。合成调用次数不能替代原生提示证据，原生再按新二进制 / dSYM 摘要单独批准。
 
 本次诊断记录的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：263 个文件，notices、fmt、locked Clippy、25 个 suites 共 379 项 Rust tests 通过，11 个 ignored helper 由父测试执行；沿用合成本地端口权限在沙箱外离线运行。补记后文本 / 链接检查与 `git diff --check` 再次通过；未重跑未受影响的默认构建或其它平台。本次无实现、依赖或 lockfile 改动，未访问真实 key / ACL、启动 GUI、修改权限或执行远程写入；诊断新增的三份文档未提交，`dev` 领先本地 `origin/dev` 五个提交，未 push。新观测单仅准备，检查进程已退出。
+
+### 2026-10-13 逐提示实测后的定位收敛
+
+上述提案提交为 `dffb40d` 后，项目所有者另行批准同构建的一次空库打开观测。实际八个提示各有独立 sample / atos 和用户单次允许确认：1/2 在入口第一读，3/4 在入口第二读，5/6 在末轮第一读，7/8 在末轮第二读，全部定位 `macos.rs:102 → SecKeychainFindGenericPassword`；第八次后 GUI 成功，未出现第九次。具体链路及未覆盖项见[宿主证据](phase1-source-vault-host.md#2026-10-13-单次空库打开的八提示逐次定位)。
+
+当前优先评审 legacy secret 获取路径候选，不先合并 / 删除 metadata 校验：本次没有提示停留于 metadata 查询，而四个 secret 静态位置均成对出现提示。此结论是当前运行的调用位置定位，未取得 OS 调用实例 begin/end 或系统内部授权原因；上一批九次的额外一次仍未解释。`SecItemCopyMatching` 候选仍需验证，不能因改用另一个 API 就承诺一次提示或四次提示；保留四次 secret 读取、domain / identity / ambiguity / label 复验、Zeroizing、真实 OSStatus 和失败关闭，无 fallback / ACL 改动。没有实施代码修改或扩张其它原生验收。
