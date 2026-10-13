@@ -321,3 +321,26 @@ GUI 正常关闭、退出码 0，stdout / stderr 均为空。最终只读核对�
 本次完成的是单动作正常打开的逐提示定位。末轮阶段已观察到，但末轮取消、有资料视图撤回、显式 Refresh、busy 关闭与 pending 原请求关闭均未在本单执行，P1-S05 不整体关闭。下一步针对 legacy secret API 路径评审最小候选改动及可测指标，沿用[修复提案](phase1-source-vault-key-provider.md#2026-10-13-合并会话后九次提示的静态诊断与修复提案)的完整安全约束；本次授权不扩张为替换 API、删减复验或改 key / ACL。
 
 本轮记录更新后，`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：263 个文件，notices、fmt、locked Clippy 和 25 个 suites 共 379 项 Rust tests 通过，11 个 ignored helper 由父测试执行；沿用已知合成本地端口权限在沙箱外离线运行。补记后文本 / 链接检查及 `git diff --check` 通过。本轮未重跑未受影响的默认构建、Python 检查器回归、M0 fixture runner、compile-fail doctest 或其它平台。四份本轮观测记录未暂存、未提交；`dev` 领先本地 `origin/dev` 六个提交，未 push。29 份本地证据文件已建立 SHA-256 索引，GUI、全部 sample 与检查进程均已退出。
+
+
+## 2026-10-13 SecItem secret 新构建逐提示观测
+
+七文件最小读取替换已复核并提交 `bf8dddf`。项目所有者随后明确批准新构建单次空库打开的操作单：唯一指定 GUI、既有测试 slot、逐提示人工交接及限定调用栈采样，不扩展其它验收。新默认构建、冻结包装与 dSYM UUID / 摘要及完整合成库基线匹配后，仅启动一个窗口、点击一次 OpenEncrypted。没有额外 security metadata / ACL 探针或 key-store 预检。
+
+共观察到八个系统提示，每个均由用户确认应用 / 目标匹配并保持未选择；对同一已核对 GUI PID 各执行一次 1 秒、20ms 间隔 sample，离线 atos 确认调用点后才逐次交接 Allow Once。八个 sample 正常退出，首个 worker 栈 35 个样本，后续分别 45、44、44、44、45、45、45 个；不使用旧 dSYM 或根据提示序号推断阶段。
+
+| 提示 | 阶段 | 正向源码调用点 | 系统 API |
+| --- | --- | --- | --- |
+| 1、2 | 入口第一读 | `snapshot.rs:43 → provider.rs:546 → read_checked_secret:169 → macos.rs:117` | `SecItemCopyMatching` |
+| 3、4 | 入口第二读 | `snapshot.rs:43 → provider.rs:549 → read_checked_secret:169 → macos.rs:117` | `SecItemCopyMatching` |
+| 5、6 | 交付前末轮第一读 | `snapshot.rs:60 → provider.rs:546 → read_checked_secret:169 → macos.rs:117` | `SecItemCopyMatching` |
+| 7、8 | 交付前末轮第二读 | `snapshot.rs:60 → provider.rs:549 → read_checked_secret:169 → macos.rs:117` | `SecItemCopyMatching` |
+
+所有提示都正向定位新 data search，未落在 metadata 的 `macos.rs:60`。栈下游经过 `SecItemCopyMatching_osx → AddItemResults → SecKeychainItemCopyContent → SecurityServer::ClientSession::decrypt` 等待；这是新 API 的系统内部调用路径，不是应用回退旧 API。四个静态 secret 位置仍各出现两个提示，本次总数与旧构建的八次相同，因此更换 API **未在本次观测中减少提示**。新包装 / 二进制身份与旧轮不同，此对照不证明所有环境的 API 因果；未取得 OS 调用 begin/end 实例或系统内部授权原因，不能宣称确定两项 ACL 原因。更早九次汇总的额外一次仍未重现，旧记录保留。
+
+第八次允许后用户确认无新提示；GUI 显示加密打开成功、零活动来源。没有第九次，所以没有执行拒绝，也不记作首尾取消通过。正常关闭窗口，GUI 退出 0，stdout / stderr 均为空。退出后只读快照逐项等于预检：数据库 / profile SHA-256、五项活动表、pending capture / deletion、objects / staging、目录身份、0700 权限与资料根文件清单均保持；无业务写入、持锁 helper、权限 / ACL / key 修改、强杀或远程动作，故无删除回执或需要虚构的恢复步骤。
+
+34 份本地证据文件已建立 SHA-256 索引，八行逐提示台账、操作单实际结果、新旧包装 / dSYM、原 key 和数据库历史全部保留；原始栈和实际本机路径不进入 Git。GUI 与全部 sample 已退出。本轮仅完成新 API 的单次空库正常打开与提示定位；Refresh、有资料、首尾取消、busy / pending 关闭均未执行，P1-S05 继续开放。下一步先复核本次未改善结果和后续有限诊断范围，不自行增加提示预算、删减复验或采用永久许可。
+
+
+本轮记录更新后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整退出 0：264 个文件、notices、fmt、locked Clippy 和 25 个 suites 共 386 项 Rust tests 通过，11 个 ignored helper 由父测试执行；按已知合成端口权限在沙箱外离线运行，未跳过检查。补记后文本 / 链接检查和 `git diff --check` 通过。未重复未受影响的默认构建（观测前已通过）、其它平台构建或原生验收。四份本轮记录未暂存、未提交；`dev` 领先本地 `origin/dev` 八个既有提交，未 push。所有本轮 GUI、sample 和检查进程已退出。

@@ -156,3 +156,10 @@ OpenEncrypted / 显式 Refresh 正常路径仍有两轮 loader、四次 secret �
 默认 `cargo build -p radishmemory-desktop --locked --offline` 退出 0；默认 normal / build / features 依赖图未包含 `acceptance-test-support`。补记后仓库文本 / 链接检查和 `git diff --check` 通过。未额外运行 Python 检查器回归、M0 fixture runner、compile-fail doctest 或其它平台构建；本次未改动这些入口，完整检查中的 macOS 结果不扩张为跨平台证据。
 
 未启动 GUI、访问真实 key、采样、改 ACL / 权限、安装 / 升级依赖、修改签名或执行远程动作；没有持锁 helper 或遗留后台进程，历史合成库、原 key、包装 / dSYM 和观测证据保留。检查、构建与默认依赖图日志在本地临时目录保留；本批七个文件未暂存、未提交，等待项目所有者复核。`dev` 仍领先本地 `origin/dev` 七个既有提交，未 push。
+
+
+### 2026-10-13 SecItem 候选的单次原生结果
+
+候选提交 `bf8dddf` 后按新授权操作单执行一次空库打开，实际八个提示全部逐次确认并采样：四个 secret 静态位置各两个，均定位 `macos.rs:117 → SecItemCopyMatching`；第八次后打开成功、零活动来源，无第九次。新 API 已真实执行，但本次未减少提示。系统内部经 `SecItemCopyMatching_osx / AddItemResults / SecKeychainItemCopyContent` 进入 decrypt 等待，不是应用 fallback；内部授权因果仍未确定，不把静态调用槽当作 OS 调用实例遥测。完整范围与收尾见[宿主记录](phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)。
+
+GUI 正常退出 0，数据 / profile / 权限与基线一致，无其它验收或 key / ACL 修改。本轮不能证明取消、拒绝、有资料 / Refresh 或写入路径通过，也不自动授权继续诊断。保留四读与全部校验；下一步先复核未改善证据，再限定后续诊断，不直接提高预算、删复验或增加跨动作缓存。
