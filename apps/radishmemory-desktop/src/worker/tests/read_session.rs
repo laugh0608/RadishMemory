@@ -79,6 +79,9 @@ fn open_and_refresh_fail_closed_at_entry_and_release_without_automatic_retry() {
         SourceVaultErrorCode::KeyMissing,
         SourceVaultErrorCode::KeyAmbiguous,
         SourceVaultErrorCode::KeyMetadataMismatch,
+        SourceVaultErrorCode::KeyStoreFailure,
+        SourceVaultErrorCode::KeyCorrupt,
+        SourceVaultErrorCode::KeyStoreUnavailable,
     ] {
         for at in [1, 2] {
             for command in [Command::OpenEncrypted, Command::Refresh] {

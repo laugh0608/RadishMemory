@@ -59,6 +59,8 @@ fn snapshot_stops_on_every_secret_read_failure_and_preserves_the_error() {
         SourceVaultErrorCode::KeyAmbiguous,
         SourceVaultErrorCode::KeyMetadataMismatch,
         SourceVaultErrorCode::KeyStoreUnavailable,
+        SourceVaultErrorCode::KeyStoreFailure,
+        SourceVaultErrorCode::KeyCorrupt,
     ] {
         for position in 1..=4 {
             let store = snapshot_store();

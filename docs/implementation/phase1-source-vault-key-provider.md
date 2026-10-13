@@ -121,3 +121,38 @@ Apple [TN3137](https://developer.apple.com/documentation/technotes/tn3137-on-mac
 上述提案提交为 `dffb40d` 后，项目所有者另行批准同构建的一次空库打开观测。实际八个提示各有独立 sample / atos 和用户单次允许确认：1/2 在入口第一读，3/4 在入口第二读，5/6 在末轮第一读，7/8 在末轮第二读，全部定位 `macos.rs:102 → SecKeychainFindGenericPassword`；第八次后 GUI 成功，未出现第九次。具体链路及未覆盖项见[宿主证据](phase1-source-vault-host.md#2026-10-13-单次空库打开的八提示逐次定位)。
 
 当前优先评审 legacy secret 获取路径候选，不先合并 / 删除 metadata 校验：本次没有提示停留于 metadata 查询，而四个 secret 静态位置均成对出现提示。此结论是当前运行的调用位置定位，未取得 OS 调用实例 begin/end 或系统内部授权原因；上一批九次的额外一次仍未解释。`SecItemCopyMatching` 候选仍需验证，不能因改用另一个 API 就承诺一次提示或四次提示；保留四次 secret 读取、domain / identity / ambiguity / label 复验、Zeroizing、真实 OSStatus 和失败关闭，无 fallback / ACL 改动。没有实施代码修改或扩张其它原生验收。
+
+
+## 2026-10-13 macOS SecItemCopyMatching secret 读取候选
+
+状态：项目所有者在 `b07f861` 观测记录与最小方案评审后明确授权实现、合成验证及文档；本批禁止 GUI 和真实 key 访问。旧构建的八次提示证据继续保留，不改写成新候选的运行结果。
+
+### 实现与安全边界
+
+只替换 `provider/macos.rs` 的 secret 获取：从 `Cred::get_secret → SecKeychainFindGenericPassword` 改为现有锁定版本 `security-framework 3.7.0` 的 `ItemSearchOptions::search → SecItemCopyMatching`。新 data-only 查询显式限定连接时固定的 `self.keychain`、generic password、冻结 service / account、`Limit::Max(1)`，只设置 `load_data(true)`；不请求 attributes / ref，不增加 label 筛选，不设置 Data Protection、同步、认证跳过或授权上下文。旧 attributes 查询保持 `Limit::All` 与 attributes-only，不能在它上面追加 data：Apple 的 [SecItemCopyMatching 约束](https://developer.apple.com/cn/documentation/security/secitemcopymatching%28_%3A_%3A%29)禁止密码查询组合 ReturnData 与 MatchLimitAll。固定 search list 保持文件型 User Keychain，未迁移信任模式或凭据，见 [Apple TN3137](https://developer.apple.com/documentation/technotes/tn3137-on-mac-keychains)。
+
+`read_checked_secret` 是模块私有的顺序边界：前置 attributes 成功 → 一次 data search → 严格提取结果 → 后置 attributes 成功才交付。没有生产 provider 注入、自动重试、旧 API fallback 或跨动作缓存。`attributes` 内的前后 User domain 检查、唯一性 / identity 校验，以及 `load_existing` 每次 secret 后的独立 label 校验均保留。单结果 data 查询不证明唯一性；前后独立检查仍不等于 OS 原子快照。
+
+OpenEncrypted / 显式 Refresh 正常路径仍有两轮 loader、四次 secret 获取和十二次 attributes 查询；现在四次 secret 也使用 SecItemCopyMatching，因此成功路径共十六次 SecItemCopyMatching。四次旧 `Cred::get_secret` 内部重新解析默认 domain 被固定 keychain 查询取代，其余 connect 与 attributes 内 domain 检查不变，静态预算从 29 次降为 25 次。这些都是代码预算，不是已测提示次数或运行遥测。
+
+仅接受单个 `SearchResult::Data`，将其 Vec 原分配移动进 `Zeroizing`，仍由现有 decoder 检查 canonical 编码。成功却返回空结果或非 Data 时报告 `KeyStoreFailure`，多结果报告 `KeyAmbiguous`；它们没有 OSStatus，也绝不能当作 `KeyMissing` 授予 bootstrap 创建资格。真实 API 错误沿用 `os_error` 的固定操作 / 数值 OSStatus 分类；不复制上游错误链、不解析文本猜测 locked。
+
+私有 `SecretResults` guard 在返回错误及 unwind 时零化结果中每个 Rust Data 缓冲，包括异常多结果；成功提取后的值由 `Zeroizing` 覆盖后置校验失败 / unwind。不得 Debug、格式化或 simplify_dict secret 结果；上游 SearchResult 的 Debug 会输出 Data 字节。CF / OS 内部副本只按上游所有权释放，不能承诺可清零；上游 search 内尚未返回的缓冲与异常类型处理也不在第一方 guard 的控制内。不新增 unsafe 或依赖补丁来扩大保证。
+
+影响所有 macOS 共用读取路径，包含普通读取、导入 / 导出、恢复 / 维护、删除和 bootstrap 读回；写入与 label 更新算法、SQLite bootstrap 资格及双读 / 首尾 key 一致性保持原样。Windows / Linux、公共 schema、密钥编码、dependencies / lockfile、ACL、签名与系统设置均未改动。`Cred` 仍用于原有写入，不删除现有依赖。
+
+### 合成验证与原生停止线
+
+新增七项 macOS 纯合成回归，覆盖单结果移动 / decoder、空结果和错误类型 / 多结果拒绝与缓冲清理、unwind 清理、前后检查交付顺序、任一 attributes 失败、search 原始错误与异常成功结果，以及真实 bootstrap 算法全部五个既有-key 读位置和 missing 后写前重查不被异常成功结果误导。原 OSStatus 测试扩展覆盖全部现有映射。结果清理测试只检查合成 Rust 缓冲，不宣称测得 OS 内存擦除；查询参数经锁定源码静态复核，合成测试不执行 search 或真实 Keychain API。
+
+现有 snapshot 回归扩展 `KeyStoreFailure` / `KeyCorrupt` 的四个读取位置；桌面回归扩展这两种错误与 unavailable 在入口 / 末轮的视图撤回、恢复状态失效和无自动重试。原四读计数、key 替换、无跨动作缓存、bootstrap、正文与原请求恢复测试继续执行。
+
+原生效果尚未验证：不能承诺一次或四次提示，不以合成通过关闭 P1-S05。下一步先由项目所有者复核候选；之后另行确认新构建摘要、匹配 dSYM、既有空合成库 / 唯一 slot 和逐提示操作单。首轮只做一次空库打开，区分新 data search 与原 metadata 的正向调用点；最多八次允许，第九次交接拒绝，阶段不明即停止，实际零提示也不算取消覆盖。随后另批覆盖首尾取消、有资料 OpenEncrypted / Refresh、busy 与 pending 关闭。不得套用旧构建行号 / dSYM、沿用旧 GUI 授权或提高提示预算。
+
+### 本批实际验证与交接
+
+定向 `cargo test -p radishmemory-source-vault --lib --locked --offline provider::` 的 23 项测试通过。文档与实现合并后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整退出 0：264 个文件、notices、fmt、all-targets / all-features locked Clippy，以及 25 个 suites 共 386 项 Rust tests 通过，比 379 项基线新增七项；11 个 ignored 子进程 helper 由父测试执行。沿用本会话已确认的合成端口权限需求在沙箱外离线运行，没有跳过检查。
+
+默认 `cargo build -p radishmemory-desktop --locked --offline` 退出 0；默认 normal / build / features 依赖图未包含 `acceptance-test-support`。补记后仓库文本 / 链接检查和 `git diff --check` 通过。未额外运行 Python 检查器回归、M0 fixture runner、compile-fail doctest 或其它平台构建；本次未改动这些入口，完整检查中的 macOS 结果不扩张为跨平台证据。
+
+未启动 GUI、访问真实 key、采样、改 ACL / 权限、安装 / 升级依赖、修改签名或执行远程动作；没有持锁 helper 或遗留后台进程，历史合成库、原 key、包装 / dSYM 和观测证据保留。检查、构建与默认依赖图日志在本地临时目录保留；本批七个文件未暂存、未提交，等待项目所有者复核。`dev` 仍领先本地 `origin/dev` 七个既有提交，未 push。
