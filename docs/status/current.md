@@ -65,6 +65,8 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
+2026-10-13 日终基线：busy 关闭竞争、只读动作会话和 macOS SecItem secret 读取已提交；完整离线检查、locked Clippy 与 386 项 Rust tests、默认 desktop 构建通过。新 API 单次原生空库打开仍八次提示，未减少；GUI 正常退出，基线保持。代码 / 文档复核与逐批证据见[今日日终记录](2026-10-13-source-vault.md)，取消、关闭竞争及平台边界按记录区分。
+
 2026-10-13 关闭竞争切片：修复同帧完成 / 关闭与退出前派发动作问题，新增六项 headless UI 和一项真实 worker Drop / join 回归。完整离线检查、locked Clippy 与 366 项 Rust tests、默认 desktop 构建通过；首轮 P1-F17 沙箱端口限制经权限流程完整重跑解决。没有启动 GUI 或访问系统 key store；新构建的原生关闭竞争仍待验，见[本批证据](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)。
 
 2026-10-09 双实例原生验收：A/B 独立定位、跨窗口版本刷新与四份精确导出通过，三个进程正常退出，来源删除 Completed 十组件、零活动资料。Prompt 新签名验证通过；首次误加的常许许可已精确撤销，重新交接后空库打开返回 `KeyStoreCancelled` 并失败关闭，原 A 对照成功；后续两个进程也已退出，见[最终结果](../implementation/phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)。
@@ -95,12 +97,11 @@ Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继�
 
 ## 后续事项
 
-[10 月 9 日日终记录与明日事项](2026-10-09-source-vault.md)汇总当天全部四个提交、代码—文档复核及 **2026-10-10** 的具体建议；[10 月 6 日记录](2026-10-06-source-vault.md)和更早安排保留为历史交接。
+[10 月 13 日日终记录与明日事项](2026-10-13-source-vault.md)汇总当天八个既有提交、代码与文档复核、原生观测和 **2026-10-14** 的建议；本页随后另作日终文档提交。[10 月 9 日记录](2026-10-09-source-vault.md)与更早安排保留为历史交接。
 
-2026-10-13 已完成[剩余窗口核对与 busy 关闭竞争修复](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)：关闭与完成结果同帧到达时保留窗口和真实结果；接受关闭后不再派发同帧按钮动作。六项 headless UI 回归及一项真实 worker Drop / join 回归已补齐，提交 / evidence 中断与写入后刷新失败沿用已核对的既有合成测试，不将回调错误扩大为原生中断证据。[验收矩阵](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)已明确触发、持久状态、恢复判据和有限跨平台准备条件。
+1. **先限定重复提示的下一轮诊断**：`89d53b0` 的只读动作会话保留首尾两次 key load、四次 secret 与十二次 metadata 查询；`bf8dddf` 的 `SecItemCopyMatching` 候选单次原生打开仍八次提示，四个 secret 静态位置各两个。新旧 API 的逐提示结果见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)，本轮结果已提交 `8393cc0`。OS 内部多重授权原因及更早第九次仍未确定；先复核保留栈、调用计数和候选假设，写清下一项诊断要区分什么、能取得什么证据和停止条件，再决定是否需要实现。新增真实 key / GUI 操作须独立精确授权，不直接换 API 重试、提高预算、删复验、增加跨动作缓存或采用永久许可。
+2. **补剩余只读会话与宿主窗口**：新会话入口取消已有有限原生证据；末轮取消、显式 Refresh、有资料旧视图撤回及新 busy 关闭竞争仍待验。先按[有限验收检查点](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)选择可控切片；六项 headless UI 和 worker Drop / join 回归不能替代真实关闭行为，提交 / evidence 中断及写后刷新失败沿用既有合成范围，不冒充进程中断证据。
+3. **按有限条件推进跨平台检查**：Windows / Linux 当前代码的 locked 编译、合成测试、真实 provider / 宿主范围分别记录，不以 macOS 或历史 filesystem 结果替代。无法安全构造的系统错误保留待验，不删除唯一 key、锁定整个用户 keychain 或不受控结束进程。
+4. **保留独立质量和契约事项**：R01 至 R06、中文显示、默认 v6 failed-open 继续按质量计划推进；`evidence_digest` 复算及历史兼容先做契约评审。已通过的权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库取消不重复列为未完成任务。其它系统错误 / 写操作阶段另定范围，P1-S05 不整体关闭。
 
-2026-10-13 原生首轮已获精确授权并执行一次空库打开：用户报告仅允许本次访问仍反复弹出系统提示，最终打开成功并正常退出；数据库 / profile 和权限未变，未进入导入、持锁或权限故障阶段。本批 busy 关闭竞争未取得原生证据，详见[新增交互缺口](../implementation/phase1-source-vault-host.md#2026-10-13-原生首轮的重复密钥提示与收尾)。后续已获明确批准并实现[只读动作认证会话](../implementation/phase1-source-vault-application.md#2026-10-13-只读动作认证会话)：仅合并 OpenEncrypted 与显式 Refresh，保留首尾双读、key 一致性和最终对象 / 数据库复验，无跨动作缓存；其它动作与写后刷新保持原路径。该实现已提交 `89d53b0`，随后按新授权操作单取得[局部原生结果](../implementation/phase1-source-vault-host.md#2026-10-13-新构建原生入口取消与提示预算停止)：A01 调用栈确认入口阶段，拒绝返回 `KeyStoreCancelled`；A02 空库打开成功但用户报告 9 次提示，超过 8 次上限，已停止并正常退出，数据库 / profile / 权限不变。空库刷新、有资料场景、末轮取消和关闭竞争本轮未覆盖。三份验收记录已复核并提交 `1cf3931`；随后完成[静态诊断与修复提案](../implementation/phase1-source-vault-key-provider.md#2026-10-13-合并会话后九次提示的静态诊断与修复提案)：合并入口仍是四次 secret 读取，但还有十二次 metadata 查询，系统提示不与 API 一一对应，九次的逐项归因仍缺证据。诊断文档随后提交 `dffb40d`，新授权的[逐提示实测](../implementation/phase1-source-vault-host.md#2026-10-13-单次空库打开的八提示逐次定位)在一次空库打开中观察到八个提示：四个 secret 静态调用位置各对应两个，全部停在 `SecKeychainFindGenericPassword`；没有 metadata 提示或第九次提示，GUI 成功并正常退出，基线未变。四份观测记录已复核并提交 `b07f861`；随后按明确授权实施 [SecItemCopyMatching 最小候选](../implementation/phase1-source-vault-key-provider.md#2026-10-13-macos-secitemcopymatching-secret-读取候选)，保留四次 secret、全部 metadata / label 复验和失败关闭。完整仓库检查的 386 项 Rust tests、locked Clippy 与默认构建通过后已提交 `bf8dddf`。新操作单经明确批准完成[单次原生观测](../implementation/phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)：实际仍八个提示，四个 secret 位置各两个，全部定位新 `SecItemCopyMatching` data search；第八次后打开成功、正常退出 0，基线保持，本次未减少提示。无第九次，未执行拒绝、末轮取消 / 有资料 / Refresh / 关闭竞争。OS 内部多重授权原因与更早第九次仍未确定；本单已结束，下一步先复核未改善证据并限定后续诊断，不自动扩张真实 key / GUI 操作，不提高预算或以永久许可绕过。Windows / Linux 当前代码集中检查继续按有限条件准备；不能以 headless UI 代替真实窗口 / 系统密钥库。已有权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库 `KeyStoreCancelled` 打开失败不重复列为未完成任务。其它真实系统错误与有正文 / 写操作阶段另按具体范围准备；无法安全构造的场景保留待验，不通过删除唯一 key、锁定整个用户 keychain 或不受控结束进程制造证据。
-
-以验收矩阵中的有限条件为检查点，按阶段推进 Windows / Linux 当前代码集中检查；macOS 结果不替代其它平台。R01 至 R06、中文显示、默认 v6 failed-open 和 `evidence_digest` 复算 / 历史兼容仍独立跟踪，后者先做契约评审。新增系统操作及远程动作仍须精确授权，P1-S05 不整体关闭。
-
-10 月 9 日停止安排保留在当日日终记录；本轮按项目所有者新任务推进，不安排提醒、自动化或后台开发。忽略目录中的历史合成输入 / 导出 / 备份 / 包装及原测试 key 继续保留，本轮未修改这些产物；新增 Prompt 常许许可已在前批撤销。
+今晚到日终文档提交为止，不安排提醒、自动化或后台开发。忽略目录中的合成输入 / 导出 / 备份 / 包装、dSYM、逐提示证据和唯一既有测试 key 继续保留；GUI 与 sample 已退出，新 API 观测没有修改 key / ACL，前批误加的 Prompt 常许许可已撤销。新增系统操作、彻底清理及远程动作仍须精确授权。

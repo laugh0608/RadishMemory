@@ -344,3 +344,5 @@ GUI 正常关闭、退出码 0，stdout / stderr 均为空。最终只读核对�
 
 
 本轮记录更新后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整退出 0：264 个文件、notices、fmt、locked Clippy 和 25 个 suites 共 386 项 Rust tests 通过，11 个 ignored helper 由父测试执行；按已知合成端口权限在沙箱外离线运行，未跳过检查。补记后文本 / 链接检查和 `git diff --check` 通过。未重复未受影响的默认构建（观测前已通过）、其它平台构建或原生验收。四份本轮记录未暂存、未提交；`dev` 领先本地 `origin/dev` 八个既有提交，未 push。所有本轮 GUI、sample 和检查进程已退出。
+
+上述四份记录随后复核并提交为 `8393cc0`；当日完整提交回顾、相关文档修正与下一步建议见[10 月 13 日日终记录](../status/2026-10-13-source-vault.md)。此前未提交状态为该观测收尾时的快照。
