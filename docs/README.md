@@ -48,6 +48,7 @@
 
 ## 质量与历史记录
 
+- [2026-10-18 Source Vault 日终记录与后续事项](status/2026-10-18-source-vault.md)：当天四个既有提交、受限观测代码与相关文档复核、D01 / D02 和 M01 副本范围证据，以及下一次继续时的建议。
 - [2026-10-13 Source Vault 日终记录与明日事项](status/2026-10-13-source-vault.md)：当天八个既有提交、busy 关闭 / 只读认证会话 / SecItem 读取的代码与文档复核，以及提示未减少后的有限诊断建议。
 - [2026-10-09 Source Vault 日终记录与明日事项](status/2026-10-09-source-vault.md)：当天四个提交、原请求恢复 / 锁竞争回归与真实系统取消证据复核，以及 10 月 10 日剩余宿主窗口和跨平台检查建议。
 - [2026-10-06 Source Vault 日终记录与明日事项](status/2026-10-06-source-vault.md)：当天三个提交、隔离入口与原生正常 / 受损库验收复核，以及 10 月 7 日恢复交互安排。
@@ -56,7 +57,7 @@
 
 - [2026-09-26 Source Vault 日终记录与明日事项](status/2026-09-26-source-vault.md)：当天七个实现提交、代码与文档复核、读取 / 导出验收及 application 生命周期接入安排。
 - [P1-S05 隔离原生验收计划](evaluation/phase1-source-vault-native-acceptance.md)：显式验收入口、合成 profile 绑定、真实 Keychain / GUI 授权材料及待验场景。
-- [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 既有证据复核、调用实例判据、受限观测设计及不经认证的空库关闭验收准备。
+- [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；空库关闭切片仍仅准备。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。

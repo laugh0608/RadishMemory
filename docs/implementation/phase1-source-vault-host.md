@@ -352,4 +352,6 @@ GUI 正常关闭、退出码 0，stdout / stderr 均为空。最终只读核对�
 
 完整三项隔离验收参数之外，仅 macOS 可显式提供 `--acceptance-key-read-trace` 和一个库外的新绝对路径；解析验证现有 profile / 数据库、私有父目录及路径隔离，不创建 trace。诊断模式的自动 OpenPlain 只显示固定就绪提示、不触发业务读写；仅一次 OpenEncrypted 可进入观测作用域，成功或失败后都拒绝其它业务动作和重试。正常关闭仍经过既有 worker join 生命周期。
 
-Action end 写出前不发布快照，观测错误撤回目录、正文及恢复选择；没有原请求或第二次读取可供重试。普通默认入口与原三参数验收不受单动作限制，`logging.rs` 保持原摘要。真实文件故障的 worker 回归用严格 `cfg(test)` 私有钩子破坏自己的合成 trace，生产构建没有该钩子，也没有 provider override。具体允许文件、失败关闭策略与独立验证见[受限补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)；未执行 GUI / 真实 Keychain，不能作为提示或原生关闭验收证据。
+Action end 写出前不发布快照，观测错误撤回目录、正文及恢复选择；没有原请求或第二次读取可供重试。普通默认入口与原三参数验收不受单动作限制，`logging.rs` 保持原摘要。真实文件故障的 worker 回归用严格 `cfg(test)` 私有钩子破坏自己的合成 trace，生产构建没有该钩子，也没有 provider override。具体允许文件、失败关闭策略与独立验证见[受限补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)；补丁实现阶段未执行 GUI / 真实 Keychain，不能把该阶段合成结果作为提示或原生关闭验收证据。
+
+后续独立授权的 [D01](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-单次原生结果与交接缺口)取得完整 4 / 12 / 25 预算，但八提示缺少逐提示交接；[D02](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)仅观察入口第一读，确认同一 SecretSearch 区间的两次提示，第二提示拒绝后真实 KeyStoreCancelled，GUI 正常退出、空库保持。两批均未覆盖末轮取消、有资料 Refresh 或 busy / pending 关闭。随后 M01 在独立 CLI 进行，未修改宿主；副本范围冻结不构成原 app 授权证据。当天提交回顾与后续窗口见[日终记录](../status/2026-10-18-source-vault.md)。

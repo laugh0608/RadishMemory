@@ -1,10 +1,10 @@
 # P1-S05 隔离原生验收计划
 
-日期：2026-10-13。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；本次未启动原生窗口。其它系统错误 / 操作阶段、其余原生失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
+日期：2026-10-18。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。其它系统错误 / 操作阶段、其余原生失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
-2026-10-18 诊断与准备进展见[有限诊断与原生关闭方案](phase1-keychain-prompt-diagnostic-plan.md)：既有两轮八提示证据已离线复核；受限补丁与冻结构建已完成，D01 单次打开验证完整调用预算但缺少逐提示交接；随后 D02 首对观测已确认入口第一读同一区间双提示，第二提示拒绝后真实失败关闭，范围见方案末节。原生关闭另缩小为空库 SQLite 锁等待切片，不申请读取真实 Keychain、不导入资料或修改对象目录权限；该关闭切片仅准备，GUI / 既有库持锁均未执行。该切片不替代原请求 Cancel / Confirm、末轮取消或有资料旧视图撤回。
+2026-10-18 诊断与准备进展见[有限诊断与原生关闭方案](phase1-keychain-prompt-diagnostic-plan.md)：既有两轮八提示证据已离线复核；受限补丁与冻结构建已完成，D01 单次打开验证完整调用预算但缺少逐提示交接；随后 D02 首对观测已确认入口第一读同一区间双提示，第二提示拒绝后真实失败关闭，范围见 [D02 记录](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)。M01 单次执行在静态身份阶段失败、目标查询为零；后续副本范围 v2 已实现并冻结，尚未执行真实 Keychain 访问，副本结果不能代表原 app 授权。原生关闭另缩小为空库 SQLite 锁等待切片，不申请读取真实 Keychain、不导入资料或修改对象目录权限；该关闭切片仅准备，GUI / 既有库持锁均未执行。该切片不替代原请求 Cancel / Confirm、末轮取消或有资料旧视图撤回。现行后续顺位见[当前状态](../status/current.md#后续事项)。
 
 ## 已实现的隔离入口
 

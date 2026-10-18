@@ -178,3 +178,9 @@ macOS 隔离验收入口新增显式 `--acceptance-key-read-trace`；默认无�
 ### 2026-10-18 D02 同一调用区间的有限原生证据
 
 另获授权后沿用同一冻结构建 / 匹配 dSYM，只新建证据目录并执行一次空库打开。首对提示各自保持待选完成 trace 前后读取与一次短时 sample：四份前缀一致，都是 entry / read 1 的 SecretSearch call 9，尚无 end；两份栈正向匹配 SecItemCopyMatching 和本次源码。第一提示允许、第二提示拒绝后，call end=cancelled、Action 失败完整收束，UI 显示 KeyStoreCancelled；进程退出 0、空库基线保持。故 H1 对这个入口调用区间成立，但不解释系统内部多提示原因，不推广到其它读取或历史第九提示。详细人工目标核对、证据与限制见[本次记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)；四读和全部认证检查的契约不变。
+
+### 2026-10-18 M01 诊断边界与副本范围
+
+后续公开 Security 源码支持常规 ACL 与 partition 分别校验的候选机制，但参考版本与本机运行版本不同，不能据此解释 D02。独立 M01 helper 的单次执行在静态身份阶段返回 `-67056`，domain / item / access / ACL list 计数均为零。离线对照确认原包装内 executable 被识别为整个 bundle；原 bundle 完整校验失败，同字节独立 Mach-O 副本完整校验通过。
+
+[副本范围 v2](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-m01-副本范围-v2-实现与重新冻结)已分离原目标与校验副本、拆分创建 / 校验错误，并通过 47 项合成测试及离线静态身份核对；新 native helper 未执行。它是本机忽略目录内的任务专用诊断工具，没有进入生产 provider、依赖或公共 schema。副本上的已存 requirement 匹配 / 不匹配都不能推导原 app 授权，不能恢复“全部不匹配且 candidate absent”的因果判据。当前条目元数据、SPI 实际 ABI 和查询时禁 UI 效果仍未知；旧单次授权已经消耗，未来访问须按新操作单重新限定范围。

@@ -4,6 +4,8 @@
 
 初始计划批次由项目所有者授权复核既有证据、完成有限诊断方案和原生验收操作单；当时明确禁止启动 GUI 或访问真实 Keychain。本文承接 [provider 记录](../implementation/phase1-source-vault-key-provider.md#2026-10-13-secitem-候选的单次原生结果)与[原生验收矩阵](phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)，不替代密钥读取契约，也不构成未来系统操作授权。
 
+本页按批次保留历史状态；“尚未实现 / 执行”“未提交”和提交领先数均以所在批次为准。M01 相关记录已于日终先提交为 `49e2f59`，当天完整提交回顾、文档复核及后续安排见[10 月 18 日日终记录](../status/2026-10-18-source-vault.md)。当前停止线和下一步只以[当前状态](../status/current.md#后续事项)为准，不沿用已收尾批次的授权。
+
 ## 复核结果与证据强度
 
 本地基线为 `6159a42`，`dev` 工作区起始干净，与本地 tracking ref 无 ahead / behind；未刷新远程。`bf8dddf` 至基线的 apps、crates、Cargo manifest / lockfile 与工具链没有差异。
