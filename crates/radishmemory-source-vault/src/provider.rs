@@ -89,6 +89,233 @@ fn valid_id(value: &str, prefix: &str) -> bool {
 #[derive(Debug, Default)]
 pub struct PlatformKeyProvider;
 
+pub(crate) mod sealed {
+    pub trait Sealed {}
+}
+
+/// Reviewed library coordination capabilities used by the application boundary.
+/// Sealed so an application cannot substitute an unauthenticated reader or turn
+/// recovery into key creation. Only the platform provider and the opt-in synthetic
+/// acceptance provider implement this boundary.
+pub trait LibraryProvider: sealed::Sealed {
+    /// Bounded catalog/recovery snapshot with fresh double-read key validation at
+    /// entry and before release. No key or database session escapes this call.
+    fn read_library_snapshot(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        request: &radishmemory_core::SourceCatalogRequest,
+        preferred_lineage: Option<&radishmemory_core::Identifier>,
+    ) -> std::result::Result<crate::LibraryReadSnapshot, crate::VaultMaintenanceError>;
+
+    fn initialize_library_key(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<KeyEncryptionKey, crate::KeyInitializationError>;
+
+    fn migrate_library_bodies(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::BodyMigrationReport, crate::VaultMaintenanceError>;
+
+    fn open_library_reader<'a>(
+        &self,
+        directory: &'a crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError>;
+    fn capture_library_source(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        capture: &radishmemory_core::SourceCapture,
+    ) -> std::result::Result<radishmemory_core::SourceCaptureResult, crate::VaultMaintenanceError>;
+
+    fn execute_library_deletion(
+        &self,
+        directory: &crate::ObjectDirectory,
+        request: &radishmemory_core::DeleteRequest,
+        execution: &radishmemory_core::LocalDeletionExecution,
+    ) -> std::result::Result<Vec<radishmemory_core::ComponentResult>, crate::VaultMaintenanceError>;
+
+    fn store_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        evidence: &radishmemory_core::DeletionEvidence,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError>;
+
+    fn verify_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
+
+    fn rebuild_library_derivations(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
+    fn inspect_library_capture_abandonment(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<Option<crate::CaptureAbandonmentTarget>, crate::VaultMaintenanceError>;
+
+    fn abandon_library_capture(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: &crate::CaptureAbandonmentTarget,
+    ) -> std::result::Result<crate::AbandonmentReport, crate::VaultMaintenanceError>;
+}
+
+impl sealed::Sealed for PlatformKeyProvider {}
+
+impl LibraryProvider for PlatformKeyProvider {
+    fn read_library_snapshot(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        request: &radishmemory_core::SourceCatalogRequest,
+        preferred_lineage: Option<&radishmemory_core::Identifier>,
+    ) -> std::result::Result<crate::LibraryReadSnapshot, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace, device)?;
+        #[cfg(any(target_os = "macos", target_os = "windows", target_os = "linux"))]
+        {
+            let mut store = None;
+            crate::reader::snapshot(
+                directory,
+                namespace,
+                device,
+                request,
+                preferred_lineage,
+                || {
+                    if store.is_none() {
+                        store = Some(platform::Store::connect(&slot)?);
+                    }
+                    // Preserve the original User keychain/default collection identity
+                    // through the final check; reconnecting could accept a replacement.
+                    load_existing(store.as_ref().expect("connected snapshot store"))
+                },
+            )
+        }
+        #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+        {
+            crate::reader::snapshot(
+                directory,
+                namespace,
+                device,
+                request,
+                preferred_lineage,
+                || self.load_existing(&slot),
+            )
+        }
+    }
+
+    fn initialize_library_key(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<KeyEncryptionKey, crate::KeyInitializationError> {
+        self.initialize_library_key(directory, namespace, device)
+    }
+
+    fn migrate_library_bodies(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::BodyMigrationReport, crate::VaultMaintenanceError> {
+        self.migrate_library_bodies(directory, namespace, device)
+    }
+
+    fn open_library_reader<'a>(
+        &self,
+        directory: &'a crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::LibraryReader<'a>, crate::VaultMaintenanceError> {
+        self.open_library_reader(directory, namespace, device)
+    }
+    fn capture_library_source(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        capture: &radishmemory_core::SourceCapture,
+    ) -> std::result::Result<radishmemory_core::SourceCaptureResult, crate::VaultMaintenanceError>
+    {
+        self.capture_library_source(directory, namespace, device, capture)
+    }
+
+    fn execute_library_deletion(
+        &self,
+        directory: &crate::ObjectDirectory,
+        request: &radishmemory_core::DeleteRequest,
+        execution: &radishmemory_core::LocalDeletionExecution,
+    ) -> std::result::Result<Vec<radishmemory_core::ComponentResult>, crate::VaultMaintenanceError>
+    {
+        self.execute_library_deletion(directory, request, execution)
+    }
+
+    fn store_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        evidence: &radishmemory_core::DeletionEvidence,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError> {
+        self.store_library_deletion_evidence(directory, evidence)
+    }
+
+    fn verify_library_objects(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        self.verify_library_objects(directory, namespace, device)
+    }
+
+    fn rebuild_library_derivations(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        self.rebuild_library_derivations(directory, namespace, device)
+    }
+    fn inspect_library_capture_abandonment(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<Option<crate::CaptureAbandonmentTarget>, crate::VaultMaintenanceError>
+    {
+        self.inspect_library_capture_abandonment(directory, namespace, device)
+    }
+
+    fn abandon_library_capture(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: &crate::CaptureAbandonmentTarget,
+    ) -> std::result::Result<crate::AbandonmentReport, crate::VaultMaintenanceError> {
+        self.abandon_library_capture(directory, namespace, device, target)
+    }
+}
+
 impl PlatformKeyProvider {
     pub const fn new() -> Self {
         Self
@@ -316,17 +543,23 @@ pub(crate) fn load_or_bootstrap(
 }
 
 fn load_existing(store: &impl KeyStore) -> Result<KeyEncryptionKey> {
-    let value = store.read_secret()?;
-    let key = decode(&value)?;
-    store.validate_label()?;
-    let recheck = store.read_secret()?;
-    if value.as_slice() != recheck.as_slice() {
-        return Err(failure(
-            SourceVaultErrorCode::KeyReadbackMismatch,
-            "recheck key value",
-        ));
-    }
-    store.validate_label()?;
+    use crate::key_read_observation::{Operation, call};
+    let (value, key) = call(Operation::Read1, || {
+        let value = store.read_secret()?;
+        let key = decode(&value)?;
+        call(Operation::Label, || store.validate_label())?;
+        Ok((value, key))
+    })?;
+    call(Operation::Read2, || {
+        let recheck = store.read_secret()?;
+        if value.as_slice() != recheck.as_slice() {
+            return Err(failure(
+                SourceVaultErrorCode::KeyReadbackMismatch,
+                "recheck key value",
+            ));
+        }
+        call(Operation::Label, || store.validate_label())
+    })?;
     Ok(key)
 }
 

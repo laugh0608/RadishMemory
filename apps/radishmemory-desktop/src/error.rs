@@ -29,6 +29,14 @@ pub enum DesktopErrorReason {
     ClockFailed,
     ApplicationFailed,
     SelectionInvalid,
+    RecoveryRequired,
+    WorkerStopped,
+    LoggingUnavailable,
+    StartupArgumentsInvalid,
+    AcceptanceProfileMismatch,
+    KeyReadObservationInvalid,
+    KeyReadObservationConsumed,
+    KeyReadObservationFailed,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -37,9 +45,15 @@ pub struct ApplicationFailureSummary {
     code: ApplicationErrorCode,
     reason: ApplicationErrorReason,
     retryable: bool,
+    vault_code: Option<radishmemory_source_vault::SourceVaultErrorCode>,
 }
 
 impl ApplicationFailureSummary {
+    #[must_use]
+    pub const fn vault_code(self) -> Option<radishmemory_source_vault::SourceVaultErrorCode> {
+        self.vault_code
+    }
+
     #[must_use]
     pub const fn operation(self) -> ApplicationOperation {
         self.operation
@@ -67,6 +81,7 @@ pub struct DesktopError {
     retryable: bool,
     os_error_code: Option<i32>,
     application: Option<ApplicationFailureSummary>,
+    vault_database: Option<String>,
 }
 
 impl DesktopError {
@@ -81,6 +96,7 @@ impl DesktopError {
             retryable,
             os_error_code: None,
             application: None,
+            vault_database: None,
         }
     }
 
@@ -96,6 +112,7 @@ impl DesktopError {
             retryable,
             os_error_code: source.raw_os_error(),
             application: None,
+            vault_database: None,
         }
     }
 
@@ -105,13 +122,34 @@ impl DesktopError {
             reason: DesktopErrorReason::ApplicationFailed,
             retryable: source.retryable(),
             os_error_code: None,
+            vault_database: source.vault_failure().and_then(|failure| match failure {
+                radishmemory_source_vault::VaultMaintenanceError::Database {
+                    code,
+                    reason,
+                    sqlite_extended_code,
+                } => Some(format!(
+                    "{code:?} / {reason:?} / SQLite {sqlite_extended_code:?}"
+                )),
+                radishmemory_source_vault::VaultMaintenanceError::Vault(_) => None,
+            }),
             application: Some(ApplicationFailureSummary {
                 operation: source.operation(),
                 code: source.code(),
                 reason: source.reason(),
                 retryable: source.retryable(),
+                vault_code: match source.vault_failure() {
+                    Some(radishmemory_source_vault::VaultMaintenanceError::Vault(error)) => {
+                        Some(error.code())
+                    }
+                    _ => None,
+                },
             }),
         }
+    }
+
+    #[must_use]
+    pub fn vault_database(&self) -> Option<&str> {
+        self.vault_database.as_deref()
     }
 
     #[must_use]
@@ -149,6 +187,7 @@ impl fmt::Debug for DesktopError {
             .field("retryable", &self.retryable)
             .field("os_error_code", &self.os_error_code)
             .field("application", &self.application)
+            .field("vault_database", &self.vault_database)
             .finish()
     }
 }

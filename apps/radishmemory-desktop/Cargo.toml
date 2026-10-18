@@ -10,9 +10,14 @@ publish.workspace = true
 directories.workspace = true
 eframe.workspace = true
 getrandom.workspace = true
+log.workspace = true
+radishmemory-source-vault.workspace = true
 radishmemory-application.workspace = true
 rfd.workspace = true
 time.workspace = true
+
+[dev-dependencies]
+radishmemory-source-vault = { workspace = true, features = ["acceptance-test-support"] }
 
 [lints]
 workspace = true

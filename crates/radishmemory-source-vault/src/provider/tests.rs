@@ -19,6 +19,8 @@ enum Read {
 struct Store {
     value: RefCell<Option<Vec<u8>>>,
     reads: RefCell<VecDeque<Read>>,
+    read_count: Cell<usize>,
+    label_checks: Cell<usize>,
     write_count: Cell<usize>,
     label_count: Cell<usize>,
     label: RefCell<String>,
@@ -45,6 +47,7 @@ impl Store {
 
 impl KeyStore for Store {
     fn read_secret(&self) -> Result<Zeroizing<Vec<u8>>> {
+        self.read_count.set(self.read_count.get() + 1);
         if let Some(read) = self.reads.borrow_mut().pop_front() {
             return match read {
                 Read::Value(v) => Ok(Zeroizing::new(v)),
@@ -58,6 +61,7 @@ impl KeyStore for Store {
             .ok_or_else(|| failure(SourceVaultErrorCode::KeyMissing, "synthetic read"))
     }
     fn validate_label(&self) -> Result<()> {
+        self.label_checks.set(self.label_checks.get() + 1);
         check_label(&self.label.borrow())
     }
     fn write_secret(&self, value: &[u8]) -> Result<()> {
@@ -82,6 +86,9 @@ impl KeyStore for Store {
         Ok(())
     }
 }
+
+#[path = "tests/snapshot.rs"]
+mod snapshot;
 
 #[derive(Default)]
 struct Random {

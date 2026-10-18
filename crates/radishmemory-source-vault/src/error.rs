@@ -31,6 +31,7 @@ pub enum SourceVaultErrorCode {
     KeyStoreCancelled,
     KeyStoreUnavailable,
     KeyStoreFailure,
+    KeyReadObservationFailed,
     Io,
 }
 

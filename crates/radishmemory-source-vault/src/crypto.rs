@@ -22,6 +22,11 @@ impl KeyEncryptionKey {
     pub fn new(bytes: [u8; KEY_BYTES]) -> Self {
         Self(Zeroizing::new(bytes))
     }
+
+    // Internal comparison only: never expose key bytes or a reusable fingerprint.
+    pub(crate) fn same_key(&self, other: &Self) -> bool {
+        self.0.as_slice() == other.0.as_slice()
+    }
 }
 
 impl fmt::Debug for KeyEncryptionKey {

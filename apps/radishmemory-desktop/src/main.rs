@@ -2,7 +2,9 @@
 // target's workspace-level unused dependency lint aware of that intentional split.
 use directories as _;
 use getrandom as _;
+use log as _;
 use radishmemory_application as _;
+use radishmemory_source_vault as _;
 use rfd as _;
 use time as _;
 

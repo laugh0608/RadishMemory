@@ -5,7 +5,7 @@
 RadishMemory 必须同时满足：
 
 - 单机离线可用；
-- 用户自部署多端同步；
+- 官方端点可选、用户可自部署的多端同步；同一官方客户端运行时选择目标，无需重新编译；
 - 原始资料、结构化记忆和派生索引相互分离；
 - 模型、Embedding、数据库和 Provider 可替换；
 - 权限、敏感度和外发策略在检索前执行；
@@ -44,10 +44,10 @@ Model Adapter / RadishMind ── GPT / Gemini / Claude / Grok / DeepSeek / Loca
         └──────────────► 规则校验 / 用户确认 / 记忆状态变更
 ```
 
-多端同步独立于模型调用：
+多端同步独立于模型调用；下图的同步服务可由官方提供或用户自部署，二者都遵守首个零知识模式，连接与切换要求见[客户端连接规划](client-server-connection-plan.md)：
 
 ```text
-Device A Local Store ── encrypted operation/object sync ── Self-hosted Server
+Device A Local Store ── encrypted operation/object sync ── Sync Server
                                                            │
 Device B Local Store ◄── encrypted operation/object sync ──┘
 ```
@@ -90,23 +90,29 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 `P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 只定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型；`LocalLibrary` 组合 open、import / update、list / get、search citation、exact export、canonical lineage deletion evidence、verify / rebuild，并通过 `ApplicationRuntime` 隔离 production ID / clock。
 
-`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 `LibraryController` 读取状态并调用 application operation。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK picker 的可见 GUI 正向 / 失败关闭证据；Windows 实机暴露的 OpenGL-only 阻断已通过把同版本 `eframe` renderer feature 切换为 `wgpu` 最小修复，当前图也已通过 Linux / macOS / Windows locked CI。333 个目标可达 crate、license option、默认字体、bundled SQLite 与条件平台依赖已由 [third-party notices 复核](implementation/phase1-third-party-notices.md)收口，P1-H05 gate 完成。
+`P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 worker 返回的读取快照，并发送显式 application 动作；单一串行 worker 持有 `LibraryController` 与存储入口。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK picker 的可见 GUI 正向 / 失败关闭证据；Windows 实机暴露的 OpenGL-only 阻断已通过把同版本 `eframe` renderer feature 切换为 `wgpu` 最小修复，当前图也已通过 Linux / macOS / Windows locked CI。333 个目标可达 crate、license option、默认字体、bundled SQLite 与条件平台依赖已由 [third-party notices 复核](implementation/phase1-third-party-notices.md)收口，P1-H05 gate 完成。
 
 ## 阶段 1 加密内容寻址 Source Vault 边界
 
-[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter，通过 macOS 合成验证与 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，SQLite production data flow 尚未实现。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter，通过 macOS 合成验证与 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，默认启动仍走旧 v6；显式 application 与桌面加密入口已接线，真实系统验收见下文。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
 
 一个不可变 SourceArtifact version 首批对应一个不可变密文对象。逻辑 lookup 使用精确 `source_id` 与 `exact-bytes-v1` digest，物理 locator 保持 adapter-private；不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重。该选择保留独立 governance、retention 和 deletion scope，不把内容摘要升级为 canonical identity。
 
-每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)已将精确 profile 冻结为 XChaCha20-Poly1305 + STREAM-BE32 与独立 XChaCha20-Poly1305 DEK wrap，随机源复用 `getrandom =0.4.3`，设备 KEK 按 target 使用 macOS Keychain、Windows Credential Manager 或 Linux Secret Service。P1-S03a 已使 portable crypto 依赖进入 manifest / lockfile 并实现 deterministic AAD、seal / open 与合成验证；三个 platform provider 已进入依赖图；[P1-S03c-2](implementation/phase1-source-vault-key-provider.md) 已实现独立读取与私有 bootstrap 编排，只有 macOS 本机构建及合成证据。真实密钥库与 host 数据流仍未验收；正文对象 / SQLite 提交协调的迁移切片已有下述 P1-S04b 合成证据；密钥初始化的 SQLite 协调已由下述 P1-S04a 完成合成验证，filesystem adapter 尚未接入产品正文路径。
+每个对象使用独立随机 DEK，并由设备本地 KEK capability 包装。version、cipher suite、key-wrap profile、namespace、source、digest、length 和 media type 必须受 envelope authentication 约束；未知 profile、认证失败、metadata 交换、缺 key 或对象缺失均失败关闭，不回退到旧 BLOB 或外部原件。[P1-S02 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)已将精确 profile 冻结为 XChaCha20-Poly1305 + STREAM-BE32 与独立 XChaCha20-Poly1305 DEK wrap，随机源复用 `getrandom =0.4.3`，设备 KEK 按 target 使用 macOS Keychain、Windows Credential Manager 或 Linux Secret Service。P1-S03a 已使 portable crypto 依赖进入 manifest / lockfile 并实现 deterministic AAD、seal / open 与合成验证；三个 platform provider 已进入依赖图；[P1-S03c-2](implementation/phase1-source-vault-key-provider.md) 已实现独立读取与私有 bootstrap 编排，已有 macOS 本机构建、合成证据及后续最小真实 Keychain / GUI 正常闭环。后续已取得权限故障原请求恢复、外部锁竞争、双 GUI 交替及空合成库真实 `KeyStoreCancelled` 打开失败的有限证据；其余失败窗口和其它平台真实密钥库与 host 数据流仍待验收；正文对象 / SQLite 提交协调的迁移切片已有下述 P1-S04b 合成证据；密钥初始化的 SQLite 协调已由下述 P1-S04a 完成合成验证，filesystem adapter 已用于显式加密入口的正文路径；默认 v6 仍使用 inline body，不能合并表述两种入口。
 
-[P1-S04a](implementation/phase1-source-vault-key-bootstrap.md) 新增 Source Vault → SQLite 的第一方依赖连线：SQLite 持有不暴露 SQL handle 的 maintenance connection / live transaction，负责 schema、canonical / inline body 验真与 v7 key checkpoint；Source Vault coordinator 组合对象目录 capability 和私有 key-store 编排。数据库路径固定取同一应用目录的 `library.sqlite3`，不接受与对象目录无关的空库作为创建资格。普通 adapter 仍仅开放 v6，v7 表示密钥准备完成，不代表正文已迁移。宿主接入时必须先暂停普通资料库操作；本批未接入 application / UI。
+[P1-S04a](implementation/phase1-source-vault-key-bootstrap.md) 新增 Source Vault → SQLite 的第一方依赖连线：SQLite 持有不暴露 SQL handle 的 maintenance connection / live transaction，负责 schema、canonical / inline body 验真与 v7 key checkpoint；Source Vault coordinator 组合对象目录 capability 和私有 key-store 编排。数据库路径固定取同一应用目录的 `library.sqlite3`，不接受与对象目录无关的空库作为创建资格。普通 adapter 仍仅开放 v6，v7 表示密钥准备完成，不代表正文已迁移。宿主接入时必须先暂停普通资料库操作；后续 application 与桌面接线已复用该入口，初始化前消费旧 controller，确保旧连接关闭。
 
-P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`ObjectDirectory` 只向专用目录发布并认证回读，`PublishedObject` 不代表 canonical source 已提交。`inspect_attempt` 只报告精确候选状态，不自动清理或认定 orphan；业务幂等和引用协调仍待后续。
+P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`ObjectDirectory` 只向专用目录发布并认证回读，`PublishedObject` 不代表 canonical source 已提交。`inspect_attempt` 只报告精确候选状态，不自动清理或认定 orphan；业务幂等和引用协调由后续 P1-S04 的 capture / migration coordinator 承担，不能由独立文件 adapter 的发布结果推断。
 
 对象提交遵循“密文 publish → SQLite commit → read-back”三段状态：先在内存中生成 envelope / 密文，再直接写入应用专用 staging，经 sync、关闭写句柄、认证与 no-overwrite publish 后，才能在一个 SQLite `IMMEDIATE` transaction 内提交 object reference、canonical facts、FTS、binding、tip 与 audit；commit 后 read-back 复验成功才返回 receipt。publish 后、metadata commit 前的对象只是可识别 orphan candidate；恢复器只能清理无 committed reference、无可恢复 attempt 且身份明确的对象，ambiguous state 使 library 失败关闭。
 
-[P1-S04b 正文迁移切片](implementation/phase1-source-vault-body-migration.md) 已建立维护专用 v8：SQLite 持有跨 checkpoint 的独占会话，保存来源版本级迁移 inventory / attempt 和 committed reference；Source Vault 负责认证 publish、精确 attempt 恢复及按 committed reference 回读。旧正文移除与 `retired` 状态在同一事务提交。恢复只加载既有 key，普通入口继续拒绝 v7 / v8 / v9 / v10 / v11 / v12。[加密 capture 切片](implementation/phase1-source-vault-capture.md) 进一步复用同一 attempts / references 边界与 canonical capture 逻辑，在维护 v9 中完成请求绑定、对象 publish、metadata / binding / audit / FTS / reference 原子提交和认证回读；新 capture 不写 inline BLOB。Source Vault 直接复用 core 的 `SourceCapture`，通过已有对象正文校验全部派生事实。[inventory reconciliation](implementation/phase1-source-vault-reconciliation.md) 已提供独立全量核对、pending 状态报告和 committed staging hard link 精确清理；[显式放弃](implementation/phase1-source-vault-abandonment.md) 在同一内部状态表中增加维护 v10：先提交 `abandoning`，再清理无 canonical source / reference 的精确对象，最后提交并保留 `abandoned`；清理未完成继续阻止新 capture，旧 source ID 不能复活。[verify / rebuild 维护入口](implementation/phase1-source-vault-maintenance.md) 已复用相同 exclusive session 与对象认证，事务重建 FTS、来源 tip 和记忆投影，提交前及提交后认证校验；不修改 canonical、attempt 或 reference。[删除执行](implementation/phase1-source-vault-deletion.md) 已在维护 v11 内将请求 / 闭包摘要、召回关闭、引用关闭与对象退役计划原子提交，精确清理及目录同步后才允许 `source_body` 成功；其余九组件和 evidence 继续复用现有删除真相。[历史请求兼容](implementation/phase1-source-vault-legacy-deletion.md) 增加维护 v12 的旧正文退役凭据引用：精确匹配原请求并复核冻结闭包，有残留对象时使用相同清理链路，无对象时必须复验原请求的真实旧组件结果和实际缺失；不建立虚构对象。[读取切片](implementation/phase1-source-vault-reader.md) 已提供持有 existing key 与 exclusive session 的 `LibraryReader`，查询前后认证对象，SQLite 目录和 FTS 查询通过同一正文 loader 复用；返回既有 canonical 来源供精确导出使用，已通过真实对象认证读取与既有导出器的组合验收。Unix 数据库身份复验使用路径元数据并由 SQLite 连接持有 inode，避免额外文件描述符关闭释放 POSIX 锁；对象文件仍使用独立句柄观察。application / host integration 仍待实现。
+[P1-S04b 正文迁移切片](implementation/phase1-source-vault-body-migration.md) 已建立维护专用 v8：SQLite 持有跨 checkpoint 的独占会话，保存来源版本级迁移 inventory / attempt 和 committed reference；Source Vault 负责认证 publish、精确 attempt 恢复及按 committed reference 回读。旧正文移除与 `retired` 状态在同一事务提交。恢复只加载既有 key，普通入口继续拒绝 v7 / v8 / v9 / v10 / v11 / v12。[加密 capture 切片](implementation/phase1-source-vault-capture.md) 进一步复用同一 attempts / references 边界与 canonical capture 逻辑，在维护 v9 中完成请求绑定、对象 publish、metadata / binding / audit / FTS / reference 原子提交和认证回读；新 capture 不写 inline BLOB。Source Vault 直接复用 core 的 `SourceCapture`，通过已有对象正文校验全部派生事实。[inventory reconciliation](implementation/phase1-source-vault-reconciliation.md) 已提供独立全量核对、pending 状态报告和 committed staging hard link 精确清理；[显式放弃](implementation/phase1-source-vault-abandonment.md) 在同一内部状态表中增加维护 v10：先提交 `abandoning`，再清理无 canonical source / reference 的精确对象，最后提交并保留 `abandoned`；清理未完成继续阻止新 capture，旧 source ID 不能复活。[verify / rebuild 维护入口](implementation/phase1-source-vault-maintenance.md) 已复用相同 exclusive session 与对象认证，事务重建 FTS、来源 tip 和记忆投影，提交前及提交后认证校验；不修改 canonical、attempt 或 reference。[删除执行](implementation/phase1-source-vault-deletion.md) 已在维护 v11 内将请求 / 闭包摘要、召回关闭、引用关闭与对象退役计划原子提交，精确清理及目录同步后才允许 `source_body` 成功；其余九组件和 evidence 继续复用现有删除真相。[历史请求兼容](implementation/phase1-source-vault-legacy-deletion.md) 增加维护 v12 的旧正文退役凭据引用：精确匹配原请求并复核冻结闭包，有残留对象时使用相同清理链路，无对象时必须复验原请求的真实旧组件结果和实际缺失；不建立虚构对象。[读取切片](implementation/phase1-source-vault-reader.md) 已提供持有 existing key 与 exclusive session 的 `LibraryReader`，查询前后认证对象，SQLite 目录和 FTS 查询通过同一正文 loader 复用；返回既有 canonical 来源供精确导出使用，已通过真实对象认证读取与既有导出器的组合验收。Unix 数据库身份复验使用路径元数据并由 SQLite 连接持有 inode，避免额外文件描述符关闭释放 POSIX 锁；对象文件仍使用独立句柄观察。[application 加密用例](implementation/phase1-source-vault-application.md) 已接入显式准备 / 迁移恢复与读取：消费旧连接后，以固定目录 / profile 打开认证库，每次用例持锁到搜索回源或导出发布结束，空闲时释放锁与 key。写用例复用 file-entry 的原始快照准备与既有 capture / deletion 协调器，准备和执行分开以保留原请求；删除闭包通过同一 SQLite 算法解析，重试不扩大范围。location 提供打开失败后的显式 verify / rebuild。[桌面宿主](implementation/phase1-source-vault-host.md) 已接入同一 controller 视图与串行 worker：capture 在执行前保留完整原请求，成功后释放，刷新失败单独回报；重启后的删除使用已保存原授权，capture 快照丢失只提供显式精确放弃。UI 不持有数据库、key 或原 capture，busy 时禁止重复请求；原请求未解决时阻止切换与新变更，关闭提示内存快照损失。普通加密打开失败仍可用相同 root / profile 执行显式维护；macOS 最小真实 Keychain / GUI 正常链路、派生损坏后的显式重建及密文损坏拒绝已通过，权限故障下的原请求重试 / 重启精确放弃 / 原删除授权恢复、外部锁失败恢复、双 GUI 交替及空库真实系统取消也已有原生证据；busy 关闭竞争已有修复及合成回归，其原生窗口行为、提交 / evidence 中断、其它系统错误 / 操作阶段及 Windows / Linux 仍待验收，具体范围见宿主记录。
+
+桌面 `OpenEncrypted` 与显式 `Refresh` 已使用[只读动作认证会话](implementation/phase1-source-vault-application.md#2026-10-13-只读动作认证会话)，在同一 reader / exclusive session 内组合目录、版本与恢复检查。首尾各加载一次既有 key，每次保留双读和 metadata / label 校验，比较首尾 key 后再次认证对象与数据库；仅全部成功才交付快照，失败撤回旧视图和恢复选择，空闲时不保留 key 或锁。其它动作和写后刷新保持独立会话。macOS secret 读取已改为 `SecItemCopyMatching`，但单次原生空库打开仍出现八个提示；API 变更不等于提示问题已修复，最新证据和剩余窗口见[10 月 18 日日终记录](status/2026-10-18-source-vault.md)。
+
+macOS 显式隔离入口可选择启用[单动作调用区间观测](evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)：仅一次 OpenEncrypted，固定字段、库外独占输出，输出异常失败关闭；默认入口不启用，不改变四读及认证顺序。D02 已确认一个 SecretSearch 区间内两次提示，未确定系统内部原因。后续 M01 是本机任务专用诊断工具，未接入产品 provider 或业务协议；其 standalone Mach-O 副本完整校验不能代表原 app 授权或 bundle 资源签封。
+
+原生合成验收通过完整的 `--acceptance-root`、`--acceptance-namespace`、`--acceptance-device` 显式选择预建目录和既有 profile，解析与逐 worker 命令复验失败均不回退默认库。普通无参数启动不变；该绑定不是抵抗同用户恶意并发替换的文件系统沙箱，具体约束见[原生验收计划](evaluation/phase1-source-vault-native-acceptance.md)。
 
 约定的 SQLite v6 正文 migration 必须在普通操作暴露前逐对象复验 inline body、发布密文、提交 reference 并 read-back；未完成或损坏时不混合返回 inline / object-backed source。迁移不改变 canonical identity、citation、governance 或 deletion state，也不证明 SQLite 空闲页、快照和备份中的历史明文已物理清除。`P1-S03b` 至 `P1-S05` 完成 filesystem adapter、platform provider、migration 与宿主验收前，PDF / 图片解析保持停止。
 
@@ -120,11 +126,11 @@ P1-S03b 的 `ObjectWrite` 先生成可持久化的私有 locator / attempt；`Ob
 | `radishmemory-application` | 组合本地资料库用例 | production 业务入口，不承担桌面 toolkit 或 fixture mapping |
 | `radishmemory-desktop` | 平台目录、profile、runtime、picker 与 UI | 第一方业务依赖只到 application |
 | `radishmemory-m0` | 合成 suite 映射与证据编排 | 不将 runner 专用逻辑表述为 production API |
-| `radishmemory-source-vault` | portable crypto、immutable object filesystem adapter、platform key provider、密钥初始化、正文迁移与加密 capture 协调 | filesystem 已有三平台合成证据；provider 仅有 macOS 构建和合成测试，真实密钥库与 application 数据流尚未接入 |
+| `radishmemory-source-vault` | portable crypto、immutable object filesystem adapter、platform key provider、密钥初始化、正文迁移与加密 capture 协调 | filesystem 已有三平台合成证据；provider 已有 macOS 构建、合成测试、最小真实密钥库正常链路及空库打开取消失败关闭证据，其余失败分支与其它平台待验收；显式 application / 桌面读取、capture、删除与派生维护已接入；默认桌面启动仍为 v6 inline body |
 
-当前搜索与目录实现包含全量正文读取、事实复验和内存排序 / 分页，桌面同步执行相关操作。后续优化应先取得数据量、正文大小和版本分布对应的性能证据，再决定增量校验、SQL 分页、top-k 或 UI 执行方式；不能通过省略权限、时间、删除或完整性检查降低成本。
+当前搜索与目录实现包含全量正文读取、事实复验和内存排序 / 分页，桌面通过单一串行后台 worker 执行相关操作，UI 接收结果快照；移出 UI 线程没有降低全库认证成本或持锁时间。后续优化应先取得数据量、正文大小和版本分布对应的性能证据，再决定增量校验、SQL 分页、top-k 或进一步的调度调整；不能通过省略权限、时间、删除或完整性检查降低成本。
 
-ADR 0007 要求派生损坏时可在 canonical 完整的前提下显式 rebuild。维护入口必须在普通启动失败时仍可安全到达，并限制允许操作；canonical / binding 损坏不能被重建、空库或外部原件 fallback 掩盖。当前实现存在启动后重建不可达等缺口，观察见[审阅记录](implementation/2026-09-05-project-review.md)，修复验收见[质量计划](evaluation/phase1-local-library-quality.md)。本文记录架构要求，不表示维护模式或性能优化已经实现。
+ADR 0007 要求派生损坏时可在 canonical 完整的前提下显式 rebuild。维护入口必须在普通启动失败时仍可安全到达，并限制允许操作；canonical / binding 损坏不能被重建、空库或外部原件 fallback 掩盖。显式加密入口已有打开失败后的 verify / rebuild，且派生损坏重启恢复已有有限 macOS 原生证据；默认 v6 的 failed-open 维护入口仍未收口。历史观察见[审阅记录](implementation/2026-09-05-project-review.md)，剩余验收见[质量计划](evaluation/phase1-local-library-quality.md)；不能据显式入口的结果宣称默认路径或性能优化已完成。
 
 ## 核心组件
 
@@ -267,6 +273,8 @@ sources/
 1. **可信私有服务器**：用户信任自己的服务器解密、索引和运行后台任务。
 2. **零知识同步服务**：服务器只保存密文对象与加密操作日志，解密和语义索引在受信设备执行。
 
+官方端点与用户自部署是服务归属选择，不是信任模式切换；实例 / 同步域、设备授权、密钥封装、cursor 和删除 / 恢复状态须按[客户端连接规划](client-server-connection-plan.md)隔离。
+
 首个多设备同步已经通过 [ADR 0003](adr/0003-zero-knowledge-sync-first.md) 冻结为零知识同步服务；可信私有服务器不进入首个同步批次。未来支持两种模式时，必须在配置、UI、密钥和部署声明中明确区分，不能静默降级，也不能把“自托管”自动宣传为“零知识”。
 
 首个模式中，根密钥、内容明文、语义索引、检索、ContextPack 和记忆状态计算只存在于受信设备。服务端只中继客户端加密的不可变对象、追加操作日志、密钥封装和已枚举最小元数据；服务端数据库不是记忆 canonical truth，也不运行服务端语义查询。结构化记忆的用户修改保留版本与冲突，不简单依赖最后写入覆盖。设备撤销后必须阻止新的同步读取，并通过未来密钥分发和必要轮换控制后续数据访问。
@@ -289,7 +297,7 @@ M0 fixture 已冻结这些动作在评测中的输入与预期，但不把测试
 
 [ADR 0005](adr/0005-m0-implementation-stack.md) 已冻结 M0 为 Rust 2024 模块化单体：`radishmemory-core` 承载领域与应用边界，`radishmemory-sqlite` 实现本地持久化和 FTS5，`radishmemory-m0` 执行冻结 fixture。三个 package 在单进程内运行，不引入网络、异步运行时、Provider SDK 或服务拆分。
 
-production adapter 入口 `SqliteDatabase::open(path)` 当前使用文件数据库：SourceArtifact 正文作为独立 BLOB 保存，source / fragment / proposal / decision / record / state event / delete request / deletion evidence 由结构化表承载；FTS5、当前状态与 source lineage tip 是可重建派生数据，origin binding 和 capture audit 是 path-free 本地入口状态，ContextPack / query cache 在当前阶段不持久化。仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接；它仍执行同一 capability probe、v1 → v6 migration、连接策略、派生校验与真实 adapter 操作，但避免把文件系统逐事务同步成本混入 application-contract fixture。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。P1-S03a 的独立 package 尚无 production dependency edge；当前数据流仍未静态加密，不能被描述为已经实现 encrypted Source Vault 或覆盖 SQLite / FTS。
+production adapter 入口 `SqliteDatabase::open(path)` 当前使用文件数据库：SourceArtifact 正文作为独立 BLOB 保存，source / fragment / proposal / decision / record / state event / delete request / deletion evidence 由结构化表承载；FTS5、当前状态与 source lineage tip 是可重建派生数据，origin binding 和 capture audit 是 path-free 本地入口状态，ContextPack / query cache 在当前阶段不持久化。仅 opt-in `fixture-runner` feature 为每个合成场景建立独立内存连接；它仍执行同一 capability probe、v1 → v6 migration、连接策略、派生校验与真实 adapter 操作，但避免把文件系统逐事务同步成本混入 application-contract fixture。数据库 rowid、SQL schema、FTS 分数和 SQLite JSON 不进入长期 canonical 格式。application 已增加到 Source Vault 的第一方 runtime 依赖，显式加密用例消费认证对象并复用既有写协调器；默认桌面仍走上述 v6 路径。不能据此宣称完整 encrypted Source Vault 产品已可用或 SQLite / FTS 已静态加密。
 
 加密内容寻址 Source Vault 与 SQLite metadata 协调已由 ADR 0008 接受为阶段 1 后续方向；以下仍是后续阶段候选，不是 ADR 0005 / ADR 0008 的已接受决定：
 

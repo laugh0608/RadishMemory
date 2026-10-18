@@ -308,6 +308,26 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_workflow_contract_keeps_both_windows_test_partitions(self) -> None:
+        source = CHECK_REPO.REPO_ROOT / ".github/workflows/pr-check.yml"
+        original = source.read_text(encoding="utf-8")
+        fragments = (
+            "          - platform: Windows Source Vault\n            os: windows-latest\n            test_scope: source-vault\n",
+            "            test_scope: workspace-without-source-vault\n",
+            "cargo test --workspace --exclude radishmemory-source-vault --all-targets --all-features --locked",
+            "cargo test --package radishmemory-source-vault --all-targets --all-features --locked",
+        )
+        for fragment in fragments:
+            with self.subTest(fragment=fragment), tempfile.TemporaryDirectory() as temp_dir:
+                self.assertIn(fragment, original)
+                root = Path(temp_dir)
+                target = root / ".github/workflows/pr-check.yml"
+                target.parent.mkdir(parents=True)
+                target.write_text(original.replace(fragment, ""), encoding="utf-8")
+                errors: list[str] = []
+                CHECK_REPO.check_workflow_contract(root, errors)
+                self.assertTrue(any("missing contract fragment" in error for error in errors))
+
     def test_m0_contract_reports_missing_fragment(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -441,7 +461,7 @@ class GovernanceContractChecks(unittest.TestCase):
             self.assertEqual([], errors)
 
             current = root / "docs/status/current.md"
-            fragment = "当前 production code 仍是 SQLite v6 inline plaintext body"
+            fragment = "默认桌面产品入口仍是 SQLite v6 inline plaintext body"
             current.write_text(
                 current.read_text(encoding="utf-8").replace(fragment, ""),
                 encoding="utf-8",
@@ -467,6 +487,51 @@ class GovernanceContractChecks(unittest.TestCase):
                 "docs/adr/0006-phase1-text-markdown-file-entry.md is missing Phase 1 file entry contract fragment: radishmemory.phase1-file-entry/1",
                 errors,
             )
+
+
+
+class HostLoggingPolicyChecks(unittest.TestCase):
+    def test_exact_policy_only_and_other_sources_still_reject_sinks(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            source = root / "apps/radishmemory-desktop/src/logging.rs"
+            source.parent.mkdir(parents=True)
+            source.write_bytes((SCRIPT_PATH.parent.parent / "apps/radishmemory-desktop/src/logging.rs").read_bytes())
+            errors: list[str] = []
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+            self.assertEqual([], errors)
+            source.write_text(source.read_text() + 'fn leak() { log::error!("unreviewed"); }\n')
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+            self.assertIn("desktop logging policy differs from the reviewed sink-free implementation", errors)
+            other = source.with_name("unreviewed.rs")
+            other.write_text('fn leak() { log::error!("unreviewed"); }\n')
+            CHECK_REPO.check_phase1_file_entry_contract(root, errors)
+            self.assertIn("Phase 1 source introduces an unreviewed diagnostic sink: apps/radishmemory-desktop/src/unreviewed.rs", errors)
+
+class KeyReadObservationPolicyChecks(unittest.TestCase):
+    def test_exact_reviewed_sources_pass(self) -> None:
+        errors: list[str] = []
+        CHECK_REPO.check_key_read_observation_policy(SCRIPT_PATH.parent.parent, errors)
+        self.assertEqual([], errors)
+
+    def test_each_changed_or_missing_source_is_rejected(self) -> None:
+        names = CHECK_REPO.KEY_READ_OBSERVATION_SHA256
+        for changed in names:
+            for missing in (False, True):
+                with self.subTest(changed=changed, missing=missing):
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        root = Path(temp_dir)
+                        for name in names:
+                            if name == changed and missing:
+                                continue
+                            target = root / name
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            source = (SCRIPT_PATH.parent.parent / name).read_bytes()
+                            target.write_bytes(source + (b"// unreviewed change\n" if name == changed else b""))
+                        errors: list[str] = []
+                        CHECK_REPO.check_key_read_observation_policy(root, errors)
+                        self.assertEqual(len(errors), 1)
+                        self.assertIn(changed, errors[0])
 
 
 if __name__ == "__main__":

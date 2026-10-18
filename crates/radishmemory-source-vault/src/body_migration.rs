@@ -1,4 +1,4 @@
-//! Maintenance-only v7 -> v8 migration. Ordinary application reads remain v6.
+//! Explicit v7 -> v8 migration. The default desktop entry remains on v6.
 use radishmemory_sqlite::{BodyMigrationDatabase, BodyMigrationItem, BodyMigrationState};
 use zeroize::Zeroizing;
 
@@ -16,7 +16,7 @@ pub struct BodyMigrationReport {
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
-enum Step {
+pub(crate) enum Step {
     Inventory,
     Prepared,
     Published,
@@ -34,7 +34,7 @@ pub(crate) fn migrate(
     migrate_with_step(directory, namespace, device, load_existing, |_| Ok(()))
 }
 
-fn migrate_with_step(
+pub(crate) fn migrate_with_step(
     directory: &ObjectDirectory,
     namespace: &str,
     device: &str,

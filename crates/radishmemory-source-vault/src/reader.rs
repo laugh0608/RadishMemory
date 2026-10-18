@@ -1,4 +1,5 @@
 //! Explicit read session for a migrated library, with no plaintext fallback.
+mod snapshot;
 use crate::filesystem_support::DatabaseObservation;
 use crate::{
     KeyEncryptionKey, ObjectDirectory, PROVIDER_PROFILE, SourceVaultError, SourceVaultErrorCode,
@@ -10,6 +11,8 @@ use radishmemory_core::{
     SourceVersionSummary,
 };
 use radishmemory_sqlite::{EncryptedCaptureDatabase, ObjectReadView};
+pub use snapshot::LibraryReadSnapshot;
+pub(crate) use snapshot::snapshot;
 use std::fmt;
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 
@@ -93,6 +96,52 @@ impl LibraryReader<'_> {
         before_return()?;
         self.authenticated_sources()?;
         Ok(result)
+    }
+    /// Authenticated pending work blocks preparing a different mutation.
+    pub fn mutation_pending(&self, namespace: &Identifier) -> Result<bool> {
+        self.read(namespace, |view| view.mutation_pending())
+    }
+    pub fn resolve_source_lineage_deletion_targets(
+        &self,
+        namespace: &Identifier,
+        lineage: &Identifier,
+    ) -> Result<Vec<radishmemory_core::ObjectRef>> {
+        self.read(namespace, |view| {
+            view.resolve_source_lineage_deletion_targets(namespace, lineage)
+        })
+    }
+    pub fn load_delete_request(
+        &self,
+        namespace: &Identifier,
+        request: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeleteRequest>> {
+        self.read(namespace, |view| {
+            view.load_delete_request(namespace, request)
+        })
+    }
+    pub fn load_deletion_evidence(
+        &self,
+        namespace: &Identifier,
+        evidence: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
+        self.read(namespace, |view| {
+            view.load_deletion_evidence(namespace, evidence)
+        })
+    }
+    pub fn unfinished_delete_requests(
+        &self,
+        namespace: &Identifier,
+    ) -> Result<Vec<radishmemory_core::DeleteRequest>> {
+        self.read(namespace, |view| view.unfinished_delete_requests(namespace))
+    }
+    pub fn latest_deletion_evidence(
+        &self,
+        namespace: &Identifier,
+        request: &Identifier,
+    ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
+        self.read(namespace, |view| {
+            view.latest_deletion_evidence(namespace, request)
+        })
     }
     /// Resolves an active source by the session namespace and immutable ID.
     /// Missing and deletion-closed sources return None; corruption returns an error.

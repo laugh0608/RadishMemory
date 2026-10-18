@@ -118,6 +118,8 @@ Git 仓库只保存项目代码、文档、schema、合成 fixture 和可公开�
 - `cargo clippy --workspace --all-targets --all-features --locked -- -D warnings`；
 - `cargo test --workspace --all-targets --all-features --locked`。
 
+Windows 因完整冷构建与 Source Vault 重测试共用 10 分钟 job 曾超时，测试按 package 拆为两个必需矩阵项：`Rust Quality (Windows)` 使用 `--workspace --exclude radishmemory-source-vault`，`Rust Quality (Windows Source Vault)` 使用 `--package radishmemory-source-vault`，均保留 `--all-targets --all-features --locked`。两组并集覆盖完整 workspace，任一失败或取消均使聚合失败；Linux / macOS 继续执行完整 workspace。所有 job 仍使用 10 分钟上限，未知测试 scope 失败关闭；检查器与负向回归防止遗漏 Windows 分组或对应命令。
+
 Workflow 使用最小 `contents: read` 权限、禁用 checkout 凭据持久化、为 job 设置有限超时，并把 GitHub 官方 Actions 固定到带版本注释的完整 commit SHA；升级 Action 时必须核对官方发布、同步检查器合同并通过 PR 验证。
 
 后续按风险把 schema 兼容、记忆状态、时间冲突、权限拒绝、ContextPack 最小化、删除传播、同步冲突和供应链检查接入现有组件或新增独立 job。组件名称可以演进，`Candidate Quality` 保持稳定。

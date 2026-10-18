@@ -30,3 +30,8 @@
 同日后续[删除切片](phase1-source-vault-deletion.md) 已扩展维护 v11。报告增加 `deletion_pending_objects` 与 `deleted_objects`，分别表示待物理清理和已退役对象数，不等于整个删除请求已完成。维护会认证仍存在的删除中对象，要求退役终态的两个路径均缺失；不自动清理或推进删除请求。上述原批次验证数字保留。
 
 日终复核：后续[历史请求兼容](phase1-source-vault-legacy-deletion.md) 已使共用入口接受维护 v8 至 v12，并复验历史正文缺失凭据；该类来源不计入 `deleted_objects` 物理对象数。只观察状态，不接管或推进旧删除请求。本批已提交，当前顺位见[日终记录](../status/2026-09-26-source-vault.md)与[当前状态](../status/current.md)。
+
+
+## 后续宿主证据（2026-10-06）
+
+显式加密入口已完成真实 macOS GUI 的派生损坏重启、打开 / Verify 拒绝、显式 Rebuild、重开与精确导出；canonical 表和密文摘要未变。密文末字节损坏时打开 / Verify / Rebuild 均以 `AuthenticationFailed` 拒绝，未改写对象。范围见[恢复扩展记录](phase1-source-vault-host.md#2026-10-06-受损库重启与恢复扩展)。上述历史独立实现批次未运行 GUI 的事实保留；默认 v6 failed-open、其余 canonical / binding 损坏与取消路径仍不由这两项证据关闭。

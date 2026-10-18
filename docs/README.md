@@ -2,6 +2,8 @@
 
 本目录承载 RadishMemory 的产品、架构、记忆、隐私、集成和实施真相。
 
+客户端与同步服务的产品方向见[官方客户端与同步服务器连接规划](client-server-connection-plan.md)：同一安装包运行时选择官方端点或用户自部署后端，无需重新编译；详细模式、域隔离与后续验收以该专题为准。
+
 ## 建议阅读顺序
 
 1. [当前状态](status/current.md)：现在处于什么阶段、下一步、停止线和当前验证入口。
@@ -30,13 +32,15 @@
 24. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
 25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
     - [Phase 1 Source Vault filesystem adapter 落地记录](implementation/phase1-source-vault-filesystem.md)：P1-S03b envelope、目录 capability、不可覆盖发布、认证回读、attempt 状态与平台证据限制。
-    - [Phase 1 Source Vault key provider 落地记录](implementation/phase1-source-vault-key-provider.md)：精确平台依赖、严格读取、私有 bootstrap 编排与真实密钥库待验收边界。
+    - [Phase 1 Source Vault key provider 落地记录](implementation/phase1-source-vault-key-provider.md)：精确平台依赖、严格读取、私有 bootstrap 编排与真实密钥库分批验收边界。
     - [Phase 1 Source Vault 密钥初始化协调](implementation/phase1-source-vault-key-bootstrap.md)：P1-S04a SQLite 事务资格、v7 维护 checkpoint、并发、提交失败与恢复限制。
     - [Phase 1 Source Vault 正文迁移与恢复](implementation/phase1-source-vault-body-migration.md)：P1-S04b 首个维护切片、v8 状态契约、故障验收和未覆盖范围。
     - [Phase 1 capture 显式放弃与 orphan retirement](implementation/phase1-source-vault-abandonment.md)：维护 v10、精确 target、不可逆决定、终态防重放与故障恢复。
     - [Phase 1 object-backed verify / rebuild](implementation/phase1-source-vault-maintenance.md)：独立维护入口、派生行事务修复、失败关闭与中断恢复。
     - [Phase 1 object-backed 删除执行](implementation/phase1-source-vault-deletion.md)：维护 v11、冻结请求、引用关闭、对象清理与十组件证据。
     - [历史删除请求迁移兼容](implementation/phase1-source-vault-legacy-deletion.md)：维护 v12、原请求 / 闭包校验、旧正文执行凭据与失败恢复。
+    - [application 加密用例与生命周期](implementation/phase1-source-vault-application.md)：旧连接关闭、显式准备 / 恢复、读取 / 写入、原请求恢复及派生维护；宿主接入边界。
+    - [桌面加密宿主接入](implementation/phase1-source-vault-host.md)：串行 worker、原请求恢复、显式加密 / 维护 UI、日志策略与原生验收边界。
     - [加密资料库读取切片](implementation/phase1-source-vault-reader.md)：认证读取会话、目录 / 检索复用、精确导出衔接与宿主接入限制。
     - [Phase 1 Source Vault inventory reconciliation](implementation/phase1-source-vault-reconciliation.md)：独立 inventory 核对、pending 状态报告、committed staging link 清理与失败关闭边界。
     - [Phase 1 Source Vault 加密 capture 协调](implementation/phase1-source-vault-capture.md)：v9 请求绑定、原子提交、认证回读、幂等恢复与剩余协调范围。
@@ -44,7 +48,16 @@
 
 ## 质量与历史记录
 
+- [2026-10-18 Source Vault 日终记录与后续事项](status/2026-10-18-source-vault.md)：当天四个既有提交、受限观测代码与相关文档复核、D01 / D02 和 M01 副本范围证据，以及下一次继续时的建议。
+- [2026-10-13 Source Vault 日终记录与明日事项](status/2026-10-13-source-vault.md)：当天八个既有提交、busy 关闭 / 只读认证会话 / SecItem 读取的代码与文档复核，以及提示未减少后的有限诊断建议。
+- [2026-10-09 Source Vault 日终记录与明日事项](status/2026-10-09-source-vault.md)：当天四个提交、原请求恢复 / 锁竞争回归与真实系统取消证据复核，以及 10 月 10 日剩余宿主窗口和跨平台检查建议。
+- [2026-10-06 Source Vault 日终记录与明日事项](status/2026-10-06-source-vault.md)：当天三个提交、隔离入口与原生正常 / 受损库验收复核，以及 10 月 7 日恢复交互安排。
+
+- [2026-10-01 Source Vault 日终记录与明日事项](status/2026-10-01-source-vault.md)：当天八个提交、Windows 补丁与 application / 桌面接线复核，以及原生验收准备和 10 月 2 日安排。
+
 - [2026-09-26 Source Vault 日终记录与明日事项](status/2026-09-26-source-vault.md)：当天七个实现提交、代码与文档复核、读取 / 导出验收及 application 生命周期接入安排。
+- [P1-S05 隔离原生验收计划](evaluation/phase1-source-vault-native-acceptance.md)：显式验收入口、合成 profile 绑定、真实 Keychain / GUI 授权材料及待验场景。
+- [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；空库关闭切片仍仅准备。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。

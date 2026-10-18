@@ -1,4 +1,4 @@
-//! Explicit internal capture coordination. The application/host remains on v6.
+//! Explicit internal capture coordination. The default desktop remains on v6.
 use crate::{
     AttemptId, AttemptState, KeyEncryptionKey, ObjectDirectory, ObjectLocator, ObjectMetadata,
     ObjectWrite, PROVIDER_PROFILE, SourceVaultError, SourceVaultErrorCode, VaultMaintenanceError,
@@ -27,7 +27,7 @@ pub(crate) fn capture(
         Ok(())
     })
 }
-fn capture_with_step(
+pub(crate) fn capture_with_step(
     directory: &ObjectDirectory,
     namespace: &str,
     device: &str,

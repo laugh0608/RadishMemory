@@ -1,10 +1,14 @@
+mod backend;
 mod controller;
 mod error;
+mod logging;
 mod paths;
 mod picker;
 mod profile;
 mod runtime;
+mod startup;
 mod ui;
+mod worker;
 
 pub use controller::LibraryController;
 pub use error::{ApplicationFailureSummary, DesktopError, DesktopErrorCode, DesktopErrorReason};
@@ -15,6 +19,15 @@ pub use runtime::{ProductionRuntime, ProductionRuntimeError};
 pub use ui::RadishMemoryApp;
 
 pub fn run() -> eframe::Result {
+    let startup = startup::Startup::parse(std::env::args_os().skip(1))
+        .map_err(|error| eframe::Error::AppCreation(Box::new(error)))?;
+    // Suppress upstream diagnostics before native window creation as well as provider access.
+    logging::install().map_err(|error| eframe::Error::AppCreation(Box::new(error)))?;
+    let title = if startup.is_acceptance() {
+        "RadishMemory — Synthetic acceptance"
+    } else {
+        "RadishMemory"
+    };
     let options = eframe::NativeOptions {
         viewport: eframe::egui::ViewportBuilder::default()
             .with_app_id("io.github.laugh0608.RadishMemory")
@@ -23,8 +36,10 @@ pub fn run() -> eframe::Result {
         ..Default::default()
     };
     eframe::run_native(
-        "RadishMemory",
+        title,
         options,
-        Box::new(|_creation_context| Ok(Box::new(RadishMemoryApp::bootstrap()))),
+        Box::new(move |_creation_context| {
+            Ok(Box::new(RadishMemoryApp::bootstrap_with_startup(startup)))
+        }),
     )
 }

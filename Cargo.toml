@@ -29,6 +29,7 @@ chacha20poly1305 = { version = "=0.11.0", default-features = false, features = [
 directories = "=6.0.0"
 eframe = { version = "=0.36.1", default-features = false, features = ["accesskit", "default_fonts", "wayland", "wgpu", "x11"] }
 getrandom = { version = "=0.4.3", default-features = false }
+log = "=0.4.34"
 keyring-core = { version = "=1.0.0", default-features = false }
 radishmemory-application = { path = "crates/radishmemory-application", version = "=0.1.0" }
 radishmemory-core = { path = "crates/radishmemory-core", version = "=0.1.0" }

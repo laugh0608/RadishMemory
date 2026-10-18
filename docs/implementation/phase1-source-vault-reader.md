@@ -2,7 +2,7 @@
 
 状态：`P1-S04 object-backed read slice implemented — synthetic acceptance`（2026-09-26）。
 
-本批承接 `3dd312b` 的历史删除请求兼容，提供独立读取会话，复用既有来源、目录和检索规则。不改变 canonical schema、记忆状态或权限语义，不新增数据库迁移。普通 `SqliteDatabase::open` 仍只允许 v6；`LocalLibrary` / UI 尚未切换加密数据流。
+本批承接 `3dd312b` 的历史删除请求兼容，提供独立读取会话，复用既有来源、目录和检索规则。不改变 canonical schema、记忆状态或权限语义，不新增数据库迁移。普通 `SqliteDatabase::open` 仍只允许 v6；默认 `LocalLibrary` / UI 尚未切换加密数据流；2026-10-01 后续已完成[显式 application 读取接入](phase1-source-vault-application.md)，其证据与本批独立 reader 证据分开记录。
 
 ## 读取边界
 
@@ -12,6 +12,8 @@
 - 来源和 fragment 按 namespace 与精确 source ID 读取；不存在或已关闭删除召回的来源返回 `None`，错误 namespace 返回失败。pending / abandoned capture 不进入来源目录或搜索；即使目标不可见，库中的未知或损坏对象仍导致失败。
 - `SourceCatalog` 复用相同 SQL、版本连续性检查、captured-time / lineage 稳定排序及 offset / limit 切页逻辑。`LocalSearch` 复用相同 FTS 查询和候选校验，namespace、敏感度、可用时间、retention 和记忆 valid-time 在 top-k 前过滤；未确认 proposal 不成为搜索记忆。
 - 会话关闭释放锁和 key；会话期间其他数据库写入失败。读取结果是调用方持有的明文 canonical 值，会话不跨查询缓存解密正文；不承诺撤回先前返回的副本或进程明文取证清除。
+
+2026-10-13 的[只读动作认证会话](phase1-source-vault-application.md#2026-10-13-只读动作认证会话)在上述 reader 上增加固定目录 / 版本 / 恢复快照入口：首尾使用同一 store 连接分别双读 key，比较首尾值并在交付前再次认证对象和数据库。它只服务桌面显式打开与刷新，不改变其它 reader / 写用例的生命周期，也不跨动作保留 key 或锁。
 
 ## 本批发现并修复的 Unix 锁问题
 
