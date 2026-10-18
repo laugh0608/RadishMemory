@@ -4,7 +4,7 @@
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
-2026-10-18 下一批准备见[有限诊断与原生关闭方案](phase1-keychain-prompt-diagnostic-plan.md)：既有两轮八提示证据已离线复核；新的调用实例观测需要先实现并验收受限补丁。原生关闭另缩小为空库 SQLite 锁等待切片，不申请读取真实 Keychain、不导入资料或修改对象目录权限；本轮仅准备，GUI / 既有库持锁均未执行。该切片不替代原请求 Cancel / Confirm、末轮取消或有资料旧视图撤回。
+2026-10-18 诊断与准备进展见[有限诊断与原生关闭方案](phase1-keychain-prompt-diagnostic-plan.md)：既有两轮八提示证据已离线复核；受限补丁与冻结构建已完成，D01 单次打开验证完整调用预算但缺少逐提示交接；随后 D02 首对观测已确认入口第一读同一区间双提示，第二提示拒绝后真实失败关闭，范围见方案末节。原生关闭另缩小为空库 SQLite 锁等待切片，不申请读取真实 Keychain、不导入资料或修改对象目录权限；该关闭切片仅准备，GUI / 既有库持锁均未执行。该切片不替代原请求 Cancel / Confirm、末轮取消或有资料旧视图撤回。
 
 ## 已实现的隔离入口
 
@@ -215,6 +215,8 @@ A02 空库正常打开成功，但用户报告 9 次提示均点允许，超过�
 
 ### 2026-10-18 受限观测补丁与原生停止线
 
-call ID / begin-end 已接入 macOS 显式隔离验收入口，受 `--acceptance-key-read-trace` 和单次 OpenEncrypted 约束；本机合成结果见[实现与独立审阅](phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)。四次 secret 读取及全部认证检查保留，默认关闭。此次没有启动 GUI 或访问真实 Keychain，不能从合成预算或 trace 能力宣称提示减少。
+call ID / begin-end 已接入 macOS 显式隔离验收入口，受 `--acceptance-key-read-trace` 和单次 OpenEncrypted 约束；本机合成结果见[实现与独立审阅](phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)。四次 secret 读取及全部认证检查保留，默认关闭。补丁实现批次没有启动 GUI 或访问真实 Keychain，不能从合成预算或 trace 能力宣称提示减少。
 
-D01 的 `1cfc8d9` 默认二进制 / 匹配 dSYM、精确 trace 路径与逐事件读回预演已准备，见[冻结结果](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-冻结准备结果)；仍需独立系统操作授权及执行前实时复核。前序 N 批操作单只适用于其中已冻结的旧产物；不沿用旧行号 / 符号解释新代码，不覆盖既有八 / 九提示事实。原生首尾取消、有资料 Refresh、关闭竞争和其它平台仍按既有边界待验。
+D01 的 `1cfc8d9` 默认二进制 / 匹配 dSYM、精确 trace 路径与逐事件读回预演已准备，见[冻结结果](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-冻结准备结果)。随后经独立授权执行一次，完整 128 事件 / 4 secret / 12 attributes / 25 domain 与空库成功通过，但用户报告的八次允许未能关联逐提示记录，诊断未达目标；已正常退出并复核基线，见[实际结果](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-单次原生结果与交接缺口)。不能沿用本批授权重试。前序 N 批操作单只适用于其中已冻结的旧产物；不沿用旧行号 / 符号解释新代码，不覆盖既有八 / 九提示事实。原生首尾取消、有资料 Refresh、关闭竞争和其它平台仍按既有边界待验。
+
+随后单独授权的 [D02 首对观测](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)沿用冻结产物、新建证据目录：两个待选提示的四份 trace 前缀相同，停在入口第一读的同一 SecretSearch call，两个正向栈与匹配 dSYM 一致；用户一次允许后拒绝第二提示，完整失败 trace 与 UI KeyStoreCancelled 对应。唯一 GUI 正常退出 0，空库基线不变；只覆盖这一入口调用区间及提前拒绝，不替代末轮取消、剩余三读、busy / pending 关闭或系统内部原因解释。
