@@ -26,11 +26,17 @@ pub(crate) enum Operation {
     Read1,
     Read2,
     Label,
+    #[cfg(target_os = "macos")]
     AttributesPre,
+    #[cfg(target_os = "macos")]
     AttributesPost,
+    #[cfg(target_os = "macos")]
     AttributesLabel,
+    #[cfg(target_os = "macos")]
     AttributesSearch,
+    #[cfg(any(target_os = "macos", test))]
     SecretSearch,
+    #[cfg(any(target_os = "macos", test))]
     Domain,
 }
 

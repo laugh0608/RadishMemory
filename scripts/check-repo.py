@@ -23,7 +23,7 @@ HOST_LOGGING_POLICY_SHA256 = "22230b4a43bf5637a0522d75b5a2f1ed676b721a15834c9ecb
 # Reviewed fixed-field, opt-in acceptance trace; does not exempt any log/print sink.
 KEY_READ_OBSERVATION_SHA256 = {
     "crates/radishmemory-source-vault/src/key_read_observation.rs":
-        "1213c47a2e79b231559c9bd178fe59952cf972504a1f5b0b4ce9853572d7b204",
+        "4a7ceb909bc8c45a5afce32f60b4ac90a7cba319501c4427c43af544ecaf6c83",
     "crates/radishmemory-source-vault/src/key_read_observation/file.rs":
         "f2686df28394386a09d2c327d0f34961e4afc9c8e9369b59b9cf543db4b27486",
 }
