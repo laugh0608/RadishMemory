@@ -173,4 +173,4 @@ GUI 正常退出 0，数据 / profile / 权限与基线一致，无其它验收�
 
 macOS 隔离验收入口新增显式 `--acceptance-key-read-trace`；默认无观测作用域时沿原读取路径执行。entry / release、read 1 / 2 和实际 domain / attributes / secret 调用使用固定枚举事件，不更换 query、API、错误映射或认证顺序。成功路径仍是四次 secret、十二次 attributes 与 25 次 User domain；输出失败阻止后续调用，返回的 Data 在写 end 前取得零化 guard，失败不交付快照。业务错误与 end 故障同时发生时保留业务错误，trace 不完整即无诊断结论。
 
-允许文件、接口边界、审阅修正、独立验证及未覆盖项集中见[补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)。本次只运行合成测试和默认构建，没有启动 GUI、访问真实 Keychain 或改动依赖 / lockfile。八提示历史不因新增观测能力而改变；新构建原生验证仍须单独冻结与授权。
+允许文件、接口边界、审阅修正、独立验证及未覆盖项集中见[补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)。本次只运行合成测试和默认构建，没有启动 GUI、访问真实 Keychain 或改动依赖 / lockfile。八提示历史不因新增观测能力而改变；新构建的 D01 冻结与预演已完成，见[准备记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-冻结准备结果)；原生验证仍须单独授权并在执行前复核。

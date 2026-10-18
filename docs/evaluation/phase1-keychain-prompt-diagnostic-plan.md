@@ -45,7 +45,7 @@
 
 ### D01：未来一次空库调用实例观测
 
-D01 与下面 N 批相互独立，不能捆绑授权。D01 的补丁进展见末节；原生运行仍缺本次专用的冻结构建 / dSYM 和精确操作单，因此不提供可立即执行的命令。启用参数为完整三项隔离参数加 `--acceptance-key-read-trace`；执行前还须冻结构建身份、确切新 trace 路径并完成逐事件读回预演，再单独确认系统操作范围。
+D01 与下面 N 批相互独立，不能捆绑授权。D01 的补丁已提交，专用冻结构建 / dSYM、精确操作单和读回预演已准备，见本文末节。启用参数为完整三项隔离参数加 `--acceptance-key-read-trace`；命令与唯一目标只保存在本地忽略操作单，当前仍未授权原生执行。执行前须复核冻结身份和实时基线，再单独确认系统操作范围。
 
 未来运行最多启动一个指定 GUI、一次空库 `OpenEncrypted`；只读取唯一既有合成 slot，不增加 security metadata / ACL 探针。预计 20–35 分钟，另留 5 分钟收尾。每提示先确认请求者与目标、保持未选择，保存最新 call ID / 阶段与一次最多 1 秒、20ms 间隔的该 PID sample，再由用户单次允许。最多八次 Allow Once；第九次只作至多一次定位后交接拒绝。出现目标不明、无完整 trace 或未知阶段时立即停止允许并交接，不要求用户事后回忆总数。
 
@@ -154,3 +154,20 @@ N 批预计 15–25 分钟加 5 分钟收尾；最多两次 GUI 启动、同一�
 默认 `cargo build -p radishmemory-desktop --locked --offline` 通过；默认 normal / build / features 依赖图不含 `acceptance-test-support`。生产 logger 原 SHA-256 保持，Cargo manifest / lockfile、第三方代码与认证契约无差异。验证日志仅保存本机临时目录。末次文档补记后再次运行仓库 Python 基线与 `git diff --check`；未单独重跑未受影响的 M0 fixture runner、compile-fail doctest、Windows / Linux、GUI 或真实 Keychain 验收。
 
 收尾时仍在 `dev`，共有 25 个改动 / 新增文件（含前序五份文档），全部未暂存、未提交、未 push；本次未刷新远程。检查 / 构建进程已退出，未启动长期服务；没有操作保留库、原 key、ACL、旧包装 / dSYM 或原始证据。此次默认构建不是 D01 专用冻结产物，后续原生执行须按上文另行冻结与确认。
+
+
+## 2026-10-18 D01 冻结准备结果
+
+项目所有者随后要求提交本批改动并准备 D01，明确暂不 push、启动 GUI 或访问真实 Keychain。25 份实现 / 文档 / 检查器改动已提交为 `1cfc8d9`；本节是其后的独立准备记录，不改写前序未提交状态。
+
+以该提交执行默认 locked / offline desktop 构建，将逐字节相同的 binary 复制进独立本地包装，再由 dsymutil 生成本批 dSYM；二进制与 DWARF 的 arm64 UUID 同为 `80470321-B219-356D-B1D9-8199B1DF7426`。离线 atos 已正向映射 `checked_attributes` 与 `read_checked_secret` 到本次 macos.rs:190 / :171。仅保留链接器原有 ad-hoc 签名，没有重签、证书访问、安装或分发签名；Info.plist 未绑定签名，不以包装身份推断当前 slot 授权。旧包装、符号和原生证据全部保留。
+
+本地 `freeze.json` 固定 29 份产物的长度 / SHA-256，含 binary、dSYM、目标清单、精确操作单、只读工具和预演证据；清单摘要为 `2e6f4c0fd2e56399bd7656bb63759a82ab974be068fd7cbc5f595fad3ce7df65`。清单是本地一致性校验，不是独立签名证明。默认依赖图不含 `acceptance-test-support`；原生 trace、GUI 日志和 native-preflight 回执尚不存在。所有路径、合成 slot、trace、样本和命令仅留本地忽略目录，不进入 Git / CI。
+
+读回工具的 9 项 stdlib 测试通过，覆盖完整 128 事件、127 个合法前缀、各失败 end 的逐层退出、固定字段 / 编号 / 阶段 / 顺序 / 限额 / 重复 JSON key、文件与 CLI 拒绝、不覆盖证据。前置工具的一项参数化测试覆盖 9 个成功 / 漂移场景：摘要、源代码、工作区、旧输出、UUID、库基线、旧回执和越界清单路径。独立 Rust 小型 probe 直接链接本次默认 rlib，只执行文件观测作用域并返回合成业务错误；动作内可读 begin、返回后可读失败 end，未引用 / 调用 provider 或 GUI。该探针证明正常运行下的逐事件可见性，不证明断电持久或真实四读效果。
+
+实际准备前置检查通过：29 份文件摘要、UUID、源码及工作区一致；固定空合成库的 state / extra 与保存基线完全匹配；真实 trace 不存在。只读基线没有验证系统 slot、ACL 或凭据内容。操作单限制最多一个 GUI、一次 OpenEncrypted；每提示先保存 trace 前缀、最多一次指定 PID 的 1 秒 / 20ms sample、再保存同一前缀并正向符号定位。首对已支持同一 SecretSearch 区间就交接拒绝收尾；上限仍为八次 Allow Once，第九次只定位后拒绝。目标不明、记录变化 / 残缺或预算异常即停止，不为补足完整预算继续认证。
+
+准备文档更新后，完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 按已验证的本地端口权限方式在沙箱外离线通过：270 文件、notices、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 由父测试调用，45 项检查器回归。末次事实补记后再次运行 Python 仓库基线与 `git diff --check`；没有修改生产实现、依赖或 lockfile。准备结果以独立文档提交保存，冻结产物仍只在本地忽略目录。
+
+D01 仍为“准备完成、待独立原生授权”，未执行任何 GUI / Keychain / sample、业务写入或远程操作；旧 N 批与其它验收仍独立。新操作单要求执行前重新核对精确产物与库基线，不能直接沿用准备时回执，也不能以新摘要替换冻结漂移。
