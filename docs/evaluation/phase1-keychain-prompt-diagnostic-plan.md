@@ -1,6 +1,6 @@
 # Keychain 重复提示有限诊断与原生关闭验收方案
 
-日期：2026-10-18。状态：既有证据复核、受限观测补丁及冻结准备已完成。D01 完整调用预算成立但缺少逐提示交接；随后 D02 在首对提示处取得同一 SecretSearch 调用区间证据，第二提示拒绝后真实 KeyStoreCancelled 失败关闭，已正常收尾。实际范围与限制见末节。
+日期：2026-10-18。状态：D01 / D02 已收尾；D02 证明首对位于同一 SecretSearch 调用区间，第二提示拒绝后真实 KeyStoreCancelled 失败关闭。M01 首次执行在静态身份前置阶段失败，目标查询计数全部为零；离线定位后，副本范围 v2 已实现、合成验证并重新冻结，新 native helper 尚未执行。副本结果不能代表原 app 授权，后续真实访问须另行精确授权。实际范围与限制见后文各批记录。
 
 初始计划批次由项目所有者授权复核既有证据、完成有限诊断方案和原生验收操作单；当时明确禁止启动 GUI 或访问真实 Keychain。本文承接 [provider 记录](../implementation/phase1-source-vault-key-provider.md#2026-10-13-secitem-候选的单次原生结果)与[原生验收矩阵](phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)，不替代密钥读取契约，也不构成未来系统操作授权。
 
@@ -203,3 +203,182 @@ D02 只更换证据目录，应用名称仍为原冻结包装。Agent 最初预�
 该结论不解释 securityd 内部为何多次授权，也不推广到余下三读、历史全部八 / 九提示或其它操作。D01 已记录的完整四读预算与 D02 的提前拒绝是两个独立范围；本次不声称完整四读成功、末轮取消、有资料 Refresh、busy / pending 关闭或 P1-S05 全部通过。后续先离线审阅系统授权模式与现有复验契约，不能据此直接减少四读、删除认证检查、跨动作缓存或采用永久许可。新增原生实验另定精确范围，不沿用已收尾批次的授权。
 
 D02 收尾文档更新后，完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 离线通过：270 文件基线、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 由父测试调用；末次事实补记后再次运行 Python 仓库基线与 `git diff --check`。四份文档包含 D01 / D02 结果，仍未暂存或提交，`dev` 保留此前两个未推送提交；没有 push，全部本批 GUI / sample / 检查进程已退出。
+
+## 2026-10-18 M01 固定目标元数据核对方案
+
+D01 / D02 四份记录随后按项目所有者要求提交为 `4c3a0bd`，未 push。项目所有者继续授权公开源码审阅、准备并审阅本方案，明确保留四次读取及全部认证检查，禁止真实 Keychain 访问、GUI 与 push。本方案准备阶段只交付方案、API 审阅和本地目标绑定；当时未实现或运行元数据 helper，也未验证当前 slot / ACL。后续本地实现见本页下一节。旧 D01 / D02 原生授权均已结束。
+
+### 来源与证据边界
+
+现有样本记录的 Security 为 `62460.1.3`；官方标签及 `Security-62460` 前缀查询未找到对应版本。本次参考 `Security-61901.120.67`、commit `97c3a4296c1ea06b0fe1877a7e616aa84450b5b2`，不宣称与当前运行二进制一致。源码仅作本地审阅，保留 Apple 版权、APSL 2.0、原始文件及 URL / SHA-256 清单，不集成进产品。[官方标签](https://github.com/apple-oss-distributions/Security/tags)
+
+- 常规 ACL 后另有 partition 校验；解密在允许 UI 且 partition 不匹配时可以再次提示。普通一次允许不执行持久授权回调。此机制支持双提示假设，但不证明 D02 的实际授权类型。[服务端检查](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/securityd/src/acls.cpp#L121)、[提示回调](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/securityd/src/acl_keychain.cpp#L246)
+- 该版本的 Keychain 访问确认本身要求密码；flags 为零不排除密码提示，两个密码框不证明两次解锁。[提示实现](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/securityd/src/agentquery.cpp#L494)
+- `SecTrustedApplicationCopyData` 返回路径提示，旧工具的路径摘要不是代码要求。`SecTrustedApplicationCopyRequirement` 才取出已存要求，但属于私有 SPI；成功且 NULL 表示未保存要求，不表示匹配。[实现](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/OSX/libsecurity_keychain/lib/SecTrustedApplication.cpp#L63)、[SPI 定义](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/OSX/libsecurity_keychain/lib/SecTrustedApplicationPriv.h#L70)
+- partition subject 在该版本的 ACL 简单内容中以十六进制 payload 暴露；普通提示 description 和 Integrity 条目不是 partition。此编码为版本相关实现细节，非稳定公共协议。[ACL 解析](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/OSX/libsecurity_keychain/lib/ACL.cpp#L418)、[内容转换](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/OSX/libsecurity_keychain/lib/SecACL.cpp#L123)
+
+### 固定输入与禁止交互
+
+M01 只针对 D02 已绑定的唯一合成 service / account、历史 User domain 默认 keychain 路径和原 D01 executable；不按当前窗口、helper 自身、bundle 名称或默认构建目录猜测目标。精确路径、slot、保存的 CDHash、原 freeze / targets 摘要只在独立忽略操作单中保存。历史路径绑定不是当前 keychain 身份已验证。
+
+本轮准备只读既有文件：复算原 D01 29 份冻结产物、源码、D02 目标及保存的签名记录，绑定 binary / Info.plist / dSYM。CDHash 是签名元数据，不能用整文件 SHA-256 代替。保留 ad-hoc、无 TeamIdentifier、`Info.plist=not bound` 的限制；不重签、创建证书或启动 app，本轮不调用代码签名 / Keychain API 补证。
+
+未来 helper 为单次、单线程的任务专用 CLI。先验证精确清单、显式运行门禁和独占输出，再在任何 Keychain 查询前成功调用 `SecKeychainSetUserInteractionAllowed(false)`，以 `SecKeychainGetUserInteractionAllowed` 读回 false。失败即退出；设置只限 helper 进程，不改全局偏好，不在错误路径重新开启 UI。禁用交互是调用契约，不能在未验证当前 OS 前承诺绝对零 UI。
+
+交互被禁用、拒绝、锁定、缺失和其它错误均为真实停止结果，不重试、不解锁、不改 flags、不输入密码；不采用跳过需认证条目的查询或 data-protection backend。意外弹窗即越界，无允许额度；记录阶段并交接用户取消，不能自动点击、再次调用或把取消写成成功。
+
+### 方案冻结时的调用顺序
+
+以下为方案冻结时的调用规格；实现和命令冻结结果见下一节。真实访问仍须独立授权。
+
+1. **冻结身份**：对固定 executable 建立 `SecStaticCodeRef`，先完整静态校验，指定 `kSecCSNoNetworkAccess`，不跳过 executable / resources、不启用网络或 Gatekeeper 操作。错误即停止，不降低校验或重签。此结果仅是离线静态结论，不等于在线信任或 securityd 动态校验。私有 SPI 符号须在 Keychain 访问前确认可用；缺失即停止，不枚举其它私有入口、解析系统文件或 fallback 到路径比较。
+2. **限定 keychain**：解析一次 User domain 默认 keychain，核对保存路径及文件身份，拒绝非预期 symlink / 类型；漂移即停，不修改默认值或扩大 search list。结束前只再核对一次相同 domain / 文件身份。无需读取整个 login keychain 文件内容、计算摘要或要求其 mtime 不变，避免把其它正常系统活动当成目标漂移。
+3. **唯一目标查询**：第一轮 `SecItemCopyMatching` 使用一个固定 keychain、GenericPassword、精确 service / account、`kSecMatchLimitAll`，仅返回 attributes、item ref 和 persistent ref，绝不请求 `kSecReturnData`。**label 不进过滤条件**；结果必须恰好一项，再核对 class / service / account / label，否则停止。这样不会以 label 掩盖重复或异常目标。persistent ref 只在内存比较前后条目身份，不保存或输出。
+4. **复制 ACL**：对唯一 item 使用 `SecKeychainItemCopyAccess`、`SecAccessCopyACLList`，逐项使用 `SecACLCopyAuthorizations` / `SecACLCopyContents`。不支持结构或错误即停止。禁止 secret API、add / update / delete、SetAccess / ACL setter、key 导入导出、锁定 / 解锁及管理员操作。metadata-only 仍是实际系统访问，可能需要认证、产生内部缓存或访问痕迹，不能承诺 OS 零写入。
+5. **比较和二次复核**：按下表在内存比较，然后对相同固定查询及 access / ACL 做且仅做一次第二轮读取，要求 persistent ref、精确属性、完整 ACL 内容和已存要求内容一致；对所有已支持 ACL 的应用项复制已存要求用于稳定性比较，仅对 Decrypt / Any 项评估匹配；编码保留顺序、重复、空 / NULL 区别，不只比较计数或路径。最后复核 domain、冻结输入与文件身份；任何变化记 `unstable`，没有第三轮。两次一致不等于原子快照，也不排除中间变更后恢复；未证明框架缓存已失效，不能把第二轮称为独立刷新后的系统状态，不为刷新增加第三轮或私有缓存操作。
+
+预算上限为 2 次 item search、2 次 item access copy、2 次 ACL list copy、2 次 domain 解析。每轮至多 32 项 ACL、每项 64 个应用且总应用数至多 128；单个 requirement 编码至多 32 KiB，partition 解码至多 64 KiB / 128 项 / 每项 256 ASCII 字节；越限停止，不截断后下结论。这些是诊断接受限额，不保证 OS API 内部分配受同样限制。secret、业务动作、GUI 和系统提示的允许预算均为零。
+
+### 比较方法与结果
+
+| 对象 | 比较方法 | 结论边界 |
+| --- | --- | --- |
+| 冻结构建 | 整文件摘要匹配；静态签名的 arm64、ad-hoc、identifier、无团队 / 证书、CDHash 与保存证据匹配，完整静态校验通过。只对这个已确认 ad-hoc 切片推导 `cdhash:` 加 `kSecCodeInfoUnique` 的小写十六进制；签名类别变化即停止 | `frozen_identity_match` / `drift` / `unknown`。推导值称 candidate partition，不称 securityd 已观测值；不能用 helper CDHash、bundle ID、整文件 SHA-256 代替 |
+| partition | 仅接受一个 authorizations 只含 PartitionID 的简单条目；description 按严格偶数位 hex 解码为有界 XML plist，根为单一 `Partitions` 字符串数组。拒绝重复键、外部实体 / DTD 外取、未知结构；与 candidate 完整字符串精确比较 | `candidate_present` / `candidate_absent`。缺失 / 多个条目、空数组、重复成员、格式不支持单列异常，不当 absent；不调用修改命令修复 |
+| 可信应用要求 | 对含 Decrypt 或 Any 授权的简单 ACL，用 SPI 取**已存** `SecRequirementRef`，以冻结 static code 执行 `SecStaticCodeCheckValidity(..., kSecCSNoNetworkAccess, stored_requirement)`；不用 CreateFromPath 重建要求，不比较要求文本相等，不执行 ACL 中的路径 | 每项 `offline_static_match` / `requirement_mismatch` / `no_stored_requirement` / `error`。明确的要求不匹配与其它错误分开；NULL 要求保留 legacy 未知。NULL app list 单列 `allow_all_form`、空列表单列 `prompt_only`。未知项阻止“全部不匹配”的否定结论 |
+
+candidate 推导依据[公开客户端分类](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/securityd/src/clientid.cpp#L187)；要求比较对照[服务端代码要求验证](https://github.com/apple-oss-distributions/Security/blob/97c3a4296c1ea06b0fe1877a7e616aa84450b5b2/securityd/src/codesigdb.cpp#L74)。静态匹配不等于整个 ACL 通过，仍有提示策略、其它 subject、实时进程与版本差异；helper 的访问结果也不能代表冻结 app 的认证结果。
+
+| 稳定结果 | 解释 |
+| --- | --- |
+| 未找到静态信任匹配且 candidate absent | 加强“常规授权再加 partition 授权”候选解释，仍不证明 D02 实际分支与顺序；否定结论要求所有适用项均完整解释且没有 allow-all |
+| 有静态信任匹配且 candidate absent | 支持继续核对 partition，不能解释常规提示为何出现，保留运行态 / 策略差异 |
+| candidate present | 当前元数据不支持 candidate 不匹配，不能倒推 D02 当时状态，也不排除版本推导误差 |
+| 漂移、SPI 缺失、未知结构、拒绝或交互被禁用 | 记录未完成 / 无结论，不补查 secret、不扩大权限、不反复采集 |
+
+### 输出、收尾与审阅结论
+
+原始 partition、requirement 文本 / blob、description、可信应用路径、attributes 和 persistent ref 只在内存比较，退出前释放，不打印 CF 对象 / Debug / 原始错误描述。不声称释放能清除 OS 缓冲、swap 或系统日志。0700 目录内独占创建 0600 结果文件，最多 64 KiB，只含版本、阶段、固定错误枚举 / 数值 OSStatus、计数、局部编号和比较枚举；第二轮及收尾复核全部通过后才写成功。部分结果不是成功，正式文档只提炼匿名结论，原始运行文件不进 Git / CI、不外发。
+
+预计将来正常 CLI 小于 30 秒，人工核对及收尾约 5–10 分钟。30 秒未结束记超时 / 未完成，不新开 helper 或继续查询，实际退出前不称收尾。执行操作单须冻结超时监督与单个 helper 的终止方式，不假设同步 Security API 可硬取消，也不结束 securityd / SecurityAgent。意外 UI 交接取消后等待真实返回；无法返回则报告未完成，不扩大系统操作。方案不申请 key / ACL 写入，因此没有相应回滚动作，也不承诺恢复 OS 内部痕迹；输出保留，清理另行授权。
+
+实施后的合成检查至少覆盖：无授权 / 漂移时零调用；禁 UI 设置 / 读回失败；缺失 / 重复目标与 label 异常；partition 编码正反例、重复键 / 超限 / 未支持；要求匹配 / 不匹配 / NULL / SPI 缺失；NULL 与空应用列表；两轮 item / ACL / domain 漂移；输出失败、超时及无第三次调用。使用 mock 系统边界与自建合成数据，不连接真实 slot，不把 parser 通过写成当前 OS 可用。
+
+静态审阅已收口旧工具的 label 预过滤、路径摘要误作身份、helper 身份混淆、partition description 误读、NULL 要求误判和隐式 UI 重试问题。**方案冻结时可进入本地 helper 实现与合成验证评审，不具备真实执行资格。** SPI 与版本相关编码只用于本地诊断候选，不进入生产 provider、依赖或公共协议。当时 helper 源码 / 编译产物 / 精确命令、超时实现和合成结果尚未交付；后续准备见下一节，不能提前执行原生访问。
+
+生产四次 secret、十二次 attributes、25 次 User domain 成功预算，以及唯一性、identity、label、domain、双读、首尾 key 一致性和最终对象 / 数据库复验全部保持。M01 两个 metadata 观察点是未来独立诊断预算，不替换生产检查；P1-S05、其它原生验收和历史第九次提示仍未关闭。
+
+本轮实际准备复核原 D01 freeze 摘要、29 份产物和 11 份源码摘要全部匹配；从已保存签名记录提取 candidate，没有调用签名 / Keychain API。独立本地操作单、目标绑定、30 份官方源码来源清单与静态审阅结果均留忽略目录。完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 在既有合成本地端口权限范围内离线通过：270 文件基线、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 按父测试约定执行。末次补记后复核 Python 仓库基线与 `git diff --check`；未新增 helper 测试、单独重跑检查器回归或进行原生 / 跨平台验证。只修改本方案和当前状态两份文档，未暂存 / 提交 / push；`dev` 保留三个未推送提交，检查进程已退出，无 GUI 或长期服务。
+
+## 2026-10-18 M01 本地实现、合成验证与冻结
+
+项目所有者随后授权按 M01 方案实现本地 helper、完成合成测试与独立审阅、冻结精确命令 / 超时收尾 / 输出边界；明确保留四次读取及全部认证检查，暂不执行真实 Keychain 访问、不启动 GUI、不 push。本批交付只在独立忽略目录，未修改产品代码、依赖、lockfile 或公共协议。这里的审阅为主代理在实现完成后单独进行的静态复核，不是第二位人员或子代理审阅。
+
+### 已实现和冻结
+
+- 共享 Objective-C 引擎负责禁交互前置条件、两轮固定目标与完整 ACL 稳定性、partition 严格解析、已存要求三态和尝试预算；原生 Security adapter 只编译，没有执行，包括无参数门禁也未运行。Foundation 合成 backend 与原生 adapter 分开链接，合成程序不能转入真实 provider。
+- 原生路径先检查固定文件、门禁与输出，再禁交互 / 读回，确认私有 SPI 来源、原 D01 arm64 ad-hoc 静态身份和完整离线校验；每个阶段均有输出监督 ACK。item 查询不带 label，返回唯一结果后再核对；不请求 data、不修改 key / ACL。两轮上限为 domain / item / access / ACL list 各两次，计数在实际调用前递增；失败后不进入下一阶段。
+- Python 监督器只接受离线检查或一个固定目标原生命令；普通文件检查无原生访问。精确绝对路径、目标常量、命令、编译器 / SDK / Python 信息和输出位置仅记本地操作单。21 份源文件、编译产物、合成日志、操作单与静态审阅结果已冻结；`freeze.json` 的 SHA-256 为 `916bc7d5e9c564acff8e4efee2ec3ecd6b8575ad5fb4b1b47434d428fe54b7f6`。原 29 份产物、11 份源码和原 freeze 共 41 份普通文件由不链接 Security adapter 的文件 guard driver 两遍核对通过；监督器的真实 `--check-offline` 也已通过，明确回执 `native_started=false`。
+
+### 超时、输出与停止条件
+
+监督器从子进程建立后计时 30 秒，超时记未完成；只对自己持有的唯一子进程发一次 TERM，5 秒未退出则一次 KILL，再等至多 5 秒回收。native 自身另设 35 秒 alarm 覆盖门禁 / ACK 等待；子进程已退出但管道未关闭，最多再等 1 秒并记异常。此为有界监督策略，不承诺不可中断内核调用、进程启动或文件 I/O 的硬实时终止；未回收必须如实报告，不自动重跑或杀系统服务。
+
+独占输出为 0700 目录内 0600 单链接文件；已有输出目录即拒绝，每阶段 ACK 前检查目录 / 文件身份、权限和空文件状态。stdout 帧限量解析，stderr 只记出现与否且出现即失败，不落盘原文。结果最多 64 KiB，只保留比较枚举、局部编号、计数、固定错误 / 数值 OSStatus、所拥有子进程的退出 / 信号 / 耗时。原始 attributes、partition、requirement、应用路径、description 和 persistent ref 不写日志。成功须同时满足二轮比较及文件复核、写入 / fsync / 读回验证、子进程已回收、CLI 退出 0 和 `result_verified=true`；部分文件不是成功证据。
+
+### 合成测试与审阅证据
+
+35 项合成测试通过，包含各调用失败的精确前缀 / 尝试计数、UI 前置失败、身份 / label / persistent ref 漂移、完整 ACL / 非 Decrypt 要求漂移、partition 异常与限额、要求匹配 / 不匹配 / NULL、NULL / 空应用列表、协议严格类型、隐私哨兵、输出异常、TERM / KILL 回收及退出后遗留管道。首轮沙箱中 Xcode Python 启动器的额外 stderr 导致三项监督测试失败；保留原始日志，按权限流程在沙箱外使用相同合成入口复跑通过，没有过滤 stderr 掩盖问题。最后复跑仍为 35 项通过。
+
+实现后的静态复核发现并修正 CF / ARC 生命周期、尝试计数、DOCTYPE 位置、退出后管道等待、JSON 布尔版本 / 深层解析、增长文件读取上界及回收后结果生成等问题；相关可合成场景进入回归。原生函数白名单和固定 query 内容完成静态核对。没有把测试替身成功当成系统 API 兼容证据。
+
+实现冻结时尚未验证：私有 SPI 在当前 OS 的可用性 / ABI、legacy SecItem 的组合返回形状、当前 partition 编码、缓存行为、禁 UI 实际效果和冻结 app 的真实静态校验结果。公开源码与运行版本差异保持；本地清单也不是抗同用户篡改的签名。**本地实现与准备已完成，当时真实访问未执行、未获准备批次授权**；后续只可按冻结操作单另行精确授权，遇未知结构 / 拒绝 / 意外提示即停止，不能因本批通过而解释 D02 的实际内部路径。
+
+生产四次 secret、十二次 attributes、25 次 User domain 及唯一性、identity、label、双读、首尾 key 一致性和最终对象 / 数据库复验全部保持。P1-S05、其余原生窗口及历史第九次提示继续待验。没有 GUI、真实 key / ACL 操作、提交、push 或其它远程写入；忽略产物保留，当前仅两份正式文档存在未提交改动，`dev` 保留三个未推送提交。
+
+本批完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 已离线通过：270 文件基线、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 按父测试约定执行。末次事实补记后再次运行 Python 仓库基线与 `git diff --check`；补查首次误用系统 Python 3.9，因仓库 notices 检查所需 `tomllib` 缺失失败，改回完整检查所用的默认 Python 3.14.5 后通过，原错误日志保留。M01 监督器自身仍以 Python 3.9.6 合成验证，不需要该模块。本批未单独重跑 45 项检查器回归、默认 desktop 构建、真实 Keychain / 签名 API 或 Windows / Linux 验证；此前证据不扩大。全部合成测试和仓库检查进程已退出，无原生 helper / GUI / 长期服务。
+
+## 2026-10-18 M01 单次执行与身份前置停止
+
+项目所有者明确授权按冻结操作单执行一次固定目标元数据核对，允许真实 Keychain 元数据访问，禁止 secret 读取、key / ACL 修改、提示允许、重试、GUI 和 push，继续保留生产四读及全部认证检查。执行前核对工作区仍为 `dev` 领先远端三个提交、两份既有文档改动；本地 21 份冻结文件和离线门禁通过，唯一原生输出目录尚不存在。只执行一次冻结原生命令，没有修改 helper、目标或冻结清单。
+
+**本次结果为 `incomplete`，不是元数据核对通过。** 监督器退出码 2，终端回执 `result_verified=true`、`child_reaped=true`；原生子进程退出码 2，监督耗时 127 ms，无 stderr、未发送 TERM / KILL。项目所有者确认没有出现系统提示。
+
+| 观测 | 实际结果与边界 |
+| --- | --- |
+| 停止阶段 | `identity`，`static_code_failed`，OSStatus `-67056` |
+| 前置条件 | 按冻结控制流，普通文件前置检查、禁 UI 设置 / false 读回、SPI 符号及来源检查、thin arm64 header 检查已通过；SPI 获取已存 requirement 的实际调用尚未发生，不能据此证明 ABI / 条目兼容性 |
+| 错误含义 | 本机 SDK 的 `CSCommon.h` 定义为 `errSecCSResourcesNotFound`：代码对象未找到签名所要求的资源。静态对象创建和完整校验共用本 helper 的错误枚举，现有回执不能区分具体调用，也不能确定资源布局、对象路径选择或其它根因 |
+| 查询预算 | domain、item、access、ACL list 实际尝试计数全部为 0；尚未解析目标 domain 或取得条目、partition、可信应用要求 |
+| 数据与修改 | 没有 secret 读取、key / ACL 修改或业务动作；没有获得 candidate present / absent 或要求匹配结论，不解释 D02 的内部授权顺序 |
+| 收尾 | 唯一子进程已真实回收；0700 输出目录内只有 0600 单链接结果文件，写入 / fsync / 读回验真通过。原始回执与批次索引保留在本机忽略目录，没有清理或重跑 |
+
+监督器内的普通文件后置检查未报告漂移，随后又仅用文件读取复算 21 份 helper 冻结文件、原 29 份产物、11 份源码、原 freeze、M01 目标单和 D02 targets，全部保持；没有为补证再次调用签名 / Keychain API。既有四次 secret、十二次 attributes、25 次 User domain 及全部认证检查未改变。CLI 设置的禁交互状态随进程结束，不宣称 OS 内部缓存 / 访问记录已撤销。
+
+本次单次授权已消耗并收尾；不得直接换路径、重签、跳过 resource 校验、降低静态校验或修改 helper 后重试。下一步仅建议离线核对冻结签名资源布局与 static-code 路径契约，先形成可审阅判断；任何修订及新的原生尝试另定精确范围。当前 metadata、partition 和已存要求均未知，P1-S05、其它原生验收及历史第九次提示继续待验。无 GUI、提交、push 或远程状态修改，运行产物保留，两份正式文档继续未提交。
+
+本次结果文档的完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 离线通过：270 文件基线、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 按父测试约定执行；事实补记后复核 Python 仓库基线与 `git diff --check`。本次没有重跑 M01 合成套件、重建 helper 或默认 desktop，也没有其它平台 / GUI 验证。全部本次命令与检查进程已退出，未提交 / push，`dev` 继续领先远端三个提交。
+
+## 2026-10-18 M01 签名资源布局与静态路径离线定位
+
+项目所有者授权继续离线核对冻结签名的资源布局和 helper 的静态代码对象路径，定位 `-67056` 并给出最小修正方案；不重签、不跳过校验、不再次访问 Keychain、不启动 GUI、不 push，保留四次读取及全部认证检查。本批没有执行原 M01 helper / supervisor，没有改变原冻结包装、helper 或一次运行结果。
+
+### 原因与直接证据
+
+**原因已定位为静态代码对象范围与签名形态不一致：冻结 Mach-O 是独立的 linker-signed ad-hoc executable，放入手工 `.app` 包装后，M01 传入其 executable 路径仍被系统识别为整个 bundle；完整 bundle 校验遇到缺少资源封装的布局而返回 `-67056`。** 这不是已证明的二进制损坏，也不是已证明某个曾经签封的资源被删除。
+
+当前冻结包装只有 `Contents/Info.plist` 和 `Contents/MacOS` 下的 executable，没有 `_CodeSignature/CodeResources`。冻结时的保存记录已明确 `linker-signed`、`Info.plist=not bound`、`Sealed Resources=none`。本轮直接读取 Mach-O / SuperBlob / CodeDirectory，确认只有一个 CodeDirectory、没有 CMS、flags `0x20002`、special slots 为 0；15,490 个 4 KiB 代码页的 SHA-256 全部匹配，完整文件摘要、identifier 和 CDHash 也与冻结证据一致。此页摘要检查不冒充系统完整验证。
+
+本机 SDK `SecStaticCode.h` 明确说明：传入 bundle 内主 executable 的 URL，通常仍识别整个 bundle；`SecCodeCopyPath` 对该对象返回 bundle 根。专用离线探针只引用四个公开静态代码函数：`SecStaticCodeCreateWithPath`、`SecCodeCopyPath`、`SecCodeCopySigningInformation` 和 `SecStaticCodeCheckValidity`，没有 Keychain API、私有 SPI、目标程序启动或签名功能。以三个固定文件路径做一次对照，全部使用 `kSecCSNoNetworkAccess`，没有任何 executable / resource 跳过标志：
+
+| 输入 | 创建对象 | 系统识别的对象路径 | 完整静态校验 |
+| --- | --- | --- | --- |
+| 原包装内 executable | 成功 | 原 `.app` 根 | `-67056` |
+| 原 `.app` 根 | 成功 | 原 `.app` 根 | `-67056` |
+| bundle 外逐字节一致的独立副本 | 成功 | 副本文件自身 | 成功 |
+
+三者均返回与保存记录一致的 identifier / CDHash 和 `0x20002` flags，无 CMS、证书或 TeamIdentifier；探针退出码 0、无 stderr。这次对照将复现的失败定位到 `CheckValidity`；历史 M01 回执仍保留共用错误枚举的事实，不改写为当时已有逐 API 证据。把原传入路径简单改为 `.app` 根不会修复错误。整个过程没有联网、重签、Keychain 查询或原 M01 重试，静态探针已退出。
+
+### 最小修正方案及语义停止线
+
+以下记录离线定位阶段的方案；当时没有修改 helper 或新增真实访问资格，后续实现见下一节：
+
+1. **分离原目标与校验副本**。保留原 bundle / executable / `Info.plist` 和原 M01 证据；下一版单独冻结 bundle 外的同字节、单链接副本。原 executable 继续承担来源、完整摘要、thin arm64 和首尾稳定性检查；副本须与原文件逐字节 / SHA-256 一致，首尾复核身份，完整离线静态校验必须通过，不允许错误后临时换路径。
+2. **同时修正路径与身份断言**。对副本建立 static code，严格检查 `SecCodeCopyPath` 和 `kSecCodeInfoMainExecutable` 都指向该副本，再核对原冻结 identifier / CDHash、ad-hoc / linker flags、无证书 / TeamIdentifier。不能只替换 `CreateWithPath` 参数而保留旧 main-executable 路径断言；固定 Keychain target、原 app 和 candidate 来源均不改变。
+3. **限制结果口径**。结果只能说明完整验证的 standalone Mach-O 副本；不能表示原 bundle 或其 `Info.plist` / 资源已被签名保护。已存 requirement 若在副本环境评估，也只是 copy-scoped observation：bundle metadata / 路径上下文可能不同，尤其不能把副本 mismatch 当作原 app 不受信任，不能沿用“全部不匹配且 candidate absent”的原因判据。在没有可靠等价性证据前，原 app 要求匹配结论保持 unknown。
+4. **拆分错误并补验证**。区分静态对象创建与完整校验失败，保留 OSStatus；同步配置、文件 guard、共享输出协议、监督器白名单与合成用例，覆盖副本漂移、识别对象路径异常、bundle-dependent 要求不能升级为原 app 结论等边界。下一版另行审阅和冻结，不复用已消耗的原生授权。
+
+该方案改变 M01 的静态比较对象和结果范围，须先确认该诊断范围再实施；它不是让原 bundle 的失败无声转为成功。若仍要求原 `.app` 整体完整有效作为前提，在本轮“不重签、不改冻结包装、不降低校验”的约束下，没有仅靠换路径即可通过的修正，继续失败关闭。生产四次 secret、十二次 attributes、25 次 User domain 及全部认证检查不受该方案影响。
+
+精确路径、普通文件分析、静态探针源码 / 结果、本机 SDK 头文件摘要和最小方案只留本地独立忽略目录；原 21 份 helper 冻结文件、D01 29 份产物 / 11 份源码、目标单 / freeze 及 M01 单次结果已在收尾复核保持，副本与原 executable 的完整摘要仍一致。没有应用修正、重新冻结旧清单、提交或 push；当前 partition / 已存要求仍未取得，P1-S05 与其它停止线保持。
+
+本批诊断文档的完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 离线通过：270 文件基线、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 按父测试约定执行；事实补记后再次核对 Python 仓库基线与 `git diff --check`。本次没有重跑 M01 合成套件、默认 desktop 构建、Keychain / GUI 或其它平台验收。诊断探针与检查进程已退出，仅两份正式文档未提交；`dev` 保留三个未推送提交，未 push。
+
+## 2026-10-18 M01 副本范围 v2 实现与重新冻结
+
+项目所有者明确授权实施原目标 / 校验副本分离、限定副本结果、拆分创建与校验错误，完成合成测试、审阅及重新冻结；保留原冻结件、单次回执、四次读取和全部认证检查，禁止本批 Keychain 访问、重签、跳过校验、GUI 和 push。本版置于新的独立忽略目录，未改写旧 helper、freeze、包装或 `-67056` 单次回执，也未把新方案实施视为原 app 资源签封问题已修复。
+
+### 实现与结果范围
+
+- **双路径绑定**：`M01OriginalExecutable` 仍是原 D01 包装内 executable；`M01ValidationCopy` 是独占创建的 bundle 外同字节副本。原生和监督器两种文件 guard 均核对摘要、逐字节相等、不同 inode、单链接、无 alias、同用户、0700 副本及仅含该文件的 0700 目录；记录首尾文件 / 目录身份，漂移即停。原生 guard 共绑定 45 份输入，包含旧 freeze / 单次结果 / 运行回执；监督器还复核旧 21 份 helper 冻结文件。
+- **完整静态身份**：共享 `static-identity` 模块只对预先冻结副本建立 static code，核对原件与副本 thin arm64、`SecCodeCopyPath` / main-executable 路径、原冻结 identifier / CDHash、精确 `0x20002` flags、无 CMS / 证书 / TeamIdentifier；完整校验仍仅使用 `kSecCSNoNetworkAccess`，没有 skip 标志，也没有原 bundle 失败后的路径 fallback。原 native 查询、ACL、domain、candidate 和超时主函数代码保持原样。
+- **协议 v2**：所有成功 / 未完成帧及监督器终态固定声明 `comparison_scope=standalone_macho_copy`、`original_app_authorization=unknown`、`original_bundle_validation=not_performed`。身份成功为 `offline_static_copy_match`；要求结果仅为 `copy_requirement_match` / `copy_requirement_mismatch` / `no_stored_requirement`。协议拒绝旧版帧、旧无范围匹配字段或任何原 app 已授权 / 已拒绝、bundle 有效的声明。
+- **错误分离**：创建、完整校验、对象路径读取分别报告 `static_code_create_failed`、`static_code_validate_failed`、`static_code_path_failed`，保留数值 OSStatus 和阶段，不打印原始错误文本。其它拒绝 / 未知结构仍失败关闭，不新增重试或 fallback。
+
+`complete` 只表示副本范围的观察流程完成。副本匹配 / 不匹配不能推导原 app 授权，原包装的 `Info.plist` / 资源也未因此被签封；原 app 的要求结论始终 unknown，不恢复“全部不匹配且 candidate absent”的因果判据。原 bundle 整体校验的 `-67056` 事实保留，P1-S05 或原生验收未因此通过。
+
+### 验证、审阅与冻结
+
+47 项合成测试通过：保留原 35 项失败关闭 / 计数 / 稳定性 / parser / 输出 / 超时覆盖，补充两种文件 guard 对副本差异、摘要漂移、路径 alias、权限与兄弟项的拒绝，创建 / 校验错误分离，身份路径异常，bundle-context 要求不能升格为原 app 结论，以及旧命令 / 旧协议 / 伪造授权结果拒绝。测试只使用合成 backend、临时普通文件和短时子进程；带 Keychain adapter 的新 native helper 只编译，未执行，包括无参数门禁。
+
+独立的离线身份程序复用本版真实 fileguard / static-identity 模块，只引用四个公开静态代码函数，没有 Keychain 入口或私有 SPI；45 份输入及副本目录身份前后检查、完整副本校验和原冻结签名字段比对均通过，退出码 0、无 stderr。该证据只覆盖副本完整静态身份，不覆盖 Keychain 查询或原 app 授权。
+
+实现后由主代理单独进行静态审阅，非第二位人员 / 子代理评审；核对新结果范围、错误映射、CF / ARC 对象生命周期、文件边界和原查询代码保持，移除抽取身份模块后遗留的无用工具函数，并补充伪造 app 授权结果的端到端回归。本地准备范围内未发现剩余阻断项；私有 SPI 实际 requirement ABI、当前 ACL / 返回结构、composite native 路径、查询时禁 UI 效果和缓存刷新仍未验证，不能把合成通过解释为这些边界已通过。
+
+新清单冻结 24 份源文件、编译产物、副本、测试日志、审阅结果和操作单；`freeze.json` SHA-256 为 `a268e45aa7915b521a3980bd9836920d178f981934be705b8d7872063004c1c0`。精确绝对命令、v2 gate、固定输出和目标绑定仅存本地操作单；普通文件 `--check-offline` 已实际通过，回执 `native_started=false`，新 `native-01` 输出目录不存在。新的原生命令使用独立 flag，不接受旧命令，也不能沿用已消耗的旧 M01 授权；本批未执行。
+
+新操作单保留 30 秒监督超时、TERM 后 5 秒 / KILL 后 5 秒回收、native 35 秒 alarm、退出后遗留管道最多 1 秒及真实回收状态；不扩大为系统服务终止。输出仍为独占 0700 目录内 0600 文件、最大 64 KiB，逐阶段 ACK 检查、严格协议、写入 / fsync / 读回验真；原始元数据只留内存，成功不能绕过二轮观察和首尾复核。
+
+生产四次 secret、十二次 attributes、25 次 User domain，以及唯一性、identity、label、双读、首尾 key 和最终对象 / 数据库认证检查全部保持。没有新增依赖、修改 lockfile、重签原件 / 副本、启动 GUI、提交或 push；新产物与旧证据均保留在本机忽略目录，两份正式文档继续未提交，`dev` 保留三个未推送提交。
+
+本批完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 离线通过：270 文件基线、fmt、locked Clippy、25 个 suites 共 398 项 Rust tests，11 个 ignored helper 按父测试约定执行。收尾复核新 24 份冻结文件、旧 21 份 helper 文件 / freeze、原单次结果与运行回执、D01 29 份产物 / 11 份源码均保持；事实补记后再次运行 Python 仓库基线与 `git diff --check`。没有默认 desktop 构建、真实 Keychain / GUI 或其它平台验证；全部合成、静态身份与仓库检查进程已退出，无长期服务。
