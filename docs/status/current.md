@@ -54,6 +54,8 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 2026-10-18 `dev -> master` PR 预检：独立模块探针在已安装的非 macOS target 上复现观测枚举六个专用事件的 `dead_code`；已按 macOS / 合成测试的实际使用范围补齐条件编译，同步受审阅源码摘要，未放宽门禁或改变 macOS 事件与认证流程。修复后普通 / 测试模块探针均通过 `-D warnings` metadata 编译；它不等于 Linux / Windows 完整构建。`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh --base-ref origin/master` 通过仓库基线、PR 提交 / diff、notices、检查器回归、fmt、locked Clippy 及 398 项 Rust tests（25 suites，11 个 ignored 子进程 helper 由父测试调用）；默认 desktop 的 locked / offline 构建通过。三平台远程结果以本次 PR 的 `Candidate Quality` 为准，本轮没有启动 GUI、访问真实 key store 或执行 M01 v2，不改变 P1-S05 待验边界。
 
+[PR #5](https://github.com/laugh0608/RadishMemory/pull/5) 首轮 CI 的仓库卫生及 Linux / macOS Rust Quality 通过，Windows 在隔离入口路径拒绝测试失败：canonical verbatim 路径上的 `PathBuf::join` 已提前消去测试中的 `..`，传入了合法路径。已改用 `OsString` 保留原始父目录片段并断言输入有效，生产校验与拒绝边界不变；定点回归、fmt 及同一完整离线仓库检查再次通过（398 项 Rust tests）。后续三平台结果以修复提交的 PR 检查为准，首轮失败不记作通过。
+
 2026-10-18 日终基线：受限观测补丁及 D01 / D02 记录已提交；M01 首次执行在静态身份前置失败，目标查询为零，副本范围 v2 已完成合成验证和重新冻结、新 native helper 未执行。完整离线仓库检查通过，Rust 基线为 398 项；当天另有 45 项检查器回归、默认 desktop 构建及 v2 的 47 项合成测试证据。各批验证、真实访问与未覆盖项分开记录于[日终回顾](2026-10-18-source-vault.md)；不以合成或副本静态验证关闭 P1-S05。
 
 macOS / Linux：

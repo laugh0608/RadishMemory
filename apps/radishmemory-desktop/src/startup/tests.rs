@@ -135,13 +135,26 @@ fn root_must_exist_and_cannot_overlap_default_or_traverse_parents() {
         .prepare()
         .unwrap();
     assert!(validate_root(&isolated, &default).is_ok());
+    // Windows canonical paths have a verbatim prefix; PathBuf::join normalizes
+    // parent components there. Preserve the raw argument so this tests rejection.
+    let mut traversal = isolated.as_os_str().to_owned();
+    traversal.push(std::path::MAIN_SEPARATOR_STR);
+    traversal.push("..");
+    traversal.push(std::path::MAIN_SEPARATOR_STR);
+    traversal.push("isolated");
+    let traversal = PathBuf::from(traversal);
+    assert!(
+        traversal
+            .components()
+            .any(|component| component == Component::ParentDir)
+    );
     for root in [
         PathBuf::from("relative"),
         fixture.root.clone(),
         default.clone(),
         default.join("child"),
         isolated.join("missing"),
-        isolated.join("..").join("isolated"),
+        traversal,
         fixture.root.join("host-profile-v1.txt"),
     ] {
         assert_eq!(
