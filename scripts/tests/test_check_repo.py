@@ -308,6 +308,26 @@ class GovernanceContractChecks(unittest.TestCase):
                 errors,
             )
 
+    def test_workflow_contract_keeps_both_windows_test_partitions(self) -> None:
+        source = CHECK_REPO.REPO_ROOT / ".github/workflows/pr-check.yml"
+        original = source.read_text(encoding="utf-8")
+        fragments = (
+            "          - platform: Windows Source Vault\n            os: windows-latest\n            test_scope: source-vault\n",
+            "            test_scope: workspace-without-source-vault\n",
+            "cargo test --workspace --exclude radishmemory-source-vault --all-targets --all-features --locked",
+            "cargo test --package radishmemory-source-vault --all-targets --all-features --locked",
+        )
+        for fragment in fragments:
+            with self.subTest(fragment=fragment), tempfile.TemporaryDirectory() as temp_dir:
+                self.assertIn(fragment, original)
+                root = Path(temp_dir)
+                target = root / ".github/workflows/pr-check.yml"
+                target.parent.mkdir(parents=True)
+                target.write_text(original.replace(fragment, ""), encoding="utf-8")
+                errors: list[str] = []
+                CHECK_REPO.check_workflow_contract(root, errors)
+                self.assertTrue(any("missing contract fragment" in error for error in errors))
+
     def test_m0_contract_reports_missing_fragment(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

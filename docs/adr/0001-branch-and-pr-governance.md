@@ -64,6 +64,8 @@ git rev-list --left-right --count origin/master...dev
 
 随着实现推进，schema 兼容、权限拒绝、记忆状态、删除传播和供应链检查应按稳定职责加入聚合 job，而不频繁更换远程 required context。
 
+2026-10-18 起，Windows locked tests 按 Source Vault / 其余 workspace 拆为两个矩阵项，完整覆盖、逐 job 10 分钟上限及聚合失败关闭保持，具体命令与检查器合同见[仓库治理](../governance/repository-governance.md#ci-契约)。Linux / macOS 不分组；远程 required context 与 Ruleset 无需变更。
+
 Conventional Commits 由仓库检查器对 PR commit range 执行，不在 Ruleset 中添加提交信息正则，避免 GitHub 自动生成的 merge commit 与远程规则冲突。
 
 ### `dev` 的阶段性保护

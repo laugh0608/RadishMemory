@@ -21,6 +21,8 @@ Conventional Commits 由仓库检查器校验 PR commit range，不在 Ruleset �
 
 当前 `Candidate Quality` 聚合 Ubuntu 上的 `Repo Hygiene`，以及 Linux、macOS、Windows 三平台的 `Rust Quality`。Ruleset 仍只绑定稳定聚合 context，不单独绑定矩阵展开后的 job 名称。
 
+Windows 测试分为 Source Vault 与其余 workspace 两个必需矩阵项，任一未成功均阻断 `Candidate Quality`；每个 job 仍限时 10 分钟，详见[CI 契约](../../docs/governance/repository-governance.md#ci-契约)。此分组不改变远程 Ruleset。
+
 ## `dev` 策略
 
 `master` 保持 GitHub 默认分支，`dev` 是常态开发与集成分支。当前单人阶段不为 `dev` 启用强制 Ruleset：

@@ -56,6 +56,8 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 [PR #5](https://github.com/laugh0608/RadishMemory/pull/5) 首轮 CI 的仓库卫生及 Linux / macOS Rust Quality 通过，Windows 在隔离入口路径拒绝测试失败：canonical verbatim 路径上的 `PathBuf::join` 已提前消去测试中的 `..`，传入了合法路径。已改用 `OsString` 保留原始父目录片段并断言输入有效，生产校验与拒绝边界不变；定点回归、fmt 及同一完整离线仓库检查再次通过（398 项 Rust tests）。后续三平台结果以修复提交的 PR 检查为准，首轮失败不记作通过。
 
+PR #5 第二轮的路径拒绝回归通过，仓库卫生与 Linux / macOS 继续成功；Windows 在 10 分钟整体上限取消，Source Vault 180 项中已有 179 项报告结束，201 条资料分页迁移测试尚未结束，取消不记作通过。已按[CI 契约](../governance/repository-governance.md#ci-契约)将 Windows 测试分为 Source Vault / 其余 workspace 两个必需矩阵项，保留所有用例、断言、逐 job 10 分钟限制及聚合失败关闭；同步 ADR、Ruleset 说明与检查器，并新增遗漏分组 / 命令的负向回归。本机完整离线仓库检查再次通过（398 项 Rust tests），测试路由 shell 语法与未知 scope 拒绝通过；最终 Windows 覆盖仍须以新一轮两个矩阵项均成功为准。
+
 2026-10-18 日终基线：受限观测补丁及 D01 / D02 记录已提交；M01 首次执行在静态身份前置失败，目标查询为零，副本范围 v2 已完成合成验证和重新冻结、新 native helper 未执行。完整离线仓库检查通过，Rust 基线为 398 项；当天另有 45 项检查器回归、默认 desktop 构建及 v2 的 47 项合成测试证据。各批验证、真实访问与未覆盖项分开记录于[日终回顾](2026-10-18-source-vault.md)；不以合成或副本静态验证关闭 P1-S05。
 
 macOS / Linux：
