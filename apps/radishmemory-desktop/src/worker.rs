@@ -57,6 +57,11 @@ pub(crate) struct Engine<P: LibraryProvider, F: Fn() -> P> {
     deletions: Vec<DeleteRequest>,
     recovery_known: bool,
     view_valid: bool,
+    observation: bool,
+    plain_consumed: bool,
+    encrypted_consumed: bool,
+    #[cfg(test)]
+    after_observed_action: Option<Box<dyn FnOnce()>>,
 }
 impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
     pub(crate) fn new(paths: ApplicationPaths, provider: F) -> Self {
@@ -70,6 +75,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             deletions: Vec::new(),
             recovery_known: false,
             view_valid: false,
+            observation: false,
+            plain_consumed: false,
+            encrypted_consumed: false,
+            #[cfg(test)]
+            after_observed_action: None,
         }
     }
     fn profile(&self) -> Result<crate::HostProfile, DesktopError> {
@@ -134,6 +144,26 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             || !self.recovery_known
     }
     fn perform(&mut self, command: Command, snapshot: &mut Snapshot) -> Result<(), DesktopError> {
+        if self.observation {
+            let allowed = match command {
+                Command::OpenPlain if !self.plain_consumed && !self.encrypted_consumed => {
+                    self.plain_consumed = true;
+                    snapshot.message =
+                        Some("Key-read observation is ready; open encrypted objects once.".into());
+                    return Ok(());
+                }
+                Command::OpenEncrypted if !self.encrypted_consumed => {
+                    self.encrypted_consumed = true;
+                    true
+                }
+                _ => false,
+            };
+            if !allowed {
+                return Err(observation_error(
+                    DesktopErrorReason::KeyReadObservationConsumed,
+                ));
+            }
+        }
         // Invalidate recovery even if the pinned profile check fails before the
         // action starts. A previous target must not remain actionable on failure.
         if matches!(command, Command::OpenEncrypted)
@@ -185,10 +215,36 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::OpenEncrypted => {
                 self.controller = None;
                 self.encrypted = true;
-                let (library, read_snapshot) = self
-                    .location()?
-                    .open_with_snapshot(ProductionRuntime, crate::controller::CATALOG_PAGE_SIZE)
-                    .map_err(app_error)?;
+                let location = self.location()?;
+                #[cfg(test)]
+                let after = self.after_observed_action.take();
+                let open = || {
+                    let result = location
+                        .open_with_snapshot(ProductionRuntime, crate::controller::CATALOG_PAGE_SIZE)
+                        .map_err(app_error);
+                    #[cfg(test)]
+                    if let Some(after) = after {
+                        after();
+                    }
+                    result
+                };
+                let (library, read_snapshot) = if self.observation {
+                    // Profile is rechecked above and by location(); create rechecks the pinned trace path.
+                    let trace = self
+                        .acceptance
+                        .as_mut()
+                        .and_then(|location| location.trace.take())
+                        .ok_or_else(|| {
+                            observation_error(DesktopErrorReason::KeyReadObservationConsumed)
+                        })?;
+                    radishmemory_source_vault::key_read_observation::with_trace(trace, open)
+                        .map_err(|error| match error {
+                            radishmemory_source_vault::key_read_observation::TraceFailure::Business(error) => error,
+                            radishmemory_source_vault::key_read_observation::TraceFailure::Observation(_) => observation_error(DesktopErrorReason::KeyReadObservationFailed),
+                        })?
+                } else {
+                    open()?
+                };
                 self.controller = Some(LibraryController::from_encrypted_snapshot(
                     library,
                     &read_snapshot,
@@ -328,6 +384,12 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         snapshot.error = self.perform(command, &mut snapshot).err();
         if snapshot.error.is_some() {
             self.view_valid = false;
+            if self.observation {
+                self.controller = None;
+                self.target = None;
+                self.deletions.clear();
+                self.recovery_known = false;
+            }
         } else if refreshes {
             self.view_valid = true;
         }
@@ -385,6 +447,7 @@ impl Worker {
             crate::startup::Startup::Acceptance(location) => {
                 location.load_profile()?;
                 let mut engine = Engine::new(location.paths()?, provider);
+                engine.observation = location.trace.is_some();
                 engine.acceptance = Some(location);
                 Ok(engine)
             }
@@ -480,3 +543,7 @@ fn stopped() -> DesktopError {
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+fn observation_error(reason: DesktopErrorReason) -> DesktopError {
+    DesktopError::without_source(DesktopErrorCode::Runtime, reason, false)
+}

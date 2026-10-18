@@ -16,6 +16,7 @@ pub(crate) struct AcceptanceLocation {
     root: PathBuf,
     namespace: String,
     device: String,
+    pub(crate) trace: Option<radishmemory_source_vault::key_read_observation::TraceFile>,
 }
 
 impl Startup {
@@ -29,6 +30,7 @@ impl Startup {
         let mut root = None;
         let mut namespace = None;
         let mut device = None;
+        let mut trace = None;
         while let Some(flag) = arguments.next() {
             let value = arguments.next().ok_or_else(invalid_arguments)?;
             match flag.to_str() {
@@ -39,17 +41,34 @@ impl Startup {
                 Some("--acceptance-device") if device.is_none() => {
                     device = Some(value.into_string().map_err(|_| invalid_arguments())?);
                 }
+                Some("--acceptance-key-read-trace")
+                    if trace.is_none() && cfg!(target_os = "macos") =>
+                {
+                    trace = Some(PathBuf::from(value));
+                }
                 _ => return Err(invalid_arguments()),
             }
         }
-        let location = AcceptanceLocation {
+        let mut location = AcceptanceLocation {
             root: root.ok_or_else(invalid_arguments)?,
             namespace: namespace.ok_or_else(invalid_arguments)?,
             device: device.ok_or_else(invalid_arguments)?,
+            trace: None,
         };
         radishmemory_source_vault::KeySlot::new(&location.namespace, &location.device)
             .map_err(|_| invalid_arguments())?;
         location.load_profile()?;
+        if let Some(path) = trace {
+            let default = ApplicationPaths::resolve()?;
+            location.trace = Some(
+                radishmemory_source_vault::key_read_observation::TraceFile::validate(
+                    &path,
+                    &[&location.root, default.data_directory()],
+                )
+                .map_err(|_| observation_invalid())?,
+            );
+            location.load_profile()?;
+        }
         Ok(Self::Acceptance(location))
     }
 
@@ -68,7 +87,9 @@ impl AcceptanceLocation {
         // Never create or replace a profile for this explicitly approved slot.
         validate_root(&self.root, ApplicationPaths::resolve()?.data_directory())?;
         let paths = self.paths()?;
-        paths.database_exists()?;
+        if !paths.database_exists()? && self.trace.is_some() {
+            return Err(observation_invalid());
+        }
         let profile = crate::profile::load_profile(&paths)?;
         if profile.namespace_id().as_str() != self.namespace
             || profile.device_id().as_str() != self.device
@@ -152,3 +173,11 @@ fn invalid_root() -> DesktopError {
 
 #[cfg(test)]
 pub(crate) mod tests;
+
+fn observation_invalid() -> DesktopError {
+    DesktopError::without_source(
+        DesktopErrorCode::Runtime,
+        DesktopErrorReason::KeyReadObservationInvalid,
+        false,
+    )
+}

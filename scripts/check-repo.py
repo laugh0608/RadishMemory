@@ -20,6 +20,13 @@ MAX_AGENT_LINES = 180
 MAX_ACTIVE_DOC_LINES = 500
 # Reviewed sink-free logger + panic-payload suppression and isolated regression.
 HOST_LOGGING_POLICY_SHA256 = "22230b4a43bf5637a0522d75b5a2f1ed676b721a15834c9ecb519f95c2922a57"
+# Reviewed fixed-field, opt-in acceptance trace; does not exempt any log/print sink.
+KEY_READ_OBSERVATION_SHA256 = {
+    "crates/radishmemory-source-vault/src/key_read_observation.rs":
+        "1213c47a2e79b231559c9bd178fe59952cf972504a1f5b0b4ce9853572d7b204",
+    "crates/radishmemory-source-vault/src/key_read_observation/file.rs":
+        "f2686df28394386a09d2c327d0f34961e4afc9c8e9369b59b9cf543db4b27486",
+}
 
 REQUIRED_FILES = (
     ".editorconfig",
@@ -1204,6 +1211,15 @@ def check_implementation_stack_contract(repo_root: Path, errors: list[str]) -> N
                 )
 
 
+def check_key_read_observation_policy(repo_root: Path, errors: list[str]) -> None:
+    for name, reviewed_digest in KEY_READ_OBSERVATION_SHA256.items():
+        path = repo_root / name
+        if not path.is_file():
+            errors.append(f"missing reviewed key-read observation source: {name}")
+        elif hashlib.sha256(path.read_bytes()).hexdigest() != reviewed_digest:
+            errors.append(f"key-read observation differs from reviewed implementation: {name}")
+
+
 def check_phase1_file_entry_contract(repo_root: Path, errors: list[str]) -> None:
     contracts = {
         "docs/adr/0006-phase1-text-markdown-file-entry.md": (
@@ -2121,6 +2137,7 @@ def main() -> int:
     check_radishmind_entry_contract(REPO_ROOT, errors)
     check_implementation_stack_contract(REPO_ROOT, errors)
     check_phase1_file_entry_contract(REPO_ROOT, errors)
+    check_key_read_observation_policy(REPO_ROOT, errors)
     check_phase1_local_host_contract(REPO_ROOT, errors)
     check_phase1_encrypted_source_vault_contract(REPO_ROOT, errors)
     check_phase1_encrypted_source_vault_dependency_review(REPO_ROOT, errors)

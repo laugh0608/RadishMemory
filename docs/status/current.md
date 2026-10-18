@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-更新时间：2026-10-13
+更新时间：2026-10-18
 
 ## 当前阶段
 
@@ -52,6 +52,8 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 ## 当前验证入口
 
+2026-10-18 受限观测补丁：macOS 显式隔离入口新增一次性 call ID / begin-end trace，保持四读及全部认证检查。主代理独立审阅并通过 270 文件完整离线检查、398 项 Rust tests、45 项检查器回归及默认 desktop 构建；P1-F17 沙箱端口限制经权限流程完整重跑解决。无 GUI / 真实 Keychain / 其它平台验收，具体边界见[补丁验证记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#本机独立验证结果)。
+
 macOS / Linux：
 
 ```bash
@@ -97,11 +99,13 @@ Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 继�
 
 ## 后续事项
 
+[2026-10-18 有限诊断与原生关闭方案](../evaluation/phase1-keychain-prompt-diagnostic-plan.md)已复核两轮八提示的 63 份保存证据及冻结构建 / 合成库基线。下一诊断只区分同一 search 调用区间内多提示与预算外调用，所需 call ID / begin-end 受限观测补丁已接入显式隔离入口，默认关闭；不再重复同样的 sample-only 观测。另准备空合成库 SQLite 锁等待下的原生关闭操作单，不申请真实 Keychain 读取；真实 GUI / 持锁尚未执行，须独立确认精确范围。原请求关闭确认、末轮取消、有资料 Refresh 等仍待验；历史八 / 九提示结论及 P1-S05 停止线保持。
+
 [10 月 13 日日终记录与明日事项](2026-10-13-source-vault.md)汇总当天八个既有提交、代码与文档复核、原生观测和 **2026-10-14** 的建议；本页随后另作日终文档提交。[10 月 9 日记录](2026-10-09-source-vault.md)与更早安排保留为历史交接。
 
-1. **先限定重复提示的下一轮诊断**：`89d53b0` 的只读动作会话保留首尾两次 key load、四次 secret 与十二次 metadata 查询；`bf8dddf` 的 `SecItemCopyMatching` 候选单次原生打开仍八次提示，四个 secret 静态位置各两个。新旧 API 的逐提示结果见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)，本轮结果已提交 `8393cc0`。OS 内部多重授权原因及更早第九次仍未确定；先复核保留栈、调用计数和候选假设，写清下一项诊断要区分什么、能取得什么证据和停止条件，再决定是否需要实现。新增真实 key / GUI 操作须独立精确授权，不直接换 API 重试、提高预算、删复验、增加跨动作缓存或采用永久许可。
+1. **先限定重复提示的下一轮诊断**：`89d53b0` 的只读动作会话保留首尾两次 key load、四次 secret 与十二次 metadata 查询；`bf8dddf` 的 `SecItemCopyMatching` 候选单次原生打开仍八次提示，四个 secret 静态位置各两个。新旧 API 的逐提示结果见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)，本轮结果已提交 `8393cc0`。OS 内部多重授权原因及更早第九次仍未确定；10 月 18 日已完成保存证据复核与有限判据设计，受限 call ID / begin-end 补丁已按冻结范围实施，保留四读和全部认证检查；本机验证见有限诊断方案，下一步仍须独立冻结构建 / dSYM、精确操作单并确认范围，才可安排一次新的原生诊断。新增真实 key / GUI 操作须独立精确授权，不直接换 API 重试、提高预算、删复验、增加跨动作缓存或采用永久许可。
 2. **补剩余只读会话与宿主窗口**：新会话入口取消已有有限原生证据；末轮取消、显式 Refresh、有资料旧视图撤回及新 busy 关闭竞争仍待验。先按[有限验收检查点](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)选择可控切片；六项 headless UI 和 worker Drop / join 回归不能替代真实关闭行为，提交 / evidence 中断及写后刷新失败沿用既有合成范围，不冒充进程中断证据。
 3. **按有限条件推进跨平台检查**：Windows / Linux 当前代码的 locked 编译、合成测试、真实 provider / 宿主范围分别记录，不以 macOS 或历史 filesystem 结果替代。无法安全构造的系统错误保留待验，不删除唯一 key、锁定整个用户 keychain 或不受控结束进程。
 4. **保留独立质量和契约事项**：R01 至 R06、中文显示、默认 v6 failed-open 继续按质量计划推进；`evidence_digest` 复算及历史兼容先做契约评审。已通过的权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库取消不重复列为未完成任务。其它系统错误 / 写操作阶段另定范围，P1-S05 不整体关闭。
 
-今晚到日终文档提交为止，不安排提醒、自动化或后台开发。忽略目录中的合成输入 / 导出 / 备份 / 包装、dSYM、逐提示证据和唯一既有测试 key 继续保留；GUI 与 sample 已退出，新 API 观测没有修改 key / ACL，前批误加的 Prompt 常许许可已撤销。新增系统操作、彻底清理及远程动作仍须精确授权。
+10 月 13 日日终未安排提醒、自动化或后台开发；本轮也未创建这些任务。忽略目录中的合成输入 / 导出 / 备份 / 包装、dSYM、逐提示证据和唯一既有测试 key 继续保留；GUI 与 sample 已退出，新 API 观测没有修改 key / ACL，前批误加的 Prompt 常许许可已撤销。新增系统操作、彻底清理及远程动作仍须精确授权。

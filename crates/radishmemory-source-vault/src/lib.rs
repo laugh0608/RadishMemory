@@ -11,6 +11,8 @@ mod envelope;
 mod error;
 mod filesystem;
 mod filesystem_support;
+#[doc(hidden)]
+pub mod key_read_observation;
 mod maintenance;
 mod maintenance_error;
 mod provider;

@@ -5,6 +5,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 #[cfg(unix)]
 mod filesystem_failures;
+#[cfg(target_os = "macos")]
+mod key_read_observation;
 mod locking;
 mod read_session;
 

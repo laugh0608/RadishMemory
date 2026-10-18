@@ -35,7 +35,7 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 
 `DesktopError` 只保留 application operation / code / reason、Source Vault code 以及数据库枚举和数值错误码。key missing、locked、denied、cancelled、authentication 与 database 原因可区分，不保存路径、slot identity、正文、密钥或上游错误链。
 
-创建生产 worker 前安装 process-wide 无输出 `log::Log`，设置等级 Off；即使上游提高等级，这个 logger 仍没有 sink。已有 logger 导致安装失败时不创建 worker、不访问 provider。panic hook 丢弃任意 payload，worker 通过 channel 断开报告线程失败。该策略牺牲进程原始 panic 诊断以保护可能携带私密内容的 payload；不新增文件、网络或 telemetry 输出。
+创建生产 worker 前安装 process-wide 无输出 `log::Log`，设置等级 Off；即使上游提高等级，这个 logger 仍没有 sink。已有 logger 导致安装失败时不创建 worker、不访问 provider。panic hook 丢弃任意 payload，worker 通过 channel 断开报告线程失败。该策略牺牲进程原始 panic 诊断以保护可能携带私密内容的 payload；logger 本身不新增文件、网络或 telemetry 输出。2026-10-18 的显式受限验收 trace 是独立入口，详见下述补丁记录。
 
 检查器对 `logging.rs` 的完整已审阅内容保存 SHA-256，变更必须重新审阅；只放行该精确文件，其余第一方源文件继续禁止 log / tracing / print sink。检查器回归覆盖精确实现通过、该文件追加输出被拒绝，以及其它文件的输出仍被拒绝。隔离子进程测试验证 logger、等级被上游提高与带合成敏感标记的 panic 都不输出该标记；另在已有 logger 的隔离进程证明安装失败会阻止 worker 创建。此证据不覆盖原生库 stderr、系统崩溃报告或真实 Keychain 的诊断行为，仍需原生验收。
 
@@ -346,3 +346,10 @@ GUI 正常关闭、退出码 0，stdout / stderr 均为空。最终只读核对�
 本轮记录更新后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 完整退出 0：264 个文件、notices、fmt、locked Clippy 和 25 个 suites 共 386 项 Rust tests 通过，11 个 ignored helper 由父测试执行；按已知合成端口权限在沙箱外离线运行，未跳过检查。补记后文本 / 链接检查和 `git diff --check` 通过。未重复未受影响的默认构建（观测前已通过）、其它平台构建或原生验收。四份本轮记录未暂存、未提交；`dev` 领先本地 `origin/dev` 八个既有提交，未 push。所有本轮 GUI、sample 和检查进程已退出。
 
 上述四份记录随后复核并提交为 `8393cc0`；当日完整提交回顾、相关文档修正与下一步建议见[10 月 13 日日终记录](../status/2026-10-13-source-vault.md)。此前未提交状态为该观测收尾时的快照。
+
+
+## 2026-10-18 单动作受限观测入口
+
+完整三项隔离验收参数之外，仅 macOS 可显式提供 `--acceptance-key-read-trace` 和一个库外的新绝对路径；解析验证现有 profile / 数据库、私有父目录及路径隔离，不创建 trace。诊断模式的自动 OpenPlain 只显示固定就绪提示、不触发业务读写；仅一次 OpenEncrypted 可进入观测作用域，成功或失败后都拒绝其它业务动作和重试。正常关闭仍经过既有 worker join 生命周期。
+
+Action end 写出前不发布快照，观测错误撤回目录、正文及恢复选择；没有原请求或第二次读取可供重试。普通默认入口与原三参数验收不受单动作限制，`logging.rs` 保持原摘要。真实文件故障的 worker 回归用严格 `cfg(test)` 私有钩子破坏自己的合成 trace，生产构建没有该钩子，也没有 provider override。具体允许文件、失败关闭策略与独立验证见[受限补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)；未执行 GUI / 真实 Keychain，不能作为提示或原生关闭验收证据。

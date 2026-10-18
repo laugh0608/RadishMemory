@@ -109,3 +109,70 @@ fn snapshot_rejects_intra_load_and_between_load_key_changes_even_in_empty_librar
         }
     }
 }
+
+#[test]
+fn observed_snapshot_preserves_reads_labels_final_key_check_and_original_errors() {
+    use crate::key_read_observation::{TraceFailure, tests::recording};
+    let (_root, directory) = setup(true);
+    let store = snapshot_store();
+    let (result, log) = recording(None, None, || read_snapshot(&directory, &store));
+    assert_eq!(result.unwrap().sources.len(), 1);
+    assert_eq!((store.read_count.get(), store.label_checks.get()), (4, 4));
+    store.assert_no_writes();
+    let text = String::from_utf8(log.borrow().bytes.clone()).unwrap();
+    assert_eq!(
+        text.matches("\"operation\":\"Entry\",\"edge\":\"begin\"")
+            .count(),
+        1
+    );
+    assert_eq!(
+        text.matches("\"operation\":\"Release\",\"edge\":\"begin\"")
+            .count(),
+        1
+    );
+    assert_eq!(
+        text.matches("\"operation\":\"Label\",\"edge\":\"begin\"")
+            .count(),
+        4
+    );
+    for position in 1..=4 {
+        let store = snapshot_store();
+        store.script(
+            (1..position)
+                .map(|_| Read::Value(encode(&[0xa5; 32]).to_vec()))
+                .chain(std::iter::once(Read::Fail(
+                    SourceVaultErrorCode::KeyStoreCancelled,
+                ))),
+        );
+        let (result, _) = recording(None, None, || read_snapshot(&directory, &store));
+        let Err(TraceFailure::Business(error)) = result else {
+            panic!("business error lost")
+        };
+        assert_eq!(code(error), SourceVaultErrorCode::KeyStoreCancelled);
+        assert_eq!(store.read_count.get(), position);
+        store.assert_no_writes();
+    }
+    for (values, reads) in [([0xa5, 0x44, 0x44, 0x44], 2), ([0xa5, 0xa5, 0x44, 0x44], 4)] {
+        let store = snapshot_store();
+        store.script(values.map(|value| Read::Value(encode(&[value; 32]).to_vec())));
+        let (result, _) = recording(None, None, || read_snapshot(&directory, &store));
+        let Err(TraceFailure::Business(error)) = result else {
+            panic!("changed key accepted")
+        };
+        assert_eq!(code(error), SourceVaultErrorCode::KeyReadbackMismatch);
+        assert_eq!(store.read_count.get(), reads);
+    }
+    let store = snapshot_store();
+    *store.label.borrow_mut() = "synthetic-private-label".into();
+    let (result, log) = recording(None, None, || read_snapshot(&directory, &store));
+    let Err(TraceFailure::Business(error)) = result else {
+        panic!("changed label accepted")
+    };
+    assert_eq!(code(error), SourceVaultErrorCode::KeyMetadataMismatch);
+    assert_eq!(store.read_count.get(), 1);
+    assert!(
+        !String::from_utf8(log.borrow().bytes.clone())
+            .unwrap()
+            .contains("synthetic")
+    );
+}

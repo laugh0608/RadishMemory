@@ -488,5 +488,31 @@ class HostLoggingPolicyChecks(unittest.TestCase):
             CHECK_REPO.check_phase1_file_entry_contract(root, errors)
             self.assertIn("Phase 1 source introduces an unreviewed diagnostic sink: apps/radishmemory-desktop/src/unreviewed.rs", errors)
 
+class KeyReadObservationPolicyChecks(unittest.TestCase):
+    def test_exact_reviewed_sources_pass(self) -> None:
+        errors: list[str] = []
+        CHECK_REPO.check_key_read_observation_policy(SCRIPT_PATH.parent.parent, errors)
+        self.assertEqual([], errors)
+
+    def test_each_changed_or_missing_source_is_rejected(self) -> None:
+        names = CHECK_REPO.KEY_READ_OBSERVATION_SHA256
+        for changed in names:
+            for missing in (False, True):
+                with self.subTest(changed=changed, missing=missing):
+                    with tempfile.TemporaryDirectory() as temp_dir:
+                        root = Path(temp_dir)
+                        for name in names:
+                            if name == changed and missing:
+                                continue
+                            target = root / name
+                            target.parent.mkdir(parents=True, exist_ok=True)
+                            source = (SCRIPT_PATH.parent.parent / name).read_bytes()
+                            target.write_bytes(source + (b"// unreviewed change\n" if name == changed else b""))
+                        errors: list[str] = []
+                        CHECK_REPO.check_key_read_observation_policy(root, errors)
+                        self.assertEqual(len(errors), 1)
+                        self.assertIn(changed, errors[0])
+
+
 if __name__ == "__main__":
     unittest.main()

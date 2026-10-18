@@ -7,6 +7,7 @@ use security_framework::os::macos::keychain::{SecKeychain, SecPreferencesDomain}
 use zeroize::{Zeroize, Zeroizing};
 
 use super::{KeySlot, KeyStore, LABEL, Result, SERVICE, check_label, failure, keyring_error};
+use crate::key_read_observation::{Operation, call};
 use crate::{SourceVaultError, SourceVaultErrorCode};
 
 pub(super) struct Store {
@@ -16,8 +17,10 @@ pub(super) struct Store {
 
 impl Store {
     pub(super) fn connect(slot: &KeySlot) -> Result<Self> {
-        let keychain = SecKeychain::default_for_domain(SecPreferencesDomain::User)
-            .map_err(|e| os_error(e.code(), "open User keychain"))?;
+        let keychain = call(Operation::Domain, || {
+            SecKeychain::default_for_domain(SecPreferencesDomain::User)
+                .map_err(|e| os_error(e.code(), "open User keychain"))
+        })?;
         // The concrete provider avoids Entry's identity-bearing debug logging.
         Ok(Self {
             credential: Cred {
@@ -54,13 +57,15 @@ impl Store {
     }
 
     fn attributes(&self) -> Result<std::collections::HashMap<String, String>> {
-        self.check_domain()?;
-        let matches = self
-            .query()
-            .search()
-            .map_err(|e| os_error(e.code(), "read key attributes"))?;
-        self.check_domain()?;
-        let item = match matches.as_slice() {
+        let matches = checked_attributes(
+            || self.check_domain(),
+            || {
+                self.query()
+                    .search()
+                    .map_err(|e| os_error(e.code(), "read key attributes"))
+            },
+        )?;
+        let item = match matches.0.as_slice() {
             [] => {
                 return Err(failure(
                     SourceVaultErrorCode::KeyMissing,
@@ -121,8 +126,10 @@ impl KeyStore for Store {
     }
 
     fn validate_label(&self) -> Result<()> {
-        let attributes = self.attributes()?;
-        check_label(attributes.get("labl").map(String::as_str).unwrap_or(""))
+        call(Operation::AttributesLabel, || {
+            let attributes = self.attributes()?;
+            check_label(attributes.get("labl").map(String::as_str).unwrap_or(""))
+        })
     }
 
     fn write_secret(&self, value: &[u8]) -> Result<()> {
@@ -165,11 +172,29 @@ fn read_checked_secret(
     mut attributes: impl FnMut() -> Result<()>,
     search: impl FnOnce() -> Result<Vec<SearchResult>>,
 ) -> Result<Zeroizing<Vec<u8>>> {
-    attributes()?;
-    let mut matches = search()?;
-    let value = secret_result(&mut matches)?;
-    attributes()?;
+    call(Operation::AttributesPre, &mut attributes)?;
+    let mut matches = call(Operation::SecretSearch, || search().map(GuardedResults))?;
+    let value = secret_result(&mut matches.0)?;
+    drop(matches);
+    call(Operation::AttributesPost, &mut attributes)?;
     Ok(value)
+}
+
+// The returned search buffers acquire a wipe guard before the search end is emitted.
+struct GuardedResults(Vec<SearchResult>);
+impl Drop for GuardedResults {
+    fn drop(&mut self) {
+        drop(SecretResults(&mut self.0));
+    }
+}
+fn checked_attributes(
+    mut domain: impl FnMut() -> Result<()>,
+    search: impl FnOnce() -> Result<Vec<SearchResult>>,
+) -> Result<GuardedResults> {
+    call(Operation::Domain, &mut domain)?;
+    let matches = call(Operation::AttributesSearch, || search().map(GuardedResults))?;
+    call(Operation::Domain, &mut domain)?;
+    Ok(matches)
 }
 
 // SearchResult has a secret-bearing Debug implementation and no zeroizing Drop.
@@ -184,6 +209,8 @@ impl Drop for SecretResults<'_> {
                 bytes.zeroize();
             }
         }
+        #[cfg(test)]
+        tests::record_secret_cleanup(self.0);
     }
 }
 

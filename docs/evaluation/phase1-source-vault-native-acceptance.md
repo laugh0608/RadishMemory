@@ -4,6 +4,8 @@
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
+2026-10-18 下一批准备见[有限诊断与原生关闭方案](phase1-keychain-prompt-diagnostic-plan.md)：既有两轮八提示证据已离线复核；新的调用实例观测需要先实现并验收受限补丁。原生关闭另缩小为空库 SQLite 锁等待切片，不申请读取真实 Keychain、不导入资料或修改对象目录权限；本轮仅准备，GUI / 既有库持锁均未执行。该切片不替代原请求 Cancel / Confirm、末轮取消或有资料旧视图撤回。
+
 ## 已实现的隔离入口
 
 正常无参数启动继续使用默认目录与 SQLite v6。原生验收使用同一个默认构建产物与 production worker / provider，只显式选择另一目录和既有 host profile：
@@ -209,3 +211,10 @@ A02 空库正常打开成功，但用户报告 9 次提示均点允许，超过�
 `bf8dddf` 新构建按另行确认的单动作观测单执行一次空库打开：八个提示分别停留、核对、采样后由用户单次允许，入口第一 / 第二读和交付前末轮第一 / 第二读各两个，全部正向定位新 SecItem data search；本次未减少提示。第八次后 GUI 成功，未出现第九次，因此没有执行拒绝或取消场景。GUI 正常退出 0，数据库 / profile、全部零活动状态和目录身份 / 权限与基线一致，34 份证据索引与台账保留，详见[现场记录](../implementation/phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)。
 
 本单已结束，无其它验收动作；完整首尾取消、有资料 / Refresh、busy / pending 关闭和其它平台缺口继续保留。后续先复核未改善结果，重新限定诊断与操作范围，不能沿用本单再触发 GUI 或读取真实 key。
+
+
+### 2026-10-18 受限观测补丁与原生停止线
+
+call ID / begin-end 已接入 macOS 显式隔离验收入口，受 `--acceptance-key-read-trace` 和单次 OpenEncrypted 约束；本机合成结果见[实现与独立审阅](phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)。四次 secret 读取及全部认证检查保留，默认关闭。此次没有启动 GUI 或访问真实 Keychain，不能从合成预算或 trace 能力宣称提示减少。
+
+D01 仍需新候选的冻结二进制 / 匹配 dSYM、精确 trace 路径、逐事件读回预演及独立系统操作授权。前序 N 批操作单只适用于其中已冻结的旧产物；不沿用旧行号 / 符号解释新代码，不覆盖既有八 / 九提示事实。原生首尾取消、有资料 Refresh、关闭竞争和其它平台仍按既有边界待验。

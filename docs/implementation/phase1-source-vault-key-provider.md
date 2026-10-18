@@ -163,3 +163,14 @@ OpenEncrypted / 显式 Refresh 正常路径仍有两轮 loader、四次 secret �
 候选提交 `bf8dddf` 后按新授权操作单执行一次空库打开，实际八个提示全部逐次确认并采样：四个 secret 静态位置各两个，均定位 `macos.rs:117 → SecItemCopyMatching`；第八次后打开成功、零活动来源，无第九次。新 API 已真实执行，但本次未减少提示。系统内部经 `SecItemCopyMatching_osx / AddItemResults / SecKeychainItemCopyContent` 进入 decrypt 等待，不是应用 fallback；内部授权因果仍未确定，不把静态调用槽当作 OS 调用实例遥测。完整范围与收尾见[宿主记录](phase1-source-vault-host.md#2026-10-13-secitem-secret-新构建逐提示观测)。
 
 GUI 正常退出 0，数据 / profile / 权限与基线一致，无其它验收或 key / ACL 修改。本轮不能证明取消、拒绝、有资料 / Refresh 或写入路径通过，也不自动授权继续诊断。保留四读与全部校验；下一步先复核未改善证据，再限定后续诊断，不直接提高预算、删复验或增加跨动作缓存。
+
+### 2026-10-18 离线复核与下一诊断判据
+
+两轮共 63 份索引文件摘要与长度一致，十六份保存栈 / 符号的 entry / release、read 1 / 2 与 API 定位同原记录吻合；SecItem 冻结构建 / dSYM 与补丁实施前相关源码匹配，既有空合成库文件 / SQLite 基线保持。没有启动 GUI、访问 Keychain 或重验 ACL。下一项诊断需要应用 search 的 call ID / begin-end，才能区分相同静态位置的提示是否属于同一调用区间；不再重复没有新增判别能力的采样。具体假设、观测补丁边界、停止条件和独立原生操作单见[有限诊断方案](../evaluation/phase1-keychain-prompt-diagnostic-plan.md)。该离线复核阶段未修改实现；随后经明确授权完成下述受限补丁，系统内部授权原因及更早九提示仍未知。
+
+
+### 2026-10-18 受限调用区间观测补丁
+
+macOS 隔离验收入口新增显式 `--acceptance-key-read-trace`；默认无观测作用域时沿原读取路径执行。entry / release、read 1 / 2 和实际 domain / attributes / secret 调用使用固定枚举事件，不更换 query、API、错误映射或认证顺序。成功路径仍是四次 secret、十二次 attributes 与 25 次 User domain；输出失败阻止后续调用，返回的 Data 在写 end 前取得零化 guard，失败不交付快照。业务错误与 end 故障同时发生时保留业务错误，trace 不完整即无诊断结论。
+
+允许文件、接口边界、审阅修正、独立验证及未覆盖项集中见[补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)。本次只运行合成测试和默认构建，没有启动 GUI、访问真实 Keychain 或改动依赖 / lockfile。八提示历史不因新增观测能力而改变；新构建原生验证仍须单独冻结与授权。

@@ -202,3 +202,71 @@ fn non_utf8_identifier_is_rejected_without_echo() {
         DesktopErrorReason::StartupArgumentsInvalid
     );
 }
+
+#[test]
+fn trace_requires_complete_unique_arguments_and_supported_platform_without_creation() {
+    let fixture = Fixture::new();
+    let output = Fixture::new();
+    let path = output.root.join("trace");
+    fs::write(
+        fixture.root.join("library.sqlite3"),
+        b"synthetic-existing-db",
+    )
+    .unwrap();
+    let mut args = fixture.arguments();
+    args.extend([
+        "--acceptance-key-read-trace".into(),
+        path.as_os_str().to_owned(),
+    ]);
+    if cfg!(target_os = "macos") {
+        let parsed = Startup::parse(args.clone()).unwrap();
+        let Startup::Acceptance(location) = parsed else {
+            panic!("wrong mode")
+        };
+        assert!(location.trace.is_some());
+    } else {
+        assert!(Startup::parse(args.clone()).is_err());
+    }
+    assert!(!path.exists());
+    args.extend([
+        "--acceptance-key-read-trace".into(),
+        path.as_os_str().to_owned(),
+    ]);
+    assert!(Startup::parse(args).is_err());
+    for args in [
+        vec![
+            "--acceptance-key-read-trace".into(),
+            path.as_os_str().to_owned(),
+        ],
+        vec!["--acceptance-key-read-trace".into()],
+    ] {
+        assert!(Startup::parse(args).is_err());
+    }
+    let mut args = fixture.arguments();
+    args.extend([
+        "--acceptance-key-read-trace".into(),
+        fixture.root.join("inside-vault").into_os_string(),
+    ]);
+    let error = Startup::parse(args).err().unwrap();
+    assert!(!format!("{error:?} {error}").contains("inside-vault"));
+    assert!(!path.exists());
+}
+
+#[cfg(target_os = "macos")]
+#[test]
+fn diagnostic_mode_requires_existing_database_without_creating_it() {
+    let fixture = Fixture::new();
+    let output = Fixture::new();
+    let path = output.root.join("trace");
+    let mut args = fixture.arguments();
+    args.extend([
+        "--acceptance-key-read-trace".into(),
+        path.as_os_str().to_owned(),
+    ]);
+    assert_eq!(
+        Startup::parse(args).err().unwrap().reason(),
+        DesktopErrorReason::KeyReadObservationInvalid
+    );
+    assert!(!fixture.root.join("library.sqlite3").exists());
+    assert!(!path.exists());
+}

@@ -34,6 +34,9 @@ pub enum DesktopErrorReason {
     LoggingUnavailable,
     StartupArgumentsInvalid,
     AcceptanceProfileMismatch,
+    KeyReadObservationInvalid,
+    KeyReadObservationConsumed,
+    KeyReadObservationFailed,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

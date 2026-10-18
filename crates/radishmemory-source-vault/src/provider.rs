@@ -543,17 +543,23 @@ pub(crate) fn load_or_bootstrap(
 }
 
 fn load_existing(store: &impl KeyStore) -> Result<KeyEncryptionKey> {
-    let value = store.read_secret()?;
-    let key = decode(&value)?;
-    store.validate_label()?;
-    let recheck = store.read_secret()?;
-    if value.as_slice() != recheck.as_slice() {
-        return Err(failure(
-            SourceVaultErrorCode::KeyReadbackMismatch,
-            "recheck key value",
-        ));
-    }
-    store.validate_label()?;
+    use crate::key_read_observation::{Operation, call};
+    let (value, key) = call(Operation::Read1, || {
+        let value = store.read_secret()?;
+        let key = decode(&value)?;
+        call(Operation::Label, || store.validate_label())?;
+        Ok((value, key))
+    })?;
+    call(Operation::Read2, || {
+        let recheck = store.read_secret()?;
+        if value.as_slice() != recheck.as_slice() {
+            return Err(failure(
+                SourceVaultErrorCode::KeyReadbackMismatch,
+                "recheck key value",
+            ));
+        }
+        call(Operation::Label, || store.validate_label())
+    })?;
     Ok(key)
 }
 

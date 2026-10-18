@@ -40,7 +40,12 @@ pub(crate) fn snapshot(
     }
     // The loader connects lazily, only after schema/profile/identity/lock checks.
     // Both invocations must use the same store identity observation.
-    let reader = open(directory, namespace, device, &mut load_existing)?;
+    let reader = open(directory, namespace, device, || {
+        crate::key_read_observation::call(
+            crate::key_read_observation::Operation::Entry,
+            &mut load_existing,
+        )
+    })?;
     let sources = reader.list_source_lineages(request)?;
     let selected = preferred_lineage
         .and_then(|id| sources.iter().find(|source| source.lineage_id() == id))
@@ -57,7 +62,10 @@ pub(crate) fn snapshot(
         reader.database.pending_abandonment_target()
     })?;
     let deletion_requests = reader.unfinished_delete_requests(request.namespace_id())?;
-    let rechecked_key = load_existing()?;
+    let rechecked_key = crate::key_read_observation::call(
+        crate::key_read_observation::Operation::Release,
+        &mut load_existing,
+    )?;
     if !reader.key.same_key(&rechecked_key) {
         return Err(SourceVaultError::new(
             SourceVaultErrorCode::KeyReadbackMismatch,
