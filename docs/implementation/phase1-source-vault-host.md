@@ -4,6 +4,8 @@
 
 项目所有者已授权实现 macOS 宿主接入，并在本任务批准下述依赖连线。恢复前置改动已提交为 `b982cec`；desktop worker、共用 controller、显式加密 / 维护界面和诊断抑制已提交为 `6a413f8`。默认启动保留 SQLite v6 入口，不以合成测试宣称真实系统凭据或 GUI 验收已完成。
 
+2026-10-24 当前补充：macOS 空库自然 busy 关闭拒绝、错误交付保留与结果后退出已通过；Windows / Linux ARM64 各两轮普通用户真实 provider / GUI 正常链路、注销重登、五份精确导出和两条来源删除也已通过，见[跨平台执行记录](../evaluation/phase1-windows-linux-provider-gui-plan.md)。下面各日期记录保留当批证据范围；精确同帧、其余系统错误、pending 原请求与中文质量仍不因本批通过而关闭。
+
 ## 实现与操作边界
 
 所有存储、全库认证、迁移和 provider 操作均在一个串行 worker 内执行。UI 只发送显式动作并接收只读快照；系统文件选择器仍在主线程，选择结果作为一次性请求进入 worker，消费后不存入 host profile 或诊断。worker busy 时不接受第二条操作，退出时发送停止信号并 join；线程失败显示 `WorkerStopped`，不能伪造成功或空目录。
