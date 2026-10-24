@@ -1,6 +1,6 @@
 # P1-S05 Windows / Linux 真实 provider 与 GUI 验收方案
 
-日期：2026-10-24。状态：**静态准备完成，未执行原生操作**。Windows 结果文档已提交为 `6d164a8`；本方案承接[隔离原生验收计划](phase1-source-vault-native-acceptance.md)，不改变 provider、profile、记忆或删除契约。当前仅获准准备；创建账户、登录 / 初始化系统 store、查询或写入凭据、启动 GUI 与清理须在实际执行前按本单确认，先前构建和临时 ACL 账户授权不沿用。
+日期：2026-10-24。状态：**Windows / Linux ARM64 均完成两轮真实 provider / GUI 正常链路、重登、精确导出与应用层删除；完整 P1-S05 仍待收口**。静态准备已提交为 `41663d7`，随后两平台分别取得当前任务的精确授权；实际结果及异常见文末。本文保留原执行方案，不改变 provider、profile、记忆或删除契约；先前构建和临时 ACL 账户授权不沿用。
 
 ## 已有证据与本轮产物
 
@@ -92,8 +92,67 @@ Linux 以当前冻结 `secret-service 5.2.0` / `zbus-secret-service-keyring-stor
 
 证据只记录构建 / 输入 / profile 摘要、匹配数量、非敏感元数据判据、稳定错误码、动作结果、退出码和清理状态。slot / SID / 路径的完整绑定仅保留本机受限操作材料；不输出 secret、完整凭据结构、密码、内存 dump 或全 store 清单。原生 stderr 只按该次路径作泄露检查，不扩大为系统诊断全覆盖。跨登录一致导出支持实际重读成功，不等于所有中途撤销窗口通过。
 
-## 当前待执行门禁
+## 准备时待执行门禁
 
 账户 / 目录是否空闲、实际 SID / UID、交互式会话、picker、Linux default collection / provider、精确 slot 空闲和客体产物当前摘要尚未检查。后续先按本单取得具体执行范围确认，再串行建立这些前提；没有批准前不启动 VM、创建账户、传输或访问凭据。准备材料不是通过回执，P1-S05、M01 及 PDF / 图片停止线保持。
 
 本轮准备验证：两份 profile 的格式契约、六份输入与归档逐项摘要、十项导出比对映射及旧产物证据绑定已静态复核；宿主完整离线 `./scripts/check-repo.sh` 退出 0，272 文件基线、fmt、locked Clippy 与 398 项测试通过（25 suites，0 failed，11 个父测试调用的隔离 helper）。记录补齐后另复核文本门禁与差异；没有把这些宿主 / 静态检查记作客体会话或真实 provider 通过。
+
+## 2026-10-24 Windows 真实执行结果
+
+执行绑定 `41663d7` 准备记录及上述 Windows 产物；客体复制前和两轮启动前均复算产物 / profile 摘要。新普通测试账户通过用户手动设置密码并交互式登录建立 profile，凭据预检与两轮 GUI 均在同一 SID、medium integrity `8192`、非管理员 token 下运行。第一轮为 session 2，真实注销并确认 profile 卸载后重登为 session 3。没有借用 SYSTEM 控制通道访问用户凭据；控制通道仅承担已授权的账户 / 文件准备和非 secret 证据回收。
+
+| 判据 | 实际结果 |
+| --- | --- |
+| 首次精确槽位预检 | `ERROR_NOT_FOUND`，仅本批 target / type；随后只执行一次 Prepare |
+| 第一轮产品动作 | Import picker Cancel 未创建来源；导入初始中文合成 Markdown、ASCII 标记检索、Prepare、迁移、显式加密打开、对照来源导入和主来源更新均完成；Verify 为 3 objects、0 pending |
+| 版本与精确导出 | 初始版本 106 bytes，更正版 123 bytes；注销前后各导出一次，四份均逐字节匹配冻结输入；主来源删除后对照导出 113 bytes，同样逐字节一致 |
+| 重登与读取 | 第二轮默认 legacy 打开按预期拒绝加密库；显式 Open encrypted、Refresh、Search、Verify 和两个历史版本导出成功；没有再次 Prepare |
+| 删除 | 先 Cancel 保留两条来源，再删除主 lineage 的两个版本；检索仅剩对照且可认证导出；最后删除对照。两份回执均 `completed`，每份 10 个组件均 `succeeded`，实际效果分别记录 deleted / retained_minimal / not_found |
+| 最终审计 | GUI Search 无来源、Verify 为 0 objects / 0 pending；退出后只读 SQLite 审计 schema 11、integrity ok，3 个 Source 版本均 deleted，object refs / inline bodies / fragments / FTS / 活动来源均 0；读取前后数据库摘要不变 |
+| 正常退出 | 两轮 GUI 退出 0，stdout / stderr 均为 0 bytes；最终 GUI 进程 0、测试账户已注销、profile 卸载；Windows 正常关机，九台 VM 完整清单全停后才启动 Linux |
+
+本次没有系统凭据交互提示，不能据此宣称取消 / 拒绝、locked / unavailable、权限撤回或中途失效窗口已验收。中文正文在 GUI 显示为方框，记录为既有字体 / 中文显示质量缺口；ASCII 找回及中文 bytes 的精确导出不关闭中文显示或中文检索质量问题。没有安装字体、修改依赖或改变 provider 生产实现。
+
+### 观测脚本异常与修正
+
+首次结束后槽位核对脚本错误地把编码长度固定为 70，实际 canonical `rmkek1:` 前缀为 7 bytes，加 32-byte key 的 64 个十六进制字符应为 71，因而返回 `MetadataOrEncodedLengthMismatch`。保留原始失败回执与脚本，静态核对生产编码和既有测试后另建重查脚本，按 `ASCII.GetByteCount("rmkek1:") + 32 * 2` 计算并保留原全部身份 / metadata 判据；同用户会话内只做一次精确读取重查，结果 `present_metadata_valid`。没有重复 Prepare、写回或替换 key；不能把第一次观测失败改写为通过。
+
+另一次证据整理使用 Windows PowerShell 默认文本解码，未显式 UTF-8，导致含中文的冻结清单解析失败；改为独立 UTF-8 整理脚本并保留原失败。该错误发生在证据整理，不是产品导出失败；最终五份导出以原 bytes 和冻结 SHA-256 双重核对。两项脚本修正均未修改生产代码。
+
+### 保留状态
+
+Windows 新测试账户、profile、唯一 Credential Manager 项、任务目录、输入、五份导出及审计证据全部保留；账户未删除，key 未删除。任务目录统计为 37,351,035 bytes（约 35.6 MiB，不包含系统用户 profile 和控制目录）。应用层来源删除仅完成上述本地组件，不包含原始输入、导出副本、系统历史、VM 快照或备份。
+
+## 2026-10-24 Linux 前置核对
+
+Windows 全停后串行启动 Debian13-ARM64，新建 `rm_p1s05_gui`，UID / GID 1001、仅同名组，无 sudo；密码由用户在客体控制台设置并登录 GNOME。复制前核对候选 ELF 的长度 / SHA-256，输入与 profile 全部匹配冻结摘要；隔离任务目录为 `0700`。会话核对成立：Wayland、`gdm-password`、活动本地 user session、`CapEff=0`，真实 HOME / 用户 bus 与 Secret Service owner 均为 UID 1001。
+
+首轮元数据预检读取 default alias 得到 `/org/freedesktop/secrets/collection/login`，随后读取该对象属性返回 `org.freedesktop.DBus.Error.UnknownMethod: Object does not exist at path`。保留失败回执，未将错误视为空闲槽位，该次失败时尚未执行精确 Item 搜索、产品 GUI 或 Prepare。原授权禁止替换已有 default，因此在继续前单独请求确认失效别名修复范围；不能用 root bus、临时会话、改 PAM 或静默初始化绕过前置条件。
+
+### 测试 collection 修复与第一轮
+
+项目所有者随后明确授权仅修复这个新测试账号的失效 default：创建本批命名 collection，并将已证实不存在的 login 对象别名改指该 collection。首次程序化创建进入密码提示等待，但未观察到可用密码窗口，用户关闭等待终端；之后由用户在 Seahorse 中手动创建 collection。只读检查区分 session collection、失效 login 路径与唯一新建 collection，确认原对象确实不存在、目标已解锁且本批精确 Item 匹配为 0 后，才设置批准的 label / default。原始失败和每次修复回执均保留，没有更改其它用户、PAM 或全局配置。准备交接期间曾出现用户在普通终端输入可能为口令的文本，已立即停止并说明该终端不是受保护密码框；相关两份本机临时截图已移除，未纳入保留证据，但不能宣称已撤回工具会话中显示的图像。后续 collection 密码输入均交由用户在系统密码框完成。
+
+修复后的首次检查为 UID 1001 / session 3，default 已解锁，精确 service / username 的 unlocked、locked、default 匹配数均为 0。第一轮 GUI 在同一会话启动：Import picker Cancel 未创建来源；导入初始版本 104 bytes、ASCII 搜索、一次 Prepare、迁移、显式加密打开、对照来源 111 bytes 导入、主来源更新为 121 bytes 均完成。注销前两份历史 / 当前版本导出逐字节及 SHA-256 匹配冻结输入；Verify 为 3 objects、0 pending。GUI 正常退出 0，stdout / stderr 均为 0 bytes。
+
+退出后元数据检查确认精确 Item 仅有一个、位于当前 default 且未锁定、label 正确，但完整 attributes 与脚本预期不相等。保留原始失败后，另作同用户只读属性诊断：实际仅比两个业务属性多出 `xdg:schema=org.freedesktop.Secret.Generic`。GNOME 上游的 [schema 字段定义](https://github.com/GNOME/gnome-keyring/blob/master/pkcs11/secret-store/gkm-secret-fields.h)与 [属性序列化实现](https://github.com/GNOME/gnome-keyring/blob/master/pkcs11/secret-store/gkm-secret-fields.c)支持 schema 合入返回属性的行为。另建检查脚本，精确匹配实际三项属性，并保留用户身份、唯一性、collection label 与锁定状态判据；重查退出 0。原脚本把完整属性限定为两个字段过严，修正未改变生产 provider、搜索范围或凭据内容；全部诊断只读元数据，未调用 secret 方法，没有再次 Prepare。
+
+### 重登、第二轮与最终结果
+
+第一轮退出后通过 GNOME 正常注销，核对 UID 1001 的会话和进程均为 0；用户重登后为 session 8。首次新会话元数据检查发现本批 collection 仍锁定，门禁失败并未启动第二轮 GUI。打开准确集合后由用户通过系统密码框解锁；独立复核确认同一 UID / 真实用户 bus、准确 collection label、唯一精确 Item 与三项属性，且 collection / Item 均已解锁。原 locked 回执保留；这只能证明验收启动门禁拒绝锁定状态，不能据此声称产品 locked 失败窗口通过。
+
+| 判据 | 实际结果 |
+| --- | --- |
+| 重登后打开 | 第二轮默认 legacy 入口按预期拒绝加密库，显式 Open encrypted 成功；没有重新 Prepare 或生成 key |
+| 只读动作 | 显式 Refresh、ASCII Search 与 Verify 成功；Verify 为 3 objects、0 pending；搜索返回主来源当前版本和独立对照 |
+| 五份精确导出 | v1 为 104 bytes、v2 为 121 bytes，注销前后各两份；主 lineage 删除后对照导出 111 bytes。全部逐字节匹配冻结输入且 SHA-256 一致，保留 BOM / CRLF / LF 原始差异 |
+| 删除 | Cancel 后两条 lineage 保持；随后主来源两个版本删除，重新检索仅剩对照且可认证导出；最后对照删除。两份回执均 completed，每份 10 个组件均 succeeded，实际效果分别记录 deleted / retained_minimal / not_found |
+| 最终状态 | GUI Search 无来源，Verify 为 0 objects、0 pending captures / deletion objects、无 pending abandonment；退出后只读 SQLite 审计 schema 11、integrity ok，3 个 Source 版本均 deleted，object refs / inline bodies / fragments / FTS / 活动来源计数均为 0；数据库摘要读取前后不变 |
+| 退出与收尾 | 第一轮 PID 6963、第二轮 PID 12236 均正常退出 0，stdout / stderr 均为 0 bytes；最终 GUI 进程 0，测试账号正常注销且 UID 1001 无会话 / 进程；Debian 正常关机，完整九台 VM 清单全部 stopped |
+
+Linux 任务目录统计为 359,054,046 bytes（约 342.4 MiB，不包含其余用户 profile / 系统配置及控制目录）；新测试账户 / home、本批 collection 和唯一 key、任务库、输入、五份导出及证据均保留。两台平台的来源删除只覆盖各自应用管理的本地组件，不删除原始输入、导出、系统历史或备份。
+
+本批两平台均保持各两次 GUI 启动、一次 Prepare，没有产品动作失败后换库或换 key。除独立受限观测 / 证据脚本修正外，未修改生产代码、依赖、字体、PAM 或全局密钥策略。Linux 中文正文同样显示方框；精确导出证明 bytes 保持，不关闭中文显示 / 检索质量缺口。系统取消 / 拒绝、其它 key store 错误、权限中途撤回、提交 / evidence 中断、重叠 GUI 事务和其它文件系统 / 桌面环境仍不在这次正常链路证据中；P1-S05 与 PDF / 图片停止线保持。
+
+本轮宿主完整离线 `./scripts/check-repo.sh` 已通过 272 文件基线、fmt、locked Clippy 与 398 项测试（25 suites，0 failed，11 个隔离 helper）；第一次沙箱运行的 P1-F17 端口绑定拒绝保留，经权限流程完整重跑退出 0。其后仅补充本文件和状态路由，最终文本 / 链接检查与 `git diff --check` 均通过；未把宿主检查当作客体真实系统证据。

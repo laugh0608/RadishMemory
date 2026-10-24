@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-更新：2026-10-24。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。2026-10-24 当前构建的空库自然 busy 关闭拒绝、锁错误交付保留及结果后正常退出已通过，详见[本次结果](#2026-10-24-授权执行结果)。随后 Linux ARM64 的离线默认构建与 workspace 合成测试通过，见[本批结果](#2026-10-24-linux-arm64-离线构建与合成测试结果)；Windows ARM64 当前构建、常规合成测试与两项显式文件系统验收随后通过，见[Windows 结果](#2026-10-24-windows-arm64-离线构建与合成测试结果)；两平台真实 provider / GUI、其它系统错误 / 操作阶段与其余原生失败窗口仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
+更新：2026-10-24。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。2026-10-24 当前构建的空库自然 busy 关闭拒绝、锁错误交付保留及结果后正常退出已通过，详见[本次结果](#2026-10-24-授权执行结果)。随后 Linux ARM64 的离线默认构建与 workspace 合成测试通过，见[本批结果](#2026-10-24-linux-arm64-离线构建与合成测试结果)；Windows ARM64 当前构建、常规合成测试与两项显式文件系统验收随后通过，见[Windows 结果](#2026-10-24-windows-arm64-离线构建与合成测试结果)；随后 Windows / Linux ARM64 均完成两轮真实 provider / GUI 正常链路、重登后精确导出与应用层删除；Linux 新账号失效 default 按追加授权修复，观测脚本属性判据修正及重登后的 collection 解锁均保留独立回执，见[执行记录](phase1-windows-linux-provider-gui-plan.md#2026-10-24-windows-真实执行结果)。其它系统错误 / 操作阶段与其余原生失败窗口仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -196,6 +196,8 @@ Windows / Linux 当前 ARM64 的离线默认构建与合成测试至此均已补
 ## Windows / Linux 真实 provider 与 GUI 准备
 
 2026-10-24 已提交上述 Windows 结果为 `6d164a8`，并按项目所有者要求完成[两平台执行方案](phase1-windows-linux-provider-gui-plan.md)与本机合成材料准备。方案拟为两台 VM 各新建一个普通测试账户，绑定各自 profile / 唯一 slot，以两轮 GUI 和中间注销重登验证；明确精确凭据查询 / 创建 / 读取、正常退出后保留，以及另行批准的不可恢复清理。该准备未启动 VM、创建账户、传输材料、访问系统凭据或启动 GUI；实际账户 / 会话 / store 前提与凭据动作仍须执行前确认，全机单 VM 约束保持。
+
+随后准备提交为 `41663d7` 并分别取得 Windows / Linux 精确执行授权。两平台各完成两轮 GUI、一次 Prepare、跨登录读取、五份精确导出与两条 lineage 删除；四个 GUI 退出 0，两个测试账号均已注销，完整九台 VM 清单全部停止。Linux 失效 default 按追加授权修复，GNOME schema 属性检查修正及用户解锁均保留独立回执。原始失败、交接异常、保留材料与未覆盖项见[本轮执行记录](phase1-windows-linux-provider-gui-plan.md#2026-10-24-windows-真实执行结果)。
 
 ## 已实现的隔离入口
 
