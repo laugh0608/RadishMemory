@@ -143,6 +143,18 @@ Prompt 读取前后数据库、profile 和两个密文对象摘要一致；Promp
 拒绝后 ACL metadata、数据库 / profile 保持，零对象 / staging；Prompt 退出，原 A 仍能免提示打开并 Verify 零对象 / 零 pending，随后正常关闭，所有本轮进程已退出。最终状态、首次误允许偏差、精确撤销过程及证据限制见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)。后续系统交互必须在触发前完成具体按钮交接，不同时混淆权限保存与拒绝测试。
 
 
+## 2026-10-24 当前构建的关闭验收准备
+
+从干净的 `dev` / `5365e27` 复核既有操作单。旧 N 批绑定 `bf8dddf` 包装，不能直接作为当前代码通过证据；本次以 `cargo build --offline --locked -p radishmemory-desktop` 的默认构建建立独立本机包装与新操作单，未重签、安装或启动。冻结清单绑定二进制、包装、操作单、既有 helper / targets 与 161 份源码及构建输入；精确路径与摘要仅存本机忽略目录，不修改旧冻结件。
+
+复用原持锁 helper，17 项独立合成回归通过；固定目标 `inspect` 的只读核对通过，原 v11 空合成库的身份、摘要、零活动表 / pending / deleting 和空对象目录保持。静态调用顺序仍为数据库锁 / 身份 / 状态检查先于 key loader；这不是新原生零访问证据。M01 v2 因旧源码摘要绑定漂移已暂缓，具体见[当前状态](../status/current.md#后续事项)，不将它混入关闭验收。
+
+拟执行范围为最多两次 GUI、最多三轮各 30 秒空 SQLite EXCLUSIVE transaction，成功观察即停止重复：验证初始旧入口拒绝后的空闲关闭；实际 busy 时关闭被拒；锁错误交付后窗口保留；释放持锁 helper 后再次关闭、原进程正常退出及前后基线一致。预计 15–25 分钟，另留 5 分钟收尾；使用原 helper 的 release / deadline 回滚，不写业务数据、不强杀、不结束用户进程。既有轮次控制文件必须未使用，新 GUI 日志与状态回执独占保存。
+
+本批只完成准备，GUI 和原生持锁须按新精确操作单取得当前任务授权。若出现意外系统提示，停止新增动作，交接用户取消 / 拒绝并如实记录访问尝试；不允许凭据读取、提示允许、ACL 修改或新业务动作。自然可见 busy 验收不覆盖精确同帧竞争、原请求 Cancel / Confirm、末轮 key 取消、有资料旧视图撤回或完整 P1-S05。
+
+本次完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：271 文件仓库基线、fmt、locked Clippy 与 398 项 Rust tests 通过（25 suites；11 个 ignored 子进程 helper 由父测试调用）。默认 desktop 构建和 helper 的 17 项合成测试分别通过。原生关闭、真实 Keychain、Windows / Linux 及远程 CI 未在本次执行；三份正式文档未提交，无 push。
+
 ## 2026-10-13 剩余宿主窗口核对与有限检查点
 
 本批先核对 production UI、worker、controller 与既有合成 provider 回归。headless 测试运行真实界面渲染和 viewport 命令处理，仅以测试 channel 控制结果到达；不会创建原生窗口或访问系统密钥库。worker 退出另用真实线程、合成 provider 和临时 SQLite 验证。实现与验证结果见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)。
