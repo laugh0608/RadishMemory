@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-更新：2026-10-24。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。2026-10-24 当前构建的空库自然 busy 关闭拒绝、锁错误交付保留及结果后正常退出已通过，详见[本次结果](#2026-10-24-授权执行结果)。随后 Linux ARM64 的离线默认构建与 workspace 合成测试通过，见[本批结果](#2026-10-24-linux-arm64-离线构建与合成测试结果)；Windows 当前 ARM64 构建、两平台真实 provider / GUI、其它系统错误 / 操作阶段与其余原生失败窗口仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
+更新：2026-10-24。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。2026-10-24 当前构建的空库自然 busy 关闭拒绝、锁错误交付保留及结果后正常退出已通过，详见[本次结果](#2026-10-24-授权执行结果)。随后 Linux ARM64 的离线默认构建与 workspace 合成测试通过，见[本批结果](#2026-10-24-linux-arm64-离线构建与合成测试结果)；Windows ARM64 当前构建、常规合成测试与两项显式文件系统验收随后通过，见[Windows 结果](#2026-10-24-windows-arm64-离线构建与合成测试结果)；两平台真实 provider / GUI、其它系统错误 / 操作阶段与其余原生失败窗口仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -150,6 +150,48 @@ UTM exec 通道仍会返回 0 且 stdout 为空，因此通过带 nonce 的客�
 结果文档更新后的宿主完整离线 `./scripts/check-repo.sh` 通过仓库基线、fmt、locked Clippy 和 398 项测试（25 suites，0 failed，11 个隔离 helper）；记录补齐后另复核文本门禁和差异。此 macOS 检查与上述 Linux 客体结果分别保留，不合并计数。
 
 下一步为 Windows ARM64 同类输入和执行身份方案；SYSTEM 通道仍不能承担普通用户 ACL 或用户凭据验收。Linux / Windows 的真实 provider 与 GUI 仍需独立准备和授权。P1-S05 不整体关闭，M01 与 PDF / 图片停止线保持。
+
+## 2026-10-24 Windows ARM64 离线构建与合成测试结果
+
+项目所有者授权提交 Linux 结果并完整推进 Windows 准备、执行、缺陷修复与复验，以及目标 VM 启动、传输、构建测试和正常关机；随后单独授权临时普通账户及本批目录 ACL。Linux 结果提交为 `da4cd4f`，本批源码与离线包均绑定该提交。未安装依赖、更新 lockfile、修改 UAC / 全局登录权限或调用真实凭据 provider。
+
+### 输入与执行边界
+
+- 复用已有 Rust / Cargo `1.96.0`、MSVC `14.44.35207` 与 Windows SDK `10.0.26100.0`，目标为 `aarch64-pc-windows-msvc`，系统为 Windows 11 Pro build `26200`、NTFS。agent 的 PowerShell 为 AMD64 进程，不改变 Rust 与实际产物的 ARM64 身份。
+- 当前 271 个源码文件、全部 444 个 locked registry archives、403 个 sparse index 缓存及 registry 配置组成 1,119 项输入清单；仅复制现有缓存，没有联网下载。ZIP 为 79,158,772 bytes，SHA-256 为 `f7828b865f56ad483ac58b63dd965c69c39c51d41650e9a1d92a9d89d6e49255`。宿主隔离 cache 的 Windows 目标 metadata 通过后，客体重新核对归档、逐文件摘要、长度、路径和 reparse 边界。
+- 常规批次在 SYSTEM 下运行，任务根 DACL 仅 SYSTEM / Administrators；使用独立 HOME、CARGO_HOME、target、临时目录，进程环境限定已有工具链及 SDK，`CARGO_NET_OFFLINE=true`、构建并行度与测试线程数均为 2。SYSTEM 结果不作为普通用户或用户凭据证据。
+- 源码归档没有 `.git`，仓库级文档 / 治理检查仍在宿主执行；客体复用现有 Rust 检查命令并逐项核对源码清单，不创建假 Git 元数据或跳过检查冒充完整门禁。
+
+### 实际结果与修复复验
+
+| 检查 | 实际结果 |
+| --- | --- |
+| default / all-features 目标 metadata，`--locked --offline` | 两步退出 0 |
+| `cargo fmt --all --check` | 退出 0 |
+| workspace all-targets / all-features Clippy，locked / offline，`-D warnings` | 退出 0 |
+| workspace 排除 Source Vault 的常规测试 | 22 suites，195 passed，0 failed，3 ignored |
+| Source Vault 常规测试 | 3 suites，173 passed，0 failed，10 ignored |
+| 默认 `radishmemory-desktop` locked / offline 构建 | 退出 0，ARM64 PE；仅构建，未启动 GUI |
+| 显式 reparse / 非普通文件测试 | 使用既有 symlink 权限，1 passed，0 failed |
+| 显式普通用户 ACL 撤回 / 恢复测试 | 非管理员、medium integrity，1 passed，0 failed |
+
+常规两组合计 368 passed、13 ignored，其中 11 个为父测试调用的隔离 helper；其余两项已在本批按各自身份前提单独运行并通过，合计 370 项实际通过。没有批量启用所有 ignored 测试，没有把常规跳过项计作通过。常规八步运行约 5 分 12 秒，最终各步真实退出码均为 0。
+
+本批先修正两处验收脚本问题：预检误将 `stddef.h` 归入 MSVC include，改按实际 SDK UCRT 与 MSVC 各自头文件核对；首次执行脚本在 PowerShell 5.1 下用空备份路径调用 `File.Replace` 保存状态失败，发生在 Cargo 启动前。保留原失败报告，使用显式备份路径做三次替换探针通过后，在新结果目录重新执行完整批次。后续运行与最终结果回收均通过，未修改产品源码或放宽断言。运行中部分日志暂不可读时仅保留读取失败，结束后回收完整日志，不以空输出或 UTM 通道退出 0 作为测试成功。
+
+普通用户追加批次使用临时本地账户、仅 Users 组与随机临时密码，通过 `LogonUser` / `CreateProcessAsUser` 启动非交互进程，不加载 profile、不改变 UAC 或全局登录权限。启动前验证账户 SID、非管理员 token 和 medium integrity；子进程再次核对身份并证明控制目录写入被拒绝。只在本批 run 目录授予写权限，执行已冻结摘要的 `windows_filesystem` 测试二进制，验证创建 / 读取权限撤回后的失败关闭及恢复；测试与子进程退出码均为 0。随后删除临时账户、移除本批目录中的 SID 授权；独立审计确认账户与 profile 不存在、SID ACL 不残留、子进程及构建 / 测试进程已结束，UAC 保持原值。
+
+默认 desktop 产物为 ARM64 PE（machine `0xAA64`），长度 36,832,768 bytes，SHA-256 为 `9b74a671bca32de4c57acc10e8a42486a398ba8a743833bbf3add04d40883bec`；它是 debug 构建，不是签名发行包。结束与收尾审计两次复核 271 个源码文件保持，包含 `Cargo.lock`。本批测试未发现需要修改产品实现的缺陷，该结论只覆盖上述范围。
+
+### 证据与收尾
+
+最终证据归档 205,295 bytes，SHA-256 为 `cb389e6037361d8c8fbc8d84968ac9561772840f5793943c5360a45bd5a24480`；宿主核对归档摘要、成员路径、运行 nonce、全部退出码、普通用户 / 清理回执，并从完整日志独立重算测试数。原始失败、脚本、完整清单和报告保存在本机忽略目录，不纳入 Git。
+
+仅日常 Windows VM 启动；启动前、各阶段与构建监控均核对完整九台清单，其余八台始终停止。回收完成后调用 Windows `shutdown.exe /s /t 0` 正常关机，未使用 `/f` 或强制断电；最终完整清单确认九台全部停止。本批输入、缓存、target 与证据按方案保留：主要目录约 5.08 GiB，普通用户验收目录约 2.83 MiB，审计时磁盘剩余约 13.18 GiB；临时账户及授权已回收，不宣称 VM 磁盘字节或系统审计历史恢复原样。
+
+结果文档更新后的宿主完整离线 `./scripts/check-repo.sh` 退出 0：仓库基线、fmt、locked Clippy 及 398 项测试通过（25 suites，0 failed，11 个父测试调用的隔离 helper）；补齐记录后复核文本门禁与差异。宿主 macOS 与 Windows 客体证据分别计数。
+
+Windows / Linux 当前 ARM64 的离线默认构建与合成测试至此均已补齐；下一步准备两平台真实 provider / GUI 的普通用户会话、独立合成库、唯一测试 slot、具体操作和回收方案，凭据动作仍另行确认。P1-S05 不整体关闭，M01 与 PDF / 图片停止线保持。
 
 ## 已实现的隔离入口
 
