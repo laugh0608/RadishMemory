@@ -1,6 +1,6 @@
 # P1-S05 隔离原生验收计划
 
-更新：2026-10-24。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。2026-10-24 当前构建的空库自然 busy 关闭拒绝、锁错误交付保留及结果后正常退出已通过，详见[本次结果](#2026-10-24-授权执行结果)。其它系统错误 / 操作阶段、其余原生失败窗口与集中跨平台检查仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
+更新：2026-10-24。状态：隔离入口已实现，macOS 最小正常链路、派生损坏重启恢复与密文损坏拒绝已完成；2026-10-09 另按精确授权完成权限故障下的原请求重试、重启精确放弃与原删除授权恢复，以及外部 SQLite 持锁下的 GUI 失败恢复和唯一测试 Keychain 项的只读核对。随后双 GUI 交替及四份精确导出通过；经精确撤销误加的 Prompt 常许许可并重新交接操作，真实系统交互返回 `KeyStoreCancelled` 的显式打开失败关闭已验收。2026-10-13 已修复 busy 结果与关闭同帧到达及接受关闭后继续派发动作的问题，并补齐 headless UI / worker 退出回归；该修复批次未启动原生窗口。2026-10-24 当前构建的空库自然 busy 关闭拒绝、锁错误交付保留及结果后正常退出已通过，详见[本次结果](#2026-10-24-授权执行结果)。随后 Linux ARM64 的离线默认构建与 workspace 合成测试通过，见[本批结果](#2026-10-24-linux-arm64-离线构建与合成测试结果)；Windows 当前 ARM64 构建、两平台真实 provider / GUI、其它系统错误 / 操作阶段与其余原生失败窗口仍待执行。实际范围见[最小闭环](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)、[恢复原生证据](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)与[锁及凭据观察](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)，本计划不等于全部场景已通过。
 
 本计划承接[桌面宿主接入](../implementation/phase1-source-vault-host.md)与[ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)。先验收 macOS 当前代码，再进入 Windows / Linux 集中检查点；合成 provider、headless 测试和历史平台证据分别保留边界。
 
@@ -116,6 +116,40 @@ cargo build --locked --offline -p radishmemory-desktop
 Git archive 没有 `.git`，而仓库检查器使用 `git ls-files`。因此宿主运行完整仓库基线，客体通过清单绑定源码并执行同一 fmt / Clippy / workspace test 命令及默认构建；不创建伪 Git 元数据，不宣称客体完整 `check-repo.sh` 通过。每步保存真实退出码、时间、stdout / stderr 和本轮 nonce；失败立即停止后续命令，UTM 返回 0、空 stdout 或缺失结果均不算成功。构建后记录二进制 ARM64 身份与摘要，并复核源码 / lockfile 未变。
 
 结果回收验证后默认保留本批输入、target 和证据，报告实际占用；清理须另列精确范围，不能宽泛删除。正常关机后确认完整清单全停才结束，Windows 不在本批。真实 provider、普通用户桌面会话与 GUI 仍另批准备；P1-S05、M01 和 PDF / 图片停止线不变。
+
+## 2026-10-24 Linux ARM64 离线构建与合成测试结果
+
+项目所有者明确授权提交准备文档，并执行单台 Linux 的启动、输入传输、普通用户运行和正常关机。准备文档已提交为 `4eb5f32`；实际源码仍使用已冻结的 `c30b310` 输入包，两提交仅两份准备文档不同，全部非文档输入一致。本批未修改实现、依赖、lockfile 或系统配置，未启动 Windows。
+
+### 输入与真实运行结果
+
+客体重新核对 Debian 13 / `aarch64`、ext4、Rust / Cargo 1.96.0、rustfmt / Clippy。执行身份四个 UID 字段均为 1000、`CapEff=0`，初始可用空间约 25.4 GiB。通过 agent 传入的唯一输入文件交给该普通用户后，以其身份验证包 SHA-256、安全解包，并逐项确认 1,119 个文件的内容、长度和模式与冻结清单相符。没有使用客体共享 Cargo cache 或旧 H05 目录。
+
+随后在全新任务 HOME / CARGO_HOME / target / TMPDIR 中，按前述方案以两个构建 job 和两个测试线程顺序执行；真实退出码均为 0，六步共约 3 分 22 秒。每步 stdout / stderr、起止时间、执行参数、身份及本轮 nonce 均已回收。
+
+| 步骤 | 实际结果 |
+| --- | --- |
+| default / all-features 目标 metadata | 两次 `--locked --offline` 均通过，客体完整缓存可解析 |
+| fmt | `cargo fmt --all --check` 通过 |
+| Clippy | workspace、all-targets、all-features、locked offline 与 `-D warnings` 通过 |
+| workspace 合成测试 | 25 suites，387 passed，0 failed，11 ignored |
+| 默认 desktop 构建 | `cargo build --locked --offline -p radishmemory-desktop` 通过；仅构建，未启动 |
+
+11 个 ignored 均为父测试调用的隔离 helper，没有跳过另行要求的 Linux 权限用例。三项 Linux 文件系统集成测试均实际通过：普通用户创建 / 读取权限撤回的失败关闭及恢复、FIFO 对象 / staging 拒绝、替换私有目录不继承旧打开能力。本批不把这些合成文件系统证据扩大为真实 Secret Service、桌面会话或 GUI 验收。
+
+默认产物经 `file` / `readelf -h` 确认是 AArch64 ELF PIE，含 debug info、未 strip、动态链接，并非发布安装包。长度为 358,504,336 bytes，SHA-256 为 `3a03ca92d4ec0fc268589cb82a59f7307ead6cc7a2599f9bfcc835a7cc823a2c`。构建结束后 271 个源码文件逐项复验保持，包含 `Cargo.lock`；目标缓存 / target 的生成内容单独保留。没有把宿主 offline metadata 或历史 x86_64 CI 当作本批 ARM64 执行结果。
+
+### 回收与单机收尾
+
+UTM exec 通道仍会返回 0 且 stdout 为空，因此通过带 nonce 的客体结果、六步退出码和最终 `run-exit` 文件确认成功。证据归档回收后复算 SHA-256、验证成员路径与内容并独立重算测试数量；归档为 251,787 bytes，SHA-256 为 `5f3258f56e6d6b03a18cd0741d1aaed91818fb315071596b3c9dcd0086777328`。传输等待时只观察文件长度，没有重发包或重跑命令；不以空输出或传输返回码代替实际结果。
+
+只启动已核对的日常 Debian。启动前、启动后、各阶段及运行期间每 45 秒的完整清单均复核单台约束，未启动第二台排障。回收后使用 UTM `--request` 正常关机，最终九台 VM 全部 `stopped`，未使用 force / kill；目标配置文件前后 SHA-256 一致，不宣称 VM 磁盘逐字节恢复。
+
+按方案保留客体本批私有根内的输入、缓存、target、临时目录和证据，运行结束时约 5.03 GiB，剩余磁盘约 20.35 GiB；历史 H05、工具链及既有凭据未清理。宿主操作脚本、完整清单、日志、归档与回执留本机忽略目录，不纳入 Git。构建命令、监控及 VM 已结束；没有安装依赖、启用用户桌面、调用真实 provider 或写入 GitHub 等外部服务。
+
+结果文档更新后的宿主完整离线 `./scripts/check-repo.sh` 通过仓库基线、fmt、locked Clippy 和 398 项测试（25 suites，0 failed，11 个隔离 helper）；记录补齐后另复核文本门禁和差异。此 macOS 检查与上述 Linux 客体结果分别保留，不合并计数。
+
+下一步为 Windows ARM64 同类输入和执行身份方案；SYSTEM 通道仍不能承担普通用户 ACL 或用户凭据验收。Linux / Windows 的真实 provider 与 GUI 仍需独立准备和授权。P1-S05 不整体关闭，M01 与 PDF / 图片停止线保持。
 
 ## 已实现的隔离入口
 
