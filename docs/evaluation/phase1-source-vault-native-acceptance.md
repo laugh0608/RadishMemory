@@ -193,6 +193,10 @@ UTM exec 通道仍会返回 0 且 stdout 为空，因此通过带 nonce 的客�
 
 Windows / Linux 当前 ARM64 的离线默认构建与合成测试至此均已补齐；下一步准备两平台真实 provider / GUI 的普通用户会话、独立合成库、唯一测试 slot、具体操作和回收方案，凭据动作仍另行确认。P1-S05 不整体关闭，M01 与 PDF / 图片停止线保持。
 
+## Windows / Linux 真实 provider 与 GUI 准备
+
+2026-10-24 已提交上述 Windows 结果为 `6d164a8`，并按项目所有者要求完成[两平台执行方案](phase1-windows-linux-provider-gui-plan.md)与本机合成材料准备。方案拟为两台 VM 各新建一个普通测试账户，绑定各自 profile / 唯一 slot，以两轮 GUI 和中间注销重登验证；明确精确凭据查询 / 创建 / 读取、正常退出后保留，以及另行批准的不可恢复清理。该准备未启动 VM、创建账户、传输材料、访问系统凭据或启动 GUI；实际账户 / 会话 / store 前提与凭据动作仍须执行前确认，全机单 VM 约束保持。
+
 ## 已实现的隔离入口
 
 正常无参数启动继续使用默认目录与 SQLite v6。原生验收使用同一个默认构建产物与 production worker / provider，只显式选择另一目录和既有 host profile：

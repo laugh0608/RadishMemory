@@ -52,6 +52,8 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 ## 当前验证入口
 
+2026-10-24 Windows 结果文档已提交为 `6d164a8`；随后完成 [Windows / Linux 真实 provider 与 GUI 方案](../evaluation/phase1-windows-linux-provider-gui-plan.md)及本机合成 profile / 输入准备，明确拟新建普通账户、独立测试库 / slot、两轮 GUI 与重登、凭据操作确认和清理层次。当前仍仅准备，未启动 VM、创建账户、传输或访问真实凭据；账户 / 会话 / store 门禁待执行，不以准备材料关闭 P1-S05。
+
 2026-10-24 Windows ARM64 离线执行及普通用户追加验收通过：Linux 结果提交为 `da4cd4f` 后，当前输入完成 fmt、locked Clippy、两组常规测试（368 passed）与默认 ARM64 PE 构建；另按授权完成 reparse 和临时普通用户 ACL 两项测试，合计 370 项实际通过、0 failed。两处验收脚本问题已修复并复验，产品源码与 lockfile 保持。临时账户及目录授权已回收，最终正常关机并确认九台 VM 全停；约 5.08 GiB 本批输入 / 构建材料保留。真实 provider / GUI 未执行，详见[Windows 结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-windows-arm64-离线构建与合成测试结果)。
 
 2026-10-24 Linux ARM64 离线执行通过：准备文档提交为 `4eb5f32` 后，按授权仅启动日常 Debian，以普通用户验证 `c30b310` 离线输入并完成目标解析、fmt、locked Clippy、workspace 合成测试及默认 desktop 构建。实际为 25 suites、387 passed、0 failed、11 个父测试调用的 ignored helper；产物确认 AArch64，源码清单保持。证据回收后正常关机，最终九台 VM 全停；约 5.03 GiB 本批目录按方案保留。未执行真实 provider / GUI 或 Windows 批次，详见[实际结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-linux-arm64-离线构建与合成测试结果)。
@@ -119,7 +121,7 @@ pwsh ./scripts/check-repo.ps1
 
 1. **M01 暂缓，保留失败门禁**：10 月 24 日已完成冻结件复核并定位源码摘要漂移；不直接执行原生 v2，也不通过改写历史冻结件恢复门禁。未来决定继续时，先审阅源码证据绑定与独立冻结范围，再按新版副本范围操作单另行精确授权；只允许既定唯一目标、两轮有界元数据观察、零 secret / 提示允许 / key 或 ACL 写入，不启动 GUI、不重签、不跳过校验、不重试。意外提示交接取消，拒绝 / 未知结构如实记未完成。副本匹配或不匹配均不能代表原 app 授权，不恢复旧因果判据；四读和全部认证检查保持。
 2. **补剩余只读会话与宿主窗口**：当前构建的空库自然 busy 关闭、真实锁错误交付保留和结果后退出已通过，不重复列为未验。末轮取消、显式 Refresh、有资料旧视图撤回、pending 原请求 Cancel / Confirm 仍待原生验收；精确同帧关闭竞争继续只引用 headless 回归。新增原生切片需单独确认目标、预计时长、停止和释放方式。按[有限验收检查点](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)选取切片，不把 headless / worker 回归、入口拒绝或提交 / evidence 回调错误当作其它原生窗口通过。
-3. **两平台构建与合成检查已通过，下一批准备真实 provider / GUI**：Linux ARM64 普通用户批次、Windows ARM64 常规批次及显式 reparse / 普通用户 ACL 已回收完整证据，VM 均正常关机，见 [Linux 结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-linux-arm64-离线构建与合成测试结果)与 [Windows 结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-windows-arm64-离线构建与合成测试结果)。随后准备普通用户桌面会话、独立合成库、唯一测试 slot、真实 provider 与 GUI 的具体动作及回收方案，再按精确范围确认凭据操作；继续保持全机最多一台 VM。不能以合成结果代替真实系统交互；无法安全构造的系统错误保留待验，不删除唯一 key、锁定整个用户 keychain 或不受控结束进程。
+3. **两平台构建与合成检查已通过，真实 provider / GUI 方案已备**：Linux ARM64 普通用户批次、Windows ARM64 常规批次及显式 reparse / 普通用户 ACL 已回收完整证据，VM 均正常关机，见 [Linux 结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-linux-arm64-离线构建与合成测试结果)与 [Windows 结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-windows-arm64-离线构建与合成测试结果)。上述[具体方案与本机材料](../evaluation/phase1-windows-linux-provider-gui-plan.md)已准备，包含拟新建普通账户、独立合成库 / slot、两轮 GUI 与重登、凭据操作及保留 / 清理范围；下一步在实际凭据操作前确认对应平台范围，再串行建立账户与会话门禁并执行，继续保持全机最多一台 VM。不能以合成结果代替真实系统交互；无法安全构造的系统错误保留待验，不删除唯一 key、锁定整个用户 keychain 或不受控结束进程。
 4. **保留独立质量和契约事项**：R01 至 R06、中文显示、默认 v6 failed-open 继续按质量计划推进；`evidence_digest` 复算及历史兼容先做契约评审。已通过的权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库取消不重复列为未完成任务。其它系统错误 / 写操作阶段另定范围，P1-S05 不整体关闭。
 
 10 月 18 日日终停止安排保留为历史记录；10 月 24 日已按项目所有者要求完成有限验收准备和授权执行，不安排提醒、自动化或后台开发，不 push。忽略目录内的合成库、导出、备份、包装 / dSYM、原始证据、唯一既有测试 key、旧 M01 与 v2 冻结件继续保留，不纳入 Git，也不自动清理。历史 GUI / sample / helper 均已退出；本次两个 GUI 和两个持锁 helper 均正常退出，第三轮锁未使用；v2 原生进程仍未启动。新增系统操作、清理或远程动作仍须精确授权；[10 月 13 日](2026-10-13-source-vault.md)及更早日终安排保留为历史记录。

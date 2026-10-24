@@ -57,6 +57,7 @@
 
 - [2026-09-26 Source Vault 日终记录与明日事项](status/2026-09-26-source-vault.md)：当天七个实现提交、代码与文档复核、读取 / 导出验收及 application 生命周期接入安排。
 - [P1-S05 隔离原生验收计划](evaluation/phase1-source-vault-native-acceptance.md)：显式验收入口、合成 profile 绑定、真实 Keychain / GUI 授权材料及待验场景。
+- [Windows / Linux 真实 provider 与 GUI 验收方案](evaluation/phase1-windows-linux-provider-gui-plan.md)：专用普通账户、独立合成库 / slot、串行会话、凭据确认与分层清理范围；当前仅准备。
 - [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；空库关闭切片仍仅准备。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
