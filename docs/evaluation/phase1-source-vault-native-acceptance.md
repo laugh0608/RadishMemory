@@ -6,6 +6,42 @@
 
 2026-10-18 诊断与准备进展见[有限诊断与原生关闭方案](phase1-keychain-prompt-diagnostic-plan.md)：既有两轮八提示证据已离线复核；受限补丁与冻结构建已完成，D01 单次打开验证完整调用预算但缺少逐提示交接；随后 D02 首对观测已确认入口第一读同一区间双提示，第二提示拒绝后真实失败关闭，范围见 [D02 记录](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)。M01 单次执行在静态身份阶段失败、目标查询为零；后续副本范围 v2 已实现并冻结，尚未执行真实 Keychain 访问，副本结果不能代表原 app 授权。2026-10-24 普通文件门禁发现旧源码摘要漂移，M01 原生执行暂缓。原生关闭另缩小为空库 SQLite 锁等待切片，不申请读取真实 Keychain、不导入资料或修改对象目录权限；该切片已按当前构建重新冻结并取得精确授权，实际 GUI / 既有库持锁验收通过。该切片不替代原请求 Cancel / Confirm、末轮取消或有资料旧视图撤回。现行后续顺位见[当前状态](../status/current.md#后续事项)。
 
+## 2026-10-24 集中跨平台准备
+
+当前已满足[有限检查点](#2026-10-13-剩余宿主窗口核对与有限检查点)的准备条件：窗口判据和原生限制明确，合成回归、默认 macOS desktop 构建通过，自然 busy 原生关闭已补证。项目所有者明确要求本批只完成准备，不直接操作虚拟机；以下不是 VM、依赖安装或系统凭据访问授权。
+
+### 已复核的 CI 证据
+
+本批通过连接器只读读取 PR #5、最终候选 `5dc1dbefd161218eca1a325d6f1b851e8f1c61fc` 的 workflow run、各 job 状态及日志。[第三轮 run 39125672125](https://github.com/laugh0608/RadishMemory/actions/runs/39125672125) 的 Repo Hygiene、下列四个 Rust Quality 分组及 Candidate Quality 均为 success；没有重跑 CI 或写入远程状态。
+
+| 分组 | 日志中的实际工具链 / runner | 测试结果 | 未执行项解释 |
+| --- | --- | --- | --- |
+| [Linux](https://github.com/laugh0608/RadishMemory/actions/runs/39125672125/job/117670150591) | Rust 1.96.0，`x86_64-unknown-linux-gnu`，Ubuntu 24.04 | 25 suites，387 passed，0 failed，11 ignored | ignored 为父测试调用的隔离 helper；Linux 普通用户权限回归通过 |
+| [macOS](https://github.com/laugh0608/RadishMemory/actions/runs/39125672125/job/117670150456) | Rust 1.96.0，`aarch64-apple-darwin`，macOS 26 ARM64 | 25 suites，398 passed，0 failed，11 ignored | ignored 为父测试调用的隔离 helper；不代表本机 GUI / Keychain 验收 |
+| [Windows 其余 workspace](https://github.com/laugh0608/RadishMemory/actions/runs/39125672125/job/117670150576) | Rust 1.96.0，`x86_64-pc-windows-msvc`，Windows Server 2025 | 22 suites，195 passed，0 failed，3 ignored | ignored 为父测试调用的隔离 helper |
+| [Windows Source Vault](https://github.com/laugh0608/RadishMemory/actions/runs/39125672125/job/117670150518) | 同上 | 3 suites，173 passed，0 failed，10 ignored | 8 个隔离 helper；普通用户 ACL 与需 symlink 权限的 reparse 两项显式验收未运行 |
+
+四组 fmt、locked all-targets / all-features Clippy 与对应测试步骤均成功。两个 Windows 分组并集为 368 passed、13 ignored；其中两项真正待授权运行，不能都当作 helper 或通过。平台条件编译导致测试数不同，不能套用 macOS 的 398 项作为三平台统一数量。
+
+当前准备基线 `3e5a766` 与 CI 候选相比，仅五份 `docs/` 文件不同；全部非文档文件（含源码、workflow、manifest、lockfile、vendor、fixture 和检查脚本）一致。该对照使旧 CI 可作为相同实现的证据，不把它改写成当前 HEAD 的新 CI，也不替代 ARM64 运行、默认 desktop 分发构建、真实 provider 或 GUI。
+
+### 本机离线输入
+
+- 已从 `3e5a766` 用 Git archive 导出 271 个受跟踪文件，逐文件登记 SHA-256、长度和模式，并验证归档无绝对路径、父目录穿越、链接或忽略目录内容。归档约 3.73 MB，仅含仓库资产，没有 `.git`、真实资料库、key 或本机原生证据；输入包与精确清单留本机忽略目录，尚未传输。
+- 对 `aarch64-unknown-linux-gnu` 和 `aarch64-pc-windows-msvc` 分别运行 default / all-features 的 locked offline Cargo metadata，取 workspace 依赖闭包并集。Linux 301 个、Windows 213 个 registry archives 在本机缓存均存在，SHA-256 全部符合 `Cargo.lock`；Windows 另包含已审阅的本地 vendor patch。未下载、安装、修改共享缓存、更新依赖或 lockfile。
+- metadata 是保守依赖图，缓存存在不证明客体离线解析、系统库、linker 或实际构建可用；本批没有生成可直接使用的完整 Cargo 缓存包。未来传输前需明确任务专用缓存和索引策略，不能直接覆盖客体共享缓存。
+- 本机没有已安装的 Linux GNU / Windows Rust target，也未安装；既有 Android metadata 探针不替代上述目标。当前没有已核对的 VM UUID、客体身份、磁盘、工具链、系统库或运行会话，因此仍是准备状态。
+
+本批文档与准备复核后的 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 已通过：仓库基线、fmt、locked all-targets / all-features Clippy、25 suites 共 398 passed、0 failed、11 个父测试调用的 ignored helper。首次沙箱内检查因合成本地网络观察器绑定端口被拒而失败；保留失败日志，经权限流程在沙箱外重跑通过，没有改测试或放宽门禁。此结果仅为当前 macOS 本机检查。
+
+### 后续分批与停止条件
+
+1. **环境只读核对**：指定并核对测试 VM、初始电源状态、普通用户 / elevation、ARM64 架构、文件系统、Rust 1.96.0、Clippy / rustfmt、C / MSVC linker、磁盘余量及图形会话条件。启动、agent 通道、持续时间和正常关机方式必须先精确说明并授权；不安装缺失项，不读取密钥库，不结束已有进程。
+2. **locked 编译与合成检查**：环境成立后另行批准源码 / 依赖输入传输、任务专用 CARGO_HOME / target / 临时目录及输出回收。复用现有 fmt、Clippy 和 workspace 测试命令，Windows 保持两个测试分组；追加默认 `cargo build --locked --offline -p radishmemory-desktop`。权限用例只在其身份 / 权限前提成立时另行运行，普通检查不得偷偷启用 ignored 权限测试。记录实际命令、输入摘要、完整日志、退出码和未执行项，空输出 / 通道返回 0 不能代替客体结果。
+3. **真实 provider / GUI**：前批通过后再冻结独立合成库、唯一 slot、日志抑制、具体业务动作、提示预算、失败停止与精确收尾；Windows Credential Manager、Linux Secret Service、普通用户权限和 GUI 必须分别取得证据。普通编译 / 合成运行不自动授权创建、读取、删除凭据或修改 ACL。
+
+缺工具链、依赖、权限、可用会话或出现输入漂移即停止对应步骤并报告，不联网补齐、不降级校验、不改变系统配置。清理只覆盖本批明确创建且已核对的路径，历史库、唯一 key 与其它项目环境保留；恢复 VM 原电源状态也需包含在具体操作范围中。本准备不关闭 P1-S05，不解除 PDF / 图片停止线。
+
 ## 已实现的隔离入口
 
 正常无参数启动继续使用默认目录与 SQLite v6。原生验收使用同一个默认构建产物与 production worker / provider，只显式选择另一目录和既有 host profile：
