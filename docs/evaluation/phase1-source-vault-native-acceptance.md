@@ -74,9 +74,48 @@
 
 ### 下一批范围
 
-先在日常 Linux 的普通用户下准备任务专用离线输入与缓存，再执行当前源码的 fmt、locked Clippy、workspace 合成测试和默认 desktop 构建；其正常关机并确认全停后，才进入 Windows 同类批次。当前缓存清点仍不等于完整可携带的离线包，传输前须闭合索引、锁定 archives 和本地 vendor 输入。
+先在日常 Linux 的普通用户下准备任务专用离线输入与缓存，再执行当前源码的 fmt、locked Clippy、workspace 合成测试和默认 desktop 构建；其正常关机并确认全停后，才进入 Windows 同类批次。本轮环境核对结束时的缓存清点尚不等于完整可携带的离线包；随后已完成下述 Linux 输入封包，客体传输与运行仍待执行。
 
 Windows 的 SYSTEM 通道不能承担普通用户 ACL 或用户凭据验收；不得隐式改变 UAC、创建账户或借用兄弟项目身份。真实 provider / GUI 还需单独准备普通用户桌面会话、独立合成库与唯一测试 slot。环境缺项、权限变更或新副本需求应按具体范围处理，不自动安装或扩大权限。本批不关闭 P1-S05，M01 与 PDF / 图片停止线保持。
+
+## 2026-10-24 Linux 离线输入包与 ARM64 执行方案
+
+项目所有者要求先提交环境核对与单台 VM 约束，再准备 Linux 离线输入和构建 / 合成测试方案。前批五份文档已提交为 `c30b310`；以下准备绑定该提交，未启动 VM、传输输入、执行客体命令或安装依赖。单台 VM 限制继续覆盖全机及其它项目。
+
+### 输入封包与宿主验证
+
+- 源码由 `c30b3108bb5d2b43c64f3a56e93015594130599f` 的 Git archive 导出，含 271 个受跟踪文件及既有 vendor patch；不含 `.git`、真实资料、历史验收库或本机配置。
+- 从既有宿主缓存复制 `Cargo.lock` 中全部 444 份 registry archives，逐份 SHA-256 与 lockfile 一致；携带对应 403 个 crate 名称的 sparse index 缓存及官方 registry 配置，逐版本 index checksum 同样核对。没有下载、改依赖 / lockfile、写共享缓存或复制用户 credentials / Cargo 配置。
+- 首次仅携带 Linux 可达闭包的 301 份 archives 时，隔离 offline metadata 仍要求 `accesskit_consumer 0.38.0` 而失败。保留该失败，并补齐同一锁文件全量 archives；没有扩大依赖图或联网回退。平台过滤不等于 Cargo 解析所需缓存的完整边界。
+- 完整缓存使用空 HOME、独立 CARGO_HOME / target / TMPDIR 和直接调用的 Rust 1.96.0 工具链，在宿主分别通过 default / all-features 的 `cargo metadata --locked --offline --filter-platform aarch64-unknown-linux-gnu`，错误流为空；封包解到另一全新目录后，再次通过 all-features offline metadata。
+- 成品 `linux-arm64-offline-c30b310.tar.gz` 为 78,771,462 bytes，SHA-256 为 `0c18e36f3e2dfc2bd4270bbfef46c0cab86c3c1329ba45d9f021b3ed8a39e3ce`。清单绑定 1,119 个 payload 文件的相对路径、长度、模式与 SHA-256；解包验证文件集合完全相符，拒绝绝对路径、父目录穿越、重复成员及链接 / 特殊文件。包、清单、操作单和失败 / 成功证据仅保存在本机忽略目录，未传输或发布。
+
+以上证明当前宿主 Cargo 可使用独立输入离线解析目标依赖，不证明 Linux 编译、系统库链接、权限测试或 GUI 通过；缓存格式在客体 Rust 1.96.0 下仍需实际解析复核。
+
+准备文档更新后的完整离线 `./scripts/check-repo.sh` 通过仓库基线、fmt、locked Clippy 和 398 项 Rust tests（25 suites，0 failed，11 个由父测试调用的 ignored helper）。首次沙箱内 P1-F17 的合成本地 TCP 绑定被拒；原失败日志保留，经权限流程在沙箱外重跑同一检查通过，未修改测试。该结果仍仅为 macOS 宿主证据。
+
+### 下一批精确范围与命令
+
+目标仅为已核对的日常 Debian 13 ARM64，排除 CleanBase、DependencyFrozen 和兄弟项目专用 VM。具体 UUID、bundle、全新任务根、包与清单摘要已写入本机操作单。预计启动 / 输入核对 5–10 分钟、首次编译与测试 20–40 分钟、回收 / 关机 5–10 分钟；超过 60 分钟先报告实际进度。执行前须取得该批启动、传输、任务目录写入、普通用户检查及正常关机范围授权。
+
+1. 启动前完整清单必须全部 `stopped`，启动后只能目标运行，关机后再确认全停；在阶段转换时复核。其它 VM、未知状态、查询失败或关机超时均停止后续动作，不强停、不启动第二台排障。
+2. 复核现有工具链、ext4、空间、全部 UID 非零与 `CapEff=0`。以既有普通用户建立不存在的私有任务根，上传后先核对包摘要、安全解包，再核对完整清单。禁止覆盖共享 Cargo / rustup 或历史 H05 目录；缺依赖、工具、权限或磁盘条件时停止，不自动安装。
+3. 在任务源码目录运行下列命令。用 `env -i` 仅设置任务专用 HOME、CARGO_HOME、CARGO_TARGET_DIR、TMPDIR、固定工具链 PATH、`LC_ALL=C`、`CARGO_NET_OFFLINE=true`、`CARGO_BUILD_JOBS=2`、`RUST_TEST_THREADS=2`；不继承桌面 D-Bus、显示、代理或凭据环境。这是进程环境隔离，不声明操作系统网络沙箱。
+
+```bash
+cargo metadata --format-version 1 --locked --offline --filter-platform aarch64-unknown-linux-gnu
+cargo metadata --format-version 1 --locked --offline --filter-platform aarch64-unknown-linux-gnu --all-features
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --all-features --locked --offline -- -D warnings
+cargo test --workspace --all-targets --all-features --locked --offline
+cargo build --locked --offline -p radishmemory-desktop
+```
+
+沿用现有 workspace 合成测试，覆盖 Linux 普通用户文件系统拒绝和父测试调用的 helper，不增加 `--ignored`。测试会在任务临时目录操作合成文件 / 权限并短暂绑定本地 TCP 端口；默认桌面产物仅构建，不启动或调用真实 Secret Service。既有 Linux CI 的数量仅作参考，实际通过、失败和 ignored 数量以本轮客体日志为准。
+
+Git archive 没有 `.git`，而仓库检查器使用 `git ls-files`。因此宿主运行完整仓库基线，客体通过清单绑定源码并执行同一 fmt / Clippy / workspace test 命令及默认构建；不创建伪 Git 元数据，不宣称客体完整 `check-repo.sh` 通过。每步保存真实退出码、时间、stdout / stderr 和本轮 nonce；失败立即停止后续命令，UTM 返回 0、空 stdout 或缺失结果均不算成功。构建后记录二进制 ARM64 身份与摘要，并复核源码 / lockfile 未变。
+
+结果回收验证后默认保留本批输入、target 和证据，报告实际占用；清理须另列精确范围，不能宽泛删除。正常关机后确认完整清单全停才结束，Windows 不在本批。真实 provider、普通用户桌面会话与 GUI 仍另批准备；P1-S05、M01 和 PDF / 图片停止线不变。
 
 ## 已实现的隔离入口
 
