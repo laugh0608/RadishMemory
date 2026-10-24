@@ -42,6 +42,42 @@
 
 缺工具链、依赖、权限、可用会话或出现输入漂移即停止对应步骤并报告，不联网补齐、不降级校验、不改变系统配置。清理只覆盖本批明确创建且已核对的路径，历史库、唯一 key 与其它项目环境保留；恢复 VM 原电源状态也需包含在具体操作范围中。本准备不关闭 P1-S05，不解除 PDF / 图片停止线。
 
+## 2026-10-24 串行环境核对结果
+
+项目所有者随后授权日常 Linux / Windows VM 的环境核对，并要求任何时刻最多运行一台 VM。该长期限制已同步至 `AGENTS.md` / `CLAUDE.md` 和[协作细则](../governance/agent-collaboration.md#授权进程与远程状态)。本批仅盘点环境与回收报告，没有传输项目源码 / 依赖、安装工具、执行客体构建 / 测试或调用真实凭据 provider。
+
+先由 UTM 原生界面确认日常 Debian 的外部 bundle 路径，避免误选与其共用历史 UUID 的未注册 `DependencyFrozen`；Windows 通过原生“在访达中显示”确认位于 UTM 默认 Documents。没有修改目录隐私权限、移动 bundle 或访问 CleanBase / 兄弟项目专用 VM。Windows 配置文件的直接读取仍受宿主隐私权限限制，不声明已完成配置字节摘要核对。
+
+### 实际环境
+
+| 项目 | Linux 日常测试机 | Windows 日常测试机 |
+| --- | --- | --- |
+| OS / 架构 | Debian 13，`aarch64`，内核 `6.12.101+deb13-arm64` | Windows 11 Pro build `26200`，系统 ARM64；agent 的 PowerShell 进程报告 AMD64，不能据此改写 Rust target |
+| 文件系统 / 可用空间 | ext4，约 25.4 GiB | NTFS，约 21.0 GiB |
+| Rust | Rust / Cargo `1.96.0`，host `aarch64-unknown-linux-gnu`，Clippy / rustfmt 均实际执行版本查询成功 | Rust / Cargo `1.96.0`，host `aarch64-pc-windows-msvc`，Clippy / rustfmt 均实际执行版本查询成功 |
+| 原生工具 | GCC `14.2.0`、pkg-config `1.8.1`、CMake `3.31.6`、Ninja `1.12.1` 存在；Wayland / X11 / xkbcommon 开发包、Vulkan、Portal 与 gnome-keyring 已安装 | Build Tools `17.14.37614.0` 报告完整；ARM64 linker 文件版本 `14.44.35228.0`、SDK `10.0.26100.0` 的 ARM64 UM / UCRT 库存在；未执行链接验证 |
+| 执行身份 | agent 为 root；另以既有普通账户核对 UID 1000、`CapEff=0`，同一 rustc 版本查询成功 | agent 为 SYSTEM、system integrity、管理员 token，`EnableLUA=0`；没有把它视为普通用户证据 |
+| 桌面条件 | 普通账户无活动会话，用户 D-Bus socket 不存在；系统中存在 GNOME / Portal 进程不等于该用户会话可用 | 未发现 Explorer 会话，界面处于锁屏；未登录或调用 Credential Manager |
+
+环境盘点只支持“已有工具可进入下一批编译验证”的判断，不证明完整依赖闭包可离线解析、当前桌面构建通过或真实 provider 可用。Linux 旧 P1-H05 源码、cache 和合成数据路径仍存在并保留；旧记录不升级为当前代码的验收结果。
+
+### 结果回收、异常与收尾
+
+- 每次启动前核对完整九台清单；仅 Linux 启动后执行其盘点，确认九台全部停止后才启动 Windows。Windows 运行期间 Linux 与其余七台均停止，最终再次确认九台全部 `stopped`。未并行启动、克隆、暂停替代关机或强制停止 VM。
+- Linux 的直接 stdout 通道返回零退出码但无报告，未判为成功；改由本批专用临时目录保存报告，回收 JSON、nonce、实际退出码和错误流后确认完成。普通账户核对单独留证，未登录桌面或改变账户。
+- Windows 首次请求因启动期间 guest agent 不可用而未执行；有限等待后文件通道响应且任务路径不存在，才执行盘点。首轮脚本因 PowerShell 5.1 对 `vswhere -utf8` 输出解码不一致而退出 1；只调整脚本进程内 UTF-8 编码，新目录中的 v2 报告与真实退出码 0 回收通过。旧失败材料保留，没有改系统编码或安装项。
+- UTM 控制命令的零退出码、空 stdout 或文件暂未出现均不作为 guest 成功证据。Windows 清理回执首次回收时尚未出现，后续只读确认其已写出；未因此重跑删除。后续执行仍需等待完整结果与实际退出码。
+- 两台仅生成本批盘点临时文件。Linux 精确删除六个已回收报告和空目录；Windows 校验四个回收文件的 SHA-256 后精确删除两个任务目录。清理回执回收后也已删除，并以文件通道明确的不存在结果复核；历史资料、工具链和既有凭据保留。Linux 配置前后 SHA-256 一致，不承诺 VM 磁盘逐字节恢复。
+- Linux 正常关机完成。Windows 的 UTM `--request` 未让系统停止，保持其它 VM 全停，随后调用系统自身 `shutdown.exe /s /t 0` 正常关机，未使用 `/f` 或强制断电。最终完整清单确认全部停止。
+
+本机离线 `./scripts/check-repo.sh` 通过仓库基线、fmt、locked Clippy 和 398 项测试（25 suites，0 failed，11 个父测试调用的 ignored helper）；结果文档补齐后另复核文本门禁和差异。探测脚本、原始报告、失败材料、清理回执和清单留本机忽略目录，不纳入 Git。
+
+### 下一批范围
+
+先在日常 Linux 的普通用户下准备任务专用离线输入与缓存，再执行当前源码的 fmt、locked Clippy、workspace 合成测试和默认 desktop 构建；其正常关机并确认全停后，才进入 Windows 同类批次。当前缓存清点仍不等于完整可携带的离线包，传输前须闭合索引、锁定 archives 和本地 vendor 输入。
+
+Windows 的 SYSTEM 通道不能承担普通用户 ACL 或用户凭据验收；不得隐式改变 UAC、创建账户或借用兄弟项目身份。真实 provider / GUI 还需单独准备普通用户桌面会话、独立合成库与唯一测试 slot。环境缺项、权限变更或新副本需求应按具体范围处理，不自动安装或扩大权限。本批不关闭 P1-S05，M01 与 PDF / 图片停止线保持。
+
 ## 已实现的隔离入口
 
 正常无参数启动继续使用默认目录与 SQLite v6。原生验收使用同一个默认构建产物与 production worker / provider，只显式选择另一目录和既有 host profile：
