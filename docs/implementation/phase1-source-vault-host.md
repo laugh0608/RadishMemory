@@ -355,3 +355,21 @@ GUI 正常关闭、退出码 0，stdout / stderr 均为空。最终只读核对�
 Action end 写出前不发布快照，观测错误撤回目录、正文及恢复选择；没有原请求或第二次读取可供重试。普通默认入口与原三参数验收不受单动作限制，`logging.rs` 保持原摘要。真实文件故障的 worker 回归用严格 `cfg(test)` 私有钩子破坏自己的合成 trace，生产构建没有该钩子，也没有 provider override。具体允许文件、失败关闭策略与独立验证见[受限补丁记录](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#受限观测补丁实现与独立审阅)；补丁实现阶段未执行 GUI / 真实 Keychain，不能把该阶段合成结果作为提示或原生关闭验收证据。
 
 后续独立授权的 [D01](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-单次原生结果与交接缺口)取得完整 4 / 12 / 25 预算，但八提示缺少逐提示交接；[D02](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)仅观察入口第一读，确认同一 SecretSearch 区间的两次提示，第二提示拒绝后真实 KeyStoreCancelled，GUI 正常退出、空库保持。两批均未覆盖末轮取消、有资料 Refresh 或 busy / pending 关闭。随后 M01 在独立 CLI 进行，未修改宿主；副本范围冻结不构成原 app 授权证据。当天提交回顾与后续窗口见[日终记录](../status/2026-10-18-source-vault.md)。
+
+## 2026-10-24 空库锁等待下的原生关闭验收
+
+准备文档已按项目所有者要求提交为 `b13c3b6`，随后按本次精确授权执行 N 批。运行的是 `5365e27` 默认 desktop 构建的独立冻结包装，提交仅涉及文档，161 份源码与构建输入保持；全量 169 份冻结输入在前后核对一致。固定目标为历史 v11 空合成库，沿用唯一既有 profile，不进行系统密钥查询或允许提示。首次进程核对受沙箱 `ps` 限制，按权限流程只读复核通过后才启动 GUI；未跳过占用检查。
+
+| 场景 | 实际执行与结果 | 证据边界 |
+| --- | --- | --- |
+| N00 空闲关闭 | 第一次 GUI 自动旧入口打开拒绝，显示 StorageFailure 与资料库不可用；不点击业务按钮，正常关闭，原进程退出 0 | 关闭后空库只读状态保持，不以窗口消失替代进程退出 |
+| N01 busy 关闭 | 第二次 GUI 就绪后，第一轮持锁在点击打开前遇到 UI 工具进程检查调用不可用；未触发业务动作，主动释放并核对 helper 退出 0、基线保持，记未覆盖。第二轮实际点击一次 OpenEncrypted，观察 Working、busy 指示与业务按钮禁用；请求一次关闭后窗口保留，明确提示等待真实结果。随后显示 `database=Migration / None / SQLite Some(5)`，窗口未自动退出、无资料视图或已验证恢复目标 | 第一轮不计通过。第二轮为自然可见 busy，未注入精确同帧事件；存在 Inspect recovery 入口不代表已交付恢复授权，未点击该入口 |
+| N02 结果后关闭 | 锁错误交付后主动释放第二轮锁；helper 约 19.7 秒完成 rollback / close，退出 0。再请求窗口关闭，第二个 GUI 正常退出 0 | 第三轮未使用；没有在释放后执行 Open / Refresh / Verify 来扩大访问范围 |
+
+两轮锁均因显式 release 结束，未等到 deadline、未强杀；两个 GUI 及两个 helper 均有真实退出 0 / 回收记录，最终只读进程检查确认已不存在，指定数据库无打开句柄。GUI stdout / stderr 和 helper stderr 均为空。前后数据库 / profile 摘要、文件身份 / 权限、v11、五项零活动表 / pending / deleting、空 objects / staging 与根目录清单保持。没有资料写入、导入、删除、迁移、权限 / ACL 修改、重签、安装、VM 或远程动作。
+
+保存五份窗口截图、六份 AX 状态、锁 ready / release / released、进程回执、前后状态及摘要索引，全部留本机忽略目录。未出现系统密钥提示，未执行任何允许动作或额外 Keychain 探针；本批未启用系统调用观测，不仅凭“无提示”推断全部 OS 调用计数。M01 v2 保持暂缓，新 native 输出未创建，旧冻结件和唯一 key 保留。
+
+本批关闭自然 busy / 锁错误交付 / 正常退出的有限缺口，不宣称精确同帧竞争、末轮 key 取消、有资料旧视图撤回、pending 原请求 Cancel / Confirm、其它系统错误或 Windows / Linux 原生通过。P1-S05 及 PDF / 图片停止线保持；剩余范围按[当前状态](../status/current.md#后续事项)推进。
+
+原生记录更新后的完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：271 文件仓库基线、fmt、locked Clippy 与 25 suites 共 398 项 Rust tests 通过，11 个 ignored 子进程 helper 由父测试调用。准备阶段的默认 desktop 构建与 17 项持锁 helper 合成回归已通过，原生执行未改代码，不重复构建或扩充测试。补记后再次完成仓库文本 / 链接检查和 `git diff --check`；未运行其它平台、额外 Keychain 诊断或远程检查，未 push。
