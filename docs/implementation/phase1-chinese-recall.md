@@ -52,3 +52,5 @@ application 与桌面单 worker 已接线。健康视图显示最后刷新得到
 未执行新切换 UI 的原生可见验收、真实系统 key store、Windows / Linux、真实断电或大规模 release 性能测试；候选标注仍待独立人工评审，完整 CJK、简繁同义词与向量检索不在本 profile。Q01 / Q04 和 P1-S05 不整体关闭。FTS 精确正文及新增派生字段仍为 SQLite 明文，token 编码不是加密，也不保证旧页面 / 备份擦除。
 
 本批未启动 GUI、VM 或常驻进程，没有远程动作，未提交、未 push；不修改或清理既有原生验收库、系统测试 key 与冻结产物。
+
+日终更新：上述候选实验、ADR、production 实现及对应文档已按项目所有者要求提交为 `4c9b0be`，此前“未提交”描述是实施收尾快照。完整日终回顾和当前后续顺位见[10 月 28 日记录](../status/2026-10-28-chinese-recall.md)及[当前状态](../status/current.md#后续事项)。

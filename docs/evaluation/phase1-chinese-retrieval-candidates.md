@@ -98,3 +98,5 @@ CARGO_NET_OFFLINE=true cargo test -p radishmemory-application --test q01_search 
 定向候选实验 5 项、原 production 基线 3 项测试通过；SQLite 3.53.2 / 本机 aarch64-apple-darwin。完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0，仓库基线检查 289 个文件，fmt、locked Clippy 与 27 个 Rust suites 通过，合计 411 passed、0 failed、11 个由父测试调用的 ignored helper。计数包含两个测试目标各自执行的共享计量回归，不把重复执行当作独立质量样本。没有运行真实 GUI、系统 key、VM 或旧版客户端兼容实验，没有执行现有库升级 / 降级；这些是后续实施门禁，当前没有生产质量改善。
 
 定向逐查询输出、四候选计数汇总、源码摘要与完整检查日志保留在本批忽略目录；只包含合成标签。production 基线已提交，候选测试与本文留在当前工作区供审阅，未 push。没有新增常驻进程；本批不清理此前的原生验收产物或系统测试 key。
+
+日终更新：本实验与已批准的生产实现一起提交为 `4c9b0be`，此前未提交状态保留为候选阶段快照。当前生产结果及性能限制以[落地记录](../implementation/phase1-chinese-recall.md)为准。

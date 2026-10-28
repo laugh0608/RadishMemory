@@ -4,6 +4,8 @@
 
 本批承接 `3dd312b` 的历史删除请求兼容，提供独立读取会话，复用既有来源、目录和检索规则。不改变 canonical schema、记忆状态或权限语义，不新增数据库迁移。普通 `SqliteDatabase::open` 仍只允许 v6；默认 `LocalLibrary` / UI 尚未切换加密数据流；2026-10-01 后续已完成[显式 application 读取接入](phase1-source-vault-application.md)，其证据与本批独立 reader 证据分开记录。
 
+2026-10-28 后续：`4c9b0be` 的 [ADR 0009](../adr/0009-versioned-chinese-recall.md)派生 profile 已由共享 `LocalSearch` 读取，认证 `LibraryReadSnapshot` 同时返回实际检索格式，不增加一次系统 key 读取。查询、精确正文 / 引用与升级维护仍分属既有边界；新字段仍为明文，全库认证成本没有消除。双入口合成结果与有限成本见[中文检索记录](phase1-chinese-recall.md)，下文历史“下一步”保留为 9 月 26 日交接。
+
 ## 读取边界
 
 - `PlatformKeyProvider::open_library_reader` 只接受已完成迁移的维护 v8 至 v12。先验证数据库 schema、namespace / device / provider，再加载既有 key；缺库、未完成迁移或身份不匹配不加载 key，不创建空库、新 key 或迁移 checkpoint。
