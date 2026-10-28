@@ -110,13 +110,16 @@ LICENSE_FILES = {
 }
 
 REVIEWED_FILE_SHA256 = {
+    "third_party/fonts/noto-sans-sc/NotoSansSC-Regular.otf": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9",
+    "third_party/fonts/noto-sans-sc/LICENSE": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2",
+    "third_party/fonts/noto-sans-sc/README.md": "a7f7f052c913012686d44a5ae11f61f536139547f684f699231aff623c1446e2",
     "third_party/licenses/Apache-2.0.txt": "5c9817c129b98e7bb966bca028c43c19107102ef8e03fe799bffb4354f4ef015",
     "third_party/licenses/BSL-1.0.txt": "c9bff75738922193e67fa726fa225535870d2aa1059f91452c411736284ad566",
     "third_party/licenses/ISC.txt": "f9f71a6ad91a98fa0b76db24cb023284115dd81a3fcdb549a98110f76c1ff39c",
     "third_party/licenses/MIT.txt": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
     "third_party/licenses/MPL-2.0.txt": "8b6d19b5a244372e4ea067e567500a49c574f3d5be76cd24851fef83033afdd7",
     "third_party/licenses/OFL-1.1.txt": "71801033d3c6353ba9400dc14791eecdd6a40dea827a557b2e2c22e36a997ff7",
-    "third_party/licenses/README.md": "ce72ff330dd0526bdb82ee1e91c48953cdb27575721c6ab30f74d45c20849823",
+    "third_party/licenses/README.md": "686fb74d1bfe24be0a29d03dfee395d0f494f395a199c148a5556b20b1338c68",
     "third_party/licenses/SQLite-public-domain.txt": "5a10af5f046b9150058e4f0b4367dec9aa49e130a8cfe406c982ec6a55131ca3",
     "third_party/licenses/Ubuntu-font-1.0.txt": "0b734ab0b6f2742f42989c73282a8dcde87bbca0f0a624f79d4c03573fc9d10d",
     "third_party/licenses/Unicode-3.0.txt": "b0e06cbf38f2dae20705f48ed920c724259224e9bdf7591570466926ef21268e",
@@ -373,6 +376,12 @@ def render(packages: list[NoticePackage]) -> str:
             "  font-name notices are preserved in",
             "  [`epaint-default-fonts-notices.txt`](third_party/licenses/epaint-default-fonts-notices.txt),",
             "  alongside the MIT, SIL Open Font License 1.1 and Ubuntu Font Licence 1.0 texts.",
+            "- The desktop also embeds the unmodified `Noto Sans SC Regular 2.004` SC subset",
+            "  (`8,331,336` bytes), copyright © 2014-2021 Adobe, under SIL OFL-1.1.",
+            "  This is a separately reviewed font asset, not an additional Cargo package.",
+            "  Fixed upstream commit, original bytes, SHA-256 and attribution are recorded in",
+            "  [the font source record](third_party/fonts/noto-sans-sc/README.md); its original",
+            "  [LICENSE](third_party/fonts/noto-sans-sc/LICENSE) and copyright notice must accompany distribution.",
             "- `libsqlite3-sys 0.38.2` compiles bundled SQLite `3.53.2`; the Rust wrapper's",
             "  declared license is in the inventory and SQLite's public-domain dedication is",
             "  preserved in [`SQLite-public-domain.txt`](third_party/licenses/SQLite-public-domain.txt).",
@@ -401,9 +410,12 @@ def check_license_files() -> None:
         )
     if not set(LICENSE_FILES.values()).issubset(REVIEWED_FILE_SHA256):
         raise RuntimeError("a selected license text is missing a reviewed SHA-256")
-    missing = [path for path in REVIEWED_FILE_SHA256 if not (REPO_ROOT / path).is_file()]
+    missing = [
+        path for path in REVIEWED_FILE_SHA256
+        if not (REPO_ROOT / path).is_file() or (REPO_ROOT / path).is_symlink()
+    ]
     if missing:
-        raise RuntimeError(f"missing reviewed license files: {', '.join(sorted(missing))}")
+        raise RuntimeError(f"missing or symlinked reviewed material: {', '.join(sorted(missing))}")
     drifted = [
         path
         for path, expected in REVIEWED_FILE_SHA256.items()
@@ -411,7 +423,7 @@ def check_license_files() -> None:
     ]
     if drifted:
         raise RuntimeError(
-            f"reviewed license files changed without hash review: {', '.join(sorted(drifted))}"
+            f"reviewed material changed without hash review: {', '.join(sorted(drifted))}"
         )
 
 

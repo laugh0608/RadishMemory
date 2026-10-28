@@ -403,6 +403,12 @@ upstream project link provide the corresponding attribution and source location.
   font-name notices are preserved in
   [`epaint-default-fonts-notices.txt`](third_party/licenses/epaint-default-fonts-notices.txt),
   alongside the MIT, SIL Open Font License 1.1 and Ubuntu Font Licence 1.0 texts.
+- The desktop also embeds the unmodified `Noto Sans SC Regular 2.004` SC subset
+  (`8,331,336` bytes), copyright © 2014-2021 Adobe, under SIL OFL-1.1.
+  This is a separately reviewed font asset, not an additional Cargo package.
+  Fixed upstream commit, original bytes, SHA-256 and attribution are recorded in
+  [the font source record](third_party/fonts/noto-sans-sc/README.md); its original
+  [LICENSE](third_party/fonts/noto-sans-sc/LICENSE) and copyright notice must accompany distribution.
 - `libsqlite3-sys 0.38.2` compiles bundled SQLite `3.53.2`; the Rust wrapper's
   declared license is in the inventory and SQLite's public-domain dedication is
   preserved in [`SQLite-public-domain.txt`](third_party/licenses/SQLite-public-domain.txt).

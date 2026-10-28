@@ -472,6 +472,12 @@ impl eframe::App for RadishMemoryApp {
 
 #[cfg(test)]
 mod close_tests;
+#[cfg(test)]
+mod font_tests;
+#[cfg(test)]
+mod read_session_tests;
+#[cfg(test)]
+mod test_support;
 
 fn source_label(source: &SourceLineageSummary) -> String {
     source.title().map_or_else(

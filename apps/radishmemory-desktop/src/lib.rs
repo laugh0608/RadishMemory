@@ -1,6 +1,7 @@
 mod backend;
 mod controller;
 mod error;
+mod fonts;
 mod logging;
 mod paths;
 mod picker;
@@ -38,7 +39,8 @@ pub fn run() -> eframe::Result {
     eframe::run_native(
         title,
         options,
-        Box::new(move |_creation_context| {
+        Box::new(move |creation_context| {
+            fonts::install(&creation_context.egui_ctx);
             Ok(Box::new(RadishMemoryApp::bootstrap_with_startup(startup)))
         }),
     )

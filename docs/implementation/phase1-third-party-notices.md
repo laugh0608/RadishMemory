@@ -1,6 +1,6 @@
 # Phase 1 第三方 notices 与条件平台依赖复核
 
-更新时间：2026-10-01
+更新时间：2026-10-28
 
 状态：`Accepted — P1-H05 distribution inventory gate complete; P1-S03a expansion reviewed; P1-S03c-2 expansion reviewed`
 
@@ -56,7 +56,7 @@ Windows desktop 宿主证据来自 elevated ARM64 Developer Prompt，确认测�
 
 P1-H05 所需的三平台真实宿主交互、当前 `wgpu` 图三平台 CI、可复现 target-specific crate inventory、license option、完整文本、字体 / SQLite notices 与系统条件依赖已全部形成可审查证据，因此 P1-H05 gate 完成。P1-S03a 后续扩大到两个分发根的 344 项 inventory；P1-S03c-2 再扩大到当前 366 项，均已复核并由生成器守护；该清单本身只覆盖分发依赖，不代替平台 key-store 或 object adapter 的实现与运行证据；后者以对应落地记录为准。
 
-这不等于已有发行包或 production deployment：任何 installer / DMG / archive 必须实际携带 `THIRD_PARTY_NOTICES.md` 与 `third_party/licenses/`，并在发布前验证包内容、目标架构、签名链、非提权数据 owner、平台最低版本和对应 native backend。后续依赖、feature、target 或 `Cargo.lock` 发生变化时，必须重新生成、人工复核并更新本页；检查器不会把未知表达式自动归为宽松许可证。
+这不等于已有发行包或 production deployment：任何 installer / DMG / archive 必须实际携带 `THIRD_PARTY_NOTICES.md`、`third_party/licenses/` 及随包字体在 `third_party/fonts/` 中的许可证 / 版权来源记录，并在发布前验证包内容、目标架构、签名链、非提权数据 owner、平台最低版本和对应 native backend。后续依赖、feature、target、字体资产或 `Cargo.lock` 发生变化时，必须重新生成、人工复核并更新本页；检查器不会把未知表达式自动归为宽松许可证。
 
 ## P1-S04a 协调连线复核
 
@@ -83,3 +83,11 @@ Windows 补丁批次结束时的 Cargo.lock SHA-256 为 `93532ce597bb17b0ca87944
 ## P1-S05 desktop 连线复核（2026-10-01）
 
 `6a413f8` 按批准范围增加 desktop → Source Vault、desktop → `log =0.4.34` 直接依赖边，以及仅测试启用的 Source Vault `acceptance-test-support`。Cargo 离线解析后 453 个 package 的 name / version / source / checksum 集合未变；两个分发根的并集仍为 366 项，三目标数量仍为 222 / 301 / 214，reviewed inventory digest 保持 `cbfe990725226152442d4fc7bf917ed728edf4bbd13ed3cebc5d4331479d37a1`。notices 仅将 lockfile 摘要更新为 `a7d45a3df916f76fe0e1c7dcaf5e976c0e78cc471547ef36206e2ce162f3caf0`，没有新第三方版本、license option 或分发资产。默认 runtime 图不启用合成 provider；日志抑制与未完成的原生验收见[宿主记录](phase1-source-vault-host.md)。
+
+## 桌面中文字体分发复核（2026-10-28）
+
+项目所有者在本任务确认新增 `Noto Sans SC Regular 2.004` 原始 OTF 的范围：`8,331,336` bytes（约 `7.95 MiB`），SIL OFL-1.1，保留 Adobe 2014–2021 版权、原许可证与固定上游来源。具体 commit、字体 / 许可证摘要及字形边界见[字体来源记录](../../third_party/fonts/noto-sans-sc/README.md)和[显示切片](phase1-desktop-chinese-display.md)。不改写或裁剪上游字体；不复制系统字体。
+
+该非 Cargo 资产由现有 notices 生成器的受审阅文件摘要映射核验，并列入 Additional bundled material。缺失或漂移的字体、许可证、版权来源记录均拒绝，直接文件 symlink 也拒绝；测试覆盖这些负向边界。原有默认字体及许可证保留，新的许可证全文使用上游原字节，不用通用 OFL 文本代替字体归属。
+
+Cargo manifest / lockfile 没有变化，两个分发根的三目标 package 数量、inventory digest 与 lockfile digest 保持原值；字体字节在 `REVIEWED_FILE_SHA256` 中单独固定，不能误算为新增 crate。三个平台使用同一内嵌字体初始化代码；本机 headless 字形 / 排版证据不等同于三平台原生 GUI 或发行包验收。

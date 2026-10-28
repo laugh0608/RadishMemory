@@ -16,6 +16,7 @@ license texts and package-specific bundled-material notices.
 | Unicode-3.0 | [Unicode-3.0.txt](Unicode-3.0.txt) |
 | Zlib | [Zlib.txt](Zlib.txt) |
 | `epaint_default_fonts` bundled fonts | [epaint-default-fonts-notices.txt](epaint-default-fonts-notices.txt) |
+| Noto Sans SC Regular 2.004 | [Original OFL-1.1 text](../fonts/noto-sans-sc/LICENSE), [copyright and source](../fonts/noto-sans-sc/README.md) |
 | bundled SQLite | [SQLite-public-domain.txt](SQLite-public-domain.txt) |
 
 The shared MIT text is paired with package authors and upstream links in the

@@ -11,12 +11,12 @@ mod locking;
 mod read_session;
 
 static NEXT: AtomicU64 = AtomicU64::new(1);
-struct Fixture {
-    root: std::path::PathBuf,
-    provider: SyntheticLibraryProvider,
+pub(crate) struct Fixture {
+    pub(crate) root: std::path::PathBuf,
+    pub(crate) provider: SyntheticLibraryProvider,
 }
 impl Fixture {
-    fn new() -> Self {
+    pub(crate) fn new() -> Self {
         let root = std::env::temp_dir().join(format!(
             "radishmemory-host-worker-{}-{}",
             std::process::id(),
@@ -30,7 +30,7 @@ impl Fixture {
             provider: SyntheticLibraryProvider::default(),
         }
     }
-    fn engine(
+    pub(crate) fn engine(
         &self,
     ) -> Engine<SyntheticLibraryProvider, impl Fn() -> SyntheticLibraryProvider + use<>> {
         let provider = self.provider.clone();
@@ -39,8 +39,11 @@ impl Fixture {
             move || provider.clone(),
         )
     }
-    fn input(&self, text: &str) -> FileReadRequest {
-        let path = self.root.join("input/note.md");
+    pub(crate) fn input(&self, text: &str) -> FileReadRequest {
+        self.named_input("note.md", text)
+    }
+    pub(crate) fn named_input(&self, name: &str, text: &str) -> FileReadRequest {
+        let path = self.root.join("input").join(name);
         fs::write(&path, text).unwrap();
         FileReadRequest::new(path, vec![self.root.join("input")]).unwrap()
     }
@@ -57,11 +60,11 @@ impl Drop for Fixture {
         let _ = fs::remove_dir_all(&self.root);
     }
 }
-fn ok(snapshot: Snapshot) -> Snapshot {
+pub(crate) fn ok(snapshot: Snapshot) -> Snapshot {
     assert!(snapshot.error.is_none(), "{:?}", snapshot.error);
     snapshot
 }
-fn ready<P: LibraryProvider, F: Fn() -> P>(engine: &mut Engine<P, F>) {
+pub(crate) fn ready<P: LibraryProvider, F: Fn() -> P>(engine: &mut Engine<P, F>) {
     ok(engine.execute(Command::OpenPlain));
     ok(engine.execute(Command::InitializeKey));
     ok(engine.execute(Command::Migrate));

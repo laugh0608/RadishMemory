@@ -102,5 +102,56 @@ class ReviewedVendorChecks(unittest.TestCase):
                 NOTICES.collect_packages()
 
 
+class ReviewedFontChecks(unittest.TestCase):
+    def copy_material(self, root: Path) -> None:
+        for relative in NOTICES.REVIEWED_FILE_SHA256:
+            destination = root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(NOTICES.REPO_ROOT / relative, destination)
+
+    def test_reviewed_font_and_license_pass(self) -> None:
+        NOTICES.check_license_files()
+
+    def test_missing_or_changed_font_license_and_attribution_are_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.copy_material(root)
+            for name in ("NotoSansSC-Regular.otf", "LICENSE", "README.md"):
+                path = root / "third_party/fonts/noto-sans-sc" / name
+                original = path.read_bytes()
+                for change in ("missing", "changed"):
+                    with self.subTest(name=name, change=change):
+                        if change == "missing":
+                            path.unlink()
+                        else:
+                            path.write_bytes(b"unreviewed material\n")
+                        with patch.object(NOTICES, "REPO_ROOT", root):
+                            with self.assertRaises(RuntimeError):
+                                NOTICES.check_license_files()
+                        path.write_bytes(original)
+
+    def test_symlinked_font_is_rejected_even_when_target_bytes_match(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            self.copy_material(root)
+            path = root / "third_party/fonts/noto-sans-sc/NotoSansSC-Regular.otf"
+            retained = root / "retained.otf"
+            path.rename(retained)
+            try:
+                path.symlink_to(retained)
+            except OSError as error:
+                self.skipTest(f"symlink privilege unavailable: {error.errno}")
+            with patch.object(NOTICES, "REPO_ROOT", root):
+                with self.assertRaisesRegex(RuntimeError, "symlinked reviewed material"):
+                    NOTICES.check_license_files()
+
+    def test_font_is_in_generated_notices_with_separate_source_and_license(self) -> None:
+        rendered = NOTICES.render([])
+        self.assertIn("Noto Sans SC Regular 2.004", rendered)
+        self.assertIn("copyright © 2014-2021 Adobe", rendered)
+        self.assertIn("third_party/fonts/noto-sans-sc/README.md", rendered)
+        self.assertIn("third_party/fonts/noto-sans-sc/LICENSE", rendered)
+
+
 if __name__ == "__main__":
     unittest.main()

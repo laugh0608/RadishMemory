@@ -431,3 +431,40 @@ call ID / begin-end 已接入 macOS 显式隔离验收入口，受 `--acceptance
 D01 的 `1cfc8d9` 默认二进制 / 匹配 dSYM、精确 trace 路径与逐事件读回预演已准备，见[冻结结果](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-冻结准备结果)。随后经独立授权执行一次，完整 128 事件 / 4 secret / 12 attributes / 25 domain 与空库成功通过，但用户报告的八次允许未能关联逐提示记录，诊断未达目标；已正常退出并复核基线，见[实际结果](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d01-单次原生结果与交接缺口)。不能沿用本批授权重试。前序 N 批操作单只适用于其中已冻结的旧产物；不沿用旧行号 / 符号解释新代码，不覆盖既有八 / 九提示事实。原生首尾取消、有资料 Refresh、关闭竞争和其它平台仍按既有边界待验。
 
 随后单独授权的 [D02 首对观测](phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-d02-首对同区间与拒绝收尾)沿用冻结产物、新建证据目录：两个待选提示的四份 trace 前缀相同，停在入口第一读的同一 SecretSearch call，两个正向栈与匹配 dSYM 一致；用户一次允许后拒绝第二提示，完整失败 trace 与 UI KeyStoreCancelled 对应。唯一 GUI 正常退出 0，空库基线不变；只覆盖这一入口调用区间及提前拒绝，不替代末轮取消、剩余三读、busy / pending 关闭或系统内部原因解释。
+
+## 2026-10-28 有资料视图撤回的有限验收准备
+
+状态：准备；新增真实 GUI、系统 key 和对象故障注入均待当前任务精确授权。中文显示采用已批准的[固定随包字体](../implementation/phase1-desktop-chinese-display.md)，本节不以 headless 排版替代原生可见验收。
+
+### 选择的单一失败窗口
+
+选定 macOS 当前默认构建上的“已有来源与结果可见 → 唯一合成对象密文受损 → 显式 Refresh 返回 `AuthenticationFailed` → 旧视图撤回 → 原字节还原 → 显式 Refresh / 新检索恢复”。它补充已覆盖的受损库重启、外部锁错误和空库失败，不重复这些场景；也不替代真实 key 取消、末轮认证取消、写操作中断、其它平台或完整 P1-S05。
+
+准备阶段补齐了两条 production UI 回归：其一由真实加密 engine / 合成 key provider 在 OpenEncrypted、Refresh 的入口和末轮返回 `KeyStoreCancelled`，验证原有标题、来源 ID、正文结果不再绘制、无自动重试，显式正确入口恢复后重新检索；其二真实修改测试对象最后一个字节，验证 Refresh 认证失败及精确还原后的 UI 恢复。测试复用已有 headless harness，不增加 production 故障注入接口、不修改存储或 key provider 语义。
+
+### 目标与影响
+
+- 仅使用本批全新的隔离合成根、唯一 namespace / device、一个中文 Markdown 和一个 GUI 包装；不借用历史诊断库、既有 key 或 M01 冻结件。
+- 准备阶段只生成普通文件：profile、合成输入、当前默认构建副本、操作单和摘要清单。不预建业务数据库，不调用系统 key store，不启动 GUI 或 VM。
+- 后续执行需要明确授权一次新 slot 的 Prepare / key 创建、空库迁移与显式打开、一次导入、有限读取 / 精确导出、一次密文故障注入及还原，以及本批 lineage 的应用层删除。不能把本节当作授权本身。
+- 对象损坏只限此批新导入唯一 source version 对应的一个普通密文文件：先确认单链接、身份、长度和摘要，备份原字节；在 GUI 空闲且无在途命令时翻转最后一个字节。记录偏移和修改前后摘要，不能更改 SQLite、profile、目录权限、key 或 ACL。
+- 预计 25–40 分钟，另预留 5 分钟收尾。超过预算即停止新增场景；不为了满足时间强制终止进程。窗口关闭需等待 worker join，凭据提示由用户按精确请求者 / slot 交接处理。
+
+### 执行与通过条件
+
+1. 执行前核对操作单绑定的源码 / 字体 / binary / plist / 输入 / profile 摘要及无并行进程；目标漂移停止，不刷新旧门禁。新 data 根应只有预制 profile，native evidence 输出必须不存在。
+2. 只启动绑定的一个 GUI，确认 Synthetic acceptance 标识和 PID。首次默认空库打开之后依次 Prepare、Migrate、Open encrypted；再导入该唯一合成 Markdown。每步必须等真实结果，未知 key 状态或 pending 即停止新增业务动作。
+3. 以固定 ASCII marker 检索，只用于定位中文显示：检查来源标题、中文输入、简繁中文 / 标点 / 混排结果和窗口最小尺寸下的可读布局；精确导出并与输入逐字节比较。不要把该检索记作 Q01 中文找回通过。
+4. 记录 source / lineage ID、数据库 / 对象 / profile 基线；在 GUI 空闲时对已确认的唯一对象实施一次上述故障。执行一次 Refresh，必须实际返回 `AuthenticationFailed`，显示不可用状态且不再绘制旧标题、来源和结果正文；不提供旧来源的导出 / 更新 / 删除动作，不自动重试。
+5. 失败交付后，按原路径、身份、长度、故障摘要核验，原位写回备份并复验原始摘要和权限。还原本身不能自动恢复旧视图。再显式 Refresh，确认同一来源 / 版本，旧搜索结果为空；重新搜索才显示结果，第二份精确导出须与原输入一致。
+6. Verify 成功后经 GUI 删除本批 lineage，核对真实 `Completed` 回执与组件结果；空检索、零活动引用 / FTS / 对象 / pending 分别验证。正常关闭并等待唯一 GUI 实际退出，保留新 slot / key、库、输入、导出、密文备份和证据；应用层删除不等于删除所有外部副本或系统凭据。
+
+若存在意外提示、请求者 / slot 不符、多个对象、文件身份改变、应用忙碌、失败分类不符或无法精确还原，停止，不增加损坏对象、不写 SQL 修补、不删 key、不锁整个 keychain、不重签或改永久许可。预期的该唯一 slot 提示也必须逐次交接；不能选择“始终允许”。无提示只能说明该次没有可见交互，不能据此声称系统调用为零。
+
+完整目标路径、随机合成 ID、命令、当前构建摘要及逐动作预算仅保留在本批忽略目录的精确操作单，避免将一次性本机路径堆入长期文档。准备和执行证据分开记录；Windows / Linux 按全机单 VM 规则另批安排，不随本操作单启动。
+
+### 本批准备结果
+
+独立 data / input / export / evidence 及一个本机 app 包装已准备，profile 为新随机合成 namespace / device，data 仅有 profile，尚无业务数据库；export / evidence 为空。默认 binary 副本与本次构建逐字节一致，操作单、profile、输入、plist、字体归属及 168 份源码 / 字体文件已冻结摘要。没有启动包装、执行 Prepare、查询系统 key 或改动历史验收材料；不是签名发行包。
+
+本机完整离线仓库检查通过（403 Rust tests、0 failed），新增有资料 UI 回归与默认 desktop 构建通过；完整证据和初轮测试修正见[中文显示切片](../implementation/phase1-desktop-chinese-display.md#接入与本机验证)。真实原生步骤仍待精确授权，不据准备结果关闭本场景或 P1-S05。

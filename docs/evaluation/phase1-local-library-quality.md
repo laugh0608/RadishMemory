@@ -61,3 +61,11 @@ macOS 隔离合成库已完成真实 Keychain 准备、正文迁移、加密读�
 Windows / Linux ARM64 各完成两轮真实 provider / GUI、注销重登和五份逐字节导出；删除主来源后重新检索仅剩对照，最终两条来源删除后活动来源 / FTS 均为零，详见[执行记录](phase1-windows-linux-provider-gui-plan.md)。这些结果补充 Q06 / Q07 正常路径，不覆盖长正文定位、分页、系统错误中途发生或完整恢复。
 
 两平台均再次观察到中文缺字方框。下一次先审阅 desktop 字体加载路径、字体来源 / 版本 / 许可证及分发体积，再确定 Q01 显示修复方案；不得将 ASCII 找回或 UTF-8 bytes 导出一致记为中文可读展示 / 检索质量通过。Q01 至 Q08 均不整体关闭。
+
+## 2026-10-28 中文显示与有资料失败窗口准备
+
+已按本任务范围确认接入固定的 Noto Sans SC Regular 2.004 原始字体，沿现有 desktop 创建回调初始化两个字体族，来源 / 版权 / OFL 原文和摘要纳入原 notices 门禁，见[中文显示切片](../implementation/phase1-desktop-chinese-display.md)。新增 headless 验证覆盖实际字体映射、拉丁排版保持、混排换行与不同缩放，以及 production 加密资料的中文标题、搜索输入和结果预览。中文检索仍使用独立 Q01 命中 / 误召回标准；本次用 ASCII marker 定位结果的显示测试不改变该边界。
+
+有资料的 OpenEncrypted / Refresh 取消回归已扩展到 production UI 绘制帧：分别在入口 / 末轮合成 key load 取消，检查旧标题、source ID、结果正文撤回，后续无自动重试；显式重开 / 刷新恢复后旧结果仍为空，重新搜索才生成结果。另一条真实密文损坏 / 合成 key 回归覆盖 Refresh 的 `AuthenticationFailed`、旧视图撤回、原字节还原后仍保持不可用、显式 Refresh 和重新搜索恢复。
+
+这不等于真实系统取消或原生窗口通过。下一原生切片收敛为[有资料 Refresh 认证失败](phase1-source-vault-native-acceptance.md#2026-10-28-有资料视图撤回的有限验收准备)，只在新隔离合成库执行；历史诊断库和冻结材料保留。Q01、Q06、Q07 与完整 P1-S05 继续开放。
