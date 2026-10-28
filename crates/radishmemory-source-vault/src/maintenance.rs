@@ -16,6 +16,7 @@ pub struct VerificationReport {
     pub deletion_pending_objects: usize,
     pub deleted_objects: usize,
     pub derivations_rebuilt: bool,
+    pub recall_profile: radishmemory_sqlite::RecallProfile,
 }
 
 #[derive(Clone, Copy, Eq, PartialEq)]
@@ -38,11 +39,57 @@ pub(crate) fn maintain(
     })
 }
 
+#[derive(Clone, Copy)]
+enum Action {
+    Verify,
+    Rebuild,
+    ChangeProfile(radishmemory_sqlite::RecallProfile),
+}
+
+pub(crate) fn change_profile(
+    directory: &ObjectDirectory,
+    namespace: &str,
+    device: &str,
+    target: radishmemory_sqlite::RecallProfile,
+    load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
+) -> Result<VerificationReport> {
+    maintain_action_with_step(
+        directory,
+        namespace,
+        device,
+        Action::ChangeProfile(target),
+        load_existing,
+        |_| Ok(()),
+    )
+}
+
 fn maintain_with_step(
     directory: &ObjectDirectory,
     namespace: &str,
     device: &str,
     rebuild: bool,
+    load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
+    step: impl FnMut(Step) -> Result<()>,
+) -> Result<VerificationReport> {
+    maintain_action_with_step(
+        directory,
+        namespace,
+        device,
+        if rebuild {
+            Action::Rebuild
+        } else {
+            Action::Verify
+        },
+        load_existing,
+        step,
+    )
+}
+
+fn maintain_action_with_step(
+    directory: &ObjectDirectory,
+    namespace: &str,
+    device: &str,
+    action: Action,
     load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
     mut step: impl FnMut(Step) -> Result<()>,
 ) -> Result<VerificationReport> {
@@ -67,12 +114,22 @@ fn maintain_with_step(
         db.verify_recall_index_structure()?;
         verify_identity()
     };
-    if rebuild {
-        db.rebuild_recall_derivations(&sources, || -> Result<()> {
-            step(Step::BeforeCommit)?;
-            verify_all()
-        })?;
-        step(Step::Committed)?;
+    match action {
+        Action::Verify => {}
+        Action::Rebuild => {
+            db.rebuild_recall_derivations(&sources, || -> Result<()> {
+                step(Step::BeforeCommit)?;
+                verify_all()
+            })?;
+            step(Step::Committed)?;
+        }
+        Action::ChangeProfile(target) => {
+            db.change_recall_profile(&sources, target, || -> Result<()> {
+                step(Step::BeforeCommit)?;
+                verify_all()
+            })?;
+            step(Step::Committed)?;
+        }
     }
     step(Step::BeforeReadBack)?;
     verify_all()?;
@@ -102,7 +159,8 @@ fn maintain_with_step(
             .iter()
             .filter(|i| i.state == CaptureObjectState::Deleted)
             .count(),
-        derivations_rebuilt: rebuild,
+        derivations_rebuilt: !matches!(action, Action::Verify),
+        recall_profile: db.recall_profile()?,
     })
 }
 

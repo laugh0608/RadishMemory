@@ -119,6 +119,24 @@ impl<P: LibraryProvider> EncryptedLibraryLocation<P> {
             .map_err(|error| ApplicationError::vault(ApplicationOperation::RebuildRecall, error))
     }
 
+    /// Explicitly change a healthy, quiescent library's recall format. This is
+    /// separate from repairing derivations and never resumes pending requests.
+    pub fn change_recall_profile(
+        &self,
+        target: crate::RecallProfile,
+    ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {
+        self.provider
+            .change_library_recall_profile(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+                target,
+            )
+            .map_err(|error| {
+                ApplicationError::vault(ApplicationOperation::ChangeRecallProfile, error)
+            })
+    }
+
     /// Select pending uncommitted work; selection does not authorize its removal.
     pub fn inspect_capture_abandonment(
         &self,

@@ -19,6 +19,8 @@ pub enum ApplicationOperation {
     GetDeletionEvidence,
     VerifyLibrary,
     RebuildRecall,
+    InspectRecallProfile,
+    ChangeRecallProfile,
 }
 
 /// Stable top-level categories returned by the Phase 1 application service.

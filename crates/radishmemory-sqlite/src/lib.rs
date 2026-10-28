@@ -16,6 +16,8 @@ mod fixture_runner;
 mod legacy_deletion;
 mod memory_store;
 mod migration;
+mod recall_codec;
+mod recall_profile;
 mod source_capture;
 mod source_catalog;
 mod source_store;
@@ -42,6 +44,7 @@ pub use error::{
 #[cfg(feature = "fixture-runner")]
 pub use fixture_runner::FixtureDeletionFailure;
 pub use migration::SQLITE_SCHEMA_VERSION;
+pub use recall_profile::RecallProfile;
 pub use source_vault_key::{KeyInitializationTransaction, SourceVaultKeyDatabase};
 pub use source_vault_migration::{BodyMigrationDatabase, BodyMigrationItem, BodyMigrationState};
 
@@ -100,6 +103,60 @@ impl SqliteDatabase {
     pub fn verify_recall_derivations(&self) -> Result<(), SqliteError> {
         source_capture::verify_origin_bindings(&self.connection)?;
         derived_index::verify(&self.connection)
+    }
+
+    pub fn recall_profile(&self) -> Result<RecallProfile, SqliteError> {
+        recall_profile::read(&self.connection)
+    }
+
+    /// Explicit atomic upgrade/downgrade of a healthy library's derived FTS.
+    /// Historical body versions, facts and receipts are never changed.
+    pub fn change_recall_profile(
+        &mut self,
+        target: RecallProfile,
+    ) -> Result<RecallProfile, SqliteError> {
+        self.change_recall_profile_with_check(target, |_| Ok(()))
+    }
+
+    fn change_recall_profile_with_check(
+        &mut self,
+        target: RecallProfile,
+        before_commit: impl FnOnce(&Connection) -> Result<(), SqliteError>,
+    ) -> Result<RecallProfile, SqliteError> {
+        let transaction = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(SqliteError::storage)?;
+        if migration::preflight(&transaction)? != i64::from(SQLITE_SCHEMA_VERSION) {
+            return Err(SqliteError::schema_drift(None));
+        }
+        source_vault_key::verify_plaintext_bodies(&transaction)?;
+        recall_profile::require_completed_deletions(&transaction)?;
+        recall_profile::verify_index(&transaction)?;
+        if recall_profile::read(&transaction)? != target {
+            recall_profile::replace_schema(&transaction, target)?;
+            derived_index::rebuild(&transaction)?;
+        }
+        migration::verify_schema_definition(&transaction, SQLITE_SCHEMA_VERSION)?;
+        derived_index::verify(&transaction)?;
+        recall_profile::verify_index(&transaction)?;
+        before_commit(&transaction)?;
+        transaction.commit().map_err(SqliteError::storage)?;
+        let readback = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Deferred)
+            .map_err(SqliteError::storage)?;
+        migration::preflight(&readback)?;
+        source_capture::verify_origin_bindings(&readback)?;
+        derived_index::verify(&readback)?;
+        let actual = recall_profile::read(&readback)?;
+        if actual != target {
+            return Err(SqliteError::conflict(
+                SqliteStorageReason::RecallProfileChanged,
+            ));
+        }
+        readback.commit().map_err(SqliteError::storage)?;
+        Ok(actual)
     }
 
     #[cfg(test)]

@@ -34,6 +34,7 @@ pub use encrypted::{EncryptedLibrary, EncryptedLibraryLocation};
 pub use error::{
     ApplicationError, ApplicationErrorCode, ApplicationErrorReason, ApplicationOperation,
 };
+pub use radishmemory_sqlite::RecallProfile;
 
 pub const LOCAL_LIBRARY_HOST_CONTRACT_ID: &str = "radishmemory.phase1-local-library-host/1";
 
@@ -511,6 +512,23 @@ where
             .rebuild_recall_derivations()
             .map_err(|source| {
                 ApplicationError::storage(ApplicationOperation::RebuildRecall, source)
+            })
+    }
+
+    pub fn recall_profile(&self) -> Result<RecallProfile, ApplicationError> {
+        self.database.recall_profile().map_err(|source| {
+            ApplicationError::storage(ApplicationOperation::InspectRecallProfile, source)
+        })
+    }
+
+    pub fn change_recall_profile(
+        &mut self,
+        target: RecallProfile,
+    ) -> Result<RecallProfile, ApplicationError> {
+        self.database
+            .change_recall_profile(target)
+            .map_err(|source| {
+                ApplicationError::storage(ApplicationOperation::ChangeRecallProfile, source)
             })
     }
 

@@ -335,6 +335,19 @@ impl LibraryProvider for SyntheticLibraryProvider {
     ) -> Result<crate::VerificationReport> {
         self.rebuild(directory, namespace, device)
     }
+    fn change_library_recall_profile(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: radishmemory_sqlite::RecallProfile,
+    ) -> Result<crate::VerificationReport> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::maintenance::change_profile(directory, namespace, device, target, || {
+            self.load(&slot)
+        })
+    }
+
     fn inspect_library_capture_abandonment(
         &self,
         directory: &crate::ObjectDirectory,

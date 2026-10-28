@@ -42,7 +42,8 @@ fn snapshot(root: &TestDirectory, canonical_only: bool) -> Vec<(String, Vec<Stri
             !canonical_only
                 || (!t.starts_with("radishmemory_recall_fts")
                     && t != "radishmemory_source_lineage_tips"
-                    && t != "radishmemory_memory_current_projection")
+                    && t != "radishmemory_memory_current_projection"
+                    && t != "radishmemory_recall_profile")
         })
         .map(|t| {
             let mut stmt = c.prepare(&format!("SELECT * FROM \"{t}\"")).unwrap();
@@ -400,3 +401,6 @@ fn subprocess_maintenance_helper() {
     .unwrap();
     panic!("synthetic checkpoint not reached");
 }
+
+#[path = "recall_profile_tests.rs"]
+mod recall_profile;

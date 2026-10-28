@@ -174,10 +174,47 @@ impl EncryptedCaptureDatabase {
     /// Check FTS5's internal index as well as its separately stored content rows.
     /// This FTS5 command performs verification; it does not rebuild the index.
     pub fn verify_recall_index_structure(&self) -> Result<()> {
-        self.connection.execute(
-            "INSERT INTO radishmemory_recall_fts(radishmemory_recall_fts) VALUES('integrity-check')",
-            [],
-        ).map_err(SqliteError::storage)?;
+        crate::recall_profile::verify_index(&self.connection)
+    }
+
+    pub fn recall_profile(&self) -> Result<crate::RecallProfile> {
+        crate::recall_profile::read(&self.connection)
+    }
+
+    /// The authenticated coordinator holds this exclusive session through
+    /// pre-commit object revalidation. No body/key/schema-version transition.
+    pub fn change_recall_profile<E: From<SqliteError>>(
+        &self,
+        sources: &[SourceArtifact],
+        target: crate::RecallProfile,
+        before_commit: impl FnOnce() -> std::result::Result<(), E>,
+    ) -> std::result::Result<(), E> {
+        self.verify_facts(sources)?;
+        if self.objects()?.iter().any(|object| {
+            matches!(
+                object.state,
+                CaptureObjectState::Prepared
+                    | CaptureObjectState::Abandoning
+                    | CaptureObjectState::Deleting
+            )
+        }) {
+            return Err(crate::recall_profile::pending().into());
+        }
+        let tx =
+            rusqlite::Transaction::new_unchecked(&self.connection, TransactionBehavior::Exclusive)
+                .map_err(SqliteError::storage)?;
+        crate::recall_profile::require_completed_deletions(&tx)?;
+        self.verify_recall_index_structure()?;
+        if crate::recall_profile::read(&tx)? != target {
+            let load = source_loader(sources)?;
+            crate::recall_profile::replace_schema(&tx, target)?;
+            crate::derived_index::rebuild_with_sources(&tx, &|_, ns, id| load(ns, id))?;
+        }
+        migration::verify_schema_definition(&tx, self.version)?;
+        verify_facts(&tx, sources)?;
+        self.verify_recall_index_structure()?;
+        before_commit()?;
+        tx.commit().map_err(SqliteError::storage)?;
         Ok(())
     }
 

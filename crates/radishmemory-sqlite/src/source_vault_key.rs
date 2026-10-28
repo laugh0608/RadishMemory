@@ -57,6 +57,8 @@ impl SourceVaultKeyDatabase {
         }
         if found == 0 {
             migration::apply_pending(&transaction, 0, migration::SQLITE_SCHEMA_VERSION)?;
+            crate::recall_profile::replace_schema(&transaction, crate::RecallProfile::HanPhraseV1)?;
+            crate::derived_index::rebuild(&transaction)?;
         }
         let version = if found == 0 { 6 } else { found as u32 };
         migration::verify_schema_definition(&transaction, version)?;
@@ -160,6 +162,11 @@ pub(crate) fn verify_plaintext_facts(
     namespace: &str,
 ) -> Result<(), SqliteError> {
     verify_database_facts(connection, namespace)?;
+    verify_plaintext_bodies(connection)
+}
+
+pub(crate) fn verify_plaintext_bodies(connection: &Connection) -> Result<(), SqliteError> {
+    verify_database_integrity(connection)?;
     // Verify digest and length of every remaining BLOB, including old versions and deletion
     // residuals that ordinary active/current source reads intentionally exclude.
     let mut statement = connection.prepare(
@@ -207,17 +214,7 @@ pub(crate) fn verify_database_facts(
     connection: &Connection,
     namespace: &str,
 ) -> Result<(), SqliteError> {
-    let integrity: String = connection
-        .query_row("PRAGMA quick_check", [], |row| row.get(0))
-        .map_err(SqliteError::storage)?;
-    let foreign_key_failure = connection
-        .prepare("PRAGMA foreign_key_check")
-        .map_err(SqliteError::storage)?
-        .exists([])
-        .map_err(SqliteError::storage)?;
-    if integrity != "ok" || foreign_key_failure {
-        return Err(profile_mismatch());
-    }
+    verify_database_integrity(connection)?;
     // Include all canonical namespaces, not only sources selected by current FTS.
     for table in [
         "radishmemory_source_artifacts",
@@ -239,6 +236,21 @@ pub(crate) fn verify_database_facts(
         if mismatch {
             return Err(profile_mismatch());
         }
+    }
+    Ok(())
+}
+
+fn verify_database_integrity(connection: &Connection) -> Result<(), SqliteError> {
+    let integrity: String = connection
+        .query_row("PRAGMA quick_check", [], |row| row.get(0))
+        .map_err(SqliteError::storage)?;
+    let foreign_key_failure = connection
+        .prepare("PRAGMA foreign_key_check")
+        .map_err(SqliteError::storage)?
+        .exists([])
+        .map_err(SqliteError::storage)?;
+    if integrity != "ok" || foreign_key_failure {
+        return Err(profile_mismatch());
     }
     Ok(())
 }

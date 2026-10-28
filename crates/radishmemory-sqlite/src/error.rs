@@ -13,6 +13,7 @@ pub enum SqliteErrorCode {
     SchemaDrift,
     Storage,
     Search,
+    SearchQueryLimit,
     Conflict,
     InvalidStoredData,
     SourceInvariant,
@@ -73,6 +74,8 @@ pub enum SqliteStorageReason {
     LineageTipMismatch,
     CaptureStateMismatch,
     KeyProfileMismatch,
+    RecallTransitionPending,
+    RecallProfileChanged,
 }
 
 /// SQLite adapter failure that does not display database paths or SQL text.
@@ -172,6 +175,18 @@ impl SqliteError {
             found_schema_version: None,
             supported_schema_version: None,
             source: Some(Box::new(source)),
+        }
+    }
+
+    pub(crate) fn search_query_limit() -> Self {
+        Self {
+            code: SqliteErrorCode::SearchQueryLimit,
+            capability: None,
+            configuration_reason: None,
+            storage_reason: None,
+            found_schema_version: None,
+            supported_schema_version: None,
+            source: None,
         }
     }
 
@@ -339,6 +354,14 @@ impl fmt::Display for SqliteError {
             SqliteErrorCode::SchemaDrift => "SQLite schema metadata is inconsistent",
             SqliteErrorCode::Storage => "SQLite storage operation failed",
             SqliteErrorCode::Search => "SQLite local search failed",
+            SqliteErrorCode::SearchQueryLimit => {
+                "search query exceeds 4096 UTF-8 bytes or 128 terms"
+            }
+            SqliteErrorCode::Conflict
+                if self.storage_reason == Some(SqliteStorageReason::RecallProfileChanged) =>
+            {
+                "recall format changed after commit; refresh to inspect the current format"
+            }
             SqliteErrorCode::Conflict => "immutable SQLite object already exists",
             SqliteErrorCode::InvalidStoredData => "stored SQLite object is invalid",
             SqliteErrorCode::SourceInvariant => "source storage invariant violation",

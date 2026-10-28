@@ -596,9 +596,16 @@ fn key_eligibility_rejects_schema_tampering_even_when_history_and_table_names_ma
         "ALTER TABLE radishmemory_source_bodies ADD COLUMN synthetic_extra TEXT",
     ] {
         let synthetic = bootstrap_fixture("key-schema-drift");
+        let mut maintenance = key_maintenance(&synthetic);
         let raw = Connection::open(synthetic.path()).unwrap();
         raw.execute_batch(sql).unwrap();
-        let mut maintenance = key_maintenance(&synthetic);
+        // Both a fresh open and an already-open handle must reject drift.
+        assert_eq!(
+            SourceVaultKeyDatabase::open(std::fs::canonicalize(synthetic.path()).unwrap())
+                .unwrap_err()
+                .code(),
+            SqliteErrorCode::SchemaDrift
+        );
         assert_eq!(
             maintenance
                 .begin_key_initialization("namespace-1", "device-1", KEY_PROFILE)

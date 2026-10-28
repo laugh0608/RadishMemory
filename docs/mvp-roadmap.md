@@ -58,6 +58,8 @@ MVP 不以功能数量为目标，而要证明一个可信闭环：
 
 阶段 1 不以格式数量或模型数量证明完成。当前文本能力应先能通过 production 入口完成保存、中文找回、完整目录访问、回源、版本更新、导出与删除，并能在派生损坏后进入受限修复。具体计划见[本地资料库质量验收](evaluation/phase1-local-library-quality.md)，这些场景尚未因文档加入而通过。
 
+[ADR 0009](adr/0009-versioned-chinese-recall.md)的版本化中文短语检索已接入默认与显式加密 production 入口，固定合成样本由 15/30 提升到 30/30，旧库显式升级与降级具备合成及真实旧 adapter 证据。有限长文测量显示空间与延迟增加；人工标签审阅、原生切换、跨平台与规模成本仍待完成，详见[落地记录](implementation/phase1-chinese-recall.md)，不据此关闭完整 Q01。
+
 扩大资料规模前先建立启动、搜索、导入、重建和内存基线；原始对象加密接入后分别报告对象文件、SQLite / FTS 正文与恢复能力。既有文件 / 宿主合成证据仍按各自实际场景解释，不替代新增质量验收。
 
 第一次真实云端模型调用就必须满足[隐私模型](privacy-threat-model.md#模型外发控制)要求的权限与外发过滤、最小 ContextPack、OutboundContextManifest、接收方 / 用途和实际 attempts 记录。阶段 3 扩展多模型及完整 Context Compiler；不能把最小外发清单推迟到阶段 3。此处澄清既有安全依赖，不授权当前接入模型。

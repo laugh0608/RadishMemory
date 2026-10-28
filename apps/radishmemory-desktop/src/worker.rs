@@ -17,6 +17,7 @@ pub(crate) enum Command {
     Migrate,
     Verify,
     Rebuild,
+    ChangeRecallProfile(RecallProfile),
     Refresh,
     Import(FileReadRequest),
     Update(FileReadRequest),
@@ -36,6 +37,7 @@ pub(crate) enum Command {
 pub(crate) struct Snapshot {
     pub view: Option<LibraryView>,
     pub encrypted: bool,
+    pub recall_profile: Option<RecallProfile>,
     pub holds_original: bool,
     pub holds_capture: bool,
     pub abandonment_available: bool,
@@ -53,6 +55,7 @@ pub(crate) struct Engine<P: LibraryProvider, F: Fn() -> P> {
     provider: F,
     controller: Option<LibraryController<ProductionRuntime, P>>,
     encrypted: bool,
+    recall_profile: Option<RecallProfile>,
     target: Option<CaptureAbandonmentTarget>,
     deletions: Vec<DeleteRequest>,
     recovery_known: bool,
@@ -71,6 +74,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             provider,
             controller: None,
             encrypted: false,
+            recall_profile: None,
             target: None,
             deletions: Vec::new(),
             recovery_known: false,
@@ -190,7 +194,10 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         }
         if matches!(
             command,
-            Command::Import(_) | Command::Update(_) | Command::Delete
+            Command::Import(_)
+                | Command::Update(_)
+                | Command::Delete
+                | Command::ChangeRecallProfile(_)
         ) && self.blocked()
         {
             return Err(recovery_required());
@@ -208,6 +215,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 let library =
                     LocalLibrary::open(self.paths.database_path(), ProductionRuntime, config)
                         .map_err(app_error)?;
+                self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
                 self.controller = Some(LibraryController::from_library(Library::Plain(library))?);
                 self.inspect()?;
                 snapshot.message = Some("Legacy plaintext library opened.".into());
@@ -249,6 +257,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                     library,
                     &read_snapshot,
                 ));
+                self.recall_profile = Some(read_snapshot.recall_profile);
                 self.target = read_snapshot.abandonment_target;
                 self.deletions = read_snapshot.deletion_requests;
                 self.recovery_known = true;
@@ -297,14 +306,27 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                     snapshot.message = Some("Derived recall rebuilt from verified facts.".into());
                 }
             }
+            Command::ChangeRecallProfile(target) => {
+                self.recall_profile = Some(self.controller()?.change_recall_profile(target)?);
+                snapshot.message = Some(match target {
+                    RecallProfile::HanPhraseV1 => "Chinese phrase search enabled. Earlier clients require an explicit switch back to legacy search.".into(),
+                    RecallProfile::LegacyUnicode61 => "Legacy search restored. Chinese short-term recall is limited again; source body mode is unchanged.".into(),
+                });
+            }
             Command::Refresh => {
                 if self.encrypted {
                     let read_snapshot = self.controller()?.refresh_encrypted_snapshot()?;
+                    self.recall_profile = Some(read_snapshot.recall_profile);
                     self.target = read_snapshot.abandonment_target;
                     self.deletions = read_snapshot.deletion_requests;
                     self.recovery_known = true;
                 } else {
                     self.controller()?.refresh_sources()?;
+                    self.recall_profile = self
+                        .controller()?
+                        .backend()
+                        .plain_recall_profile()
+                        .map_err(app_error)?;
                     self.inspect()?;
                 }
             }
@@ -376,6 +398,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::OpenPlain
                 | Command::OpenEncrypted
                 | Command::Refresh
+                | Command::ChangeRecallProfile(_)
                 | Command::RetryOriginal
                 | Command::ResumeDelete(_)
                 | Command::Abandon
@@ -407,6 +430,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             snapshot.view = None;
             self.view_valid = false;
         }
+        snapshot.recall_profile = if snapshot.view.is_some() {
+            self.recall_profile
+        } else {
+            None
+        };
         snapshot.encrypted = self.encrypted;
         snapshot.abandonment_available = self.target.is_some();
         snapshot.recovery_known = self.recovery_known;

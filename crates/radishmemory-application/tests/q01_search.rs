@@ -1,7 +1,9 @@
-//! A measurement baseline, not a Q01 quality gate. Test success establishes
-//! reproducible observations and safety checks; Q01 gaps are printed explicitly.
+//! Fixed synthetic Q01 quality regression for the new default recall profile.
+//! Passing this corpus does not replace independent labels or full Q01 acceptance.
 #[path = "q01/corpus.rs"]
 mod corpus;
+#[path = "q01/metrics.rs"]
+mod metrics;
 #[path = "q01/support.rs"]
 mod support;
 
@@ -20,43 +22,11 @@ use radishmemory_sqlite as _;
 use rusqlite::{Connection, OpenFlags};
 
 use corpus::{CORPUS_VERSION, DOCUMENTS, QUERIES, TOP_K};
+use metrics::Metrics;
 use support::{Directory, Runtime, config};
 
 type SourceLabels = BTreeMap<Identifier, &'static str>;
 type Observation = Vec<Vec<&'static str>>;
-
-#[derive(Debug, Default, Eq, PartialEq)]
-struct Metrics {
-    relevant: usize,
-    retrieved: usize,
-    true_positives: usize,
-    false_positives: usize,
-    answered_queries: usize,
-    hit_queries: usize,
-    exact_queries: usize,
-    no_answer_queries: usize,
-    no_answer_false_hits: usize,
-}
-
-impl Metrics {
-    fn add(&mut self, expected: &[&str], actual: &[&str]) {
-        let expected = expected.iter().copied().collect::<BTreeSet<_>>();
-        let actual = actual.iter().copied().collect::<BTreeSet<_>>();
-        let tp = expected.intersection(&actual).count();
-        self.relevant += expected.len();
-        self.retrieved += actual.len();
-        self.true_positives += tp;
-        self.false_positives += actual.difference(&expected).count();
-        self.exact_queries += usize::from(actual == expected);
-        if expected.is_empty() {
-            self.no_answer_queries += 1;
-            self.no_answer_false_hits += usize::from(!actual.is_empty());
-        } else {
-            self.answered_queries += 1;
-            self.hit_queries += usize::from(tp > 0);
-        }
-    }
-}
 
 fn remember(labels: &mut SourceLabels, label: &'static str, receipt: &FileCaptureReceipt) {
     assert_eq!(receipt.version().get(), 1);
@@ -200,11 +170,14 @@ fn observe(
         metrics.no_answer_false_hits,
         metrics.no_answer_queries
     );
+    assert_eq!(metrics.true_positives, metrics.relevant);
+    assert_eq!(metrics.false_positives, 0);
+    assert_eq!(metrics.exact_queries, QUERIES.len());
     observations
 }
 
 #[test]
-fn q01_production_baseline_reports_quality_separately_from_reproducibility() {
+fn q01_new_profile_matches_fixed_labels_across_both_production_entries() {
     let plain_root = Directory::new();
     let requests = inputs(&plain_root);
     let database = plain_root.0.join("library.sqlite3");
@@ -299,29 +272,6 @@ fn q01_production_baseline_reports_quality_separately_from_reproducibility() {
     );
     assert_eq!(provider.key_creations(), 1);
     drop(encrypted.close());
-}
-
-#[test]
-fn q01_metrics_distinguish_misses_extras_and_no_answer_queries() {
-    let mut metrics = Metrics::default();
-    metrics.add(&["a", "b"], &["a", "c"]);
-    metrics.add(&["d"], &[]);
-    metrics.add(&[], &["c"]);
-    metrics.add(&[], &[]);
-    assert_eq!(
-        metrics,
-        Metrics {
-            relevant: 3,
-            retrieved: 3,
-            true_positives: 1,
-            false_positives: 2,
-            answered_queries: 2,
-            hit_queries: 1,
-            exact_queries: 1,
-            no_answer_queries: 2,
-            no_answer_false_hits: 1,
-        }
-    );
 }
 
 #[test]

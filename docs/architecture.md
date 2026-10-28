@@ -130,6 +130,8 @@ macOS 显式隔离入口可选择启用[单动作调用区间观测](evaluation/
 
 当前搜索与目录实现包含全量正文读取、事实复验和内存排序 / 分页，桌面通过单一串行后台 worker 执行相关操作，UI 接收结果快照；移出 UI 线程没有降低全库认证成本或持锁时间。后续优化应先取得数据量、正文大小和版本分布对应的性能证据，再决定增量校验、SQL 分页、top-k 或进一步的调度调整；不能通过省略权限、时间、删除或完整性检查降低成本。
 
+[ADR 0009](adr/0009-versioned-chinese-recall.md)将全文派生格式独立版本化，正文 schema v6 / v7–v12 与 canonical 字段保持。新库默认使用冻结汉字短语 profile，旧库保持旧格式；健康库仅在显式操作中验真并原子重建，升级后的额外 profile 表使旧客户端拒绝，显式降级重建旧索引后才恢复兼容。该格式同时服务来源与确认记忆，不能绕过时间、权限、状态或删除资格；新增字段仍是明文派生数据。实现与有限成本见[落地记录](implementation/phase1-chinese-recall.md)。
+
 ADR 0007 要求派生损坏时可在 canonical 完整的前提下显式 rebuild。维护入口必须在普通启动失败时仍可安全到达，并限制允许操作；canonical / binding 损坏不能被重建、空库或外部原件 fallback 掩盖。显式加密入口已有打开失败后的 verify / rebuild，且派生损坏重启恢复已有有限 macOS 原生证据；默认 v6 的 failed-open 维护入口仍未收口。历史观察见[审阅记录](implementation/2026-09-05-project-review.md)，剩余验收见[质量计划](evaluation/phase1-local-library-quality.md)；不能据显式入口的结果宣称默认路径或性能优化已完成。
 
 ## 核心组件

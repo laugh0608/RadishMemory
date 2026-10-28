@@ -4,6 +4,8 @@
 
 状态：`Q01 synthetic production baseline measured; quality gaps remain`
 
+后续结果：[版本化中文检索](../implementation/phase1-chinese-recall.md)已使同一标签集在双 production 入口达到 30/30；当前 `q01_search` 断言新结果。下文 15/30 与 `gaps_observed` 属于 `f2f8e10` 保存的旧生产观测，复验历史须使用该提交，不把当前测试输出与历史结果混用。
+
 ## 范围与标注
 
 承接[Q01](phase1-local-library-quality.md)与[当前顺位](../status/current.md)。生产代码基线为 `3152f2c`；本批只增加 application 集成测试、固定合成语料和结果记录，没有修改 tokenizer、查询、schema、索引存储、依赖或 lockfile，也没有访问历史原生验收库。
@@ -73,3 +75,7 @@ R01 在 production 入口再次复现：`d01` 正文为“项目默认使用蓝�
 定向基线命令退出 0，3 项测试通过；随后完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0，仓库基线检查 286 个文件，notices / 检查器回归、fmt、locked Clippy 与 26 个 Rust suites 通过，合计 406 passed、0 failed、11 个由父测试调用的 ignored helper。Q01 质量结果仍为上述 15/30，不能将 406 个工程测试通过写成中文找回达标。
 
 本机忽略目录保留定向观测、完整检查日志、六组汇总与测试 / corpus 摘要；测试合成库按独占临时目录生命周期清理。没有新 GUI / VM、系统 key、网络服务、依赖安装、远程写入、push 或 PR；本批未修改 production 代码、索引或 schema。Windows / Linux 与真实系统凭据未运行，不从本机集成测试外推。
+
+## 候选实验进展
+
+本基线提交为 `f2f8e10`。后续[独立候选实验与兼容建议](phase1-chinese-retrieval-candidates.md)复用本批未改写的语料和标签；汉字短语候选在内存 FTS 中匹配 30/30 相关来源并通过新增相邻性反例，生产仍为本文的 15/30。候选不是 production 修复，也不替代标注审阅与旧库迁移验收。

@@ -184,6 +184,10 @@ pub(crate) fn migrate_from(connection: &mut Connection, found: i64) -> Result<()
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(SqliteError::migration)?;
     apply_pending(&transaction, found, SQLITE_SCHEMA_VERSION)?;
+    if found == 0 {
+        crate::recall_profile::replace_schema(&transaction, crate::RecallProfile::HanPhraseV1)?;
+        crate::derived_index::rebuild(&transaction)?;
+    }
     validate_migration_history(&transaction, SQLITE_SCHEMA_VERSION)?;
     transaction.commit().map_err(SqliteError::migration)
 }
@@ -273,7 +277,8 @@ fn validate_migration_history(
         return Err(SqliteError::schema_drift(None));
     }
 
-    validate_schema_tables(connection, expected_version)
+    validate_schema_tables(connection, expected_version)?;
+    verify_schema_definition(connection, expected_version)
 }
 
 fn validate_schema_tables(
@@ -292,12 +297,18 @@ fn validate_schema_tables(
         .map_err(|source| SqliteError::schema_drift(Some(source)))?
         .collect::<Result<BTreeSet<_>, _>>()
         .map_err(|source| SqliteError::schema_drift(Some(source)))?;
-    let expected = MIGRATIONS
+    let mut expected = MIGRATIONS
         .iter()
         .filter(|migration| migration.version <= expected_version)
         .flat_map(|migration| migration.tables_created.iter().copied())
         .map(str::to_owned)
         .collect::<BTreeSet<_>>();
+    if crate::recall_profile::metadata(connection)? == crate::RecallProfile::HanPhraseV1 {
+        if expected_version < 6 {
+            return Err(SqliteError::schema_drift(None));
+        }
+        expected.insert(crate::recall_profile::PROFILE_TABLE.to_owned());
+    }
     if actual != expected {
         return Err(SqliteError::schema_drift(None));
     }
@@ -322,6 +333,12 @@ pub(crate) fn verify_schema_definition(
         expected
             .execute_batch(migration.sql)
             .map_err(SqliteError::migration)?;
+    }
+    if crate::recall_profile::metadata(connection)? == crate::RecallProfile::HanPhraseV1 {
+        if version < 6 {
+            return Err(SqliteError::schema_drift(None));
+        }
+        crate::recall_profile::replace_schema(&expected, crate::RecallProfile::HanPhraseV1)?;
     }
     fn schema(
         connection: &Connection,

@@ -63,6 +63,23 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
             Self::Encrypted { library, .. } => library.rebuild_recall().map(|_| ()),
         }
     }
+    pub(crate) fn plain_recall_profile(&self) -> Result<Option<RecallProfile>, ApplicationError> {
+        match self {
+            Self::Plain(library) => library.recall_profile().map(Some),
+            Self::Encrypted { .. } => Ok(None), // Obtained from the authenticated read snapshot.
+        }
+    }
+    pub(crate) fn change_recall_profile(
+        &mut self,
+        target: RecallProfile,
+    ) -> Result<RecallProfile, ApplicationError> {
+        match self {
+            Self::Plain(library) => library.change_recall_profile(target),
+            Self::Encrypted { library, .. } => library
+                .change_recall_profile(target)
+                .map(|report| report.recall_profile),
+        }
+    }
     pub(crate) fn import_new_source(
         &mut self,
         request: &FileReadRequest,

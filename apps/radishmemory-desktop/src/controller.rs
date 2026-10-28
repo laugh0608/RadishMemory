@@ -247,6 +247,19 @@ where
             .map_err(|source| DesktopError::application(&source))
     }
 
+    pub(crate) fn change_recall_profile(
+        &mut self,
+        target: radishmemory_application::RecallProfile,
+    ) -> Result<radishmemory_application::RecallProfile, DesktopError> {
+        self.require_no_original()?;
+        let profile = self
+            .library
+            .change_recall_profile(target)
+            .map_err(crate::backend::app_error)?;
+        self.refresh_after_commit(None);
+        Ok(profile)
+    }
+
     pub fn rebuild(&mut self) -> Result<(), DesktopError> {
         self.library
             .rebuild_recall()

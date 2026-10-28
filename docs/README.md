@@ -32,6 +32,7 @@
 21. [ADR 0006：阶段 1 文本 / Markdown 文件入口](adr/0006-phase1-text-markdown-file-entry.md)：显式选择、路径边界、字节、版本、导出、删除和合成验收。
 22. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
 23. [ADR 0008：阶段 1 加密内容寻址 Source Vault](adr/0008-phase1-encrypted-source-vault.md)：原始对象认证加密、内容地址、密钥边界、SQLite 协调、迁移、删除与合成验收。
+24. [ADR 0009：版本化中文检索](adr/0009-versioned-chinese-recall.md)：冻结字符规则、显式派生索引升级、旧客户端拒绝与降级边界。
 24. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
 25. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
     - [Phase 1 Source Vault filesystem adapter 落地记录](implementation/phase1-source-vault-filesystem.md)：P1-S03b envelope、目录 capability、不可覆盖发布、认证回读、attempt 状态与平台证据限制。
@@ -65,6 +66,8 @@
 - [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；M01 因源码摘要漂移暂缓，当前构建的空库自然 busy 关闭结果见宿主记录。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
     - [Phase 1 中文找回基线](evaluation/phase1-chinese-retrieval-baseline.md)：固定合成语料、候选相关来源、两种 production 入口与重开 / 重建对照；记录真实漏召回，不替代 Q01 质量门禁。
+    - [Phase 1 中文检索候选与兼容方案](evaluation/phase1-chinese-retrieval-candidates.md)：四种候选的固定语料比较与相邻短语反例；接受范围见 ADR 0009。
+    - [Phase 1 版本化中文检索落地](implementation/phase1-chinese-recall.md)：双入口质量、显式升级 / 降级、旧代码兼容与长文成本。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。
 - [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。

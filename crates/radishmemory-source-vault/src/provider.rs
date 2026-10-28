@@ -163,6 +163,14 @@ pub trait LibraryProvider: sealed::Sealed {
         namespace: &str,
         device: &str,
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
+    fn change_library_recall_profile(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: radishmemory_sqlite::RecallProfile,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
+
     fn inspect_library_capture_abandonment(
         &self,
         directory: &crate::ObjectDirectory,
@@ -295,6 +303,16 @@ impl LibraryProvider for PlatformKeyProvider {
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
         self.rebuild_library_derivations(directory, namespace, device)
     }
+    fn change_library_recall_profile(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: radishmemory_sqlite::RecallProfile,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        self.change_library_recall_profile(directory, namespace, device, target)
+    }
+
     fn inspect_library_capture_abandonment(
         &self,
         directory: &crate::ObjectDirectory,
@@ -407,6 +425,21 @@ impl PlatformKeyProvider {
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
         let slot = KeySlot::new(namespace_id, device_id)?;
         crate::maintenance::maintain(directory, namespace_id, device_id, true, || {
+            self.load_existing(&slot)
+        })
+    }
+
+    /// Explicit atomic recall-format change over authenticated objects. Requires
+    /// the same suspended-host and key-store boundary as other maintenance.
+    pub fn change_library_recall_profile(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+        target: radishmemory_sqlite::RecallProfile,
+    ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::maintenance::change_profile(directory, namespace, device, target, || {
             self.load_existing(&slot)
         })
     }

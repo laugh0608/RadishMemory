@@ -425,6 +425,16 @@ pub(crate) fn search_with_sources(
 ) -> Result<Vec<LocalSearchHit>, SqliteError> {
     let catalog = Catalog::load_with(connection, load_source)?;
     verify_catalog(connection, &catalog)?;
+    let expression = match crate::recall_profile::read(connection)? {
+        crate::RecallProfile::LegacyUnicode61 => fts_expression(request.query().as_str()),
+        crate::RecallProfile::HanPhraseV1 => {
+            let Some(expression) = crate::recall_codec::expression(request.query().as_str())?
+            else {
+                return Ok(Vec::new());
+            };
+            expression
+        }
+    };
     let eligible = catalog
         .candidates
         .iter()
@@ -435,8 +445,6 @@ pub(crate) fn search_with_sources(
         return Ok(Vec::new());
     }
     populate_search_eligibility(connection, &eligible)?;
-
-    let expression = fts_expression(request.query().as_str());
     let query_result = (|| {
         let mut statement = connection
             .prepare(
@@ -644,6 +652,9 @@ fn verify_catalog(connection: &Connection, expected: &Catalog) -> Result<(), Sql
     if actual_projections != expected.projections || actual_recall_rows != expected.recall_rows {
         return Err(derived_mismatch());
     }
+    if crate::recall_profile::read(connection)? == crate::RecallProfile::HanPhraseV1 {
+        crate::recall_profile::verify_index(connection)?;
+    }
     Ok(())
 }
 
@@ -675,6 +686,27 @@ fn load_actual_projections(
 fn load_actual_recall_rows(
     connection: &Connection,
 ) -> Result<BTreeMap<RecallKey, RecallRow>, SqliteError> {
+    let profile = crate::recall_profile::read(connection)?;
+    if profile == crate::RecallProfile::HanPhraseV1 {
+        let mut statement = connection
+            .prepare("SELECT content, han_terms, word_terms FROM radishmemory_recall_fts")
+            .map_err(SqliteError::storage)?;
+        let rows = statement
+            .query_map([], |row| {
+                Ok((
+                    row.get::<_, String>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            })
+            .map_err(SqliteError::storage)?;
+        for row in rows {
+            let (content, han, words) = row.map_err(SqliteError::storage)?;
+            if crate::recall_codec::fields(&content) != (han, words) {
+                return Err(derived_mismatch());
+            }
+        }
+    }
     let mut statement = connection
         .prepare(
             "SELECT object_kind, object_id, namespace_id, sensitivity, content
@@ -729,20 +761,19 @@ fn insert_recall_row(
     key: &RecallKey,
     row: &RecallRow,
 ) -> Result<(), SqliteError> {
-    let changed = connection
-        .execute(
-            "INSERT INTO radishmemory_recall_fts (
-                 object_kind, object_id, namespace_id, sensitivity, content
-             ) VALUES (?1, ?2, ?3, ?4, ?5)",
-            params![
-                key.object_kind,
-                key.object_id,
-                row.namespace_id,
-                row.sensitivity,
-                row.content,
-            ],
-        )
-        .map_err(SqliteError::storage)?;
+    let changed = match crate::recall_profile::read(connection)? {
+        crate::RecallProfile::LegacyUnicode61 => connection.execute(
+            "INSERT INTO radishmemory_recall_fts (object_kind, object_id, namespace_id, sensitivity, content) VALUES (?1, ?2, ?3, ?4, ?5)",
+            params![key.object_kind, key.object_id, row.namespace_id, row.sensitivity, row.content],
+        ),
+        crate::RecallProfile::HanPhraseV1 => {
+            let (han, words) = crate::recall_codec::fields(&row.content);
+            connection.execute(
+                "INSERT INTO radishmemory_recall_fts (object_kind, object_id, namespace_id, sensitivity, content, han_terms, word_terms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                params![key.object_kind, key.object_id, row.namespace_id, row.sensitivity, row.content, han, words],
+            )
+        }
+    }.map_err(SqliteError::storage)?;
     if changed != 1 {
         return Err(derived_mismatch());
     }

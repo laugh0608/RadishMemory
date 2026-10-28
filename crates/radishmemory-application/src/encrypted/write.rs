@@ -277,6 +277,13 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
     ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {
         self.location.verify_library()
     }
+    pub fn change_recall_profile(
+        &self,
+        target: crate::RecallProfile,
+    ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {
+        self.location.change_recall_profile(target)
+    }
+
     pub fn rebuild_recall(
         &self,
     ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {

@@ -22,6 +22,8 @@ pub struct RadishMemoryApp {
 enum Confirmation {
     Initialize,
     Migrate,
+    UpgradeRecall,
+    DowngradeRecall,
     Abandon,
     Close,
 }
@@ -206,6 +208,21 @@ impl RadishMemoryApp {
                 if ui.add_enabled(can_switch, egui::Button::new("Migrate / resume bodies…")).clicked() { action = Some(UiAction::Confirm(Confirmation::Migrate)); }
             });
             ui.small(if self.state.encrypted { "Encrypted object mode: FTS retains full readable text. This is not whole-library encryption." } else { "Default legacy mode: SQLite stores plaintext source bodies." });
+            if self.controller.is_some() {
+                ui.horizontal_wrapped(|ui| {
+                    match self.state.recall_profile {
+                        Some(radishmemory_application::RecallProfile::LegacyUnicode61) => {
+                            ui.label("Search: legacy word matching (last refreshed)");
+                            if ui.add_enabled(can_mutate, egui::Button::new("Enable Chinese phrase search…")).clicked() { action = Some(UiAction::Confirm(Confirmation::UpgradeRecall)); }
+                        }
+                        Some(radishmemory_application::RecallProfile::HanPhraseV1) => {
+                            ui.label("Search: Chinese phrases (last refreshed)");
+                            if ui.add_enabled(can_mutate, egui::Button::new("Use legacy search…")).clicked() { action = Some(UiAction::Confirm(Confirmation::DowngradeRecall)); }
+                        }
+                        None => { ui.label("Search format unavailable. Refresh before changing it."); }
+                    }
+                });
+            }
             if self.state.encrypted {
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("Inspect recovery").clicked() { action = Some(UiAction::Command(Command::InspectRecovery)); }
@@ -441,6 +458,8 @@ impl RadishMemoryApp {
                 ui.label(match confirmation {
                     Confirmation::Initialize => "Prepare a device-local key checkpoint for this library. This may write the system credential store. An existing missing key is never replaced. Continue with explicit body migration afterward.",
                     Confirmation::Migrate => "Close the current library and migrate or resume its source bodies using the existing key. FTS remains plaintext. Do not delete the key afterward; it is required to reopen encrypted objects.",
+                    Confirmation::UpgradeRecall => "Enable contiguous Chinese phrase matching and rebuild the search index. Earlier clients will refuse this library until you explicitly switch back to legacy search. Source bodies and their encryption mode are unchanged. Encrypted mode reads the existing system key.",
+                    Confirmation::DowngradeRecall => "Rebuild legacy search for earlier clients. Chinese short words may be missed again. This does not restore an old backup or change source bodies, encryption mode, or body-version compatibility. Encrypted mode reads the existing system key.",
                     Confirmation::Abandon => "Permanently abandon exactly the inspected uncommitted capture. Its original request cannot be replayed afterward. Existing committed sources and unknown files are not targets.",
                     Confirmation::Close => "Closing loses the original request held in memory. An unfinished capture then requires explicit abandonment or the exact original request from elsewhere. Persisted deletion authority can be discovered after restart.",
                 });
@@ -451,6 +470,8 @@ impl RadishMemoryApp {
                         match confirmation {
                             Confirmation::Initialize => action = Some(UiAction::Command(Command::InitializeKey)),
                             Confirmation::Migrate => action = Some(UiAction::Command(Command::Migrate)),
+                            Confirmation::UpgradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::HanPhraseV1))),
+                            Confirmation::DowngradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::LegacyUnicode61))),
                             Confirmation::Abandon => action = Some(UiAction::Command(Command::Abandon)),
                             Confirmation::Close => { self.allow_close = true; context.send_viewport_cmd(egui::ViewportCommand::Close); }
                         }
@@ -476,6 +497,8 @@ mod close_tests;
 mod font_tests;
 #[cfg(test)]
 mod read_session_tests;
+#[cfg(test)]
+mod recall_profile_tests;
 #[cfg(test)]
 mod test_support;
 

@@ -908,9 +908,13 @@ fn restore_version_three_schema(connection: &Connection) {
              DROP TABLE radishmemory_delete_request_targets;
              DROP TABLE radishmemory_delete_requests;
              DROP TABLE radishmemory_recall_fts;
+             DROP TABLE radishmemory_recall_profile;
              DROP TABLE radishmemory_memory_current_projection;
              DELETE FROM radishmemory_schema_migrations WHERE version >= 4;
              PRAGMA user_version = 3;",
         )
         .expect("synthetic version three database must be restored");
 }
+
+#[path = "local_search/recall_profile.rs"]
+mod recall_profile_tests;

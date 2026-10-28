@@ -11,7 +11,13 @@ const BODY: &[u8] = "合成长期项目资料\r\n# exact bytes\n".as_bytes();
 fn setup() -> (TestDirectory, ObjectDirectory) {
     let root = TestDirectory::new();
     let path = root.0.join("library.sqlite3");
-    drop(radishmemory_sqlite::SqliteDatabase::open(&path).unwrap());
+    // This historical migration fixture writes the legacy FTS columns directly.
+    // New-profile migration is exercised through production capture in q01_upgrade.
+    let mut database = radishmemory_sqlite::SqliteDatabase::open(&path).unwrap();
+    database
+        .change_recall_profile(radishmemory_sqlite::RecallProfile::LegacyUnicode61)
+        .unwrap();
+    drop(database);
     let c = Connection::open(&path).unwrap();
     let digest = Sha256::digest(BODY)
         .iter()
