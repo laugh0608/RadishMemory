@@ -117,7 +117,9 @@ pwsh ./scripts/check-repo.ps1
 
 2026-10-28 中文显示切片已提交为 `eab2b0f`：固定随包 Noto Sans SC Regular 2.004（7.95 MiB、OFL-1.1）、notices 摘要门禁和有资料失败撤回回归已接入，无 Cargo 依赖或 lockfile 变化；完整本机检查 403 项 Rust tests、fmt / Clippy 与默认构建通过，见[显示切片](../implementation/phase1-desktop-chinese-display.md)。独立授权后，macOS 单窗口已验证中文标题 / 混排输入 / 简繁中文结果可读，以及[有资料 Refresh 认证失败撤回与显式恢复](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-28-macos-有资料-refresh-原生结果)；两份精确导出、两次 Verify、本地 lineage 删除与正常退出 0 通过，测试 key 和复验材料保留。760×520 最小窗口未取得有效尺寸调整证据，Windows / Linux 新字体、Q01 中文检索、真实 key 首尾取消及完整 P1-S05 继续开放。
 
-下一步先按 Q01 建立中文找回的 production 样本与命中 / 误召回基线，区分默认 v6 与显式加密入口；显示补验覆盖最小窗口及 Windows / Linux 当前字体构建。随后按 Q02 完整目录、Q06 回源与结果刷新推进；剩余原生失败窗口继续按精确操作单授权，不重启已完成的本批窗口。
+Q01 的[production 检索基线](../evaluation/phase1-chinese-retrieval-baseline.md)已建立：固定 12 份合成资料 / 24 个查询，默认 v6 与显式加密入口各在导入、重开、重建后结果一致；Micro Recall@5 为 15/30，有答案查询命中率 14/20，4 个无答案 / 近似干扰查询均为空。R01 原句的中文短词遗漏仍复现；基线测试通过不等于 Q01 达标，候选来源标签尚待独立人工复核。
+
+下一步审阅 Q01 标注与中文 / 中英词项边界，确定生产索引与查询的一致处理、派生索引兼容及指标要求后推进修复。显示补验覆盖最小窗口及 Windows / Linux 当前字体构建，随后按 Q02 完整目录、Q06 回源与结果刷新推进；剩余原生失败窗口继续按精确操作单授权，不重启已完成的本批窗口。
 
 2026-10-24 日终（历史）：当天提交回顾、代码与文档核对及环境交接见[日终记录](2026-10-24-source-vault.md)。Windows / Linux 正常链路已完成；当时安排下一次先核实中文字体方案并选一个失败窗口，现由上述切片推进。当天停止安排不产生自动化或后台授权。
 
@@ -126,7 +128,7 @@ pwsh ./scripts/check-repo.ps1
 [10 月 18 日日终记录](2026-10-18-source-vault.md)汇总当天全部提交、受限观测代码 / 文档复核及各批证据。当前已确认：D01 成功路径保持 4 次 secret、12 次 attributes、25 次 User domain；D02 证明入口第一读同一 SecretSearch 区间双提示，第二提示拒绝后真实失败关闭。M01 首次执行在身份前置返回 `-67056`、目标查询全部为零；离线定位后，[副本范围 v2](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-m01-副本范围-v2-实现与重新冻结)已验证并冻结，新 native helper 未执行。原 app 授权、当前 partition / 已存要求和系统内部提示原因仍未知，历史第九提示未解释。
 
 1. **M01 暂缓，保留失败门禁**：10 月 24 日已完成冻结件复核并定位源码摘要漂移；不直接执行原生 v2，也不通过改写历史冻结件恢复门禁。未来决定继续时，先审阅源码证据绑定与独立冻结范围，再按新版副本范围操作单另行精确授权；只允许既定唯一目标、两轮有界元数据观察、零 secret / 提示允许 / key 或 ACL 写入，不启动 GUI、不重签、不跳过校验、不重试。意外提示交接取消，拒绝 / 未知结构如实记未完成。副本匹配或不匹配均不能代表原 app 授权，不恢复旧因果判据；四读和全部认证检查保持。
-2. **补剩余只读会话与宿主窗口**：当前构建的空库自然 busy 关闭、真实锁错误交付保留和结果后退出已通过，不重复列为未验。末轮系统取消、有资料旧视图撤回、pending 原请求 Cancel / Confirm 仍待原生验收；Windows / Linux 的正常显式 Refresh 已通过，取消后的会话复用窗口仍待验；精确同帧关闭竞争继续只引用 headless 回归。新增原生切片需单独确认目标、预计时长、停止和释放方式。按[有限验收检查点](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)选取切片，不把 headless / worker 回归、入口拒绝或提交 / evidence 回调错误当作其它原生窗口通过。
+2. **补剩余只读会话与宿主窗口**：当前构建的空库自然 busy 关闭、真实锁错误交付保留和结果后退出已通过，不重复列为未验。末轮系统取消、其它有资料失败窗口的旧视图撤回、pending 原请求 Cancel / Confirm 仍待原生验收；Windows / Linux 的正常显式 Refresh 已通过，取消后的会话复用窗口仍待验；精确同帧关闭竞争继续只引用 headless 回归。新增原生切片需单独确认目标、预计时长、停止和释放方式。按[有限验收检查点](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)选取切片，不把 headless / worker 回归、入口拒绝或提交 / evidence 回调错误当作其它原生窗口通过。
 3. **两平台真实 provider / GUI 正常链路已通过，扩展错误窗口待定**：Linux / Windows ARM64 的 10 月 24 日构建、合成检查及各两轮普通用户 GUI 已完成；重登、五份精确导出、两条 lineage 删除与零 pending 有证据，完整清单确认当时 VM 全停，见[执行记录](../evaluation/phase1-windows-linux-provider-gui-plan.md)。不重复执行正常链路；新字体的两平台构建 / 可见验收及平台系统错误 / 操作阶段仍另定范围。Linux 验收门禁拒绝 locked 状态不替代产品 locked 失败窗口；无法安全构造的错误保留待验，不删除唯一 key、锁定整个用户 keychain 或不受控结束进程。
 4. **保留独立质量和契约事项**：R01 至 R06、中文显示、默认 v6 failed-open 继续按质量计划推进；`evidence_digest` 复算及历史兼容先做契约评审。已通过的权限故障原请求恢复、外部锁失败恢复、双 GUI 交替与空库取消不重复列为未完成任务。其它系统错误 / 写操作阶段另定范围，P1-S05 不整体关闭。
 

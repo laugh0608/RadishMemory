@@ -64,6 +64,7 @@
 - [Windows / Linux 真实 provider 与 GUI 验收方案](evaluation/phase1-windows-linux-provider-gui-plan.md)：专用普通账户、独立合成库 / slot、串行会话、凭据确认与分层清理范围，以及两平台真实正常链路、重登、导出、删除与保留结果。
 - [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；M01 因源码摘要漂移暂缓，当前构建的空库自然 busy 关闭结果见宿主记录。
 - [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
+    - [Phase 1 中文找回基线](evaluation/phase1-chinese-retrieval-baseline.md)：固定合成语料、候选相关来源、两种 production 入口与重开 / 重建对照；记录真实漏召回，不替代 Q01 质量门禁。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。
 - [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。
