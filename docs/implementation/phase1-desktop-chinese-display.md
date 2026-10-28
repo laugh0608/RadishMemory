@@ -2,7 +2,7 @@
 
 更新时间：2026-10-28
 
-状态：`Bundled font integrated; local headless checks passed; native GUI acceptance pending`
+状态：`Bundled font integrated; headless checks and macOS visible text passed; minimum-size and Windows/Linux native acceptance pending`
 
 ## 目标与现有证据
 
@@ -57,9 +57,17 @@
 - production 加密 engine 的合成中文文件经过真实导入 / 检索后，中文文件标题、输入框与结果预览进入实际 UI 绘制帧，字形映射检查通过；ASCII 检索 marker 只隔离显示问题。
 - 使用同一初始化函数生成纯 headless egui 排版图，人工查看 12 / 14 / 16 / 20 pt 简繁中文、标点、输入框、标题和混排换行，无缺字方框或可见行重叠。图像是 egui 网格 / 字形图集的软件渲染，不是 macOS 原生窗口截图。
 - notices 定向测试 11 项通过，包含字体 / 许可证 / 归属缺失或漂移，以及字体 symlink 的拒绝。第一次脚本调用使用 PATH 中的 Python 3.9，因缺 `tomllib` 失败；改用本机已有 Python 3.12.14 后通过，没有安装包或修改系统环境。
-- 默认 desktop 的 locked / offline 构建通过。完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：仓库基线 282 个文件、notices / 检查器回归、fmt、locked Clippy 和 25 个 Rust suites 通过，合计 403 passed、0 failed、11 个由父测试显式调用的 ignored helper。新增 5 项 Rust 回归；本批没有真实 GUI / key store、Windows / Linux 新字体构建或发行验证。
+- 默认 desktop 的 locked / offline 构建通过。完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：仓库基线 282 个文件、notices / 检查器回归、fmt、locked Clippy 和 25 个 Rust suites 通过，合计 403 passed、0 failed、11 个由父测试显式调用的 ignored helper。新增 5 项 Rust 回归；该实现检查阶段没有真实 GUI / key store、Windows / Linux 新字体构建或发行验证；后续独立授权的 macOS 结果见下文。
 - 当前默认 debug binary 为 `72,360,776` bytes；10 月 24 日保留的默认验收副本为 `63,939,096` bytes，相差 `8,421,680` bytes（约 `8.03 MiB`）。这是两个本地 debug 构建的实测比较，不是 release 压缩包或峰值内存承诺；运行时峰值内存未测量。
 
 测试接线期间曾因共享 harness 辅助函数可见性与 epaint `ByteIndex` 类型编译失败，修正测试代码后通过。另一次旧视图测试误把失败 OpenEncrypted 的恢复动作写成 Refresh，得到真实 `RecoveryRequired`；已按现有 UI 的 `Retry encrypted open` 修正验收操作，未增加 production fallback。
 
-本批[下一原生切片](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-28-有资料视图撤回的有限验收准备)已生成全新隔离 profile、合成 Markdown、当前默认 binary 包装及 168 份源码 / 字体文件的冻结摘要。准备目录没有业务数据库，evidence / export 为空；没有创建真实 key、访问系统凭据或启动 GUI / VM。源码和产物摘要冻结不授予原生操作权限。
+准备阶段的[下一原生切片](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-28-有资料视图撤回的有限验收准备)已生成全新隔离 profile、合成 Markdown、当前默认 binary 包装及 168 份源码 / 字体文件的冻结摘要。当时准备目录没有业务数据库，evidence / export 为空；准备阶段没有创建真实 key、访问系统凭据或启动 GUI / VM。源码和产物摘要冻结不授予原生操作权限。
+
+## 2026-10-28 macOS 可见显示结果
+
+实现提交 `eab2b0f` 后，项目所有者明确授权冻结操作单，单次原生窗口完成新合成库 / 测试 key 初始化与迁移。实际来源标题、搜索框的 `中文` 与 ASCII marker 混排、结果中的简繁中文 / 全角标点 / API 均可见，无观察到的缺字方框或重叠。故障前后两次有结果的搜索使用 ASCII marker；中文输入只检查显示，未执行中文查询，不关闭 Q01 检索质量。
+
+截图窗口为 2160×1504 像素；多次窗口边缘拖拽未改变捕获尺寸，未建立计划的 760×520 最小布局证据。因此只记实际窗口下的可读显示通过，最小窗口布局、Windows / Linux 新字体构建及 GUI、其它输入法与缩放仍待验证，不把 headless 多缩放结果替代原生覆盖。
+
+同一窗口同时完成有资料 Refresh 认证失败、旧视图撤回、密文精确还原与显式恢复；两份 166 字节导出与带 BOM / CRLF 的输入逐字节一致，两个 Verify 均无 pending，应用层删除后正常退出 0。详细过程、保留测试 key / 副本和未覆盖项见[本批原生结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-28-macos-有资料-refresh-原生结果)。

@@ -68,4 +68,8 @@ Windows / Linux ARM64 各完成两轮真实 provider / GUI、注销重登和五�
 
 有资料的 OpenEncrypted / Refresh 取消回归已扩展到 production UI 绘制帧：分别在入口 / 末轮合成 key load 取消，检查旧标题、source ID、结果正文撤回，后续无自动重试；显式重开 / 刷新恢复后旧结果仍为空，重新搜索才生成结果。另一条真实密文损坏 / 合成 key 回归覆盖 Refresh 的 `AuthenticationFailed`、旧视图撤回、原字节还原后仍保持不可用、显式 Refresh 和重新搜索恢复。
 
-这不等于真实系统取消或原生窗口通过。下一原生切片收敛为[有资料 Refresh 认证失败](phase1-source-vault-native-acceptance.md#2026-10-28-有资料视图撤回的有限验收准备)，只在新隔离合成库执行；历史诊断库和冻结材料保留。Q01、Q06、Q07 与完整 P1-S05 继续开放。
+上述合成结果不等于真实系统取消或原生窗口通过。准备时下一原生切片收敛为[有资料 Refresh 认证失败](phase1-source-vault-native-acceptance.md#2026-10-28-有资料视图撤回的有限验收准备)，只在新隔离合成库执行；历史诊断库和冻结材料保留。Q01、Q06、Q07 与完整 P1-S05 继续开放。
+
+## 2026-10-28 macOS 原生局部结果
+
+`eab2b0f` 经独立授权完成单窗口验收，见[原生结果](phase1-source-vault-native-acceptance.md#2026-10-28-macos-有资料-refresh-原生结果)。Q01 的中文标题、混排输入、简繁中文与标点结果在实际窗口可读；760×520 最小窗口未取得有效调整证据，中文检索与 Windows / Linux 新字体验证仍待执行。Q06 / Q07 补充有资料 Refresh 的真实 `AuthenticationFailed` 撤回、精确还原后保持不可用、显式 Refresh 清空旧结果及重新搜索恢复；两份精确导出、两次 Verify、本地删除和正常退出通过。真实 key 首尾取消、其它失败操作与完整质量场景仍不能由此替代，Q01、Q06、Q07 和 P1-S05 均不整体关闭。

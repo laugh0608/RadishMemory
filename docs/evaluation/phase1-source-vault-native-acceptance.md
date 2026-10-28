@@ -434,7 +434,7 @@ D01 的 `1cfc8d9` 默认二进制 / 匹配 dSYM、精确 trace 路径与逐事�
 
 ## 2026-10-28 有资料视图撤回的有限验收准备
 
-状态：准备；新增真实 GUI、系统 key 和对象故障注入均待当前任务精确授权。中文显示采用已批准的[固定随包字体](../implementation/phase1-desktop-chinese-display.md)，本节不以 headless 排版替代原生可见验收。
+准备阶段状态：新增真实 GUI、系统 key 和对象故障注入均待当前任务精确授权；随后已获授权并执行，实际结果见下文，最小窗口项未完成。中文显示采用已批准的[固定随包字体](../implementation/phase1-desktop-chinese-display.md)，本节不以 headless 排版替代原生可见验收。
 
 ### 选择的单一失败窗口
 
@@ -467,4 +467,31 @@ D01 的 `1cfc8d9` 默认二进制 / 匹配 dSYM、精确 trace 路径与逐事�
 
 独立 data / input / export / evidence 及一个本机 app 包装已准备，profile 为新随机合成 namespace / device，data 仅有 profile，尚无业务数据库；export / evidence 为空。默认 binary 副本与本次构建逐字节一致，操作单、profile、输入、plist、字体归属及 168 份源码 / 字体文件已冻结摘要。没有启动包装、执行 Prepare、查询系统 key 或改动历史验收材料；不是签名发行包。
 
-本机完整离线仓库检查通过（403 Rust tests、0 failed），新增有资料 UI 回归与默认 desktop 构建通过；完整证据和初轮测试修正见[中文显示切片](../implementation/phase1-desktop-chinese-display.md#接入与本机验证)。真实原生步骤仍待精确授权，不据准备结果关闭本场景或 P1-S05。
+本机完整离线仓库检查通过（403 Rust tests、0 failed），新增有资料 UI 回归与默认 desktop 构建通过；完整证据和初轮测试修正见[中文显示切片](../implementation/phase1-desktop-chinese-display.md#接入与本机验证)。上述为授权前准备记录；后续原生结果单独列于下文，不据准备结果关闭本场景或 P1-S05。
+
+## 2026-10-28 macOS 有资料 Refresh 原生结果
+
+项目所有者在当前任务明确要求提交并授权执行冻结操作单。代码先提交为 `eab2b0f`，执行前逐项复核 168 份源码 / 字体及 7 份冻结产物，工作区干净。仅运行一个默认 debug 构建的验收包装；binary SHA-256 为 `e4605b29186e71ca2f569b3d277e5bf2368edc05d56268f4a153612606828c86`，没有重新签名。GUI 于 12:04:10 UTC 启动，12:18:06 UTC 正常退出 0，耗时约 14 分钟，未启动 VM。
+
+| 验收项 | 实际结果与限制 |
+| --- | --- |
+| 新库与 key | 新随机 namespace / device，自动空 v6 打开、一次 Prepare、一次空库迁移、一次显式加密打开均成功；本批测试 key 保留，没有查询旧 slot 或改 ACL |
+| 中文显示 | 唯一 166 字节合成 Markdown 的中文文件标题、中文 / ASCII 混排输入及简繁中文 / 标点 / API 正文结果可读；ASCII marker 只定位结果，不是中文找回验收 |
+| 最小窗口 | 捕获窗口为 2160×1504 像素，边缘拖拽未实际改变尺寸；760×520 布局未验证，不将整份显示验收记为通过 |
+| 故障前 | 搜索一次、导出 before 一次、Verify 一次；导出与原始 BOM / CRLF 输入逐字节相等，Verify 为 1 object、无 pending |
+| 精确故障 | 只读确认唯一 source v1 / lineage / object 引用、普通单链接对象与空 staging；独占备份原密文并记录 SHA / 长度 / device / inode / mode / 偏移。在短暂 SQLite EXCLUSIVE 空事务内仅翻转对象最后一个字节，释放前复验；无 SQL DML，事务期间没有额外打开数据库文件描述符 |
+| Refresh 失败 | 第一次 Refresh 实际返回 `ListSources / SourceVaultFailure / AuthenticationFailed`；旧标题、来源 ID、版本与正文结果撤回，显示 unavailable，旧更新 / 导出 / 删除动作消失，没有自动重试 |
+| 还原与恢复 | 核对预期故障字节后原位恢复，原摘要 / 长度 / 文件身份 / mode 全部一致；数据库与 profile 字节未变。还原后仍 unavailable；第二次显式 Refresh 恢复同一来源 / v1，旧结果为空，重新搜索才显示同一 source / fragment |
+| 恢复后导出 | after 与 before、输入均逐字节一致；SHA-256 为 `311d97561bf7d3e3a12c3724395419b25fef0e2fd4abe06305e8972d06025489`。第二次 Verify 为 1 object、无 pending |
+| 本地清理 | GUI 删除唯一测试 lineage 一次，回执 `Completed`、10 个真实组件结果；第三次搜索为空。只读核对活动来源、lineage tips、vault references、prepared attempts、bodies、fragments、FTS 均为 0，对象 / staging 目录为空；仍保留一条 deleted source 最小元数据和一条 committed attempt，不能写成数据库全清空 |
+| 收尾 | 正常关闭后原启动包装取得 exit 0，精确 PID 查询确认不存在。源码 / 冻结产物终验无漂移；stdout 为空，stderr 仅一条 macOS TSM CapsLock LED 诊断，无应用错误、正文或 key 内容 |
+
+动作计数为 GUI / Prepare / Migrate / OpenEncrypted / Import / Delete 各 1，Search 3，Export / Refresh / Verify 各 2，未超预算。未出现可见系统凭据提示；这不能证明系统调用为零，也不说明历史重复提示已解决。没有真实 `KeyStoreCancelled` 或末轮取消证据。
+
+执行中，picker 的初始历史路径已在点击 Open 前纠正并核对，实际仅导入授权文件；部分 AX / 键入尝试未改变 egui 输入，最终以截图确认中文混排文本后还原 marker。关闭后的 AX 查询返回 `procNotFound`，以原进程退出码与 PID 检查确认关闭。最终核对一度误假设 attempt 表应全空，实际读取显示 committed 记录保留；记录其真实状态，仅将 prepared / 活动引用计为 pending，不改库消除记录。
+
+本批忽略证据目录保留操作单、frozen inputs、preflight、逐步 AX / 合成截图、原密文备份、故障 / 还原清单、两份导出、最终只读核对、进程退出回执、native-result 与 24 份文件的摘要索引。测试 key、库 / profile、输入、导出、备份与 app 包装均保留；本地 lineage 删除不覆盖这些副本，也不是全局删除或产品整体恢复证明。
+
+有资料 Refresh 的对象认证失败撤回与显式恢复闭环通过；macOS 中文显示仅在已观察尺寸通过。Q01 中文检索、最小窗口布局、Windows / Linux 新字体与失败窗口、真实首尾取消、精确同帧关闭及完整 P1-S05 继续开放。没有 push、远程配置、依赖 / lockfile、全局字体、ACL 或历史验收材料变更。
+
+原生收尾后的完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 再次退出 0：仓库基线 / notices / 检查器回归、fmt、locked Clippy 与 25 个 Rust suites 通过（403 passed、0 failed、11 个由父测试调用的 ignored helper）。没有因本次证据更新改动 production 代码或放宽门禁。
