@@ -1,6 +1,8 @@
 # RadishMemory 当前状态
 
-更新时间：2026-10-28
+导航整理：2026-11-01；产品与验收事实沿用 2026-10-28 日终状态，本批没有新增运行证据。
+
+从[专题地图](../topics.md#当前五项后续的任务与验收链)进入当前任务的主要归属、原实施切片与验收来源。近期动作以“后续事项”五项顺序为准；“当前顺位”保留既有接入进展与剩余范围，不另定一套任务顺序。
 
 ## 当前阶段
 
@@ -52,23 +54,17 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 ## 当前验证入口
 
-2026-10-24 Windows / Linux ARM64 真实 provider / GUI 正常链路均通过：各新建普通账户、唯一 slot、一次 Prepare、两轮 GUI，完成迁移、加密导入 / 更新、真实注销重登、五份逐字节导出与两条 lineage 删除。四个 GUI 均退出 0，最终活动来源 / 对象引用 / FTS 均为 0，账号已注销，九台 VM 全停；两平台账户、key 与复验材料保留。Linux 失效 default 修复取得追加授权，GNOME schema 属性的观测脚本修正、重登后锁定门禁及用户解锁均有独立记录。实际结果、交接异常与保留边界见[执行记录](../evaluation/phase1-windows-linux-provider-gui-plan.md#2026-10-24-windows-真实执行结果)。中文显示、其它失败窗口与完整 P1-S05 仍未关闭。
+原逐批命令、数量、提交、平台准备与运行 / 清理事实完整保留于[整理前验证流水](planning-before-alignment-2026-11-01.md#当前验证入口)，按其链接进入原证据。旧批次“未执行”与后续新增结果按日期区分，不将历史记录当今天的运行状态；本批文档验证另见[整理记录](2026-11-01-planning-alignment.md)。
 
-2026-10-24 Windows ARM64 离线执行及普通用户追加验收通过：Linux 结果提交为 `da4cd4f` 后，当前输入完成 fmt、locked Clippy、两组常规测试（368 passed）与默认 ARM64 PE 构建；另按授权完成 reparse 和临时普通用户 ACL 两项测试，合计 370 项实际通过、0 failed。两处验收脚本问题已修复并复验，产品源码与 lockfile 保持。临时账户及目录授权已回收，最终正常关机并确认九台 VM 全停；约 5.08 GiB 本批输入 / 构建材料保留。真实 provider / GUI 未执行，详见[Windows 结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-windows-arm64-离线构建与合成测试结果)。
+| 范围 | 标准与实际结果入口 | 结论限制 |
+| --- | --- | --- |
+| M0 / 文件 / 宿主 | 原 ADR、[fixture](../evaluation/m0-fixture-contract.md)、[能力地图](../topics.md#子专题主要归属)与原平台记录 | 固定场景、runner 与真实产品入口分列，不扩大既有验收 |
+| Source Vault 与 application / host | [宿主记录](../implementation/phase1-source-vault-host.md)、[原生验收](../evaluation/phase1-source-vault-native-acceptance.md) | 默认 v6、维护 v7 与已迁移 v8–v12 分开；FTS 明文、evidence_digest、原请求关闭及其它错误窗口仍按原边界 |
+| Windows / Linux 正常链路 | [集中平台记录](../evaluation/phase1-windows-linux-provider-gui-plan.md)及其原输入 / 构建记录 | 10 月 24 日两轮正常链路不代替新字体、中文格式切换或全部失败场景；不把历史 VM 全停当实时状态 |
+| 中文检索、显示与质量 | [检索修复](../implementation/phase1-chinese-recall.md)、[中文显示](../implementation/phase1-desktop-chinese-display.md)、[质量标准](../evaluation/phase1-local-library-quality.md) | 标签、性能、原生窗口和跨平台分别验收；Q01 / Q04 / P1-S05 继续开放 |
+| Keychain 有限诊断 | [诊断计划](../evaluation/phase1-keychain-prompt-diagnostic-plan.md)与原日期记录 | D01 / D02 观测不解释系统内部原因，M01 保持暂缓，旧冻结件不改写 |
 
-2026-10-24 Linux ARM64 离线执行通过：准备文档提交为 `4eb5f32` 后，按授权仅启动日常 Debian，以普通用户验证 `c30b310` 离线输入并完成目标解析、fmt、locked Clippy、workspace 合成测试及默认 desktop 构建。实际为 25 suites、387 passed、0 failed、11 个父测试调用的 ignored helper；产物确认 AArch64，源码清单保持。证据回收后正常关机，最终九台 VM 全停；约 5.03 GiB 本批目录按方案保留。未执行真实 provider / GUI 或 Windows 批次，详见[实际结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-linux-arm64-离线构建与合成测试结果)。
-
-2026-10-24 集中跨平台准备及串行环境核对完成：同实现的三平台 CI、源码归档与本机目标缓存已复核；随后按授权先 Linux、确认全停后 Windows，核对已有 Rust 1.96.0 与原生工具，最终九台 VM 全部停止。该环境核对批次未执行客体构建 / 测试、安装或真实 provider 调用。Linux 普通账户可执行 rustc，但无活动桌面会话；Windows agent 为 SYSTEM、UAC 关闭，不能视为普通用户或用户凭据证据。全机最多一台 VM 运行已纳入协作约束；实际环境、异常与收尾见[串行核对结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-串行环境核对结果)，原准备与 CI 范围见[准备记录](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-24-集中跨平台准备)。
-
-2026-10-24 当前构建的空库原生关闭验收通过：自然 busy 时关闭被拒，真实 SQLite 锁错误交付后窗口保留，释放锁后再次关闭正常退出；两个 GUI / 两个持锁 helper 均退出 0，库状态与冻结输入保持。准备和结果文档更新后的完整离线仓库检查均通过，Rust 基线仍为 398 项；默认 desktop 构建与 17 项 helper 合成回归通过。M01 v2 普通文件门禁因旧源码摘要漂移失败并暂缓，未执行原生查询；其它平台与远程检查未重验，详见[本次宿主记录](../implementation/phase1-source-vault-host.md#2026-10-24-空库锁等待下的原生关闭验收)。
-
-2026-10-18 `dev -> master` PR 预检：独立模块探针在已安装的非 macOS target 上复现观测枚举六个专用事件的 `dead_code`；已按 macOS / 合成测试的实际使用范围补齐条件编译，同步受审阅源码摘要，未放宽门禁或改变 macOS 事件与认证流程。修复后普通 / 测试模块探针均通过 `-D warnings` metadata 编译；它不等于 Linux / Windows 完整构建。`CARGO_NET_OFFLINE=true ./scripts/check-repo.sh --base-ref origin/master` 通过仓库基线、PR 提交 / diff、notices、检查器回归、fmt、locked Clippy 及 398 项 Rust tests（25 suites，11 个 ignored 子进程 helper 由父测试调用）；默认 desktop 的 locked / offline 构建通过。三平台远程结果以本次 PR 的 `Candidate Quality` 为准，本轮没有启动 GUI、访问真实 key store 或执行 M01 v2，不改变 P1-S05 待验边界。
-
-[PR #5](https://github.com/laugh0608/RadishMemory/pull/5) 首轮 CI 的仓库卫生及 Linux / macOS Rust Quality 通过，Windows 在隔离入口路径拒绝测试失败：canonical verbatim 路径上的 `PathBuf::join` 已提前消去测试中的 `..`，传入了合法路径。已改用 `OsString` 保留原始父目录片段并断言输入有效，生产校验与拒绝边界不变；定点回归、fmt 及同一完整离线仓库检查再次通过（398 项 Rust tests）。后续三平台结果以修复提交的 PR 检查为准，首轮失败不记作通过。
-
-PR #5 第二轮的路径拒绝回归通过，仓库卫生与 Linux / macOS 继续成功；Windows 在 10 分钟整体上限取消，Source Vault 180 项中已有 179 项报告结束，201 条资料分页迁移测试尚未结束，取消不记作通过。已按[CI 契约](../governance/repository-governance.md#ci-契约)将 Windows 测试分为 Source Vault / 其余 workspace 两个必需矩阵项，保留所有用例、断言、逐 job 10 分钟限制及聚合失败关闭；同步 ADR、Ruleset 说明与检查器，并新增遗漏分组 / 命令的负向回归。本机完整离线仓库检查再次通过（398 项 Rust tests），测试路由 shell 语法与未知 scope 拒绝通过；最终 Windows 覆盖仍须以新一轮两个矩阵项均成功为准。
-
-2026-10-18 日终基线：受限观测补丁及 D01 / D02 记录已提交；M01 首次执行在静态身份前置失败，目标查询为零，副本范围 v2 已完成合成验证和重新冻结、新 native helper 未执行。完整离线仓库检查通过，Rust 基线为 398 项；当天另有 45 项检查器回归、默认 desktop 构建及 v2 的 47 项合成测试证据。各批验证、真实访问与未覆盖项分开记录于[日终回顾](2026-10-18-source-vault.md)；不以合成或副本静态验证关闭 P1-S05。
+当前维护与读取入口接受已完成迁移的 v8 至 v12，正文迁移入口仍仅接受 v7 / v8，普通产品入口仍为 v6。删除中的对象与历史正文缺失凭据须复验，verify / rebuild / reconciliation 不自动推进删除；详见[历史请求兼容](../implementation/phase1-source-vault-legacy-deletion.md)。数据库身份检查已修复 Unix 额外文件描述符关闭导致的 POSIX 锁释放，并分离单对象与数据库大小限制；[读取记录](../implementation/phase1-source-vault-reader.md)保存跨进程证据。每次读取的全库认证成本、持锁期间的操作串行化及产品 R01 至 R06 缺口尚需后续处理。
 
 macOS / Linux：
 
@@ -83,35 +79,7 @@ Windows：
 pwsh ./scripts/check-repo.ps1
 ```
 
-2026-10-13 日终基线：busy 关闭竞争、只读动作会话和 macOS SecItem secret 读取已提交；完整离线检查、locked Clippy 与 386 项 Rust tests、默认 desktop 构建通过。新 API 单次原生空库打开仍八次提示，未减少；GUI 正常退出，基线保持。代码 / 文档复核与逐批证据见[今日日终记录](2026-10-13-source-vault.md)，取消、关闭竞争及平台边界按记录区分。
-
-2026-10-13 关闭竞争切片：修复同帧完成 / 关闭与退出前派发动作问题，新增六项 headless UI 和一项真实 worker Drop / join 回归。完整离线检查、locked Clippy 与 366 项 Rust tests、默认 desktop 构建通过；首轮 P1-F17 沙箱端口限制经权限流程完整重跑解决。没有启动 GUI 或访问系统 key store；新构建的原生关闭竞争仍待验，见[本批证据](../implementation/phase1-source-vault-host.md#2026-10-13-busy-关闭竞争修复与剩余窗口核对)。
-
-2026-10-09 双实例原生验收：A/B 独立定位、跨窗口版本刷新与四份精确导出通过，三个进程正常退出，来源删除 Completed 十组件、零活动资料。Prompt 新签名验证通过；首次误加的常许许可已精确撤销，重新交接后空库打开返回 `KeyStoreCancelled` 并失败关闭，原 A 对照成功；后续两个进程也已退出，见[最终结果](../implementation/phase1-source-vault-host.md#2026-10-09-prompt-许可精确撤销与拒绝重验)。
-
-2026-10-09 原生锁 / 凭据核对：已授权范围中，外部 SQLite 锁下 Export / Refresh 失败关闭、释放后显式恢复与两份精确导出通过；Keychain Access 只读核对完成，未改变权限或 secret。该子批次尚未覆盖双 GUI 交替和实际系统取消 / 拒绝，后续覆盖范围见上段最终结果。两个 GUI、helper 与 Keychain Access 均退出，本轮来源删除 Completed、十组件 succeeded、零活动资料，见[原生记录](../implementation/phase1-source-vault-host.md#2026-10-09-原生锁竞争与-keychain-只读核对)。
-
-2026-10-09 多实例准备：新增桌面真实 SQLite 锁竞争 / 合成 key 回归通过，完整离线检查、locked Clippy 与 359 项 Rust tests 通过；临时持锁工具的独立子进程释放 / 超时预演通过。P1-F17 沙箱端口限制经权限流程完整离线重跑解决；该准备批次未启动 GUI 或访问系统凭据，见[准备证据](../implementation/phase1-source-vault-host.md#2026-10-09-keychain-与多实例准备)。
-
-2026-10-09 原请求恢复预演：三项真实 Unix 文件系统故障 / 合成 key 回归通过；完整离线仓库检查、locked Clippy 与 358 项 Rust tests、默认 desktop 构建通过。首轮 P1-F17 合成本地端口受沙箱限制，按权限流程完整重跑通过；随后经当前任务精确授权完成三条 macOS GUI 恢复路径、关闭 / 放弃确认与 Cancel；三轮进程正常退出，权限恢复，两个 Completed 回执与零活动资料已复核，见[原生记录](../implementation/phase1-source-vault-host.md#2026-10-09-原请求恢复的-macos-原生验收)。
-
-2026-10-06 受损库原生扩展：显式派生重建恢复同一来源，密文认证失败保持关闭；三次精确导出一致，canonical / 对象摘要按场景复核。本轮来源删除回执 Completed，四轮正常退出；完整检查与 355 项 Rust tests 通过。范围、保留备份及尚未关闭的 Q03 / Q07 见[恢复扩展证据](../implementation/phase1-source-vault-host.md#2026-10-06-受损库重启与恢复扩展)。
-
-2026-10-06 macOS 原生最小闭环与布局复验：真实 Keychain 准备 / 读取、迁移、加密导入 / 更新、历史导出、关闭重开、Verify 与删除通过；布局修复后完整仓库检查、354 项 Rust tests、43 项检查器回归、M0 fixture 和默认构建通过。额外默认空库窗口的工具启动副作用及保留产物已如实记录，详见[宿主收尾](../implementation/phase1-source-vault-host.md#原生复验收尾与异常)。恢复 / 失败扩展、中文显示及其它平台继续待验。
-
-2026-10-06 隔离原生入口准备：完整仓库检查、354 项 Rust tests（新增 9 项隔离入口 / worker 回归）、43 项检查器回归、M0 fixture、compile-fail doctest 和默认 desktop 构建通过。首轮 P1-F17 合成端口受沙箱拒绝后，按权限流程完整重跑通过；具体证据见[宿主记录](../implementation/phase1-source-vault-host.md#2026-10-06-隔离入口准备证据)。准备切片结束时合成目录 / profile 与精确操作单已就绪；本任务随后经授权完成 macOS 最小真实闭环，Windows / Linux 保留待验。
-
-2026-10-01 桌面宿主接入：恢复前置接口已提交；新 worker、原请求恢复、显式加密 UI 和日志策略已完成本机合成验证；完整仓库检查、345 项 Rust tests、43 项检查器回归、M0 fixture、compile-fail doctest 与默认 desktop 构建通过。完整范围及尚未执行的真实 Keychain / GUI、Windows / Linux 集中验收见[宿主记录](../implementation/phase1-source-vault-host.md)。默认启动仍为 v6，显式加密模式的 FTS 也保留完整明文；既有删除证据摘要复算缺口单独记录，不扩大保证。
-
-2026-10-01 application 加密用例切片：本机完整仓库检查、notices、fmt、locked Clippy 与 330 项 Rust tests（写用例批次新增 9 项、此前读取批次新增 12 项）通过；42 项检查器回归、M0 fixture 和 compile-fail doctest 通过。P1-F17 合成本地端口的沙箱限制经授权在沙箱外完整重跑解决，全部使用合成资料和测试 key；范围、原请求恢复、派生修复与未验收边界见[application 记录](../implementation/phase1-source-vault-application.md)。默认桌面及真实系统密钥库仍未切换。
-
-2026-09-26 实现基线 `8d2c651`：本机完整仓库检查、notices、fmt、locked Clippy / Rust tests、检查器回归、M0 fixture 和 compile-fail doctest 通过；批次数量、独立子进程锁回归、沙箱限制与验证日志范围见[日终记录](2026-09-26-source-vault.md#验证与环境收尾)。全部使用合成库与测试 key，未调用真实系统密钥库。
-
-早期 Linux ARM64 / ext4 filesystem 证据来自 `9d88319`；Windows ARM64 / NTFS 的历史证据仍引用 9 月 10 日基线，不覆盖其后续 provider / SQLite 协调和读取代码。当前 Linux / Windows ARM64 的构建和合成覆盖已由上述 10 月 24 日批次补齐；两平台真实 key store / GUI 正常链路已由本日后续批次补齐，其它系统错误与宿主失败窗口仍待验收。历史范围与清理见[filesystem 记录](../implementation/phase1-source-vault-filesystem.md#linux-arm64--ext4-普通用户验收2026-09-15)、[9 月 10 日记录](2026-09-10-source-vault.md)和[9 月 15 日记录](2026-09-15-source-vault.md)。
-
-当前维护与读取入口接受已完成迁移的 v8 至 v12，正文迁移入口仍仅接受 v7 / v8，普通产品入口仍为 v6。删除中的对象与历史正文缺失凭据须复验，verify / rebuild / reconciliation 不自动推进删除；详见[历史请求兼容](../implementation/phase1-source-vault-legacy-deletion.md)。数据库身份检查已修复 Unix 额外文件描述符关闭导致的 POSIX 锁释放，并分离单对象与数据库大小限制；[读取记录](../implementation/phase1-source-vault-reader.md)保存跨进程证据。每次读取的全库认证成本、持锁期间的操作串行化及产品 R01 至 R06 缺口尚需后续处理。
-
-2026-10-01 阶段晋级 [PR #4](https://github.com/laugh0608/RadishMemory/pull/4) 的首轮 CI 已通过仓库卫生和 Linux / macOS locked Rust Quality；Windows 暴露 provider 引用私有 `Cred` 的编译阻断。经项目所有者批准，以 [同版本最小补丁](../../third_party/vendor/README.md)保留冻结 target/account 和既有依赖图，修复源码可见性并增加无系统访问的构造回归。本地历史已包含该 PR 的合并提交 `689c166`；本批未重新读取远程 head checks，不以补丁、合并或历史 filesystem 记录代替各平台通过证据；macOS 最小真实闭环的后续证据见上述 10 月 6 日记录；Windows / Linux 正常 key store / GUI 的当前证据见本日执行记录，logger 其它失败路径和宿主扩展交互仍待验收。修复范围与来源见 [provider 记录](../implementation/phase1-source-vault-key-provider.md#windows-编译阻断与最小补丁2026-10-01)。
+这些是既有检查入口，不授权安装、联网、GUI、VM、真实 key store 或重跑旧操作包；按当前任务的明确范围执行。
 
 ## 后续事项
 
