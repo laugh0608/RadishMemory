@@ -15,10 +15,12 @@ pub enum Stage {
     FtsMatch,
     ResultResolution,
     SnapshotRefresh,
+    DerivedEncoding,
+    FtsIntegrity,
 }
 
 impl Stage {
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 12] = [
         Self::ReaderOpen,
         Self::KeyLoad,
         Self::ObjectAuthentication,
@@ -29,6 +31,8 @@ impl Stage {
         Self::FtsMatch,
         Self::ResultResolution,
         Self::SnapshotRefresh,
+        Self::DerivedEncoding,
+        Self::FtsIntegrity,
     ];
 
     #[must_use]
@@ -44,6 +48,8 @@ impl Stage {
             Self::FtsMatch => "fts_match",
             Self::ResultResolution => "result_resolution",
             Self::SnapshotRefresh => "snapshot_refresh",
+            Self::DerivedEncoding => "derived_encoding",
+            Self::FtsIntegrity => "fts_integrity",
         }
     }
 }

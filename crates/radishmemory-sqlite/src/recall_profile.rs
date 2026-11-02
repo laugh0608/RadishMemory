@@ -122,6 +122,7 @@ pub(crate) fn replace_schema(
 }
 
 pub(crate) fn verify_index(connection: &Connection) -> Result<(), SqliteError> {
+    let _cost = crate::read_cost::span(crate::read_cost::Stage::FtsIntegrity);
     connection.execute(
         "INSERT INTO radishmemory_recall_fts(radishmemory_recall_fts) VALUES('integrity-check')", [],
     ).map_err(SqliteError::storage)?;
