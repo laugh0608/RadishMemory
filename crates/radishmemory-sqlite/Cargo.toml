@@ -11,6 +11,7 @@ workspace = true
 
 [features]
 fixture-runner = []
+acceptance-test-support = []
 
 [dependencies]
 radishmemory-core.workspace = true

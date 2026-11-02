@@ -146,6 +146,7 @@ impl EncryptedCaptureDatabase {
         item: &CaptureObject,
         body: &[u8],
     ) -> Result<Option<SourceArtifact>> {
+        let _cost = crate::read_cost::span(crate::read_cost::Stage::CanonicalValidation);
         if item.state != CaptureObjectState::Committed
             || body.len() as u64 != item.content_length
             || compute_exact_bytes_digest(body).value() != item.digest_value
@@ -167,6 +168,7 @@ impl EncryptedCaptureDatabase {
     /// No inline-body fallback: every active source must be provided by the
     /// authenticated object reader and agree with the stored canonical fields.
     pub fn verify_facts(&self, sources: &[SourceArtifact]) -> Result<()> {
+        let _cost = crate::read_cost::span(crate::read_cost::Stage::CanonicalValidation);
         self.verify_structure()?;
         verify_facts(&self.connection, sources)
     }
@@ -174,6 +176,7 @@ impl EncryptedCaptureDatabase {
     /// Check FTS5's internal index as well as its separately stored content rows.
     /// This FTS5 command performs verification; it does not rebuild the index.
     pub fn verify_recall_index_structure(&self) -> Result<()> {
+        let _cost = crate::read_cost::span(crate::read_cost::Stage::DerivedValidation);
         crate::recall_profile::verify_index(&self.connection)
     }
 

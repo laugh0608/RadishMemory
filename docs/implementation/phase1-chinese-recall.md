@@ -54,3 +54,101 @@ application 与桌面单 worker 已接线。健康视图显示最后刷新得到
 本批未启动 GUI、VM 或常驻进程，没有远程动作，未提交、未 push；不修改或清理既有原生验收库、系统测试 key 与冻结产物。
 
 日终更新：上述候选实验、ADR、production 实现及对应文档已按项目所有者要求提交为 `4c9b0be`，此前“未提交”描述是实施收尾快照。完整日终回顾和当前后续顺位见[10 月 28 日记录](../status/2026-10-28-chinese-recall.md)及[当前状态](../status/current.md#后续事项)。
+
+## 2026-11-02 分阶段读取成本
+
+状态：本批完成 Q01 标签静态审阅和 Q04 有限 release 基线，未实施性能优化，未关闭 Q01 / Q04 / P1-S05。
+
+### 实现与复验方法
+
+沿既有 `q01_cost` 扩展，保留原手动测试名称；成本测试现在明确要求 `--release`，默认仓库测试仍将其 ignored。SQLite 新增同名 `acceptance-test-support` feature，由 Source Vault 既有合成 feature 转发，不新增依赖或改动 lockfile。三个模块沿原 application / reader / SQLite 路径设置固定阶段 span；默认构建的 span 为无时钟 / 无 collector 的空操作。显式合成观测只在当前线程内存累计阶段枚举、次数和 Duration，不持久化查询、正文、路径、ID 或 key，没有环境变量开关、外发、日志 sink 或回调可跳过校验。普通测试开启 feature 但未调用 `observe` 时也不创建时钟或 collector。
+
+阶段包括 reader 打开、合成 key load、对象认证、canonical 复验、catalog 装配、派生复验、查询准备、FTS MATCH、结果回源和 snapshot 刷新。每个阶段同时保存 inclusive 与扣除嵌套阶段后的 exclusive 耗时；两者不能混加。collector 三项回归覆盖嵌套 / 重复计数、不重叠耗时、原错误与 unwind 清理、线程隔离和嵌套 observation 拒绝。production 查询、事务、校验、结果和错误传递顺序保持。
+
+复验入口：
+
+```sh
+CARGO_NET_OFFLINE=true cargo test -p radishmemory-application --test q01_cost --release --locked -- --ignored --nocapture --test-threads=1
+```
+
+最终有效运行 E / F 从 Cargo JSON artifact 定位并校验同一个 release test binary，分别直接执行该 binary，返回码均为 0；两个进程串行运行，测量期间未并行执行构建或测试。每个进程各包含 24 组（两入口 × 两格式 × 五种查询及一次刷新），每组独立关闭 / 重开，单列 open 与第一次调用，再连续调用 11 次；每次结果数量都有断言。重开首次调用不等于磁盘冷缓存，没有清系统缓存或控制系统其它进程。p50 / p95 使用 nearest-rank，11 个重复样本的 p95 即最大值，仅描述本批样本，不作为生产尾延迟估计或 CI 时间门禁。
+
+默认刷新调用现有 application 的目录与首个来源版本读取；加密刷新调用显式 `read_snapshot(None, 200)`，包括未完成请求发现、末尾 key / 对象复验。刷新与搜索分开计时；这不是 GUI 的绘制或交互耗时。两种刷新承担的治理工作不同，不作完全等工作量比较。
+
+固定 corpus 为 `q04-repeat-v1`：沿用此前 32 份、共 704,918 bytes 的生成方式，每份单版本 / 单整文件片段，含唯一英文 marker 和重复 256 次的固定中英合成段；无随机 seed。数据顺序和查询顺序固定，包含 marker（1 命中）、中文 top-k 1 / 5、无答案、仅允许 Restricted 的权限拒绝及 32 条目录刷新。旧格式中文未命中，新格式分别返回 1 / 5 条，不能把这两种工作量直接解释为等价查询回归；marker 是相同输出工作量的对照。
+
+运行环境为 macOS 27.0.1 / ARM64，Rust 1.96.0 / Cargo 1.96.0，release 默认优化配置，锁定 SQLite 3.53.2；`os.cpu_count()` 返回 10。物理内存与更完整硬件查询受沙箱限制，未取得，未提权。key 使用 SyntheticLibraryProvider，没有访问真实系统 key store。源码基线为 `f1394a4cf1d0e4142412127951c7a9b1205f0efc` 加本批未提交源码：所有已跟踪 Rust / manifest / lock / toolchain 文件加新计量文件，去重后共 166 个，按相对路径排序，用 `path + NUL + bytes + NUL` 合并计算 SHA-256。
+
+源码集合 SHA-256：`278ee9b2abdde3e382e7a09e5ffcc3976be622824038acb4715685b9b842d059`；test binary SHA-256：`9ccd15d193aeeec7abc973fd70d6c5184a79ac1c638e5e7472d7ea22d73b7165`。源码集合共 166 个文件；文档不在该摘要内。原始 Cargo artifact JSON、identity、E / F 样本与 resource JSON、聚合结果保留在本批独占的忽略目录 `.tmp/2026-11-02-q01-q04/`，只含代码身份、固定标签、计数和耗时。
+
+前两次 A / B 使用 `/usr/bin/time -l`：binary 日志均显示 1 passed / 0 failed，但 wrapper 在查询 `kern.clockrate` 时被沙箱拒绝而返回 1，没有取得资源数据。随后直接执行的 C / D 均返回 0，但对应收尾前的 debug 模式拒绝写法；Clippy 修正该写法后重新构建、计算源码与 binary 摘要，再执行最终 E / F。下表只采用最终输入的 E / F，前四轮日志和身份仍保留，不挑选较快的一轮替换最终结果。E / F 通过 Python 标准库 `resource.getrusage(RUSAGE_CHILDREN)` 读取该唯一 test binary 的资源计数；本机 Darwin 的 maxrss 单位为 bytes。
+
+### 实测结果
+
+下表单位均为 ms，E / F 为两个独立进程。原始日志另外保存每组首次调用、每次重开和所有阶段的逐样本耗时。
+
+| 入口 | 格式 | 操作 | E 首次 / p50 / p95 | F 首次 / p50 / p95 |
+| --- | --- | --- | ---: | ---: |
+| plain | legacy | marker | 4.223 / 4.174 / 4.315 | 4.560 / 4.335 / 4.663 |
+| plain | legacy | han_one | 4.069 / 4.104 / 4.255 | 4.452 / 4.267 / 4.442 |
+| plain | legacy | han_five | 4.112 / 4.109 / 4.236 | 4.436 / 4.239 / 4.416 |
+| plain | legacy | absent | 4.342 / 4.103 / 4.248 | 4.254 / 4.257 / 4.315 |
+| plain | legacy | denied | 4.526 / 4.165 / 4.204 | 4.042 / 4.229 / 4.401 |
+| plain | legacy | refresh | 6.239 / 6.362 / 6.495 | 6.741 / 6.669 / 6.838 |
+| plain | han | marker | 12.058 / 12.172 / 12.561 | 11.805 / 11.872 / 12.491 |
+| plain | han | han_one | 12.016 / 12.388 / 12.574 | 12.257 / 12.333 / 13.288 |
+| plain | han | han_five | 12.988 / 12.666 / 13.134 | 12.330 / 12.966 / 13.581 |
+| plain | han | absent | 11.742 / 12.004 / 12.218 | 12.409 / 11.754 / 12.326 |
+| plain | han | denied | 11.856 / 11.787 / 12.088 | 11.690 / 11.579 / 11.925 |
+| plain | han | refresh | 6.323 / 6.356 / 6.418 | 6.198 / 6.088 / 6.200 |
+| encrypted | legacy | marker | 190.560 / 174.977 / 401.064 | 171.712 / 172.449 / 173.666 |
+| encrypted | legacy | han_one | 527.265 / 113.097 / 172.757 | 113.364 / 112.966 / 127.933 |
+| encrypted | legacy | han_five | 111.701 / 111.054 / 121.304 | 107.222 / 107.742 / 113.327 |
+| encrypted | legacy | absent | 110.350 / 108.937 / 114.173 | 109.278 / 108.103 / 108.844 |
+| encrypted | legacy | denied | 113.777 / 113.643 / 116.415 | 106.532 / 107.508 / 109.798 |
+| encrypted | legacy | refresh | 357.860 / 345.130 / 356.234 | 333.474 / 330.327 / 333.082 |
+| encrypted | han | marker | 202.139 / 203.358 / 209.550 | 200.606 / 202.122 / 205.999 |
+| encrypted | han | han_one | 202.948 / 205.401 / 213.688 | 200.957 / 200.917 / 202.219 |
+| encrypted | han | han_five | 500.364 / 504.053 / 536.197 | 512.539 / 500.386 / 523.678 |
+| encrypted | han | absent | 128.638 / 132.533 / 476.406 | 128.136 / 127.587 / 128.906 |
+| encrypted | han | denied | 301.737 / 137.636 / 225.942 | 127.462 / 129.099 / 162.044 |
+| encrypted | han | refresh | 405.919 / 389.544 / 416.193 | 369.814 / 375.276 / 379.943 |
+
+两轮空间统计相同；object_bytes 只统计 `source-objects-v1` 的普通对象文件。下表不包含合成外部输入、staging、journal、进程内存或备份，不是整个资料库大小。
+
+| 入口 / 格式 | 数据库 bytes | 已用页 bytes | 对象文件 bytes |
+| --- | ---: | ---: | ---: |
+| plain / legacy | 1961984 | 1933312 | 0 |
+| plain / han | 3518464 | 3518464 | 0 |
+| encrypted / legacy | 1990656 | 1290240 | 721531 |
+| encrypted / han | 2875392 | 2875392 | 721531 |
+
+E 的进程峰值 RSS 为 21,659,648 bytes（约 20.66 MiB）。F 的进程峰值 RSS 为 21,790,720 bytes（约 20.78 MiB）。两者包含建库 / 导入 / 迁移、全部查询、打印和清理的完整 test binary，不能称为单次查询峰值内存或桌面 GUI 内存预算。
+
+### 成本归属与首个优化范围
+
+以下为 E 的新格式加密中文 top-k 5 中位墙钟样本（sample 2），各项 exclusive 可以相加；回源 inclusive 包含其内部的认证 / 复验，只用于说明调用位置，不能再加到 exclusive 总和。实际样本编号以原始日志为准。
+
+| 阶段 | 调用次数 | exclusive ms | inclusive ms |
+| --- | ---: | ---: | ---: |
+| reader_open | 1 | 8.864 | 46.293 |
+| key_load | 1 | 0.000 | 0.000 |
+| object_authentication | 13 | 214.712 | 240.603 |
+| canonical_validation | 429 | 111.059 | 227.023 |
+| catalog_load | 14 | 9.572 | 9.572 |
+| derived_validation | 27 | 156.234 | 156.234 |
+| query_preparation | 1 | 0.203 | 0.203 |
+| fts_match | 1 | 0.390 | 0.390 |
+| result_resolution | 1 | 2.424 | 374.060 |
+
+静态链路与计数互相印证：reader 打开先认证 1 轮；search 的 read 在查询前后各认证 1 轮；每条 application 回源又走一次 read、前后各认证 1 轮。因此本语料零命中为 3 轮、1 命中为 5 轮、5 命中为 13 轮。新格式刷新记录 10 轮对象认证、2 次合成 key load。计数表示当前链路实际工作量，不是要求永久保留此实现形状的新契约。
+
+E / F 的新格式加密 5 命中分别为 504.053 / 500.386 ms，回源 inclusive 为 374.060 / 371.106 ms，FTS MATCH 为 0.390 / 0.392 ms。E 中 object_authentication exclusive 约占 43%，derived_validation 约占 31%；canonical 与 catalog 另列。对象认证阶段还包含目录 inventory、文件读取与对象状态检查，不等于纯密码算法耗时；derived_validation 同时包含派生字段重算 / 比较与 FTS integrity-check，本批不能进一步断言其中哪一部分最慢。
+
+最终样本保留可见波动：E 的新格式加密 absent p50 / p95 为 132.533 / 476.406 ms。没有控制整机后台负载、电源或物理缓存，也没有据此剔除离群样本；两轮小样本不能证明稳定的生产 p95。
+
+据此确定下一优化切片：先限定于 `derived_index::load_actual_recall_rows` / `verify_catalog` 及其调用的既有 codec，补分字段重算与 FTS 内部核对的子计时，再针对实测热点减少同一次验证内的重复编码、复制或临时分配。保持 profile 字节规则、全部历史来源 / canonical / FTS 校验、调用边界、权限与删除资格、事务和身份检查。是否需要调整多结果回源的认证组织另做边界评审，本批未缓存明文、复用跨操作 session 或减少前后认证。
+
+下一切片回归至少包含 Q01 双入口标签 / 独立反例、格式升级 / 降级、派生字段和内部索引损坏拒绝、对象 / 身份变化与权限 / 时间 / 删除过滤，并在同机器、同 release、同 fixture、相同命中数量下重复 A / B。性能预算决策为：当前只建立观测基线，尚不足以冻结生产延迟、容量或 CI 时间阈值；后续结合局部改动对阶段耗时和总耗时的实际影响再评审目标。不能把此前约 4.68 秒的 debug 数字与本批 release 数字解释为已实施优化或十倍改进。
+
+本批未执行独立人工标签确认、GUI / 最小窗口 / 字体或跨平台可见验收、真实 key store、物理冷启动、真实断电、多版本及 100 / 1000 / 10000 来源规模验收。Q01 标签审阅详情见[基线追加表](../evaluation/phase1-chinese-retrieval-baseline.md#2026-11-02-标签静态审阅)；完整验证与交接见[本批记录](../status/2026-11-02-read-cost.md)。Q01 / Q04 / P1-S05 和 PDF / 图片停止线保持。

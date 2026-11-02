@@ -70,7 +70,8 @@ pub const DOCUMENTS: &[Document] = &[
 // Relevance means the literal requested concepts occur in the same document.
 // Latin abbreviations are whole words even when next to Han characters; no
 // stemming, synonym expansion, simplified/traditional conversion or FTS syntax
-// is assumed. Punctuation separates concepts; word order is not an oracle.
+// is assumed. Punctuation separates query concepts whose order is not required;
+// each uninterrupted Han concept itself remains adjacent and ordered (ADR 0009).
 pub const QUERIES: &[Query] = &[
     Query {
         label: "q01",

@@ -32,6 +32,9 @@ pub(crate) fn snapshot(
     preferred_lineage: Option<&Identifier>,
     mut load_existing: impl FnMut() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
 ) -> Result<LibraryReadSnapshot> {
+    let _cost = radishmemory_sqlite::read_cost::span(
+        radishmemory_sqlite::read_cost::Stage::SnapshotRefresh,
+    );
     if request.namespace_id().as_str() != namespace {
         return Err(SourceVaultError::new(
             SourceVaultErrorCode::MetadataMismatch,
@@ -63,10 +66,14 @@ pub(crate) fn snapshot(
         reader.database.pending_abandonment_target()
     })?;
     let deletion_requests = reader.unfinished_delete_requests(request.namespace_id())?;
-    let rechecked_key = crate::key_read_observation::call(
-        crate::key_read_observation::Operation::Release,
-        &mut load_existing,
-    )?;
+    let rechecked_key = {
+        let _cost =
+            radishmemory_sqlite::read_cost::span(radishmemory_sqlite::read_cost::Stage::KeyLoad);
+        crate::key_read_observation::call(
+            crate::key_read_observation::Operation::Release,
+            &mut load_existing,
+        )?
+    };
     if !reader.key.same_key(&rechecked_key) {
         return Err(SourceVaultError::new(
             SourceVaultErrorCode::KeyReadbackMismatch,

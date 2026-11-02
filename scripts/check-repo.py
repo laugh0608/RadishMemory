@@ -446,7 +446,7 @@ publish.workspace = true
 workspace = true
 
 [features]
-acceptance-test-support = []
+acceptance-test-support = ["radishmemory-sqlite/acceptance-test-support"]
 
 [dependencies]
 aead-stream.workspace = true
@@ -487,6 +487,7 @@ workspace = true
 
 [features]
 fixture-runner = []
+acceptance-test-support = []
 
 [dependencies]
 radishmemory-core.workspace = true

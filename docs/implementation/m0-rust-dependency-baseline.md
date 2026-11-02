@@ -1,6 +1,6 @@
 # RadishMemory Rust 依赖基线
 
-更新时间：2026-10-01
+更新时间：2026-11-02
 
 范围：`M0-I02` canonical core 三个评审单元、`M0-I03 SQLite entry / source / memory / search / deletion storage`、`M0-I04 fixture runner`、`P1-I01` 至 `P1-I04` 文件入口、`P1-H02 application service`、`P1-H03 source catalog`、`P1-H04 desktop UI`、`P1-S03a portable crypto dependency landing`、`P1-S03b Windows file identity adapter`、`P1-S03c-2 isolated platform key provider`、`P1-S04a key bootstrap coordination`、P1-S04 capture 与认证读取 / 导出测试连线、阶段 1 本机合成验收、workspace 工具链与聚合检查入口。
 
@@ -138,3 +138,9 @@ desktop 经 application 扩大到现有 crypto / platform provider 构建面，�
 ## P1-S05 桌面宿主依赖连线（2026-10-01）
 
 经项目所有者当前任务批准，desktop 直接引用既有 Source Vault runtime 与 test-only 合成 provider，并将已锁定的 `log =0.4.34` 声明为直接依赖以安装无输出 logger；它不引入日志 sink、telemetry、网络或新第三方版本。使用离线 Cargo 解析，仅增加 desktop 的两条 lockfile 依赖边；全部 453 个 package 的 name / version / source / checksum 集合逐项一致（八个第一方、445 个第三方）。notices 仅更新 lockfile 摘要，默认运行图不启用 `acceptance-test-support`。`log` 沿用 MIT OR Apache-2.0，不新增许可证；静态抑制策略与平台运行态未验收范围见[宿主记录](phase1-source-vault-host.md)。
+
+## Q04 合成计量 feature 连线（2026-11-02）
+
+本次第一顺位的读取成本定位在 SQLite 增加默认关闭的第一方 `acceptance-test-support = []`，Source Vault 的既有同名合成 feature 精确转发 `radishmemory-sqlite/acceptance-test-support`。application / desktop 原有 dev-dependency 因此在测试时开启同一内存计量设施；普通分发根不启用该 feature。默认 span 为空操作，feature 打开且显式 observe 时只累计固定阶段、次数与 Duration，没有正文 / 查询 / 路径 / key 数据、输出 sink、联网、跨线程采集或任意业务替换回调。
+
+这不是安装、升级或增加依赖：workspace package、dependency edges、第三方版本 / feature、原生编译面、许可证及 Cargo.lock 全部保持。第一方 feature 用于本批 release 合成测试；具体实现、复验和限制见[读取成本记录](phase1-chinese-recall.md#2026-11-02-分阶段读取成本)。回退两处 feature 声明与对应计量代码即可撤回本切片，无数据库迁移或持久状态。检查器同步精确 manifest 合同并继续严格比较，另有将计量 feature 擅自设为 default 时拒绝的回归，没有放宽未知 feature / 依赖或 lockfile 漂移检查。

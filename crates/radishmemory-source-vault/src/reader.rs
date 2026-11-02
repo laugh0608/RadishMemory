@@ -36,12 +36,18 @@ pub(crate) fn open<'a>(
     device: &str,
     load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
 ) -> Result<LibraryReader<'a>> {
+    let _cost =
+        radishmemory_sqlite::read_cost::span(radishmemory_sqlite::read_cost::Stage::ReaderOpen);
     let path = directory.key_database_path()?;
     let identity = DatabaseObservation::open(&path)?;
     let database = EncryptedCaptureDatabase::open(&path, namespace, device, PROVIDER_PROFILE)?;
     directory.key_database_path()?;
     identity.verify_identity(&path)?;
-    let key = load_existing()?;
+    let key = {
+        let _cost =
+            radishmemory_sqlite::read_cost::span(radishmemory_sqlite::read_cost::Stage::KeyLoad);
+        load_existing()?
+    };
     let reader = LibraryReader {
         directory,
         database,

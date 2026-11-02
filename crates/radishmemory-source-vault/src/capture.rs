@@ -119,6 +119,9 @@ pub(crate) fn authenticate_all(
     directory: &ObjectDirectory,
     key: &KeyEncryptionKey,
 ) -> Result<Vec<SourceArtifact>> {
+    let _cost = radishmemory_sqlite::read_cost::span(
+        radishmemory_sqlite::read_cost::Stage::ObjectAuthentication,
+    );
     let items = db.objects()?;
     let tokens = items
         .iter()

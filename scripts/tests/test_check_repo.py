@@ -183,6 +183,31 @@ class GovernanceContractChecks(unittest.TestCase):
                 )
             )
 
+    def test_rust_workspace_contract_rejects_default_acceptance_timing(self) -> None:
+        for name in (
+            "crates/radishmemory-sqlite/Cargo.toml",
+            "crates/radishmemory-source-vault/Cargo.toml",
+        ):
+            with self.subTest(manifest=name), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                target = root / name
+                target.parent.mkdir(parents=True)
+                target.write_text(
+                    CHECK_REPO.EXPECTED_CARGO_MANIFESTS[name].replace(
+                        "[features]\n",
+                        '[features]\ndefault = ["acceptance-test-support"]\n',
+                    ),
+                    encoding="utf-8",
+                )
+                errors: list[str] = []
+
+                CHECK_REPO.check_rust_workspace_contract(root, errors)
+
+                self.assertIn(
+                    f"Rust workspace manifest differs from the reviewed implementation contract: {name}",
+                    errors,
+                )
+
     def test_rust_workspace_contract_rejects_a_floating_toolchain(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

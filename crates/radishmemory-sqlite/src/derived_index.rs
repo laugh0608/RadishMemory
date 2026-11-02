@@ -139,6 +139,7 @@ impl Catalog {
         connection: &Connection,
         load_source: SourceLoader<'_>,
     ) -> Result<Self, SqliteError> {
+        let _cost = crate::read_cost::span(crate::read_cost::Stage::CatalogLoad);
         verify_source_tips(connection, load_source)?;
         let mut catalog = Self {
             recall_rows: BTreeMap::new(),
@@ -425,6 +426,7 @@ pub(crate) fn search_with_sources(
 ) -> Result<Vec<LocalSearchHit>, SqliteError> {
     let catalog = Catalog::load_with(connection, load_source)?;
     verify_catalog(connection, &catalog)?;
+    let preparation_cost = crate::read_cost::span(crate::read_cost::Stage::QueryPreparation);
     let expression = match crate::recall_profile::read(connection)? {
         crate::RecallProfile::LegacyUnicode61 => fts_expression(request.query().as_str()),
         crate::RecallProfile::HanPhraseV1 => {
@@ -445,6 +447,8 @@ pub(crate) fn search_with_sources(
         return Ok(Vec::new());
     }
     populate_search_eligibility(connection, &eligible)?;
+    drop(preparation_cost);
+    let match_cost = crate::read_cost::span(crate::read_cost::Stage::FtsMatch);
     let query_result = (|| {
         let mut statement = connection
             .prepare(
@@ -473,6 +477,7 @@ pub(crate) fn search_with_sources(
         .map_err(SqliteError::search);
     let keys = query_result?;
     cleanup_result?;
+    drop(match_cost);
 
     let mut hits = Vec::with_capacity(request.top_k().min(eligible.len()));
     for key in keys {
@@ -647,6 +652,7 @@ pub(crate) fn update_memory_record(
 }
 
 fn verify_catalog(connection: &Connection, expected: &Catalog) -> Result<(), SqliteError> {
+    let _cost = crate::read_cost::span(crate::read_cost::Stage::DerivedValidation);
     let actual_projections = load_actual_projections(connection)?;
     let actual_recall_rows = load_actual_recall_rows(connection)?;
     if actual_projections != expected.projections || actual_recall_rows != expected.recall_rows {

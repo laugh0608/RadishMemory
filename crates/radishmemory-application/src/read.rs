@@ -139,6 +139,9 @@ pub(crate) fn search_sources<S: SourceReader>(
     let hits = reader
         .search(&request)
         .map_err(|error| S::search_error(operation, error))?;
+    let _cost = radishmemory_sqlite::read_cost::span(
+        radishmemory_sqlite::read_cost::Stage::ResultResolution,
+    );
     let mut results = Vec::new();
     for hit in hits {
         let LocalSearchHit::SourceFragment(fragment) = hit else {

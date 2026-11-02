@@ -16,6 +16,8 @@ mod fixture_runner;
 mod legacy_deletion;
 mod memory_store;
 mod migration;
+#[doc(hidden)]
+pub mod read_cost;
 mod recall_codec;
 mod recall_profile;
 mod source_capture;
@@ -57,6 +59,7 @@ pub struct SqliteDatabase {
 impl SqliteDatabase {
     /// Opens or creates a database, verifies the runtime, and applies migrations.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, SqliteError> {
+        let _cost = read_cost::span(read_cost::Stage::ReaderOpen);
         let connection = Connection::open(path).map_err(SqliteError::open)?;
         Self::initialize(connection)
     }
