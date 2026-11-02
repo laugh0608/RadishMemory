@@ -7,6 +7,7 @@ pub(super) struct Harness {
     pub(super) context: egui::Context,
     pub(super) results: Sender<Snapshot>,
     pub(super) commands: Receiver<Command>,
+    pub(super) viewport_size: egui::Vec2,
 }
 impl Harness {
     pub(super) fn new() -> Self {
@@ -31,6 +32,7 @@ impl Harness {
             context,
             results,
             commands,
+            viewport_size: egui::vec2(1080.0, 720.0),
         }
     }
     pub(super) fn start(&mut self) {
@@ -45,7 +47,7 @@ impl Harness {
         let mut input = egui::RawInput {
             screen_rect: Some(egui::Rect::from_min_size(
                 egui::Pos2::ZERO,
-                egui::vec2(1080.0, 720.0),
+                self.viewport_size,
             )),
             events,
             ..Default::default()

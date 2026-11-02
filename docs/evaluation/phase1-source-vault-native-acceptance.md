@@ -495,3 +495,5 @@ D01 的 `1cfc8d9` 默认二进制 / 匹配 dSYM、精确 trace 路径与逐事�
 有资料 Refresh 的对象认证失败撤回与显式恢复闭环通过；macOS 中文显示仅在已观察尺寸通过。Q01 中文检索、最小窗口布局、Windows / Linux 新字体与失败窗口、真实首尾取消、精确同帧关闭及完整 P1-S05 继续开放。没有 push、远程配置、依赖 / lockfile、全局字体、ACL 或历史验收材料变更。
 
 原生收尾后的完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 再次退出 0：仓库基线 / notices / 检查器回归、fmt、locked Clippy 与 25 个 Rust suites 通过（403 passed、0 failed、11 个由父测试调用的 ignored helper）。没有因本次证据更新改动 production 代码或放宽门禁。
+
+2026-11-02 的旧格式升级 / 降级、真实中文命中、重开和四份精确导出已取得 macOS 原生局部结果，见[新批次验收](phase1-recall-native-acceptance.md)；760×520 原生内容尺寸仍未覆盖。
