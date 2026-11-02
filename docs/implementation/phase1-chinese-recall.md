@@ -1,8 +1,8 @@
 # Phase 1 版本化中文检索落地
 
-日期：2026-10-28
+首次记录：2026-10-28；最近复核：2026-11-02。
 
-状态：`production dual-entry implemented; synthetic verification recorded; full Q01 acceptance open`
+状态：`production dual-entry implemented; synthetic and limited macOS verification recorded; full Q01/Q04 acceptance open`
 
 ## 范围与实现
 
@@ -231,3 +231,11 @@ RSS 通过各独立 Python runner 的 `getrusage(RUSAGE_CHILDREN)` 读取，本�
 legacy 路径不调用新派生字段编码，其观测快慢不能计入本优化收益。after-b 的新格式加密 absent p95 为 274.224 ms，高于 before-b 的 135.558 ms，原始样本与完整矩阵均保留；局部编码 CPU 改善不证明所有查询的尾延迟下降。
 
 复验成本的标准命令仍为前节 `q01_cost --release --locked -- --ignored --nocapture --test-threads=1`；本批前后精确差异、冻结 binary 与原始样本便于复验。完整验证、提交与保留状态见[后续切片记录](../status/2026-11-02-derived-encoding.md)。独立人工标签、原生格式切换 / 最小窗口 / 跨平台、多版本和规模 / 物理冷缓存尚未验收，Q01 / Q04 / P1-S05 继续开放。
+
+## 2026-11-02 规模基线与原生后续
+
+上述分阶段基线和字节等价优化分别提交为 `2156759` / `e0b9926`。随后 `3f05a13` 增加独立 `q04_cost` 的 100 lineage / 160 版本固定档位，沿现有 production API 与同一 opt-in collector 测量；旧 `q01_cost` 仍为 32 份协议，共享 helper 只收敛测试生命周期、输出和百分位计算。两轮新格式加密中文 5 命中 p50 为 1,201.358 / 1,201.121 ms，每次仍有 13 轮全库对象认证；输入和结果见[规模基线](../evaluation/phase1-local-library-scale.md)。它不与 32 份样本直接算优化收益，不代表 1000 / 10000、冷缓存或生产预算通过；前节“多版本与规模未验”为该切片当时状态。
+
+`3cde127` 收录两种模式的 760×520 headless 入口 / 完整确认文案边界回归及[macOS 有限原生结果](../evaluation/phase1-recall-native-acceptance.md#2026-11-02-macos-原生局部结果)：明文 / 加密升级、降级 Cancel / Confirm、中文蓝色 / 红色 / 主题找回、关闭重开及四份精确导出已有证据。真实窗口仍未调整到已核实的 760×520 内容尺寸，Han 升级后的旧 ASCII 词未在 GUI 重跑，Windows / Linux、真实 key 首尾取消及独立人工标签仍待完成；不将正常链路、headless 或无可见提示扩成完整 Q01 / P1-S05 通过。
+
+本日完整提交、代码与文档复核及接续建议见[日终记录](../status/2026-11-02-chinese-recall.md)；下一次实际顺位以[当前状态](../status/current.md#后续事项)为准。

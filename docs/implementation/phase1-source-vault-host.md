@@ -378,3 +378,9 @@ Action end 写出前不发布快照，观测错误撤回目录、正文及恢复
 本批关闭自然 busy / 锁错误交付 / 正常退出的有限缺口，不宣称精确同帧竞争、末轮 key 取消、有资料旧视图撤回、pending 原请求 Cancel / Confirm、其它系统错误或 Windows / Linux 原生通过。P1-S05 及 PDF / 图片停止线保持；剩余范围按[当前状态](../status/current.md#后续事项)推进。
 
 原生记录更新后的完整 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 退出 0：271 文件仓库基线、fmt、locked Clippy 与 25 suites 共 398 项 Rust tests 通过，11 个 ignored 子进程 helper 由父测试调用。准备阶段的默认 desktop 构建与 17 项持锁 helper 合成回归已通过，原生执行未改代码，不重复构建或扩充测试。补记后再次完成仓库文本 / 链接检查和 `git diff --check`；未运行其它平台、额外 Keychain 诊断或远程检查，未 push。
+
+## 2026-11-02 中文格式切换的局部原生补充
+
+`3cde127` 收录[独立旧格式库与三轮原生结果](../evaluation/phase1-recall-native-acceptance.md#2026-11-02-macos-原生局部结果)：同一默认构建在明文 / 加密模式完成升级、降级 Cancel / Confirm、真实中文找回、关闭重开、四份精确导出和 Verify；三个可见窗口串行退出 0，合成资料与专用测试 slot 保留。首次失败启动计入预算，追加一次经当前任务明确授权后才执行 N03；没有修改 worker、key 认证会话或错误恢复语义。
+
+默认明文打开 v8 的真实界面仍为通用 `StorageFailure` / 资料不可用，显式 OpenEncrypted 后成功；不能将失败关闭当作模式引导体验已修复。没有可见系统提示不证明无系统调用或取消通过；760×520 原生内容尺寸、Windows / Linux 新切换 UI、首尾 key 取消和其它失败窗口仍待验，完整 P1-S05 保持开放。

@@ -6,6 +6,8 @@
 
 2026-10-28 后续：`4c9b0be` 的 [ADR 0009](../adr/0009-versioned-chinese-recall.md)派生 profile 已由共享 `LocalSearch` 读取，认证 `LibraryReadSnapshot` 同时返回实际检索格式，不增加一次系统 key 读取。查询、精确正文 / 引用与升级维护仍分属既有边界；新字段仍为明文，全库认证成本没有消除。双入口合成结果与有限成本见[中文检索记录](phase1-chinese-recall.md)，下文历史“下一步”保留为 9 月 26 日交接。
 
+2026-11-02 后续：`2156759` 为既有 reader / snapshot / 对象认证路径增加 opt-in 的固定阶段计量；默认 span 无时钟、collector 或输出，不改变 key 复验、锁、对象 / canonical / FTS 检查与错误顺序。`e0b9926` 只减少冻结字符范围内的派生字段编码分配 / 格式化，编码字节保持。32 份与 `3f05a13` 的 100 来源 / 160 版本[规模基线](../evaluation/phase1-local-library-scale.md)均为独立合成 release 输入；5 命中仍有 13 轮全库对象认证，不推导生产容量或跨操作会话复用。`3cde127` 的[原生局部结果](../evaluation/phase1-recall-native-acceptance.md#2026-11-02-macos-原生局部结果)补充两来源、三版本库的读取 / 格式切换 / 精确导出，不替代本页全部故障与平台边界。
+
 ## 读取边界
 
 - `PlatformKeyProvider::open_library_reader` 只接受已完成迁移的维护 v8 至 v12。先验证数据库 schema、namespace / device / provider，再加载既有 key；缺库、未完成迁移或身份不匹配不加载 key，不创建空库、新 key 或迁移 checkpoint。

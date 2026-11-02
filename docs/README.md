@@ -72,6 +72,7 @@
     - [Phase 1 中文检索候选与兼容方案](evaluation/phase1-chinese-retrieval-candidates.md)：四种候选的固定语料比较与相邻短语反例；接受范围见 ADR 0009。
     - [Phase 1 版本化中文检索落地](implementation/phase1-chinese-recall.md)：双入口质量、显式升级 / 降级、旧代码兼容与长文成本。
 - [2026-10-28 中文显示与检索日终记录](status/2026-10-28-chinese-recall.md)：当天全部提交、代码与文档核对、性能限制和下次建议。
+- [2026-11-02 中文找回、成本与原生验收日终记录](status/2026-11-02-chinese-recall.md)：当天四个代码 / 验收提交及最后文档收口、按代码核对的证据更新、保留范围与下次建议。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。
 - [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。

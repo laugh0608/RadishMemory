@@ -50,7 +50,7 @@ current 维护实际能力、跨专题顺位、未关闭问题和停止线；原
 
 | 接续项 | 牵头 / 协同 | 原任务与验收来源 |
 | --- | --- | --- |
-| 1. Q01 标签与 Q04 成本 | 检索与上下文；质量主线独立复核 | 原[质量场景](evaluation/phase1-local-library-quality.md#场景与关闭条件)、中文基线 / 修复；先固定人工相关来源，再区分 release 分阶段成本，不删安全校验 |
+| 1. Q01 标签与 Q04 成本 | 检索与上下文；质量主线独立复核 | 原[质量场景](evaluation/phase1-local-library-quality.md#场景与关闭条件)、中文基线 / 修复及[100 来源成本](evaluation/phase1-local-library-scale.md)；人工标签与下一档预算独立评审，不删安全校验 |
 | 2. 新格式有限可见验收 | 客户端体验；检索、存储和质量协同 | current 原操作范围、中文显示 / 检索记录及[新批次原生判据与结果](evaluation/phase1-recall-native-acceptance.md)；macOS 已观察尺寸的切换 / 重开 / 导出已有证据，最小窗口与平台证据分列 |
 | 3. 文本资料库质量闭环 | 客户端体验；检索与存储协同 | Q02 / Q03 / Q06 原关闭条件；第 201 条、默认 v6 failed-open、回源 / 更新 / 删除刷新分别关闭，已通过范围不重复列为未验 |
 | 4. 其余失败窗口与契约 | 资料库与安全存储；客户端、质量协同 | [有限检查点](evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)；key 取消、pending 关闭和 evidence_digest 契约各自评审；完整 P1-S05 与 PDF / 图片停止线保留 |

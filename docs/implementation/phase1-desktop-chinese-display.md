@@ -1,6 +1,6 @@
 # Phase 1 桌面中文显示切片
 
-更新时间：2026-10-28
+更新时间：2026-11-02
 
 状态：`Bundled font integrated; headless checks and macOS visible text passed; minimum-size and Windows/Linux native acceptance pending`
 
@@ -71,3 +71,9 @@
 截图窗口为 2160×1504 像素；多次窗口边缘拖拽未改变捕获尺寸，未建立计划的 760×520 最小布局证据。因此只记实际窗口下的可读显示通过，最小窗口布局、Windows / Linux 新字体构建及 GUI、其它输入法与缩放仍待验证，不把 headless 多缩放结果替代原生覆盖。
 
 同一窗口同时完成有资料 Refresh 认证失败、旧视图撤回、密文精确还原与显式恢复；两份 166 字节导出与带 BOM / CRLF 的输入逐字节一致，两个 Verify 均无 pending，应用层删除后正常退出 0。详细过程、保留测试 key / 副本和未覆盖项见[本批原生结果](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-28-macos-有资料-refresh-原生结果)。
+
+## 2026-11-02 中文格式切换的显示补充
+
+`3cde127` 新增可配置 viewport 的既有 headless Harness，在 760×520 下覆盖明文 / 加密、多版本快照的 Search / Export / 更新 / 升级按钮，以及升级 / 降级完整说明、Cancel / Confirm 的 viewport / clip 边界。它复用同一随包字体和真实 worker，不改变字体文件、来源、许可证或 production 初始化路径。
+
+同批[三轮 macOS 原生窗口](../evaluation/phase1-recall-native-acceptance.md#2026-11-02-macos-原生局部结果)实际展示中文文件标题、中文查询、简繁 / API / 标点正文和格式确认框，并完成真实中文检索与四份 103 字节 BOM / CRLF 导出。两次边缘调整仍未改变 2160×1504 像素捕获，没有 content rect / scale 的有效证据，因此 **760×520 原生尺寸仍未覆盖**。本次没有新 Windows / Linux 字体、输入法、缩放或分发证据；原状态与字体边界保持。
