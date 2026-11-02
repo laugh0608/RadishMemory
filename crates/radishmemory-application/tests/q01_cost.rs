@@ -1,14 +1,15 @@
 //! Bounded manual measurement; no unreviewed performance threshold or CI timing gate.
+#[path = "cost/mod.rs"]
+mod cost;
 #[path = "q01/support.rs"]
 mod support;
 
-use radishmemory_application::{
-    EncryptedLibrary, EncryptedLibraryLocation, LocalLibrary, RecallProfile,
-};
-use radishmemory_core::{NonEmptyText, Sensitivity};
+use cost::{Library, percentiles, sample};
+use radishmemory_application::{EncryptedLibraryLocation, LocalLibrary, RecallProfile};
+use radishmemory_core::Sensitivity;
 use radishmemory_file_entry::FileReadRequest;
 use radishmemory_source_vault::acceptance::SyntheticLibraryProvider;
-use radishmemory_sqlite::read_cost::{self, Observation, Stage};
+use radishmemory_sqlite::read_cost::{self, Stage};
 use rusqlite::Connection;
 use std::fs;
 use support::{Directory, Runtime, config};
@@ -57,29 +58,7 @@ const CASES: &[Case] = &[
     },
 ];
 
-// Only fixture ownership/dispatch. Every operation uses the existing application
-// API and the real crypto/object/SQLite path with the synthetic key provider.
-enum Library {
-    Plain(LocalLibrary<Runtime>),
-    Encrypted(EncryptedLibrary<Runtime, SyntheticLibraryProvider>),
-}
-
 impl Library {
-    fn reopen(self, root: &Directory) -> Self {
-        match self {
-            Self::Plain(library) => {
-                let (runtime, config) = library.close();
-                Self::Plain(
-                    LocalLibrary::open(root.0.join("library.sqlite3"), runtime, config).unwrap(),
-                )
-            }
-            Self::Encrypted(library) => {
-                let (runtime, location) = library.close();
-                Self::Encrypted(location.open(runtime).unwrap())
-            }
-        }
-    }
-
     fn change_profile(&mut self, profile: RecallProfile) {
         match self {
             Self::Plain(library) => {
@@ -91,14 +70,8 @@ impl Library {
         }
     }
 
-    fn search(&mut self, case: &Case) -> usize {
-        let query = NonEmptyText::new(case.query).unwrap();
-        match self {
-            Self::Plain(library) => library.search_sources(query, case.top_k, [case.allowed]),
-            Self::Encrypted(library) => library.search_sources(query, case.top_k, [case.allowed]),
-        }
-        .unwrap()
-        .len()
+    fn query(&mut self, case: &Case) -> usize {
+        self.search(case.query, case.top_k, case.allowed).len()
     }
 
     fn refresh(&self) -> usize {
@@ -155,39 +128,6 @@ fn storage(root: &Directory, mode: &str, profile: &str, payload: usize) {
     );
 }
 
-fn sample(
-    mode: &str,
-    profile: &str,
-    case: &str,
-    cache: &str,
-    index: usize,
-    observation: &Observation,
-) {
-    let accounted = Stage::ALL
-        .into_iter()
-        .map(|stage| observation.cost(stage).exclusive)
-        .sum();
-    let unscoped = observation
-        .elapsed
-        .checked_sub(accounted)
-        .expect("exclusive stages must not overlap");
-    println!(
-        "Q04-SAMPLE mode={mode} profile={profile} case={case} cache={cache} sample={index} wall_ns={} unscoped_ns={}",
-        observation.elapsed.as_nanos(),
-        unscoped.as_nanos()
-    );
-    for stage in Stage::ALL {
-        let cost = observation.cost(stage);
-        println!(
-            "Q04-STAGE mode={mode} profile={profile} case={case} cache={cache} sample={index} stage={} calls={} inclusive_ns={} exclusive_ns={}",
-            stage.label(),
-            cost.calls,
-            cost.inclusive.as_nanos(),
-            cost.exclusive.as_nanos()
-        );
-    }
-}
-
 fn measure(
     mode: &str,
     profile: &str,
@@ -209,15 +149,12 @@ fn measure(
             observations.push(observation);
         }
     }
-    observations.sort_by_key(|observation| observation.elapsed);
-    // Nearest-rank percentiles. With 11 repetitions p95 is the maximum; these
-    // describe this bounded run, not a production tail-latency estimate.
-    let p50 = &observations[SAMPLES.div_ceil(2) - 1];
-    let p95 = &observations[(SAMPLES * 95).div_ceil(100) - 1];
+    // Nearest rank, matching the original bounded eleven-sample protocol.
+    let (p50, p95) = percentiles(&observations);
     println!(
         "Q04-SUMMARY mode={mode} profile={profile} case={case} cache=repeated samples={SAMPLES} percentile=nearest_rank p50_us={} p95_us={} hits={expected}",
-        p50.elapsed.as_micros(),
-        p95.elapsed.as_micros()
+        p50.as_micros(),
+        p95.as_micros()
     );
 }
 
@@ -287,7 +224,7 @@ fn q01_long_documents_measure_storage_upgrade_and_authenticated_query_cost() {
                     "han_one" | "han_five" if profile == RecallProfile::HanPhraseV1 => case.top_k,
                     _ => 0,
                 };
-                measure(mode, format, case.label, expected, || library.search(case));
+                measure(mode, format, case.label, expected, || library.query(case));
             }
             let (reopened, open) = read_cost::observe(|| library.reopen(&root));
             library = reopened;
