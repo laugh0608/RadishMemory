@@ -35,6 +35,7 @@
 22. [ADR 0007：阶段 1 本地资料库宿主与显式文件授权](adr/0007-phase1-local-library-host.md)：本地桌面宿主、一次性授权、application service、来源目录、UI 与宿主验收。
 23. [ADR 0008：阶段 1 加密内容寻址 Source Vault](adr/0008-phase1-encrypted-source-vault.md)：原始对象认证加密、内容地址、密钥边界、SQLite 协调、迁移、删除与合成验收。
 24. [ADR 0009：版本化中文检索](adr/0009-versioned-chinese-recall.md)：冻结字符规则、显式派生索引升级、旧客户端拒绝与降级边界。
+25. [ADR 0010：阶段 1 桌面手输资料](adr/0010-phase1-desktop-text-entry.md)：应用内保存、来源绑定、正文更正和历史查阅。
 25. [Phase 1 加密 Source Vault 依赖与密码套件评审](implementation/phase1-encrypted-source-vault-dependency-review.md)：XChaCha20-Poly1305 / STREAM、DEK wrap、系统随机、secret memory、三平台 key provider 与实现前供应链门禁。
 26. [Phase 1 Source Vault portable crypto 落地记录](implementation/phase1-source-vault-portable-crypto.md)：P1-S03a package、向量、负向测试、三目标依赖图、许可证 / notices 与 advisory 证据。
     - [Phase 1 Source Vault filesystem adapter 落地记录](implementation/phase1-source-vault-filesystem.md)：P1-S03b envelope、目录 capability、不可覆盖发布、认证回读、attempt 状态与平台证据限制。

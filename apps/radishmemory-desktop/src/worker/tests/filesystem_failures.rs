@@ -97,6 +97,33 @@ fn publication_permission_failure_retries_the_retained_staging_bytes() {
 }
 
 #[test]
+fn note_save_retry_preserves_the_same_prepared_request() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.engine();
+    ready(&mut engine);
+    let objects = fixture.root.join("data/source-objects-v1");
+    let staging = fixture.root.join("data/source-staging-v1");
+    let denied = ReadOnlyDirectory::new(objects.clone());
+    let body = "# Synthetic\r\n恢复快照 cobalt\r\n";
+    let failed = engine.execute(Command::SaveNote(NoteFormat::Markdown, None, body.into()));
+    assert_io_failure(&failed);
+    assert!(failed.holds_capture);
+    assert!(!failed.capture_completed);
+    let staged = files(&staging);
+    assert_eq!(staged.len(), 1);
+    drop(denied);
+
+    let retry = ok(engine.execute(Command::RetryOriginal));
+    assert!(retry.capture_completed);
+    assert!(!retry.holds_original);
+    assert_eq!(retry.view.unwrap().sources().len(), 1);
+    assert!(files(&staging).is_empty());
+    assert_eq!(files(&objects)[0].1, staged[0].1);
+    let original = ok(engine.execute(Command::ReadOriginal { edit: false }));
+    assert_eq!(original.original.unwrap().params().content.as_str(), body);
+}
+
+#[test]
 fn publication_permission_failure_restart_abandons_only_the_pending_update() {
     let fixture = Fixture::new();
     let mut engine = fixture.engine();

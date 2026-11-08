@@ -5,7 +5,8 @@ use crate::{ApplicationIdentifierKind, capture};
 use radishmemory_core::{
     ComponentStatus, DeleteRequest, DeleteRequestParams, DeletionEvidence, DeletionEvidenceParams,
     DeletionOverallStatus, EvidenceRef, EvidenceType, LocalDeletionExecution, RequestedGuarantee,
-    SourceCapture, SourceCatalog, build_local_purge_targets, compute_deletion_evidence_digest,
+    SourceCapture, SourceCatalog, SourceLineageState, build_local_purge_targets,
+    compute_deletion_evidence_digest,
 };
 use radishmemory_file_entry::{FileCaptureReceipt, FileReadRequest};
 
@@ -39,9 +40,55 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
         lineage: &Identifier,
         request: &FileReadRequest,
     ) -> Result<SourceCapture, ApplicationError> {
+        let current = self.current_source_for_update(lineage)?;
+        capture::prepare(
+            &mut self.runtime,
+            &self.location.config,
+            request,
+            Some(current),
+        )
+    }
+
+    /// Prepare an application-authored note for the same exact-request retry as file capture.
+    pub fn prepare_save_note(
+        &mut self,
+        format: crate::NoteFormat,
+        title: Option<NonEmptyText>,
+        body: String,
+    ) -> Result<SourceCapture, ApplicationError> {
+        self.require_no_pending(ApplicationOperation::ImportNewSource)?;
+        capture::prepare_note(
+            &mut self.runtime,
+            &self.location.config,
+            format,
+            title,
+            body,
+        )
+    }
+
+    pub fn prepare_correct_note(
+        &mut self,
+        lineage: &Identifier,
+        base_source_id: &Identifier,
+        body: String,
+    ) -> Result<SourceCapture, ApplicationError> {
+        let current = self.current_source_for_update(lineage)?;
+        capture::prepare_note_correction(
+            &mut self.runtime,
+            &self.location.config,
+            base_source_id,
+            body,
+            current,
+        )
+    }
+
+    fn current_source_for_update(
+        &self,
+        lineage: &Identifier,
+    ) -> Result<(SourceLineageState, SourceArtifact), ApplicationError> {
         let operation = ApplicationOperation::UpdateSource;
         self.require_no_pending(operation)?;
-        let current = self.with_reader(operation, |reader| {
+        self.with_reader(operation, |reader| {
             let namespace = &self.location.config.namespace_id;
             let state = reader
                 .resolve_source_lineage(namespace, lineage)
@@ -52,13 +99,7 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
                 .map_err(|error| ApplicationError::vault(operation, error))?
                 .ok_or_else(|| ApplicationError::source_not_found(operation))?;
             Ok((state, source))
-        })?;
-        capture::prepare(
-            &mut self.runtime,
-            &self.location.config,
-            request,
-            Some(current),
-        )
+        })
     }
 
     /// Execute or recover exactly this original canonical request. The coordinator

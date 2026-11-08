@@ -44,6 +44,12 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
     ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
         read!(self, search_sources(query, limit, sensitivity))
     }
+    pub(crate) fn get_source(
+        &self,
+        id: &Identifier,
+    ) -> Result<Option<SourceArtifact>, ApplicationError> {
+        read!(self, get_source(id))
+    }
     pub(crate) fn export_source(
         &self,
         id: &Identifier,
@@ -89,12 +95,8 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
             Self::Encrypted {
                 library, capture, ..
             } => {
-                // Worker rejects new mutations while any original request is retained.
-                *capture = Some(Box::new(library.prepare_import_new_source(request)?));
-                let receipt =
-                    library.capture_source(capture.as_ref().expect("prepared capture"))?;
-                *capture = None;
-                Ok(receipt)
+                let prepared = library.prepare_import_new_source(request)?;
+                commit_prepared(library, capture, prepared)
             }
         }
     }
@@ -108,11 +110,40 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
             Self::Encrypted {
                 library, capture, ..
             } => {
-                *capture = Some(Box::new(library.prepare_update_source(id, request)?));
-                let receipt =
-                    library.capture_source(capture.as_ref().expect("prepared capture"))?;
-                *capture = None;
-                Ok(receipt)
+                let prepared = library.prepare_update_source(id, request)?;
+                commit_prepared(library, capture, prepared)
+            }
+        }
+    }
+    pub(crate) fn save_note(
+        &mut self,
+        format: NoteFormat,
+        title: Option<NonEmptyText>,
+        body: String,
+    ) -> Result<FileCaptureReceipt, ApplicationError> {
+        match self {
+            Self::Plain(library) => library.save_note(format, title, body),
+            Self::Encrypted {
+                library, capture, ..
+            } => {
+                let prepared = library.prepare_save_note(format, title, body)?;
+                commit_prepared(library, capture, prepared)
+            }
+        }
+    }
+    pub(crate) fn correct_note(
+        &mut self,
+        lineage: &Identifier,
+        base: &Identifier,
+        body: String,
+    ) -> Result<FileCaptureReceipt, ApplicationError> {
+        match self {
+            Self::Plain(library) => library.correct_note(lineage, base, body),
+            Self::Encrypted {
+                library, capture, ..
+            } => {
+                let prepared = library.prepare_correct_note(lineage, base, body)?;
+                commit_prepared(library, capture, prepared)
             }
         }
     }
@@ -218,6 +249,18 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
         Ok(())
     }
 }
+fn commit_prepared<R: ApplicationRuntime, P: LibraryProvider>(
+    library: &EncryptedLibrary<R, P>,
+    capture: &mut Option<Box<SourceCapture>>,
+    prepared: SourceCapture,
+) -> Result<FileCaptureReceipt, ApplicationError> {
+    // The worker gates new writes while an original request is held.
+    let request = capture.insert(Box::new(prepared));
+    let receipt = library.capture_source(request)?;
+    *capture = None;
+    Ok(receipt)
+}
+
 pub(crate) fn app_error(error: ApplicationError) -> DesktopError {
     DesktopError::application(&error)
 }

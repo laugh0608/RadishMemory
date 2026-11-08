@@ -2,7 +2,8 @@ use std::fmt;
 
 use crate::{
     CoreError, DeletionState, DigestProfile, Governance, Identifier, InvalidCanonicalObjectReason,
-    MediaType, NonEmptyText, SourceArtifact, SourceKind, SourceOriginKind, Timestamp, Version,
+    MediaType, NonEmptyText, ProducerRef, SourceArtifact, SourceKind, SourceOriginKind, Timestamp,
+    Version,
 };
 
 /// Stable page request for the local source lineage catalog.
@@ -259,6 +260,7 @@ pub struct SourceVersionSummary {
     observed_at: Timestamp,
     captured_at: Timestamp,
     governance: Governance,
+    producer: ProducerRef,
     current: bool,
 }
 
@@ -285,6 +287,7 @@ impl SourceVersionSummary {
             observed_at: params.observed_at.clone(),
             captured_at: params.captured_at.clone(),
             governance: params.governance.clone(),
+            producer: params.producer.clone(),
             current,
         })
     }
@@ -347,6 +350,11 @@ impl SourceVersionSummary {
     #[must_use]
     pub const fn governance(&self) -> &Governance {
         &self.governance
+    }
+
+    #[must_use]
+    pub const fn producer(&self) -> &ProducerRef {
+        &self.producer
     }
 
     #[must_use]

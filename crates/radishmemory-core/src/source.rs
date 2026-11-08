@@ -54,6 +54,85 @@ impl SourceCapture {
     }
 }
 
+/// Caller-owned IDs, governance, and time facts used to bind user-provided text to canonical objects.
+pub struct TextSourceCapturePlan {
+    pub namespace_id: Identifier,
+    pub origin_binding_id: Identifier,
+    pub source_id: Identifier,
+    pub lineage_id: Identifier,
+    pub version: Version,
+    pub supersedes_source_ids: Vec<Identifier>,
+    pub fragment_id: Identifier,
+    pub observed_at: Timestamp,
+    pub captured_at: Timestamp,
+    pub governance: Governance,
+    pub source_producer: ProducerRef,
+    pub segmenter: ProducerRef,
+}
+
+impl std::fmt::Debug for TextSourceCapturePlan {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("TextSourceCapturePlan")
+            .field("namespace_id", &self.namespace_id)
+            .field("source_id", &self.source_id)
+            .field("lineage_id", &self.lineage_id)
+            .field("version", &self.version)
+            .field("supersedes_count", &self.supersedes_source_ids.len())
+            .field("fragment_id", &self.fragment_id)
+            .finish_non_exhaustive()
+    }
+}
+
+impl TextSourceCapturePlan {
+    /// Build the canonical artifact and its whole-text fragment without an external path.
+    pub fn build(
+        self,
+        source_kind: SourceKind,
+        media_type: MediaType,
+        content: NonEmptyText,
+        title: Option<NonEmptyText>,
+    ) -> Result<SourceCapture, CoreError> {
+        let content_length = content.utf8_len() as u64;
+        let content_digest = compute_exact_bytes_digest(content.as_str().as_bytes());
+        let fragment = SourceFragment::new(SourceFragmentParams {
+            fragment_id: self.fragment_id,
+            namespace_id: self.namespace_id.clone(),
+            source_id: self.source_id.clone(),
+            ordinal: 0,
+            byte_start: 0,
+            byte_end: content_length,
+            heading_path: None,
+            content_digest: content_digest.clone(),
+            content: content.clone(),
+            segmenter: self.segmenter,
+            governance: self.governance.clone(),
+            created_at: self.captured_at.clone(),
+        })?;
+        let source = SourceArtifact::new(SourceArtifactParams {
+            source_id: self.source_id,
+            lineage_id: self.lineage_id,
+            version: self.version,
+            namespace_id: self.namespace_id,
+            source_kind,
+            media_type,
+            content,
+            content_length,
+            content_digest,
+            title,
+            origin_kind: SourceOriginKind::ExplicitUserInput,
+            origin_ref: Some(NonEmptyText::new(self.origin_binding_id.as_str())?),
+            observed_at: self.observed_at,
+            captured_at: self.captured_at.clone(),
+            supersedes_source_ids: self.supersedes_source_ids,
+            governance: self.governance,
+            producer: self.source_producer,
+            created_at: self.captured_at,
+        })?;
+        SourceCapture::new(self.origin_binding_id, source, vec![fragment])
+    }
+}
+
 #[must_use]
 pub fn source_origin_binding_id_is_valid(value: &str) -> bool {
     let Some(suffix) = value.strip_prefix(SOURCE_ORIGIN_BINDING_PREFIX) else {

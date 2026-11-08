@@ -72,6 +72,99 @@ pub(crate) fn ready<P: LibraryProvider, F: Fn() -> P>(engine: &mut Engine<P, F>)
 }
 
 #[test]
+fn note_drafts_cannot_overwrite_newer_versions_and_equal_new_notes_stay_independent() {
+    for encrypted in [false, true] {
+        let fixture = Fixture::new();
+        let mut writer = fixture.engine();
+        if encrypted {
+            ready(&mut writer);
+        } else {
+            ok(writer.execute(Command::OpenPlain));
+        }
+        let initial = " Synthetic cobalt \n";
+        let first = ok(writer.execute(Command::SaveNote(NoteFormat::Text, None, initial.into())));
+        let first = first.view.unwrap();
+        let version = first.selected_version().unwrap();
+        let lineage = version.lineage_id().clone();
+        let base = version.source_id().clone();
+        assert_eq!(version.media_type().as_str(), "text/plain");
+        assert!(version.title().is_none());
+
+        let same = ok(writer.execute(Command::CorrectNote(
+            lineage.clone(),
+            base.clone(),
+            initial.into(),
+        )));
+        let same = same.view.unwrap();
+        assert_eq!(same.versions().len(), 1);
+        assert_eq!(same.selected_source_id(), Some(&base));
+
+        let second = ok(writer.execute(Command::SaveNote(NoteFormat::Text, None, initial.into())));
+        let second = second.view.unwrap();
+        assert_ne!(second.selected_lineage_id(), Some(&lineage));
+        assert_eq!(second.sources().len(), 2);
+
+        let mut other_window = fixture.engine();
+        ok(other_window.execute(if encrypted {
+            Command::OpenEncrypted
+        } else {
+            Command::OpenPlain
+        }));
+        let changed = ok(other_window.execute(Command::CorrectNote(
+            lineage.clone(),
+            base.clone(),
+            "Synthetic crimson".into(),
+        )));
+        let changed = changed.view.unwrap();
+        assert_eq!(changed.versions().len(), 2);
+        let current = changed.selected_source_id().unwrap().clone();
+        drop(other_window);
+
+        let stale = writer.execute(Command::CorrectNote(
+            lineage.clone(),
+            base,
+            "Synthetic amber".into(),
+        ));
+        assert!(!stale.holds_original);
+        assert_eq!(
+            stale.error.unwrap().application_failure().unwrap().reason(),
+            ApplicationErrorReason::NoteVersionChanged
+        );
+        ok(writer.execute(Command::Refresh));
+        let selected = ok(writer.execute(Command::SelectLineage(lineage)));
+        let selected = selected.view.unwrap();
+        assert_eq!(selected.selected_source_id(), Some(&current));
+        assert_eq!(selected.versions().len(), 2);
+
+        for invalid in [
+            " \n\t".into(),
+            "before\0after".into(),
+            "x".repeat(8 * 1024 * 1024 + 1),
+        ] {
+            let rejected = writer.execute(Command::SaveNote(NoteFormat::Text, None, invalid));
+            assert!(!rejected.holds_original);
+            assert_eq!(
+                rejected
+                    .error
+                    .unwrap()
+                    .application_failure()
+                    .unwrap()
+                    .reason(),
+                ApplicationErrorReason::NoteBodyInvalid
+            );
+            assert_eq!(
+                ok(writer.execute(Command::Refresh))
+                    .view
+                    .unwrap()
+                    .sources()
+                    .len(),
+                2
+            );
+        }
+    }
+}
+
+#[test]
 fn native_startup_routes_migration_and_reopen_to_the_pinned_library() {
     let fixture = crate::startup::tests::Fixture::new();
     let input = Fixture::new();

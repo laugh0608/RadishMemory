@@ -18,8 +18,8 @@ use radishmemory_core::{
     ActorRef, ActorType, ComponentStatus, DeleteRequestParams, DeletionEvidenceParams,
     DeletionState, DeletionStore, EgressPolicy, EvidenceRef, EvidenceType, Governance,
     LocalDeletionExecution, ProducerRef, ProducerType, RequestedGuarantee, RetentionMode,
-    RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceVault, Version,
-    build_local_purge_targets, compute_deletion_evidence_digest,
+    RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceLineageState,
+    SourceVault, Version, build_local_purge_targets, compute_deletion_evidence_digest,
 };
 pub use radishmemory_core::{
     DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, NonEmptyText, Sensitivity,
@@ -30,6 +30,7 @@ pub use radishmemory_file_entry::{
 };
 use radishmemory_sqlite::SqliteDatabase;
 
+pub use capture::{NoteFormat, is_note_producer, note_body_is_valid};
 pub use encrypted::{EncryptedLibrary, EncryptedLibraryLocation};
 pub use error::{
     ApplicationError, ApplicationErrorCode, ApplicationErrorReason, ApplicationOperation,
@@ -163,7 +164,9 @@ impl LocalLibraryConfig {
         segmenter: ProducerRef,
         deletion: LocalDeletionConfig,
     ) -> Result<Self, ApplicationError> {
-        if governance.deletion_state() != DeletionState::Active {
+        if governance.deletion_state() != DeletionState::Active
+            || is_note_producer(&source_producer)
+        {
             return Err(ApplicationError::invalid_configuration());
         }
         Ok(Self {
@@ -379,6 +382,43 @@ where
         request: &FileReadRequest,
     ) -> Result<FileCaptureReceipt, ApplicationError> {
         let operation = ApplicationOperation::UpdateSource;
+        let current = self.current_source_for_update(lineage_id)?;
+        let capture = capture::prepare(&mut self.runtime, &self.config, request, Some(current))?;
+        self.capture(&capture, operation)
+    }
+
+    pub fn save_note(
+        &mut self,
+        format: NoteFormat,
+        title: Option<NonEmptyText>,
+        body: String,
+    ) -> Result<FileCaptureReceipt, ApplicationError> {
+        let capture = capture::prepare_note(&mut self.runtime, &self.config, format, title, body)?;
+        self.capture(&capture, ApplicationOperation::ImportNewSource)
+    }
+
+    pub fn correct_note(
+        &mut self,
+        lineage_id: &Identifier,
+        base_source_id: &Identifier,
+        body: String,
+    ) -> Result<FileCaptureReceipt, ApplicationError> {
+        let current = self.current_source_for_update(lineage_id)?;
+        let capture = capture::prepare_note_correction(
+            &mut self.runtime,
+            &self.config,
+            base_source_id,
+            body,
+            current,
+        )?;
+        self.capture(&capture, ApplicationOperation::UpdateSource)
+    }
+
+    fn current_source_for_update(
+        &self,
+        lineage_id: &Identifier,
+    ) -> Result<(SourceLineageState, SourceArtifact), ApplicationError> {
+        let operation = ApplicationOperation::UpdateSource;
         let state = self
             .database
             .resolve_source_lineage(&self.config.namespace_id, lineage_id)
@@ -389,13 +429,7 @@ where
             .load_source_artifact(&self.config.namespace_id, state.current_source_id())
             .map_err(|source| ApplicationError::storage(operation, source))?
             .ok_or_else(|| ApplicationError::source_not_found(operation))?;
-        let capture = capture::prepare(
-            &mut self.runtime,
-            &self.config,
-            request,
-            Some((state, current)),
-        )?;
-        self.capture(&capture, operation)
+        Ok((state, current))
     }
 
     pub fn list_sources(

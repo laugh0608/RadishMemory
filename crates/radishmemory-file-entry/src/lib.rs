@@ -15,10 +15,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::SystemTime;
 
 use radishmemory_core::{
-    CoreError, DeletionState, Digest, DigestProfile, Governance, Identifier, MediaType,
-    NonEmptyText, ProducerRef, SourceArtifact, SourceArtifactParams, SourceCapture,
-    SourceCaptureResult, SourceFragment, SourceFragmentParams, SourceKind, SourceOriginKind,
-    Timestamp, Version, compute_exact_bytes_digest,
+    CoreError, DeletionState, Digest, DigestProfile, Identifier, MediaType, NonEmptyText,
+    SourceArtifact, SourceCapture, SourceCaptureResult, SourceKind, Version,
+    compute_exact_bytes_digest,
 };
 
 pub use error::{FileEntryError, FileEntryErrorCode, FileEntryErrorReason};
@@ -190,35 +189,7 @@ impl fmt::Debug for ValidatedFileSnapshot {
 
 pub use radishmemory_core::SourceCaptureOutcome as FileCaptureOutcome;
 
-/// Caller-owned IDs, governance, and time facts used to bind one snapshot to canonical objects.
-pub struct FileCapturePlan {
-    pub namespace_id: Identifier,
-    pub origin_binding_id: Identifier,
-    pub source_id: Identifier,
-    pub lineage_id: Identifier,
-    pub version: Version,
-    pub supersedes_source_ids: Vec<Identifier>,
-    pub fragment_id: Identifier,
-    pub observed_at: Timestamp,
-    pub captured_at: Timestamp,
-    pub governance: Governance,
-    pub source_producer: ProducerRef,
-    pub segmenter: ProducerRef,
-}
-
-impl fmt::Debug for FileCapturePlan {
-    fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
-        formatter
-            .debug_struct("FileCapturePlan")
-            .field("namespace_id", &self.namespace_id)
-            .field("source_id", &self.source_id)
-            .field("lineage_id", &self.lineage_id)
-            .field("version", &self.version)
-            .field("supersedes_count", &self.supersedes_source_ids.len())
-            .field("fragment_id", &self.fragment_id)
-            .finish_non_exhaustive()
-    }
-}
+pub use radishmemory_core::TextSourceCapturePlan as FileCapturePlan;
 
 /// Minimal path-free application receipt mapped from a successful atomic capture result.
 pub struct FileCaptureReceipt {
@@ -395,43 +366,12 @@ pub fn build_source_capture(
     snapshot: ValidatedFileSnapshot,
     plan: FileCapturePlan,
 ) -> Result<SourceCapture, CoreError> {
-    let origin_ref = NonEmptyText::new(plan.origin_binding_id.as_str().to_owned())?;
-    let fragment_content = snapshot.content.clone();
-    let source = SourceArtifact::new(SourceArtifactParams {
-        source_id: plan.source_id,
-        lineage_id: plan.lineage_id,
-        version: plan.version,
-        namespace_id: plan.namespace_id.clone(),
-        source_kind: snapshot.source_kind,
-        media_type: snapshot.media_type,
-        content: snapshot.content,
-        content_length: snapshot.content_length,
-        content_digest: snapshot.content_digest,
-        title: snapshot.title,
-        origin_kind: SourceOriginKind::ExplicitUserInput,
-        origin_ref: Some(origin_ref),
-        observed_at: plan.observed_at,
-        captured_at: plan.captured_at.clone(),
-        supersedes_source_ids: plan.supersedes_source_ids,
-        governance: plan.governance.clone(),
-        producer: plan.source_producer,
-        created_at: plan.captured_at.clone(),
-    })?;
-    let fragment = SourceFragment::new(SourceFragmentParams {
-        fragment_id: plan.fragment_id,
-        namespace_id: plan.namespace_id,
-        source_id: source.params().source_id.clone(),
-        ordinal: 0,
-        byte_start: 0,
-        byte_end: snapshot.content_length,
-        heading_path: None,
-        content_digest: compute_exact_bytes_digest(fragment_content.as_str().as_bytes()),
-        content: fragment_content,
-        segmenter: plan.segmenter,
-        governance: plan.governance,
-        created_at: plan.captured_at,
-    })?;
-    SourceCapture::new(plan.origin_binding_id, source, vec![fragment])
+    plan.build(
+        snapshot.source_kind,
+        snapshot.media_type,
+        snapshot.content,
+        snapshot.title,
+    )
 }
 
 impl fmt::Debug for FileCaptureReceipt {
@@ -1174,6 +1114,9 @@ mod tests {
     use super::*;
     use radishmemory_core::{
         EgressPolicy, ProducerType, RetentionMode, RetentionRule, Sensitivity,
+    };
+    use radishmemory_core::{
+        Governance, ProducerRef, SourceArtifactParams, SourceOriginKind, Timestamp,
     };
 
     static NEXT_TEST_DIRECTORY: AtomicU64 = AtomicU64::new(0);

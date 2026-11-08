@@ -19,6 +19,8 @@ impl Harness {
                 worker: Some(worker),
                 controller: None,
                 state: Snapshot::default(),
+                note_draft: None,
+                original_offset: 0,
                 search_query: String::new(),
                 notice: None,
                 refresh_notice: None,

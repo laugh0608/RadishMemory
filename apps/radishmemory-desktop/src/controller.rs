@@ -1,7 +1,7 @@
 use radishmemory_application::{
     ApplicationRuntime, DeletionEvidence, FileCaptureReceipt, FileExportReceipt, FileExportRequest,
-    FileReadRequest, Identifier, LocalLibrary, LocalLibraryConfig, NonEmptyText, Sensitivity,
-    SourceLineageSummary, SourceSearchResult, SourceVersionSummary,
+    FileReadRequest, Identifier, LocalLibrary, LocalLibraryConfig, NonEmptyText, NoteFormat,
+    Sensitivity, SourceArtifact, SourceLineageSummary, SourceSearchResult, SourceVersionSummary,
 };
 
 use crate::{
@@ -108,7 +108,7 @@ where
     pub(crate) fn backend(&mut self) -> &mut crate::backend::Library<R, P> {
         &mut self.library
     }
-    fn refresh_after_commit(&mut self, selected: Option<&Identifier>) {
+    pub(crate) fn refresh_after_commit(&mut self, selected: Option<&Identifier>) {
         self.refresh_error = self
             .refresh_sources()
             .and_then(|()| {
@@ -278,6 +278,45 @@ where
         Ok(receipt)
     }
 
+    pub(crate) fn save_note(
+        &mut self,
+        format: NoteFormat,
+        title: Option<NonEmptyText>,
+        body: String,
+    ) -> Result<FileCaptureReceipt, DesktopError> {
+        self.require_no_original()?;
+        let receipt = self
+            .library
+            .save_note(format, title, body)
+            .map_err(crate::backend::app_error)?;
+        self.refresh_after_commit(Some(receipt.lineage_id()));
+        Ok(receipt)
+    }
+
+    pub(crate) fn correct_note(
+        &mut self,
+        lineage: &Identifier,
+        base: &Identifier,
+        body: String,
+    ) -> Result<FileCaptureReceipt, DesktopError> {
+        self.require_no_original()?;
+        let receipt = self
+            .library
+            .correct_note(lineage, base, body)
+            .map_err(crate::backend::app_error)?;
+        self.refresh_after_commit(Some(receipt.lineage_id()));
+        Ok(receipt)
+    }
+
+    pub(crate) fn selected_original(&self) -> Result<SourceArtifact, DesktopError> {
+        self.require_no_original()?;
+        let id = self.selected_source_id().ok_or_else(selection_invalid)?;
+        self.library
+            .get_source(id)
+            .map_err(crate::backend::app_error)?
+            .ok_or_else(selection_invalid)
+    }
+
     pub fn export_selected(
         &self,
         request: &FileExportRequest,
@@ -412,26 +451,14 @@ impl LibraryView {
         } = self.selected_fragment?;
         let result = &self.search_results[result_index];
         let content = result.content().as_str();
-        let remaining = &content[start..];
-        let len = remaining
-            .char_indices()
-            .nth(EXCERPT_CHARACTERS)
-            .map_or(remaining.len(), |(offset, _)| offset);
-        let end = start + len;
-        let previous = (start > 0).then(|| {
-            content[..start]
-                .char_indices()
-                .rev()
-                .nth(EXCERPT_CHARACTERS - 1)
-                .map_or(0, |(offset, _)| offset)
-        });
+        let (text, previous, next) = text_excerpt(content, start);
         Some(FragmentExcerpt {
             result,
-            text: &content[start..end],
+            text,
             byte_start: result.byte_start() + start as u64,
-            byte_end: result.byte_start() + end as u64,
+            byte_end: result.byte_start() + (start + text.len()) as u64,
             previous,
-            next: (end < content.len()).then_some(end),
+            next,
         })
     }
 
@@ -465,6 +492,27 @@ impl LibraryView {
             .iter()
             .find(|version| version.source_id() == selected)
     }
+}
+
+pub(crate) fn text_excerpt(content: &str, start: usize) -> (&str, Option<usize>, Option<usize>) {
+    let remaining = &content[start..];
+    let len = remaining
+        .char_indices()
+        .nth(EXCERPT_CHARACTERS)
+        .map_or(remaining.len(), |(offset, _)| offset);
+    let end = start + len;
+    let previous = (start > 0).then(|| {
+        content[..start]
+            .char_indices()
+            .rev()
+            .nth(EXCERPT_CHARACTERS - 1)
+            .map_or(0, |(offset, _)| offset)
+    });
+    (
+        &content[start..end],
+        previous,
+        (end < content.len()).then_some(end),
+    )
 }
 
 impl<R, P> std::fmt::Debug for LibraryController<R, P>

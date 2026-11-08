@@ -23,6 +23,9 @@ pub(crate) enum Command {
     Refresh,
     Import(FileReadRequest),
     Update(FileReadRequest),
+    SaveNote(NoteFormat, Option<NonEmptyText>, String),
+    CorrectNote(Identifier, Identifier, String),
+    ReadOriginal { edit: bool },
     Export(FileExportRequest),
     Search(String),
     CatalogPage(u64),
@@ -39,6 +42,9 @@ pub(crate) enum Command {
 #[derive(Default)]
 pub(crate) struct Snapshot {
     pub view: Option<LibraryView>,
+    pub original: Option<SourceArtifact>,
+    pub edit_original: bool,
+    pub capture_completed: bool,
     pub encrypted: bool,
     pub recall_profile: Option<RecallProfile>,
     pub plain_repair_available: bool,
@@ -222,6 +228,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             command,
             Command::Import(_)
                 | Command::Update(_)
+                | Command::SaveNote(..)
+                | Command::CorrectNote(..)
+                | Command::ReadOriginal { edit: true }
                 | Command::Delete
                 | Command::ChangeRecallProfile(_)
         ) && self.blocked()
@@ -412,6 +421,37 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 self.controller()?.update_selected(&request)?;
                 snapshot.message = Some("Capture committed; original request released.".into());
             }
+            Command::SaveNote(format, title, body) => {
+                self.controller()?.save_note(format, title, body)?;
+                snapshot.capture_completed = true;
+                snapshot.message = Some("Note saved to the library.".into());
+            }
+            Command::CorrectNote(lineage, base, body) => {
+                let receipt = self.controller()?.correct_note(&lineage, &base, body)?;
+                snapshot.capture_completed = true;
+                snapshot.message = Some(
+                    match receipt.outcome() {
+                        FileCaptureOutcome::Idempotent => "The note already has this text.",
+                        _ => "Note corrected. The previous version is in Version history.",
+                    }
+                    .into(),
+                );
+            }
+            Command::ReadOriginal { edit } => {
+                if !self.view_valid {
+                    return Err(recovery_required());
+                }
+                let controller = self.controller()?;
+                if edit
+                    && !controller.selected_version().is_some_and(|version| {
+                        version.current() && is_note_producer(version.producer())
+                    })
+                {
+                    return Err(crate::controller::selection_invalid());
+                }
+                snapshot.original = Some(controller.selected_original()?);
+                snapshot.edit_original = edit;
+            }
             Command::Export(request) => {
                 self.controller()?.export_selected(&request)?;
                 snapshot.message = Some("Managed bytes exported without overwrite.".into());
@@ -430,7 +470,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 snapshot.last_deletion = Some(self.controller()?.delete_selected_lineage()?);
             }
             Command::RetryOriginal => {
+                let was_capture = self.controller()?.backend().holds_capture();
                 snapshot.last_deletion = self.controller()?.backend().retry()?;
+                snapshot.capture_completed = was_capture;
                 snapshot.message =
                     Some("Original request executed; inspect deletion evidence if present.".into());
                 self.refresh_after_write(snapshot);

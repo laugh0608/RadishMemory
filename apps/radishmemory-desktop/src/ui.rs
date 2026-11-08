@@ -1,13 +1,18 @@
-use crate::controller::{CATALOG_PAGE_SIZE, LibraryView};
+use crate::controller::{CATALOG_PAGE_SIZE, LibraryView, text_excerpt};
 use crate::worker::{Command, Snapshot, Worker};
 use crate::{DesktopError, NativeFilePicker, PickerOutcome};
 use eframe::egui;
-use radishmemory_application::{Identifier, NonEmptyText};
+use radishmemory_application::{
+    ApplicationErrorReason, Identifier, NonEmptyText, NoteFormat, is_note_producer,
+    note_body_is_valid,
+};
 
 pub struct RadishMemoryApp {
     worker: Option<Worker>,
     controller: Option<LibraryView>,
     state: Snapshot,
+    note_draft: Option<NoteDraft>,
+    original_offset: usize,
     search_query: String,
     notice: Option<Notice>,
     refresh_notice: Option<String>,
@@ -27,6 +32,20 @@ enum Confirmation {
     RebuildPlainRecall,
     Abandon,
     Close,
+    CloseWithDraft,
+}
+
+enum NoteDraft {
+    New {
+        format: NoteFormat,
+        title: String,
+        body: String,
+    },
+    Correction {
+        lineage: Identifier,
+        base: Identifier,
+        body: String,
+    },
 }
 
 impl RadishMemoryApp {
@@ -39,6 +58,8 @@ impl RadishMemoryApp {
             worker: None,
             controller: None,
             state: Snapshot::default(),
+            note_draft: None,
+            original_offset: 0,
             search_query: String::new(),
             notice: None,
             refresh_notice: None,
@@ -76,6 +97,8 @@ impl RadishMemoryApp {
             &command,
             Command::Import(_)
                 | Command::Update(_)
+                | Command::SaveNote(..)
+                | Command::CorrectNote(..)
                 | Command::Delete
                 | Command::RetryOriginal
                 | Command::ResumeDelete(_)
@@ -83,6 +106,8 @@ impl RadishMemoryApp {
         if let Some(worker) = &mut self.worker {
             match worker.send(command) {
                 Ok(()) => {
+                    self.state.original = None;
+                    self.original_offset = 0;
                     // The write may commit before its refreshed snapshot arrives.
                     if changes_sources && let Some(view) = &mut self.controller {
                         view.clear_search_results();
@@ -99,6 +124,19 @@ impl RadishMemoryApp {
             return;
         };
         self.controller = state.view.take();
+        if state.capture_completed {
+            self.note_draft = None;
+        }
+        if state.edit_original
+            && let Some(original) = state.original.take()
+        {
+            let source = original.params();
+            self.note_draft = Some(NoteDraft::Correction {
+                lineage: source.lineage_id.clone(),
+                base: source.source_id.clone(),
+                body: source.content.as_str().to_owned(),
+            });
+        }
         self.notice = if let Some(error) = state.error.take() {
             Some(Notice::error(&error))
         } else {
@@ -116,6 +154,15 @@ impl RadishMemoryApp {
     fn execute(&mut self, action: UiAction) {
         match action {
             UiAction::RetryStartup => self.send(Command::OpenPlain),
+            UiAction::NewNote => {
+                self.note_draft = Some(NoteDraft::New {
+                    format: NoteFormat::Text,
+                    title: String::new(),
+                    body: String::new(),
+                });
+            }
+            UiAction::DiscardNote => self.note_draft = None,
+            UiAction::ShowOriginalExcerpt(offset) => self.original_offset = offset,
             UiAction::Import | UiAction::Update => match NativeFilePicker::pick_import() {
                 Ok(PickerOutcome::Selected(request)) => {
                     self.send(if matches!(action, UiAction::Import) {
@@ -134,9 +181,17 @@ impl RadishMemoryApp {
                     .controller
                     .as_ref()
                     .and_then(LibraryView::selected_version)
-                    .and_then(|v| v.title())
-                    .map(|t| t.as_str().to_owned());
-                match NativeFilePicker::pick_export(name.as_deref()) {
+                    .and_then(|version| {
+                        if is_note_producer(version.producer()) {
+                            return Some(if version.media_type().as_str() == "text/markdown" {
+                                "note.md"
+                            } else {
+                                "note.txt"
+                            });
+                        }
+                        version.title().map(NonEmptyText::as_str)
+                    });
+                match NativeFilePicker::pick_export(name) {
                     Ok(PickerOutcome::Selected(request)) => self.send(Command::Export(request)),
                     Ok(PickerOutcome::Cancelled) => {
                         self.notice = Some(Notice::neutral("Export cancelled."))
@@ -179,6 +234,13 @@ impl RadishMemoryApp {
         let was_busy = self.busy();
         self.poll();
         let context = ui.ctx().clone();
+        if self.note_draft.is_none() {
+            context.data_mut(|data| {
+                for id in [NOTE_TITLE_ID, NOTE_BODY_ID] {
+                    data.remove::<egui::text_edit::TextEditState>(egui::Id::new(id));
+                }
+            });
+        }
         if self.busy() {
             context.request_repaint_after(std::time::Duration::from_millis(80));
         }
@@ -197,6 +259,9 @@ impl RadishMemoryApp {
             } else if self.state.holds_original {
                 context.send_viewport_cmd(egui::ViewportCommand::CancelClose);
                 self.confirmation = Some(Confirmation::Close);
+            } else if self.note_draft.is_some() {
+                context.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.confirmation = Some(Confirmation::CloseWithDraft);
             } else {
                 // Do not dispatch a click delivered together with an accepted close.
                 self.allow_close = true;
@@ -206,7 +271,7 @@ impl RadishMemoryApp {
         let can_mutate = self.can_mutate();
         let mut action = None;
         egui::CentralPanel::default().show(ui, |ui| {
-            if self.confirmation.is_some() || self.confirm_delete { ui.disable(); }
+            if self.confirmation.is_some() || self.confirm_delete || (self.note_draft.is_some() && !self.state.holds_original) { ui.disable(); }
             if self.busy() { ui.spinner(); ui.label("Library worker is busy; repeated actions are disabled."); ui.disable(); }
             if self.worker.as_ref().is_none_or(|w| w.stopped) { ui.label("Worker unavailable. Restart the app; no success is assumed."); ui.disable(); }
             ui.horizontal_wrapped(|ui| {
@@ -214,6 +279,7 @@ impl RadishMemoryApp {
                 ui.separator();
                 ui.label("Local-only text library");
                 if self.acceptance { ui.label("Synthetic acceptance library"); }
+                if self.controller.is_some() && ui.add_enabled(can_mutate, egui::Button::new("New note…")).clicked() { action = Some(UiAction::NewNote); }
                 if self.controller.is_some() && ui.add_enabled(can_mutate, egui::Button::new("Import file…")).clicked() { action = Some(UiAction::Import); }
                 if ui.button("Refresh").clicked() { action = Some(UiAction::Command(Command::Refresh)); }
                 let can_use_standard_maintenance = self.controller.is_some() || self.state.encrypted;
@@ -286,6 +352,7 @@ impl RadishMemoryApp {
                 return;
             };
 
+            let selected_is_note = controller.current_version().is_some_and(|version| is_note_producer(version.producer()));
             ui.columns(2, |columns| {
                 let (source_columns, content_columns) = columns.split_at_mut(1);
                 let source_ui = &mut source_columns[0];
@@ -357,8 +424,16 @@ impl RadishMemoryApp {
                         ui.label(format!("Versions: {}", controller.versions().len()));
                     });
                     content_ui.horizontal_wrapped(|ui| {
-                        if ui.add_enabled(can_mutate, egui::Button::new("Update from file…")).clicked() {
-                            action = Some(UiAction::Update);
+                        if selected_is_note {
+                            let editing_current = controller.selected_version().is_some_and(|v| v.current());
+                            if ui.add_enabled(can_mutate && editing_current, egui::Button::new("Edit note…")).clicked() {
+                                action = Some(UiAction::Command(Command::ReadOriginal { edit: true }));
+                            }
+                        } else if ui.add_enabled(can_mutate, egui::Button::new("Update from file…")).clicked() {
+                                action = Some(UiAction::Update);
+                        }
+                        if ui.add_enabled(!self.state.holds_original, egui::Button::new("View original")).clicked() {
+                            action = Some(UiAction::Command(Command::ReadOriginal { edit: false }));
                         }
                         if ui.button("Export selected version…").clicked() {
                             action = Some(UiAction::Export);
@@ -393,7 +468,28 @@ impl RadishMemoryApp {
                             version.media_type()
                         ));
                     }
-                    if let Some(excerpt) = controller.selected_excerpt() {
+                    if let Some(original) = &self.state.original {
+                        let original = original.params();
+                        let start = self.original_offset;
+                        let (text, previous, next) = text_excerpt(original.content.as_str(), start);
+                        content_ui.add_space(8.0);
+                        content_ui.strong("Original text");
+                        content_ui.small(format!("v{} · bytes {}..{} of {}", original.version.get(),
+                            start, start + text.len(), original.content_length));
+                        content_ui.horizontal_wrapped(|ui| {
+                            for (label, offset) in [("Previous page of text", previous), ("Next page of text", next)] {
+                                if ui.add_enabled(offset.is_some(), egui::Button::new(label)).clicked()
+                                    && let Some(offset) = offset
+                                {
+                                    action = Some(UiAction::ShowOriginalExcerpt(offset));
+                                }
+                            }
+                        });
+                        egui::ScrollArea::vertical()
+                            .id_salt(("source-original", original.source_id.as_str(), start))
+                            .max_height(110.0)
+                            .show(content_ui, |ui| { ui.label(text); });
+                    } else if let Some(excerpt) = controller.selected_excerpt() {
                         content_ui.add_space(8.0);
                         content_ui.strong("Source fragment").on_hover_text(
                             "Opens at the literal query text when present. Use the buttons to browse the original fragment.",
@@ -426,7 +522,7 @@ impl RadishMemoryApp {
                 } else {
                     content_ui.heading("No managed sources");
                     content_ui
-                        .label("Choose “Import file…” to add one UTF-8 .txt or .md file.");
+                        .label("Write a note or import a UTF-8 .txt or .md file.");
                 }
 
                 content_ui.add_space(16.0);
@@ -513,7 +609,11 @@ impl RadishMemoryApp {
                     .resizable(false)
                     .show(&context, |ui| {
                         ui.label("All managed versions and active memory dependencies will be closed and purged locally.");
-                        ui.label("The original selected file and prior exports are not deleted.");
+                        ui.label(if selected_is_note {
+                            "Prior exports remain outside the managed library."
+                        } else {
+                            "The original selected file and prior exports are not deleted."
+                        });
                         ui.horizontal(|ui| {
                             if ui.button("Cancel").clicked() {
                                 action = Some(UiAction::CancelDelete);
@@ -536,6 +636,7 @@ impl RadishMemoryApp {
                     Confirmation::RebuildPlainRecall => "Recheck the existing plaintext library and rebuild its search index, source tips and memory projection. The library will reopen only after verification.",
                     Confirmation::Abandon => "Permanently abandon exactly the inspected uncommitted capture. Its original request cannot be replayed afterward. Existing committed sources and unknown files are not targets.",
                     Confirmation::Close => "Closing loses the original request held in memory. An unfinished capture then requires explicit abandonment or the exact original request from elsewhere. Persisted deletion authority can be discovered after restart.",
+                    Confirmation::CloseWithDraft => "Close and discard the unsaved note draft?",
                 });
                 ui.horizontal(|ui| {
                     if ui.button("Cancel").clicked() { self.confirmation = None; }
@@ -548,11 +649,26 @@ impl RadishMemoryApp {
                             Confirmation::DowngradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::LegacyUnicode61))),
                             Confirmation::RebuildPlainRecall => action = Some(UiAction::Command(Command::RebuildPlainRecall)),
                             Confirmation::Abandon => action = Some(UiAction::Command(Command::Abandon)),
-                            Confirmation::Close => { self.allow_close = true; context.send_viewport_cmd(egui::ViewportCommand::Close); }
+                            Confirmation::Close | Confirmation::CloseWithDraft => { self.allow_close = true; context.send_viewport_cmd(egui::ViewportCommand::Close); }
                         }
                     }
                 });
             });
+        }
+        if self.confirmation.is_none() && !self.state.holds_original {
+            let worker_available = self.worker.as_ref().is_some_and(|worker| !worker.stopped);
+            let save_enabled = worker_available && can_mutate && self.controller.is_some();
+            let busy = self.busy();
+            if let Some(draft) = &mut self.note_draft {
+                action = render_note_editor(
+                    &context,
+                    draft,
+                    busy,
+                    save_enabled,
+                    worker_available,
+                    self.notice.as_ref(),
+                );
+            }
         }
         if let Some(action) = action {
             self.execute(action);
@@ -566,6 +682,104 @@ impl eframe::App for RadishMemoryApp {
     }
 }
 
+const NOTE_TITLE_ID: &str = "application-note-title";
+const NOTE_BODY_ID: &str = "application-note-body";
+
+fn render_note_editor(
+    context: &egui::Context,
+    draft: &mut NoteDraft,
+    busy: bool,
+    save_enabled: bool,
+    worker_available: bool,
+    notice: Option<&Notice>,
+) -> Option<UiAction> {
+    egui::Modal::new(egui::Id::new("application-note-editor"))
+        .show(context, |ui| {
+            ui.set_width((context.content_rect().width() - 64.0).clamp(200.0, 520.0));
+            if busy {
+                ui.disable();
+            }
+            let (body, save_label) = match draft {
+                NoteDraft::New {
+                    format,
+                    title,
+                    body,
+                } => {
+                    ui.heading("New note");
+                    ui.horizontal(|ui| {
+                        ui.selectable_value(format, NoteFormat::Text, "Text");
+                        ui.selectable_value(format, NoteFormat::Markdown, "Markdown");
+                    });
+                    ui.add(
+                        egui::TextEdit::singleline(title)
+                            .id(egui::Id::new(NOTE_TITLE_ID))
+                            .hint_text("Optional title")
+                            .desired_width(f32::INFINITY),
+                    );
+                    (body, "Save note")
+                }
+                NoteDraft::Correction { body, .. } => {
+                    ui.heading("Edit note");
+                    ui.label("The previous text stays available in Version history.");
+                    (body, "Save correction")
+                }
+            };
+            egui::ScrollArea::vertical()
+                .max_height((context.content_rect().height() - 240.0).clamp(100.0, 260.0))
+                .show(ui, |ui| {
+                    ui.add(
+                        egui::TextEdit::multiline(body)
+                            .id(egui::Id::new(NOTE_BODY_ID))
+                            .hint_text("Enter or paste the source text")
+                            .desired_rows(8)
+                            .desired_width(f32::INFINITY),
+                    );
+                });
+            let valid = note_body_is_valid(body);
+            if !valid {
+                ui.small("Enter some text, up to 8 MiB of UTF-8, without NUL characters.");
+            }
+            if let Some(notice) = notice
+                .filter(|notice| busy || !save_enabled && matches!(notice.kind, NoticeKind::Error))
+            {
+                ui.colored_label(notice.color(), &notice.message);
+            }
+            let mut action = None;
+            ui.horizontal(|ui| {
+                if ui
+                    .add_enabled(save_enabled && valid, egui::Button::new(save_label))
+                    .clicked()
+                {
+                    let command = match draft {
+                        NoteDraft::New {
+                            format,
+                            title,
+                            body,
+                        } => Command::SaveNote(
+                            *format,
+                            NonEmptyText::new(title.as_str()).ok(),
+                            body.clone(),
+                        ),
+                        NoteDraft::Correction {
+                            lineage,
+                            base,
+                            body,
+                        } => Command::CorrectNote(lineage.clone(), base.clone(), body.clone()),
+                    };
+                    action = Some(UiAction::Command(command));
+                }
+                if !save_enabled && worker_available && ui.button("Refresh library").clicked() {
+                    action = Some(UiAction::Command(Command::Refresh));
+                }
+                if ui.button("Discard draft").clicked() {
+                    action = Some(UiAction::DiscardNote);
+                }
+            });
+            action
+        })
+        .inner
+}
+
 #[cfg(test)]
 mod catalog_tests;
 #[cfg(test)]
@@ -574,6 +788,8 @@ mod close_tests;
 mod font_tests;
 #[cfg(test)]
 mod fragment_tests;
+#[cfg(test)]
+mod note_tests;
 #[cfg(test)]
 mod read_session_tests;
 #[cfg(test)]
@@ -636,6 +852,8 @@ enum UiAction {
     Command(Command),
     Confirm(Confirmation),
     RetryStartup,
+    NewNote,
+    DiscardNote,
     Import,
     Update,
     Export,
@@ -650,6 +868,7 @@ enum UiAction {
         fragment_id: Identifier,
     },
     ShowFragmentExcerpt(usize),
+    ShowOriginalExcerpt(usize),
     RequestDelete,
     CancelDelete,
     ConfirmDelete,
@@ -676,6 +895,16 @@ impl Notice {
 
     fn error(error: &DesktopError) -> Self {
         let mut message = redacted_error(error);
+        match error.application_failure().map(|failure| failure.reason()) {
+            Some(ApplicationErrorReason::NoteVersionChanged) => {
+                message = "A newer version was saved. Keep a copy of your draft, then discard it, refresh, and reopen the current version.".into();
+            }
+            Some(ApplicationErrorReason::NoteEntryMismatch) => {
+                message =
+                    "Refresh the library and use the edit action shown for this source.".into();
+            }
+            _ => {}
+        }
         if error.reason() == crate::DesktopErrorReason::SelectionInvalid {
             message.push_str(". Refresh the library and search again to select a current result.");
         }

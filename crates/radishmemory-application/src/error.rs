@@ -51,6 +51,9 @@ pub enum ApplicationErrorReason {
     SourceNotFound,
     OriginalRequestRequired,
     RequestProfileMismatch,
+    NoteBodyInvalid,
+    NoteVersionChanged,
+    NoteEntryMismatch,
 }
 
 /// Redacted application failure with a local source chain.
@@ -63,6 +66,18 @@ pub struct ApplicationError {
 }
 
 impl ApplicationError {
+    pub(crate) const fn invalid_note_request(
+        operation: ApplicationOperation,
+        reason: ApplicationErrorReason,
+    ) -> Self {
+        Self::without_source(
+            operation,
+            ApplicationErrorCode::InvalidRequest,
+            reason,
+            false,
+        )
+    }
+
     pub(crate) const fn original_request_required(operation: ApplicationOperation) -> Self {
         Self::without_source(
             operation,
