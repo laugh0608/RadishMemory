@@ -1,8 +1,8 @@
-use crate::controller::LibraryView;
+use crate::controller::{CATALOG_PAGE_SIZE, LibraryView};
 use crate::worker::{Command, Snapshot, Worker};
 use crate::{DesktopError, NativeFilePicker, PickerOutcome};
 use eframe::egui;
-use radishmemory_application::{Identifier, SourceLineageSummary};
+use radishmemory_application::{Identifier, NonEmptyText};
 
 pub struct RadishMemoryApp {
     worker: Option<Worker>,
@@ -262,13 +262,24 @@ impl RadishMemoryApp {
                 let (source_columns, content_columns) = columns.split_at_mut(1);
                 let source_ui = &mut source_columns[0];
                 source_ui.heading("Sources");
-                source_ui.label(format!("{} active lineage(s)", controller.sources().len()));
+                let offset = controller.catalog_offset();
+                let page_size = CATALOG_PAGE_SIZE as u64;
+                source_ui.horizontal_wrapped(|ui| {
+                    if ui.add_enabled(offset > 0, egui::Button::new("Previous page")).clicked() {
+                        action = Some(UiAction::Command(Command::CatalogPage(offset - page_size)));
+                    }
+                    ui.label(format!("Page {}", offset / page_size + 1));
+                    if ui.add_enabled(controller.has_next_catalog_page(), egui::Button::new("Next page")).clicked() {
+                        action = Some(UiAction::Command(Command::CatalogPage(offset + page_size)));
+                    }
+                });
+                source_ui.label(format!("{} active lineage(s) on this page", controller.sources().len()));
                 source_ui.separator();
-                egui::ScrollArea::vertical().id_salt("source-catalog").show(source_ui, |ui| {
+                egui::ScrollArea::vertical().id_salt(("source-catalog", offset)).show(source_ui, |ui| {
                     for source in controller.sources() {
                         let selected =
                             controller.selected_lineage_id() == Some(source.lineage_id());
-                        if ui.selectable_label(selected, source_label(source)).clicked() {
+                        if ui.selectable_label(selected, source_label(source.title())).clicked() {
                             action = Some(UiAction::SelectLineage(source.lineage_id().clone()));
                         }
                         ui.small(format!(
@@ -301,18 +312,21 @@ impl RadishMemoryApp {
                 });
                 content_ui.separator();
 
-                if let Some(source) = controller.selected_lineage() {
-                    content_ui.heading(source_label(source));
+                if let Some(source) = controller.current_version() {
+                    content_ui.heading(source_label(source.title()));
+                    if controller.selected_lineage().is_none() {
+                        content_ui.small("Selected source is outside this catalog page.");
+                    }
                     content_ui.horizontal_wrapped(|ui| {
                         ui.label(format!(
                             "Current version: {}",
-                            source.current_version().get()
+                            source.version().get()
                         ));
                         ui.label(format!(
                             "Managed bytes: {}",
                             format_bytes(source.content_length())
                         ));
-                        ui.label(format!("Versions: {}", source.version_count()));
+                        ui.label(format!("Versions: {}", controller.versions().len()));
                     });
                     content_ui.horizontal_wrapped(|ui| {
                         if ui.add_enabled(can_mutate, egui::Button::new("Update from file…")).clicked() {
@@ -435,7 +449,7 @@ impl RadishMemoryApp {
 
             if self.confirm_delete {
                 let context = ui.ctx().clone();
-                egui::Window::new("Delete managed lineage")
+                egui::Window::new("Confirm managed lineage deletion")
                     .collapsible(false)
                     .resizable(false)
                     .show(&context, |ui| {
@@ -492,6 +506,8 @@ impl eframe::App for RadishMemoryApp {
 }
 
 #[cfg(test)]
+mod catalog_tests;
+#[cfg(test)]
 mod close_tests;
 #[cfg(test)]
 mod font_tests;
@@ -502,11 +518,8 @@ mod recall_profile_tests;
 #[cfg(test)]
 mod test_support;
 
-fn source_label(source: &SourceLineageSummary) -> String {
-    source.title().map_or_else(
-        || "Untitled source".to_owned(),
-        |title| title.as_str().to_owned(),
-    )
+fn source_label(title: Option<&NonEmptyText>) -> &str {
+    title.map_or("Untitled source", NonEmptyText::as_str)
 }
 
 fn format_bytes(bytes: u64) -> String {

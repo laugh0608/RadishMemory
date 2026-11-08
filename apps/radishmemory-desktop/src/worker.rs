@@ -23,6 +23,7 @@ pub(crate) enum Command {
     Update(FileReadRequest),
     Export(FileExportRequest),
     Search(String),
+    CatalogPage(u64),
     SelectLineage(Identifier),
     SelectVersion(Identifier),
     SelectResult(Identifier, Identifier),
@@ -228,7 +229,10 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 let after = self.after_observed_action.take();
                 let open = || {
                     let result = location
-                        .open_with_snapshot(ProductionRuntime, crate::controller::CATALOG_PAGE_SIZE)
+                        .open_with_snapshot(
+                            ProductionRuntime,
+                            crate::controller::CATALOG_READ_LIMIT,
+                        )
                         .map_err(app_error);
                     #[cfg(test)]
                     if let Some(after) = after {
@@ -345,11 +349,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::Search(query) => {
                 self.controller()?.search(&query)?;
             }
+            Command::CatalogPage(offset) => self.controller()?.show_catalog_page(offset)?,
             Command::SelectLineage(id) => self.controller()?.select_lineage(&id)?,
             Command::SelectVersion(id) => self.controller()?.select_source_version(&id)?,
             Command::SelectResult(lineage, source) => {
-                self.controller()?.select_lineage(&lineage)?;
-                self.controller()?.select_source_version(&source)?;
+                self.controller()?.select_search_result(&lineage, &source)?;
             }
             Command::Delete => {
                 snapshot.last_deletion = Some(self.controller()?.delete_selected_lineage()?);

@@ -30,7 +30,7 @@ fn cancelled_authenticated_read_withdraws_populated_ui_until_explicit_recovery()
             let view = searched.view.as_ref().unwrap();
             assert_eq!(view.search_results().len(), 1);
             let source = view.selected_source_id().unwrap().clone();
-            let title = source_label(view.selected_lineage().unwrap());
+            let title = source_label(view.selected_lineage().unwrap().title()).to_owned();
             let mut h = Harness::new();
             h.results.send(searched).unwrap();
             let output = h.frame(false, vec![]);

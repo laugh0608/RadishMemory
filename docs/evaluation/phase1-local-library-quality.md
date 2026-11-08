@@ -118,3 +118,13 @@ Windows / Linux ARM64 各完成两轮真实 provider / GUI、注销重登和五�
 上述准备包随后按当前任务原授权及追加一次启动授权执行，详见[实际结果](phase1-recall-native-acceptance.md#2026-11-02-macos-原生局部结果)。明文 / 加密升级与降级的 Cancel / Confirm、真实中文蓝色 / 红色 / 主题找回、模式切换后的旧结果清空、关闭重开、限制文案与四份 BOM / CRLF 精确导出均有本批 GUI 证据；最终 v8 / Legacy、canonical / source IDs 与对象摘要保持，三个可见窗口均正常退出。默认明文打开 v8 仍显示通用 StorageFailure，不能视为模式引导体验已完成；FTS 仍保存完整明文。
 
 两次拖动未改变 2160×1504 像素窗口，760×520 原生内容尺寸仍未覆盖；Han 升级后旧 ASCII 词未在 GUI 重跑。没有可见系统 key 提示不证明零调用或取消已验；独立人工标签、其它平台显示 / 切换、Q04 后续规模预算、其它质量场景与完整 Q01 / P1-S05 保持开放。
+
+## 2026-11-08 Q02 桌面目录分页与页外选择
+
+基于 `e253058` 的旧控制器只读取前 200 条，点击第 201 条的有效搜索结果返回 `SelectionInvalid`。桌面现沿用应用层目录的 `offset` / `limit`，每页显示 200 条，用额外一行决定下一页是否可用。搜索链接按 lineage 和精确 source ID 加载该来源的版本，保留当前目录页并提示目标在页外。显式 Refresh 从首页重新加载；写入后的目录刷新继续单独报告读取错误。
+
+macOS ARM64 的两项 headless 回归各由正式 application API 写入 201 个同时间戳的合成来源，用写入回执独立核对同时间按 lineage ID 排序、首页往返无遗漏或重复，以及末页边界。默认 v6 与迁移后的显式加密入口均经正式 UI / worker 覆盖页外选择和删除确认。更新、导出以测试选择结果进入生产 worker，核对新增版本、BOM / CRLF 逐字节导出、应用层删除完成证据与重开后不再命中；导出文件保留在合成测试的临时目录，随后由 fixture 收尾。
+
+离线定向 `cargo test -p radishmemory-desktop --locked catalog_tests` 两项通过，默认 `cargo build -p radishmemory-desktop --locked` 通过。离线 `./scripts/check-repo.sh` 通过仓库基线、格式化、Clippy 与 30 个 Rust suites，共 437 passed、0 failed、14 ignored。
+
+加密回归使用 synthetic provider。原生窗口、系统文件选择器、真实凭据、其他平台及目录读取性能均未在此切片验收。分页沿用现有目录读取与认证，不给出规模或延迟结论；Q03、Q06 的后段定位与完整结果刷新、完整 P1-S05 分别验收。

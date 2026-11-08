@@ -10,6 +10,7 @@ use crate::{
 };
 
 pub(crate) const CATALOG_PAGE_SIZE: usize = 200;
+pub(crate) const CATALOG_READ_LIMIT: usize = CATALOG_PAGE_SIZE + 1;
 const SEARCH_RESULT_LIMIT: usize = 50;
 
 pub struct LibraryController<R, P = radishmemory_source_vault::PlatformKeyProvider>
@@ -25,6 +26,8 @@ where
 #[derive(Clone, Default)]
 pub struct LibraryView {
     sources: Vec<SourceLineageSummary>,
+    catalog_offset: u64,
+    has_next_catalog_page: bool,
     selected_lineage_id: Option<Identifier>,
     versions: Vec<SourceVersionSummary>,
     selected_source_id: Option<Identifier>,
@@ -63,7 +66,7 @@ where
             return Err(crate::backend::recovery_required());
         };
         let snapshot = library
-            .read_snapshot(previous.as_ref(), CATALOG_PAGE_SIZE)
+            .read_snapshot(previous.as_ref(), CATALOG_READ_LIMIT)
             .map_err(crate::backend::app_error)?;
         self.view = LibraryView::from_read_snapshot(&snapshot);
         Ok(snapshot)
@@ -92,7 +95,7 @@ where
             .refresh_sources()
             .and_then(|()| {
                 if let Some(lineage) = selected {
-                    self.select_lineage(lineage)
+                    self.load_selection(lineage, None)
                 } else {
                     Ok(())
                 }
@@ -110,46 +113,89 @@ where
     pub fn refresh_sources(&mut self) -> Result<(), DesktopError> {
         let previous = self.view.selected_lineage_id.clone();
         self.view = LibraryView::default();
-        self.view.sources = self
+        self.load_catalog_page(0, previous.as_ref())
+    }
+
+    pub(crate) fn show_catalog_page(&mut self, offset: u64) -> Result<(), DesktopError> {
+        self.load_catalog_page(offset, None)
+    }
+
+    fn load_catalog_page(
+        &mut self,
+        mut offset: u64,
+        preferred: Option<&Identifier>,
+    ) -> Result<(), DesktopError> {
+        let mut sources = self
             .library
-            .list_sources(0, CATALOG_PAGE_SIZE)
-            .map_err(|source| DesktopError::application(&source))?;
-        let selected = previous
-            .filter(|lineage_id| {
-                self.view
-                    .sources
-                    .iter()
-                    .any(|source| source.lineage_id() == lineage_id)
-            })
-            .or_else(|| {
-                self.view
-                    .sources
-                    .first()
-                    .map(|source| source.lineage_id().clone())
-            });
-        if let Some(lineage_id) = selected {
-            self.select_lineage(&lineage_id)
+            .list_sources(offset, CATALOG_READ_LIMIT)
+            .map_err(crate::backend::app_error)?;
+        // Another window can remove the last page between clicks.
+        if offset != 0 && sources.is_empty() {
+            offset = 0;
+            sources = self
+                .library
+                .list_sources(offset, CATALOG_READ_LIMIT)
+                .map_err(crate::backend::app_error)?;
+        }
+        let visible = &sources[..sources.len().min(CATALOG_PAGE_SIZE)];
+        let selected = preferred
+            .and_then(|id| visible.iter().find(|source| source.lineage_id() == id))
+            .or_else(|| visible.first());
+        if let Some(source) = selected {
+            self.load_selection(source.lineage_id(), None)?;
         } else {
             self.view.selected_lineage_id = None;
             self.view.selected_source_id = None;
             self.view.versions.clear();
-            Ok(())
         }
+        self.view.set_catalog_page(offset, sources);
+        Ok(())
     }
 
     pub fn select_lineage(&mut self, lineage_id: &Identifier) -> Result<(), DesktopError> {
-        let source = self
+        if !self
             .sources
             .iter()
-            .find(|source| source.lineage_id() == lineage_id)
-            .ok_or_else(selection_invalid)?;
-        let current_source_id = source.current_source_id().clone();
+            .any(|source| source.lineage_id() == lineage_id)
+        {
+            return Err(selection_invalid());
+        }
+        self.load_selection(lineage_id, None)
+    }
+
+    pub(crate) fn select_search_result(
+        &mut self,
+        lineage_id: &Identifier,
+        source_id: &Identifier,
+    ) -> Result<(), DesktopError> {
+        if !self
+            .search_results
+            .iter()
+            .any(|result| result.lineage_id() == lineage_id && result.source_id() == source_id)
+        {
+            return Err(selection_invalid());
+        }
+        self.load_selection(lineage_id, Some(source_id))
+    }
+
+    fn load_selection(
+        &mut self,
+        lineage_id: &Identifier,
+        source_id: Option<&Identifier>,
+    ) -> Result<(), DesktopError> {
         let versions = self
             .library
             .list_source_versions(lineage_id)
-            .map_err(|source| DesktopError::application(&source))?;
+            .map_err(crate::backend::app_error)?;
+        let selected = versions
+            .iter()
+            .find(|version| match source_id {
+                Some(id) => version.source_id() == id,
+                None => version.current(),
+            })
+            .ok_or_else(selection_invalid)?;
         self.view.selected_lineage_id = Some(lineage_id.clone());
-        self.view.selected_source_id = Some(current_source_id);
+        self.view.selected_source_id = Some(selected.source_id().clone());
         self.view.versions = versions;
         Ok(())
     }
@@ -271,20 +317,34 @@ where
 
 impl LibraryView {
     fn from_read_snapshot(snapshot: &radishmemory_source_vault::LibraryReadSnapshot) -> Self {
-        Self {
-            sources: snapshot.sources.clone(),
+        let mut view = Self {
             selected_lineage_id: snapshot.selected_lineage_id.clone(),
             selected_source_id: snapshot.selected_source_id.clone(),
             versions: snapshot.versions.clone(),
-            search_results: Vec::new(),
-        }
+            ..Self::default()
+        };
+        view.set_catalog_page(0, snapshot.sources.clone());
+        view
     }
-}
 
-impl LibraryView {
+    fn set_catalog_page(&mut self, offset: u64, mut sources: Vec<SourceLineageSummary>) {
+        self.catalog_offset = offset;
+        self.has_next_catalog_page = sources.len() > CATALOG_PAGE_SIZE;
+        sources.truncate(CATALOG_PAGE_SIZE);
+        self.sources = sources;
+    }
+
     #[must_use]
     pub fn sources(&self) -> &[SourceLineageSummary] {
         &self.sources
+    }
+
+    pub(crate) fn catalog_offset(&self) -> u64 {
+        self.catalog_offset
+    }
+
+    pub(crate) fn has_next_catalog_page(&self) -> bool {
+        self.has_next_catalog_page
     }
 
     #[must_use]
@@ -307,12 +367,17 @@ impl LibraryView {
         self.selected_source_id.as_ref()
     }
 
+    /// The selected lineage's catalog row, if visible on the current page.
     #[must_use]
     pub fn selected_lineage(&self) -> Option<&SourceLineageSummary> {
         let selected = self.selected_lineage_id.as_ref()?;
         self.sources
             .iter()
             .find(|source| source.lineage_id() == selected)
+    }
+
+    pub(crate) fn current_version(&self) -> Option<&SourceVersionSummary> {
+        self.versions.iter().find(|version| version.current())
     }
 
     #[must_use]
