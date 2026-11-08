@@ -88,7 +88,9 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 宿主在平台应用数据目录的专用位置打开文件 SQLite，启动时验证 capability、migration、canonical facts、派生索引和 binding。派生漂移只有在 canonical facts 通过完整复验后才能由用户显式 rebuild；canonical 损坏不能通过扫描外部原件、建立空库或 UI cache 静默恢复。首批仍不启动本地 HTTP 服务、daemon、网络、模型、RadishMind 或同步，也不声明本地明文数据库已经加密。
 
-`P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 只定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型；`LocalLibrary` 组合 open、import / update、list / get、search citation、exact export、canonical lineage deletion evidence、verify / rebuild，并通过 `ApplicationRuntime` 隔离 production ID / clock。
+`P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型。`LocalLibrary` 组合打开、写入、目录、检索、精确导出、来源删除、Verify 与 Rebuild，通过 `ApplicationRuntime` 隔离 production ID 和时钟。应用内手输资料复用来源和版本写入，显式保存与更正语义见 [ADR 0010](adr/0010-phase1-desktop-text-entry.md)。
+
+桌面 worker 按页读取目录，以来源版本和片段标识打开搜索结果。对照可以引用可读取的历史版本，本地 mock 问答只使用重验后仍为当前版本的证据。搜索命中和问答引用发现失效时，worker 重新读取目录、详情和上次提交的搜索，返回同一组 UI 快照。检索筛选、引用校验和证据撤回规则见 [ADR 0007](adr/0007-phase1-local-library-host.md)。
 
 `P1-H04` 已以第一方 `radishmemory-desktop` package 落地平台壳层：`directories::ProjectDirs` 只解析专用 local data directory，host profile 原子保存 namespace / device identity，`getrandom` 与 UTC clock 实现 `ApplicationRuntime`，`rfd` 把一次选择缩为精确路径及直接 parent capability，`eframe` UI 只持有 worker 返回的读取快照，并发送显式 application 动作；单一串行 worker 持有 `LibraryController` 与存储入口。该层不依赖 `radishmemory-sqlite` 或 `radishmemory-file-entry`，不构造 canonical object / 删除闭包，不初始化普通日志 sink，也不保存路径、bookmark、picker token 或第二份 UI 数据库。当前已取得 macOS AppKit、Windows ARM64 native dialog 与 Debian ARM64 / GNOME Wayland XDG Portal / GTK picker 的可见 GUI 正向 / 失败关闭证据；Windows 实机暴露的 OpenGL-only 阻断已通过把同版本 `eframe` renderer feature 切换为 `wgpu` 最小修复，当前图也已通过 Linux / macOS / Windows locked CI。333 个目标可达 crate、license option、默认字体、bundled SQLite 与条件平台依赖已由 [third-party notices 复核](implementation/phase1-third-party-notices.md)收口，P1-H05 gate 完成。
 

@@ -58,7 +58,7 @@ PDF / 图片解析只能在 encrypted Source Vault 的 adapter、migration 和 h
 
 ### 阶段 1 的用户路径与质量补齐
 
-阶段 1 不以格式数量或模型数量证明完成。当前文本能力应先能通过 production 入口完成保存、中文找回、完整目录访问、回源、版本更新、导出与删除，并能在派生损坏后进入受限修复。具体计划见[本地资料库质量验收](evaluation/phase1-local-library-quality.md)，这些场景尚未因文档加入而通过。
+阶段 1 先通过 production 入口验证文本保存、中文找回、完整目录访问、回源、版本更新、导出和删除，并在派生异常时验证受限修复。带出处的本地 mock 问答也沿这条资料路径验收。各场景的实现、合成回归、原生结果及剩余范围见[本地资料库质量验收](evaluation/phase1-local-library-quality.md)。
 
 [ADR 0009](adr/0009-versioned-chinese-recall.md)定义版本化中文短语检索与显式升级 / 降级边界，实施与局部结果见[生产切片](implementation/phase1-chinese-recall.md)。人工标签、原生切换、跨平台和规模成本按 Q01 / Q04 原标准分别验证；实际接续顺序见 current，不从固定样本通过关闭完整质量场景。
 

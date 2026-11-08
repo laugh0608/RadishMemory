@@ -68,12 +68,13 @@
 - [旧检索格式与最小窗口验收](evaluation/phase1-recall-native-acceptance.md)：独立 LegacyUnicode61 旧库、明文 / 加密切换、中文命中、重开和四份精确导出的 macOS 局部结果；760×520 原生内容尺寸仍待验。
 - [Windows / Linux 真实 provider 与 GUI 验收方案](evaluation/phase1-windows-linux-provider-gui-plan.md)：专用普通账户、独立合成库 / slot、串行会话、凭据确认与分层清理范围，以及两平台真实正常链路、重登、导出、删除与保留结果。
 - [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；M01 因源码摘要漂移暂缓，当前构建的空库自然 busy 关闭结果见宿主记录。
-- [阶段 1 本地资料库质量验收计划](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、完整目录、维护恢复、性能、证据与回源的待执行场景。
+- [阶段 1 本地资料库质量验收](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、目录、派生修复、性能与回源的关闭条件和实际证据，含明文与加密正文的 macOS 原生问答。
     - [Phase 1 中文找回基线](evaluation/phase1-chinese-retrieval-baseline.md)：固定合成语料、候选相关来源、两种 production 入口与重开 / 重建对照；记录真实漏召回，不替代 Q01 质量门禁。
     - [Phase 1 中文检索候选与兼容方案](evaluation/phase1-chinese-retrieval-candidates.md)：四种候选的固定语料比较与相邻短语反例；接受范围见 ADR 0009。
     - [Phase 1 版本化中文检索落地](implementation/phase1-chinese-recall.md)：双入口质量、显式升级 / 降级、旧代码兼容与长文成本。
 - [2026-10-28 中文显示与检索日终记录](status/2026-10-28-chinese-recall.md)：当天全部提交、代码与文档核对、性能限制和下次建议。
 - [2026-11-02 中文找回、成本与原生验收日终记录](status/2026-11-02-chinese-recall.md)：当天四个代码 / 验收提交及最后文档收口、按代码核对的证据更新、保留范围与下次建议。
+- [2026-11-08 桌面资料库与加密问答日终记录](status/2026-11-08-desktop-library.md)：当天的实现和原生验收提交、代码与文档复核及保留范围。
 - [2026-09-15 Source Vault 日终记录与明日事项](status/2026-09-15-source-vault.md)：当天四批提交、文档复核、密钥初始化证据及正文迁移的下一批范围。
 - [2026-09-10 Source Vault 日终记录与明日事项](status/2026-09-10-source-vault.md)：当天提交、代码与文档核对、平台验证、环境收尾及 Linux 下一步。
 - [2026-09-05 项目审阅记录](implementation/2026-09-05-project-review.md)：已复现问题、静态发现、风险、验证边界与待决策事项。

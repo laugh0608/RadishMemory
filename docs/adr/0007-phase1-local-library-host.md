@@ -99,7 +99,7 @@ ID 与时钟是 application runtime capability。测试使用确定性实现；p
 
 UI 可以在当前本地交互中显示用户刚刚选择的文件名和系统选择器返回的可见路径，但不得把路径复制到持久应用错误、普通日志、诊断包、截图 fixture 或 canonical metadata 之外的 host state。删除 UI 必须明确区分 RadishMemory 受管副本与外部原件 / 用户导出，不能把本地 evidence 显示为外部副本或备份已删除。
 
-首批 UI 不包含聊天、模型回答、PDF / OCR、图片、Embedding、网页抓取、目录递归、剪贴板监听、后台导入、同步、插件或通用 workflow engine。
+本地问答的可见结果是下文定义的 mock 原文摘录。首批 UI 的非目标包括聊天、真实模型回答、PDF / OCR、图片、Embedding、网页抓取、目录递归、剪贴板监听、后台导入、同步、插件和通用 workflow engine。
 
 ### 桌面资料搜索筛选
 
@@ -128,6 +128,8 @@ UI 可以在当前本地交互中显示用户刚刚选择的文件名和系统�
 application error 只公开 operation、稳定 category / reason、retryable、必要稳定 ID 和可安全展示的阶段。它可以保留 core、file-entry 或 SQLite error 作为本地 source chain，但 `Display` / `Debug`、普通日志和 UI telemetry 不得输出正文、路径、allowed root、bookmark、数据库路径、被拒绝字节或可逆摘要。
 
 启动时数据库 capability、migration、canonical integrity、FTS / projection 或 binding 验证失败时，宿主显示不可用状态并停止普通操作。只有派生数据损坏且 canonical facts 已通过完整复验时，用户才能显式执行 rebuild；canonical 损坏不允许重建、重新读取外部文件或创建空数据库来掩盖。
+
+默认 v6 因逻辑派生不一致启动失败时，用户可先只读检查现有库，再显式确认重建。执行时在 SQLite 写事务内重验原始事实、绑定和 FTS 结构，只重建派生行，并在提交后复验通过才重新交付普通视图。数据库缺失、格式不符、FTS 结构损坏或原始事实异常时停止修复。加密正文的 Verify 与 Rebuild 按 [ADR 0008](0008-phase1-encrypted-source-vault.md)走已认证对象路径。
 
 首批不自动恢复正在进行的 UI operation。capture 与计划提交继续依赖现有 SQLite transaction；export 继续依赖任务临时文件和原子不覆盖发布；删除继续报告真实 pending / failed / completed evidence。进程终止后重新打开必须从持久事实恢复状态，不从 UI cache 推断成功。
 
