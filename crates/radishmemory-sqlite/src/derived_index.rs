@@ -124,6 +124,7 @@ impl Candidate {
     }
 }
 
+#[derive(Default)]
 struct Catalog {
     recall_rows: BTreeMap<RecallKey, RecallRow>,
     projections: BTreeMap<String, ProjectionRow>,
@@ -141,11 +142,7 @@ impl Catalog {
     ) -> Result<Self, SqliteError> {
         let _cost = crate::read_cost::span(crate::read_cost::Stage::CatalogLoad);
         verify_source_tips(connection, load_source)?;
-        let mut catalog = Self {
-            recall_rows: BTreeMap::new(),
-            projections: BTreeMap::new(),
-            candidates: BTreeMap::new(),
-        };
+        let mut catalog = Self::default();
         catalog.load_sources(connection, load_source)?;
         catalog.load_memories(connection, load_source)?;
         Ok(catalog)
@@ -315,6 +312,13 @@ pub(crate) fn rebuild_with_sources(
 pub(crate) fn verify(connection: &Connection) -> Result<(), SqliteError> {
     let expected = Catalog::load(connection)?;
     verify_catalog(connection, &expected)
+}
+
+/// Check the canonical inputs that produce tips and memory projections without
+/// using their persisted derivations. Managed source fragments are checked separately.
+pub(crate) fn verify_rebuild_inputs(connection: &Connection) -> Result<(), SqliteError> {
+    expected_source_tips_with(connection, &load_source_artifact)?;
+    Catalog::default().load_memories(connection, &load_source_artifact)
 }
 
 pub(crate) fn verify_with_sources(

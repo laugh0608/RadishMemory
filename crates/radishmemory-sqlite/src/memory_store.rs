@@ -412,6 +412,28 @@ fn load_memory_proposal(
     )
 }
 
+pub(crate) fn verify_active_proposals(
+    connection: &Connection,
+    namespace: &Identifier,
+) -> Result<(), SqliteError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT proposal_id FROM radishmemory_memory_proposals
+             WHERE namespace_id = ?1 AND deletion_state = 'active'",
+        )
+        .map_err(SqliteError::storage)?;
+    let rows = statement
+        .query_map([namespace.as_str()], |row| row.get::<_, String>(0))
+        .map_err(SqliteError::storage)?;
+    for row in rows {
+        let id = identifier(row.map_err(SqliteError::storage)?)?;
+        let proposal = load_memory_proposal(connection, namespace, &id)?
+            .ok_or_else(|| SqliteError::invalid_stored(SqliteStorageReason::MissingProposal))?;
+        load_decision_chain(connection, &proposal)?;
+    }
+    Ok(())
+}
+
 fn load_memory_proposal_with(
     connection: &Connection,
     namespace_id: &Identifier,

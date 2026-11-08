@@ -94,6 +94,10 @@ impl SqliteError {
         Self::with_source(SqliteErrorCode::Open, source)
     }
 
+    pub(crate) fn open_path(source: std::io::Error) -> Self {
+        Self::with_source(SqliteErrorCode::Open, source)
+    }
+
     pub(crate) fn configuration(reason: SqliteConfigurationReason) -> Self {
         Self {
             code: SqliteErrorCode::ConnectionConfiguration,
@@ -269,7 +273,7 @@ impl SqliteError {
         }
     }
 
-    fn with_source(code: SqliteErrorCode, source: rusqlite::Error) -> Self {
+    fn with_source(code: SqliteErrorCode, source: impl Error + Send + Sync + 'static) -> Self {
         Self {
             code,
             capability: None,

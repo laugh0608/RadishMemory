@@ -167,6 +167,13 @@ pub(crate) fn verify_plaintext_facts(
 
 pub(crate) fn verify_plaintext_bodies(connection: &Connection) -> Result<(), SqliteError> {
     verify_database_integrity(connection)?;
+    verify_plaintext_source_facts(connection)?;
+    crate::derived_index::verify(connection)
+}
+
+/// Validate managed source bytes, active fragments, bindings and capture audit
+/// independently of the recall rows or lineage tips.
+pub(crate) fn verify_plaintext_source_facts(connection: &Connection) -> Result<(), SqliteError> {
     // Verify digest and length of every remaining BLOB, including old versions and deletion
     // residuals that ordinary active/current source reads intentionally exclude.
     let mut statement = connection.prepare(
@@ -205,8 +212,7 @@ pub(crate) fn verify_plaintext_bodies(connection: &Connection) -> Result<(), Sql
                 .ok_or_else(profile_mismatch)?;
         }
     }
-    crate::source_capture::verify_origin_bindings(connection)?;
-    crate::derived_index::verify(connection)
+    crate::source_capture::verify_origin_bindings(connection)
 }
 
 // Shared integrity and namespace gate for both bootstrap and resumed migration.

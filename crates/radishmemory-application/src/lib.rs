@@ -306,6 +306,50 @@ where
         })
     }
 
+    /// Check an existing v6 library without opening it for ordinary reads or writes.
+    pub fn check_recall_repair(
+        database_path: &Path,
+        config: &LocalLibraryConfig,
+    ) -> Result<(), ApplicationError> {
+        SqliteDatabase::check_recall_repair(database_path, &config.namespace_id).map_err(|source| {
+            ApplicationError::storage(ApplicationOperation::CheckRecallRepair, source)
+        })
+    }
+
+    /// Explicitly repair recall after a failed v6 open. A fresh check under
+    /// the writer lock is required even when the host checked before confirmation.
+    pub fn repair_recall(
+        database_path: &Path,
+        runtime: R,
+        config: LocalLibraryConfig,
+    ) -> Result<Self, ApplicationError> {
+        let database = SqliteDatabase::repair_recall(database_path, &config.namespace_id).map_err(
+            |source| ApplicationError::storage(ApplicationOperation::RebuildRecall, source),
+        )?;
+        Ok(Self {
+            database,
+            runtime,
+            config,
+        })
+    }
+
+    pub fn reopen_after_recall_failure(
+        database_path: &Path,
+        runtime: R,
+        config: LocalLibraryConfig,
+    ) -> Result<Self, ApplicationError> {
+        let database =
+            SqliteDatabase::reopen_after_recall_failure(database_path, &config.namespace_id)
+                .map_err(|source| {
+                    ApplicationError::storage(ApplicationOperation::OpenLibrary, source)
+                })?;
+        Ok(Self {
+            database,
+            runtime,
+            config,
+        })
+    }
+
     /// Close this legacy connection before explicit vault preparation or recovery.
     /// The returned runtime and profile retain their existing identities. The host
     /// must also suspend other users of the same library before starting maintenance.

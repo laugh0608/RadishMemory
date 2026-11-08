@@ -82,6 +82,7 @@ pub struct DesktopError {
     os_error_code: Option<i32>,
     application: Option<ApplicationFailureSummary>,
     vault_database: Option<String>,
+    plaintext_database: Option<String>,
 }
 
 impl DesktopError {
@@ -97,6 +98,7 @@ impl DesktopError {
             os_error_code: None,
             application: None,
             vault_database: None,
+            plaintext_database: None,
         }
     }
 
@@ -113,6 +115,7 @@ impl DesktopError {
             os_error_code: source.raw_os_error(),
             application: None,
             vault_database: None,
+            plaintext_database: None,
         }
     }
 
@@ -122,6 +125,14 @@ impl DesktopError {
             reason: DesktopErrorReason::ApplicationFailed,
             retryable: source.retryable(),
             os_error_code: None,
+            plaintext_database: source.sqlite_failure().map(|error| {
+                format!(
+                    "{:?} / {:?} / SQLite {:?}",
+                    error.code(),
+                    error.storage_reason(),
+                    error.sqlite_extended_code(),
+                )
+            }),
             vault_database: source.vault_failure().and_then(|failure| match failure {
                 radishmemory_source_vault::VaultMaintenanceError::Database {
                     code,
@@ -150,6 +161,11 @@ impl DesktopError {
     #[must_use]
     pub fn vault_database(&self) -> Option<&str> {
         self.vault_database.as_deref()
+    }
+
+    #[must_use]
+    pub(crate) fn plaintext_database(&self) -> Option<&str> {
+        self.plaintext_database.as_deref()
     }
 
     #[must_use]
@@ -188,6 +204,7 @@ impl fmt::Debug for DesktopError {
             .field("os_error_code", &self.os_error_code)
             .field("application", &self.application)
             .field("vault_database", &self.vault_database)
+            .field("plaintext_database", &self.plaintext_database)
             .finish()
     }
 }

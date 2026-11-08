@@ -24,6 +24,7 @@ enum Confirmation {
     Migrate,
     UpgradeRecall,
     DowngradeRecall,
+    RebuildPlainRecall,
     Abandon,
     Close,
 }
@@ -215,8 +216,9 @@ impl RadishMemoryApp {
                 if self.acceptance { ui.label("Synthetic acceptance library"); }
                 if self.controller.is_some() && ui.add_enabled(can_mutate, egui::Button::new("Import file…")).clicked() { action = Some(UiAction::Import); }
                 if ui.button("Refresh").clicked() { action = Some(UiAction::Command(Command::Refresh)); }
-                if ui.button("Verify").clicked() { action = Some(UiAction::Verify); }
-                if ui.button("Rebuild recall").clicked() { action = Some(UiAction::Rebuild); }
+                let can_use_standard_maintenance = self.controller.is_some() || self.state.encrypted;
+                if ui.add_enabled(can_use_standard_maintenance, egui::Button::new("Verify")).clicked() { action = Some(UiAction::Verify); }
+                if ui.add_enabled(can_use_standard_maintenance, egui::Button::new("Rebuild recall")).clicked() { action = Some(UiAction::Rebuild); }
             });
             ui.horizontal_wrapped(|ui| {
                 let can_switch = !self.state.holds_original;
@@ -271,6 +273,14 @@ impl RadishMemoryApp {
                     ui.add_space(12.0);
                     if ui.add_enabled(!self.state.holds_original, egui::Button::new(if self.state.encrypted { "Retry encrypted open" } else { "Retry legacy open" })).clicked() {
                         action = Some(UiAction::Command(if self.state.encrypted { Command::OpenEncrypted } else { Command::OpenPlain }));
+                    }
+                    if self.state.plain_repair_available {
+                        if ui.button("Check plaintext recall repair").clicked() {
+                            action = Some(UiAction::Command(Command::CheckPlainRecallRepair));
+                        }
+                        if self.state.plain_repair_checked && ui.button("Rebuild verified plaintext recall…").clicked() {
+                            action = Some(UiAction::Confirm(Confirmation::RebuildPlainRecall));
+                        }
                     }
                 });
                 return;
@@ -523,6 +533,7 @@ impl RadishMemoryApp {
                     Confirmation::Migrate => "Close the current library and migrate or resume its source bodies using the existing key. FTS remains plaintext. Do not delete the key afterward; it is required to reopen encrypted objects.",
                     Confirmation::UpgradeRecall => "Enable contiguous Chinese phrase matching and rebuild the search index. Earlier clients will refuse this library until you explicitly switch back to legacy search. Source bodies and their encryption mode are unchanged. Encrypted mode reads the existing system key.",
                     Confirmation::DowngradeRecall => "Rebuild legacy search for earlier clients. Chinese short words may be missed again. This does not restore an old backup or change source bodies, encryption mode, or body-version compatibility. Encrypted mode reads the existing system key.",
+                    Confirmation::RebuildPlainRecall => "Recheck the existing plaintext library and rebuild its search index, source tips and memory projection. The library will reopen only after verification.",
                     Confirmation::Abandon => "Permanently abandon exactly the inspected uncommitted capture. Its original request cannot be replayed afterward. Existing committed sources and unknown files are not targets.",
                     Confirmation::Close => "Closing loses the original request held in memory. An unfinished capture then requires explicit abandonment or the exact original request from elsewhere. Persisted deletion authority can be discovered after restart.",
                 });
@@ -535,6 +546,7 @@ impl RadishMemoryApp {
                             Confirmation::Migrate => action = Some(UiAction::Command(Command::Migrate)),
                             Confirmation::UpgradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::HanPhraseV1))),
                             Confirmation::DowngradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::LegacyUnicode61))),
+                            Confirmation::RebuildPlainRecall => action = Some(UiAction::Command(Command::RebuildPlainRecall)),
                             Confirmation::Abandon => action = Some(UiAction::Command(Command::Abandon)),
                             Confirmation::Close => { self.allow_close = true; context.send_viewport_cmd(egui::ViewportCommand::Close); }
                         }
@@ -566,6 +578,8 @@ mod fragment_tests;
 mod read_session_tests;
 #[cfg(test)]
 mod recall_profile_tests;
+#[cfg(test)]
+mod recall_repair_tests;
 #[cfg(test)]
 mod test_support;
 
@@ -606,7 +620,10 @@ fn redacted_error(error: &DesktopError) -> String {
     {
         summary.push_str(&format!(" · vault={code:?}"));
     }
-    if let Some(database) = error.vault_database() {
+    if let Some(database) = error
+        .vault_database()
+        .or_else(|| error.plaintext_database())
+    {
         summary.push_str(&format!(" · database={database}"));
     }
     if let Some(os_error_code) = error.os_error_code() {

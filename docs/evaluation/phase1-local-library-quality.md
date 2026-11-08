@@ -140,3 +140,13 @@ macOS ARM64 无窗口回归各覆盖默认 v6 和显式加密入口。用含 BOM
 离线定向 `cargo test -p radishmemory-desktop --locked fragment_tests` 与默认 `cargo build -p radishmemory-desktop --locked` 通过。离线 `./scripts/check-repo.sh` 通过仓库基线、格式化、Clippy 与 30 个 Rust suites，共 438 passed、0 failed、14 ignored。
 
 Q06 已有上述双入口合成证据。原生窗口、系统文件选择器、真实凭据、跨平台和外部窗口并发更改后的可见刷新另验；本批不提供全文索引逐词偏移或高亮证据。
+
+## 2026-11-08 Q03 默认 v6 启动失败后的派生修复
+
+基于 `e53d4b4` 复现默认入口在逻辑 FTS 漂移后无法打开，通用重建又需要已打开的控制器。普通打开识别派生不一致时，桌面显示单独的 `Check plaintext recall repair`。检查以只读方式打开现有 v6 文件，验证 schema、namespace、SQLite 完整性、受管正文和历史字节、来源绑定与 capture audit，以及重建使用的记忆事实和已完成删除凭据。检查不提供普通读取视图。取消确认不派发写入命令。
+
+确认时重新读取同一 host profile，并在 SQLite `IMMEDIATE` 事务内重新验证输入。现有派生重建只重算 FTS、lineage tips 和记忆投影。提交后复验通过才交付普通桌面视图。恢复期间重试打开同样要求已有 v6 文件。该路径覆盖逻辑行漂移，未知 schema、结构性 FTS 损坏、未完成的删除和缺失数据库文件均拒绝维护。失败时显示脱敏 SQLite 分类和已有错误码，普通视图保持关闭。
+
+macOS ARM64 合成回归覆盖默认 worker 与 760×520 headless UI 的检查、取消、确认、重开、中文检索和逐字节导出。应用层分别验证 HanPhraseV1 / LegacyUnicode61、保留两版受管来源和已完成删除凭据，以及检查后正文或绑定发生变化时拒绝修复。共享读事务阻塞提交时，回归验证数据库保持修复前的字节、普通打开仍失败、解除锁后可显式修复。数据库在确认前消失时，修复和连续重试均不创建空库；v7 也被拒绝。原生窗口及 Windows / Linux 尚未验收。
+
+离线定向 `cargo test -p radishmemory-application -p radishmemory-desktop --locked recall_repair` 六项通过，默认 `cargo build -p radishmemory-desktop --locked` 通过。离线 `./scripts/check-repo.sh` 通过仓库基线、格式化、Clippy 与 30 个 Rust suites，共 444 passed、0 failed、14 ignored。

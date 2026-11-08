@@ -17,6 +17,8 @@ pub(crate) enum Command {
     Migrate,
     Verify,
     Rebuild,
+    CheckPlainRecallRepair,
+    RebuildPlainRecall,
     ChangeRecallProfile(RecallProfile),
     Refresh,
     Import(FileReadRequest),
@@ -39,6 +41,8 @@ pub(crate) struct Snapshot {
     pub view: Option<LibraryView>,
     pub encrypted: bool,
     pub recall_profile: Option<RecallProfile>,
+    pub plain_repair_available: bool,
+    pub plain_repair_checked: bool,
     pub holds_original: bool,
     pub holds_capture: bool,
     pub abandonment_available: bool,
@@ -57,6 +61,8 @@ pub(crate) struct Engine<P: LibraryProvider, F: Fn() -> P> {
     controller: Option<LibraryController<ProductionRuntime, P>>,
     encrypted: bool,
     recall_profile: Option<RecallProfile>,
+    plain_repair_available: bool,
+    checked_plain_repair: Option<crate::HostProfile>,
     target: Option<CaptureAbandonmentTarget>,
     deletions: Vec<DeleteRequest>,
     recovery_known: bool,
@@ -76,6 +82,8 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             controller: None,
             encrypted: false,
             recall_profile: None,
+            plain_repair_available: false,
+            checked_plain_repair: None,
             target: None,
             deletions: Vec::new(),
             recovery_known: false,
@@ -91,6 +99,19 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         match &self.acceptance {
             Some(location) => location.load_profile(),
             None => load_or_create_host_profile(&self.paths, &mut ProductionRuntime),
+        }
+    }
+    fn existing_plain_profile(&self) -> Result<crate::HostProfile, DesktopError> {
+        if !self.plain_repair_available
+            || self.encrypted
+            || self.controller.is_some()
+            || !self.paths.database_exists()?
+        {
+            return Err(recovery_required());
+        }
+        match &self.acceptance {
+            Some(location) => location.load_profile(),
+            None => crate::profile::load_profile(&self.paths),
         }
     }
     fn location(&self) -> Result<EncryptedLibraryLocation<P>, DesktopError> {
@@ -149,6 +170,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             || !self.recovery_known
     }
     fn perform(&mut self, command: Command, snapshot: &mut Snapshot) -> Result<(), DesktopError> {
+        let checked_plain_repair = self.checked_plain_repair.take();
         if self.observation {
             let allowed = match command {
                 Command::OpenPlain if !self.plain_consumed && !self.encrypted_consumed => {
@@ -190,6 +212,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 return Err(recovery_required());
             }
             self.recovery_known = false;
+            if !matches!(command, Command::OpenPlain) {
+                self.plain_repair_available = false;
+            }
             self.target = None;
             self.deletions.clear();
         }
@@ -207,18 +232,32 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::OpenPlain => {
                 self.controller = None;
                 self.encrypted = false;
-                let profile = self.profile()?;
+                let retrying_repair = self.plain_repair_available;
+                let profile = if retrying_repair {
+                    self.existing_plain_profile()?
+                } else {
+                    self.profile()?
+                };
                 let config = LocalLibraryConfig::phase1_local(
                     profile.namespace_id().clone(),
                     profile.device_id().clone(),
                 )
                 .map_err(app_error)?;
-                let library =
-                    LocalLibrary::open(self.paths.database_path(), ProductionRuntime, config)
-                        .map_err(app_error)?;
+                let path = self.paths.database_path();
+                let library = if retrying_repair {
+                    LocalLibrary::reopen_after_recall_failure(path, ProductionRuntime, config)
+                } else {
+                    LocalLibrary::open(path, ProductionRuntime, config)
+                }
+                .map_err(|error| {
+                    self.plain_repair_available =
+                        retrying_repair || error.is_recall_open_mismatch();
+                    app_error(error)
+                })?;
                 self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
                 self.controller = Some(LibraryController::from_library(Library::Plain(library))?);
                 self.inspect()?;
+                self.plain_repair_available = false;
                 snapshot.message = Some("Legacy plaintext library opened.".into());
             }
             Command::OpenEncrypted => {
@@ -308,6 +347,37 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 } else {
                     self.controller()?.rebuild()?;
                     snapshot.message = Some("Derived recall rebuilt from verified facts.".into());
+                }
+            }
+            Command::CheckPlainRecallRepair | Command::RebuildPlainRecall => {
+                let profile = self.existing_plain_profile()?;
+                let config = LocalLibraryConfig::phase1_local(
+                    profile.namespace_id().clone(),
+                    profile.device_id().clone(),
+                )
+                .map_err(app_error)?;
+                let path = self.paths.database_path();
+                if matches!(command, Command::CheckPlainRecallRepair) {
+                    LocalLibrary::<ProductionRuntime>::check_recall_repair(path, &config)
+                        .map_err(app_error)?;
+                    self.checked_plain_repair = Some(profile);
+                    snapshot.message = Some(
+                        "Plaintext repair inputs verified. Confirm to rebuild derived recall."
+                            .into(),
+                    );
+                } else {
+                    if checked_plain_repair.as_ref() != Some(&profile) {
+                        return Err(recovery_required());
+                    }
+                    let library = LocalLibrary::repair_recall(path, ProductionRuntime, config)
+                        .map_err(app_error)?;
+                    self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
+                    self.controller =
+                        Some(LibraryController::from_library(Library::Plain(library))?);
+                    self.inspect()?;
+                    self.plain_repair_available = false;
+                    snapshot.message =
+                        Some("Plaintext recall rebuilt and verified. Library reopened.".into());
                 }
             }
             Command::ChangeRecallProfile(target) => {
@@ -403,6 +473,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::OpenPlain
                 | Command::OpenEncrypted
                 | Command::Refresh
+                | Command::RebuildPlainRecall
                 | Command::ChangeRecallProfile(_)
                 | Command::RetryOriginal
                 | Command::ResumeDelete(_)
@@ -441,6 +512,8 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             None
         };
         snapshot.encrypted = self.encrypted;
+        snapshot.plain_repair_available = self.plain_repair_available;
+        snapshot.plain_repair_checked = self.checked_plain_repair.is_some();
         snapshot.abandonment_available = self.target.is_some();
         snapshot.recovery_known = self.recovery_known;
         snapshot.deletion_requests = self

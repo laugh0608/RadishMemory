@@ -18,6 +18,7 @@ pub enum ApplicationOperation {
     DeleteSourceLineage,
     GetDeletionEvidence,
     VerifyLibrary,
+    CheckRecallRepair,
     RebuildRecall,
     InspectRecallProfile,
     ChangeRecallProfile,
@@ -190,6 +191,23 @@ impl ApplicationError {
     #[must_use]
     pub fn vault_failure(&self) -> Option<&radishmemory_source_vault::VaultMaintenanceError> {
         self.source.as_deref()?.downcast_ref()
+    }
+
+    /// Plaintext adapter failure. UI consumers use only its bounded error codes.
+    #[must_use]
+    pub fn sqlite_failure(&self) -> Option<&radishmemory_sqlite::SqliteError> {
+        self.source.as_deref()?.downcast_ref()
+    }
+
+    /// Ordinary plaintext open detected a logical recall mismatch. The
+    /// maintenance path must still verify canonical facts independently.
+    #[must_use]
+    pub fn is_recall_open_mismatch(&self) -> bool {
+        self.operation == ApplicationOperation::OpenLibrary
+            && self.sqlite_failure().is_some_and(|source| {
+                source.storage_reason()
+                    == Some(radishmemory_sqlite::SqliteStorageReason::DerivedDataMismatch)
+            })
     }
 
     pub(crate) const fn source_not_found(operation: ApplicationOperation) -> Self {

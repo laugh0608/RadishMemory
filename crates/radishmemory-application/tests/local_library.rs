@@ -18,6 +18,9 @@ use radishmemory_source_vault as _;
 use radishmemory_sqlite as _;
 use rusqlite as _;
 
+#[path = "local_library/recall_repair.rs"]
+mod recall_repair;
+
 static NEXT_TEMP_DIRECTORY: AtomicU64 = AtomicU64::new(0);
 
 struct TestDirectory(PathBuf);

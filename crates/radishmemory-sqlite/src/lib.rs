@@ -20,6 +20,7 @@ mod migration;
 pub mod read_cost;
 mod recall_codec;
 mod recall_profile;
+mod recall_repair;
 mod source_capture;
 mod source_catalog;
 mod source_store;
