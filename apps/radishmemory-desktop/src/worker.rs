@@ -1,6 +1,6 @@
 //! One worker owns all storage and original retry requests. UI gets data snapshots only.
 use crate::backend::{Library, app_error, recovery_required};
-use crate::controller::LibraryView;
+use crate::controller::{LibraryView, QuestionInput};
 use crate::{
     ApplicationPaths, DesktopError, DesktopErrorCode, DesktopErrorReason, LibraryController,
     ProductionRuntime, load_or_create_host_profile,
@@ -36,12 +36,45 @@ pub(crate) enum Command {
     RemoveComparison(Identifier),
     RefreshComparison,
     OpenComparisonSource(Identifier),
+    PreviewQuestion(QuestionInput, SourceSearchFilters),
+    RunLocalAnswer,
+    OpenQuestionSource(usize),
+    DismissQuestion,
     Delete,
     RetryOriginal,
     ResumeDelete(Identifier),
     InspectRecovery,
     Abandon,
     Shutdown,
+}
+
+impl Command {
+    pub(crate) fn withdraws_question(&self) -> bool {
+        matches!(
+            self,
+            Self::OpenPlain
+                | Self::OpenEncrypted
+                | Self::InitializeKey
+                | Self::Migrate
+                | Self::Refresh
+                | Self::Rebuild
+                | Self::RebuildPlainRecall
+                | Self::ChangeRecallProfile(_)
+                | Self::Import(_)
+                | Self::Update(_)
+                | Self::SaveNote(..)
+                | Self::CorrectNote(..)
+                | Self::Delete
+                | Self::RetryOriginal
+                | Self::ResumeDelete(_)
+                | Self::Abandon
+                | Self::Search(_)
+                | Self::AddComparison(_)
+                | Self::RefreshComparison
+                | Self::PreviewQuestion(..)
+                | Self::DismissQuestion
+        )
+    }
 }
 
 pub(crate) struct SearchQuery {
@@ -264,6 +297,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 | Command::RemoveComparison(_)
                 | Command::RefreshComparison
                 | Command::OpenComparisonSource(_)
+                | Command::PreviewQuestion(..)
+                | Command::RunLocalAnswer
+                | Command::OpenQuestionSource(_)
         ) && !self.view_valid
         {
             return Err(recovery_required());
@@ -507,6 +543,17 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                     snapshot.original_offset = offset;
                 }
             }
+            Command::PreviewQuestion(input, filters) => {
+                self.controller()?.preview_question(input, filters)?
+            }
+            Command::RunLocalAnswer => self.controller()?.run_local_answer()?,
+            Command::OpenQuestionSource(index) => {
+                if let Some((original, offset)) = self.controller()?.open_question_source(index)? {
+                    snapshot.original = Some(original);
+                    snapshot.original_offset = offset;
+                }
+            }
+            Command::DismissQuestion => {}
             Command::Delete => {
                 snapshot.last_deletion = Some(self.controller()?.delete_selected_lineage()?);
             }
@@ -551,6 +598,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         Ok(())
     }
     pub(crate) fn execute(&mut self, command: Command) -> Snapshot {
+        if command.withdraws_question()
+            && let Some(controller) = &mut self.controller
+        {
+            controller.clear_question();
+        }
         let refreshes = matches!(
             command,
             Command::OpenPlain

@@ -1,4 +1,4 @@
-use crate::controller::{CATALOG_PAGE_SIZE, LibraryView, text_excerpt};
+use crate::controller::{CATALOG_PAGE_SIZE, LibraryView, QuestionInput, text_excerpt};
 use crate::worker::{Command, SearchQuery, Snapshot, Worker};
 use crate::{DesktopError, NativeFilePicker, PickerOutcome};
 use eframe::egui;
@@ -15,7 +15,8 @@ pub struct RadishMemoryApp {
     original_offset: usize,
     search_query: String,
     search_filters: SourceSearchFilters,
-    show_comparison: bool,
+    pane: LibraryPane,
+    question_input: QuestionInput,
     notice: Option<Notice>,
     refresh_notice: Option<String>,
     last_deletion: Option<radishmemory_application::DeletionEvidence>,
@@ -25,6 +26,15 @@ pub struct RadishMemoryApp {
     deferred_close_frame: Option<u64>,
     acceptance: bool,
 }
+
+#[derive(Clone, Copy, Default, Eq, PartialEq)]
+enum LibraryPane {
+    #[default]
+    Sources,
+    Comparison,
+    Question,
+}
+
 #[derive(Clone, Copy)]
 enum Confirmation {
     Initialize,
@@ -64,7 +74,8 @@ impl RadishMemoryApp {
             original_offset: 0,
             search_query: String::new(),
             search_filters: SourceSearchFilters::default(),
-            show_comparison: false,
+            pane: LibraryPane::default(),
+            question_input: QuestionInput::default(),
             notice: None,
             refresh_notice: None,
             last_deletion: None,
@@ -107,6 +118,7 @@ impl RadishMemoryApp {
                 | Command::RetryOriginal
                 | Command::ResumeDelete(_)
                 | Command::Search(_)
+                | Command::PreviewQuestion(..)
         );
         let invalidates_comparison = invalidates_results
             || matches!(
@@ -121,6 +133,11 @@ impl RadishMemoryApp {
                     | Command::Migrate
                     | Command::Abandon
             );
+        let withdraws_question = command.withdraws_question()
+            || matches!(
+                &command,
+                Command::RunLocalAnswer | Command::OpenQuestionSource(_)
+            );
         if let Some(worker) = &mut self.worker {
             match worker.send(command) {
                 Ok(()) => {
@@ -133,6 +150,9 @@ impl RadishMemoryApp {
                         }
                         if invalidates_comparison {
                             view.clear_comparison_content();
+                        }
+                        if withdraws_question {
+                            view.clear_question();
                         }
                     }
                     self.notice = Some(Notice::neutral("Working…"));
@@ -229,16 +249,29 @@ impl RadishMemoryApp {
                 text: self.search_query.clone(),
                 filters: self.search_filters,
             })),
-            UiAction::ShowComparison(show) => {
-                self.show_comparison = show;
-                if show {
+            UiAction::ShowPane(pane) => {
+                let previous = self.pane;
+                self.pane = pane;
+                if pane == LibraryPane::Comparison {
                     self.send(Command::RefreshComparison);
+                } else if previous == LibraryPane::Question
+                    && self
+                        .controller
+                        .as_ref()
+                        .and_then(LibraryView::question)
+                        .is_some()
+                {
+                    self.send(Command::DismissQuestion);
                 }
             }
             UiAction::AddComparison(id) => {
-                self.show_comparison = true;
+                self.pane = LibraryPane::Comparison;
                 self.send(Command::AddComparison(id));
             }
+            UiAction::PreviewQuestion => self.send(Command::PreviewQuestion(
+                self.question_input.clone(),
+                self.search_filters,
+            )),
             UiAction::SelectLineage(id) => self.send(Command::SelectLineage(id)),
             UiAction::SelectVersion(id) => self.send(Command::SelectVersion(id)),
             UiAction::SelectSearchResult {
@@ -394,9 +427,11 @@ impl RadishMemoryApp {
             ui.columns(2, |columns| {
                 let (source_columns, content_columns) = columns.split_at_mut(1);
                 let source_ui = &mut source_columns[0];
-                comparison::navigation(source_ui, controller, self.show_comparison, &mut action);
-                if self.show_comparison {
+                library_navigation(source_ui, controller, self.pane, &mut action);
+                if self.pane == LibraryPane::Comparison {
                     comparison::panel(source_ui, controller, busy, self.state.holds_original, &mut action);
+                } else if self.pane == LibraryPane::Question {
+                    question::panel(source_ui, controller, &mut self.question_input, busy, self.state.holds_original, &mut action);
                 } else {
                     let offset = controller.catalog_offset();
                     let page_size = CATALOG_PAGE_SIZE as u64;
@@ -843,6 +878,7 @@ fn render_note_editor(
 }
 
 mod comparison;
+mod question;
 
 #[cfg(test)]
 mod catalog_tests;
@@ -857,6 +893,8 @@ mod fragment_tests;
 #[cfg(test)]
 mod note_tests;
 #[cfg(test)]
+mod question_tests;
+#[cfg(test)]
 mod read_session_tests;
 #[cfg(test)]
 mod recall_profile_tests;
@@ -866,6 +904,26 @@ mod recall_repair_tests;
 mod search_filter_tests;
 #[cfg(test)]
 mod test_support;
+
+fn library_navigation(
+    ui: &mut egui::Ui,
+    view: &LibraryView,
+    selected: LibraryPane,
+    action: &mut Option<UiAction>,
+) {
+    let comparison = format!("Compare ({})", view.comparison().len());
+    ui.horizontal_wrapped(|ui| {
+        for (pane, label) in [
+            (LibraryPane::Sources, "Sources"),
+            (LibraryPane::Comparison, comparison.as_str()),
+            (LibraryPane::Question, "Ask locally"),
+        ] {
+            if ui.selectable_label(pane == selected, label).clicked() && pane != selected {
+                *action = Some(UiAction::ShowPane(pane));
+            }
+        }
+    });
+}
 
 fn search_filter<T: Copy + PartialEq>(
     ui: &mut egui::Ui,
@@ -948,8 +1006,9 @@ enum UiAction {
     Verify,
     Rebuild,
     Search,
-    ShowComparison(bool),
+    ShowPane(LibraryPane),
     AddComparison(Identifier),
+    PreviewQuestion,
     SelectLineage(Identifier),
     SelectVersion(Identifier),
     SelectSearchResult {

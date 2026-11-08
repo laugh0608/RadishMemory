@@ -1,29 +1,6 @@
 use super::{Command, LibraryView, UiAction, egui, source_label};
 use radishmemory_application::{SOURCE_COMPARISON_LIMIT, SourceSearchResult};
 
-pub(super) fn navigation(
-    ui: &mut egui::Ui,
-    view: &LibraryView,
-    show_comparison: bool,
-    action: &mut Option<UiAction>,
-) {
-    ui.horizontal_wrapped(|ui| {
-        if ui.selectable_label(!show_comparison, "Sources").clicked() && show_comparison {
-            *action = Some(UiAction::ShowComparison(false));
-        }
-        if ui
-            .selectable_label(
-                show_comparison,
-                format!("Compare ({})", view.comparison().len()),
-            )
-            .clicked()
-            && !show_comparison
-        {
-            *action = Some(UiAction::ShowComparison(true));
-        }
-    });
-}
-
 pub(super) fn panel(
     ui: &mut egui::Ui,
     view: &LibraryView,

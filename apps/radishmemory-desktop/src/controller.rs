@@ -1,3 +1,6 @@
+mod question;
+pub(crate) use question::{QUESTION_INPUT_LIMIT, QuestionInput, QuestionState, QuestionView};
+
 use radishmemory_application::{
     ApplicationRuntime, DeletionEvidence, FileCaptureReceipt, FileExportReceipt, FileExportRequest,
     FileReadRequest, Identifier, LocalLibrary, LocalLibraryConfig, NonEmptyText, NoteFormat,
@@ -39,6 +42,7 @@ pub struct LibraryView {
     submitted_query: String,
     selected_fragment: Option<SelectedFragment>,
     comparison: Vec<ComparisonCard>,
+    question: Option<QuestionView>,
 }
 
 #[derive(Clone, Copy)]
@@ -315,14 +319,22 @@ where
         let Some(evidence) = self.resolve_comparison()?.into_iter().nth(index).flatten() else {
             return Ok(None);
         };
-        let offset = usize::try_from(evidence.result.byte_start())
-            .map_err(|_| selection_invalid())?
-            + self.comparison[index].start;
+        self.select_citation_evidence(evidence, self.comparison[index].start)
+            .map(Some)
+    }
+
+    fn select_citation_evidence(
+        &mut self,
+        evidence: SourceCitationEvidence,
+        start: usize,
+    ) -> Result<(SourceArtifact, usize), DesktopError> {
+        let offset =
+            usize::try_from(evidence.result.byte_start()).map_err(|_| selection_invalid())? + start;
         self.view.selected_lineage_id = Some(evidence.result.lineage_id().clone());
         self.view.selected_source_id = Some(evidence.result.source_id().clone());
         self.view.versions = evidence.versions;
         self.view.selected_fragment = None;
-        Ok(Some((evidence.original, offset)))
+        Ok((evidence.original, offset))
     }
 
     fn load_selection(
@@ -572,6 +584,14 @@ impl LibraryView {
         for card in &mut self.comparison {
             card.excerpt = None;
         }
+    }
+
+    pub(crate) fn question(&self) -> Option<&QuestionView> {
+        self.question.as_ref()
+    }
+
+    pub(crate) fn clear_question(&mut self) {
+        self.question = None;
     }
 
     pub(crate) fn show_fragment_excerpt(&mut self, start: usize) {
