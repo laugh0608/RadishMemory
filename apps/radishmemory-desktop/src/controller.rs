@@ -40,6 +40,7 @@ pub struct LibraryView {
     selected_source_id: Option<Identifier>,
     search_results: Vec<SourceSearchResult>,
     submitted_query: String,
+    submitted_filters: SourceSearchFilters,
     selected_fragment: Option<SelectedFragment>,
     comparison: Vec<ComparisonCard>,
     question: Option<QuestionView>,
@@ -142,18 +143,19 @@ where
     pub fn refresh_sources(&mut self) -> Result<(), DesktopError> {
         let previous = self.view.selected_lineage_id.clone();
         self.view = LibraryView::default();
-        self.load_catalog_page(0, previous.as_ref())?;
+        self.load_catalog_page(0, previous.as_ref(), false)?;
         self.refresh_comparison()
     }
 
     pub(crate) fn show_catalog_page(&mut self, offset: u64) -> Result<(), DesktopError> {
-        self.load_catalog_page(offset, None)
+        self.load_catalog_page(offset, None, false)
     }
 
     fn load_catalog_page(
         &mut self,
         mut offset: u64,
         preferred: Option<&Identifier>,
+        keep_off_page: bool,
     ) -> Result<(), DesktopError> {
         let mut sources = self
             .library
@@ -168,16 +170,19 @@ where
                 .map_err(crate::backend::app_error)?;
         }
         let visible = &sources[..sources.len().min(CATALOG_PAGE_SIZE)];
-        let selected = preferred
-            .and_then(|id| visible.iter().find(|source| source.lineage_id() == id))
-            .or_else(|| visible.first());
-        if let Some(source) = selected {
+        let preferred = preferred
+            .filter(|id| keep_off_page || visible.iter().any(|source| source.lineage_id() == *id));
+        self.view.clear_selection();
+        if let Some(lineage) = preferred {
+            let versions = self.read_versions(lineage)?;
+            if !versions.is_empty() {
+                self.apply_selection(lineage, None, versions)?;
+            }
+        }
+        if self.view.selected_lineage_id.is_none()
+            && let Some(source) = visible.first()
+        {
             self.load_selection(source.lineage_id(), None)?;
-        } else {
-            self.view.selected_lineage_id = None;
-            self.view.selected_source_id = None;
-            self.view.selected_fragment = None;
-            self.view.versions.clear();
         }
         self.view.set_catalog_page(offset, sources);
         Ok(())
@@ -199,7 +204,8 @@ where
         lineage_id: &Identifier,
         source_id: &Identifier,
         fragment_id: &Identifier,
-    ) -> Result<(), DesktopError> {
+    ) -> Result<bool, DesktopError> {
+        self.require_no_original()?;
         let result_index = self
             .search_results
             .iter()
@@ -209,19 +215,33 @@ where
                     && result.fragment_id() == fragment_id
             })
             .ok_or_else(selection_invalid)?;
-        self.load_selection(lineage_id, Some(source_id))?;
+        let result = &self.view.search_results[result_index];
+        let evidence = self
+            .library
+            .resolve_source_citations(std::slice::from_ref(result.citation()))
+            .map_err(crate::backend::app_error)?
+            .into_iter()
+            .next()
+            .flatten();
+        let Some(evidence) = evidence.filter(citation_is_current) else {
+            self.refresh_changed_sources(Some(lineage_id))?;
+            return Ok(false);
+        };
         // Literal positioning is a navigation aid. MATCH may find text by
         // normalization or separate query terms, so the whole fragment stays browsable.
-        let start = self.view.search_results[result_index]
+        let start = evidence
+            .result
             .content()
             .as_str()
             .find(self.view.submitted_query.trim())
             .unwrap_or(0);
+        self.apply_selection(lineage_id, Some(source_id), evidence.versions)?;
+        self.view.search_results[result_index] = evidence.result;
         self.view.selected_fragment = Some(SelectedFragment {
             result_index,
             start,
         });
-        Ok(())
+        Ok(true)
     }
 
     pub(crate) fn add_to_comparison(
@@ -342,10 +362,25 @@ where
         lineage_id: &Identifier,
         source_id: Option<&Identifier>,
     ) -> Result<(), DesktopError> {
-        let versions = self
-            .library
+        let versions = self.read_versions(lineage_id)?;
+        self.apply_selection(lineage_id, source_id, versions)
+    }
+
+    fn read_versions(
+        &self,
+        lineage_id: &Identifier,
+    ) -> Result<Vec<SourceVersionSummary>, DesktopError> {
+        self.library
             .list_source_versions(lineage_id)
-            .map_err(crate::backend::app_error)?;
+            .map_err(crate::backend::app_error)
+    }
+
+    fn apply_selection(
+        &mut self,
+        lineage_id: &Identifier,
+        source_id: Option<&Identifier>,
+        versions: Vec<SourceVersionSummary>,
+    ) -> Result<(), DesktopError> {
         let selected = versions
             .iter()
             .find(|version| match source_id {
@@ -433,13 +468,17 @@ where
         Ok(receipt)
     }
 
-    pub(crate) fn selected_original(&self) -> Result<SourceArtifact, DesktopError> {
+    pub(crate) fn selected_original(&mut self) -> Result<Option<SourceArtifact>, DesktopError> {
         self.require_no_original()?;
         let id = self.selected_source_id().ok_or_else(selection_invalid)?;
-        self.library
+        let original = self
+            .library
             .get_source(id)
-            .map_err(crate::backend::app_error)?
-            .ok_or_else(selection_invalid)
+            .map_err(crate::backend::app_error)?;
+        if original.is_none() {
+            self.refresh_changed_sources(None)?;
+        }
+        Ok(original)
     }
 
     pub fn export_selected(
@@ -464,9 +503,18 @@ where
         query: &str,
         filters: SourceSearchFilters,
     ) -> Result<(), DesktopError> {
+        self.load_search_results(query, filters)?;
+        self.refresh_comparison()
+    }
+
+    fn load_search_results(
+        &mut self,
+        query: &str,
+        filters: SourceSearchFilters,
+    ) -> Result<(), DesktopError> {
         self.view.clear_search_results();
         if query.trim().is_empty() {
-            return self.refresh_comparison();
+            return Ok(());
         }
         let request = NonEmptyText::new(query.to_owned()).map_err(|_| selection_invalid())?;
         self.view.search_results = self
@@ -479,7 +527,26 @@ where
             )
             .map_err(|source| DesktopError::application(&source))?;
         self.view.submitted_query.push_str(query);
-        self.refresh_comparison()
+        self.view.submitted_filters = filters;
+        Ok(())
+    }
+
+    fn refresh_changed_sources(
+        &mut self,
+        preferred: Option<&Identifier>,
+    ) -> Result<(), DesktopError> {
+        let previous = self.view.selected_lineage_id.clone();
+        let query = self.view.submitted_query.clone();
+        let filters = self.view.submitted_filters;
+        if let Some(question) = &mut self.view.question {
+            question.invalidate();
+        }
+        self.load_catalog_page(
+            self.view.catalog_offset,
+            preferred.or(previous.as_ref()),
+            true,
+        )?;
+        self.search_filtered(&query, filters)
     }
 
     pub fn delete_selected_lineage(&mut self) -> Result<DeletionEvidence, DesktopError> {
@@ -493,9 +560,7 @@ where
             .delete_source_lineage(&lineage_id)
             .map_err(|source| DesktopError::application(&source))?;
         self.view.clear_search_results();
-        self.view.selected_lineage_id = None;
-        self.view.selected_source_id = None;
-        self.view.versions.clear();
+        self.view.clear_selection();
         self.refresh_after_commit(None);
         Ok(evidence)
     }
@@ -573,7 +638,15 @@ impl LibraryView {
     pub(crate) fn clear_search_results(&mut self) {
         self.search_results.clear();
         self.submitted_query.clear();
+        self.submitted_filters = SourceSearchFilters::default();
         self.selected_fragment = None;
+    }
+
+    fn clear_selection(&mut self) {
+        self.selected_lineage_id = None;
+        self.selected_source_id = None;
+        self.selected_fragment = None;
+        self.versions.clear();
     }
 
     pub(crate) fn comparison(&self) -> &[ComparisonCard] {
@@ -692,6 +765,13 @@ pub(crate) fn selection_invalid() -> DesktopError {
         DesktopErrorReason::SelectionInvalid,
         false,
     )
+}
+
+fn citation_is_current(entry: &SourceCitationEvidence) -> bool {
+    entry
+        .versions
+        .iter()
+        .any(|version| version.current() && version.source_id() == entry.result.source_id())
 }
 
 impl<R: ApplicationRuntime> LibraryController<R> {

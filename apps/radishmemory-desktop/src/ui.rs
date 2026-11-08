@@ -118,7 +118,10 @@ impl RadishMemoryApp {
                 | Command::RetryOriginal
                 | Command::ResumeDelete(_)
                 | Command::Search(_)
-                | Command::PreviewQuestion(..)
+                | Command::SelectResult(..)
+                | Command::RunLocalAnswer
+                | Command::OpenQuestionSource(_)
+                | Command::ReadOriginal { .. }
         );
         let invalidates_comparison = invalidates_results
             || matches!(
@@ -127,6 +130,7 @@ impl RadishMemoryApp {
                     | Command::RefreshComparison
                     | Command::AddComparison(_)
                     | Command::OpenComparisonSource(_)
+                    | Command::PreviewQuestion(..)
                     | Command::OpenPlain
                     | Command::OpenEncrypted
                     | Command::InitializeKey
@@ -143,7 +147,7 @@ impl RadishMemoryApp {
                 Ok(()) => {
                     self.state.original = None;
                     self.original_offset = 0;
-                    // Previous results stop applying as soon as a new search or write is accepted.
+                    // Hide cached results while the worker reads current evidence or commits a write.
                     if let Some(view) = &mut self.controller {
                         if invalidates_results {
                             view.clear_search_results();

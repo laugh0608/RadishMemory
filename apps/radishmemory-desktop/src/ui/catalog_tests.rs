@@ -59,13 +59,18 @@ fn exercise_catalog(encrypted: bool) {
     let expected = seed(&fixture);
     let (lineage, source, query) = expected.last().unwrap();
     let mut engine = fixture.engine();
-    let opened = if encrypted {
+    let open = || {
+        if encrypted {
+            Command::OpenEncrypted
+        } else {
+            Command::OpenPlain
+        }
+    };
+    if encrypted {
         ok(engine.execute(Command::InitializeKey));
         ok(engine.execute(Command::Migrate));
-        ok(engine.execute(Command::OpenEncrypted))
-    } else {
-        ok(engine.execute(Command::OpenPlain))
-    };
+    }
+    let opened = ok(engine.execute(open()));
     let first_page = opened.view.as_ref().unwrap();
     let expected_first_page = expected[..SOURCE_COUNT - 1]
         .iter()
@@ -144,9 +149,28 @@ fn exercise_catalog(encrypted: bool) {
     }
     frame.drop_without_applying_deltas();
 
+    let mut other = fixture.engine();
+    ok(other.execute(open()));
+    let other_search = ok(other.execute(Command::Search(query.as_str().into())));
+    let old_fragment = other_search.view.unwrap().search_results()[0]
+        .fragment_id()
+        .clone();
+    let select_old =
+        || Command::SelectResult(lineage.clone(), source.clone(), old_fragment.clone());
+    let other_selected = ok(other.execute(select_old())).view.unwrap();
+    assert!(other_selected.selected_lineage().is_none());
+    assert_eq!(
+        other_selected
+            .selected_excerpt()
+            .unwrap()
+            .result
+            .source_id(),
+        source
+    );
+
     // Supply picker results at the production worker boundary, with explicit roots.
-    let revised_bytes = "\u{feff}catalogrevised\r\n";
-    let update = fixture.named_input("revised.md", revised_bytes);
+    let revised_bytes = format!("\u{feff}{query} catalogrevised\r\n");
+    let update = fixture.named_input("revised.md", &revised_bytes);
     let updated = ok(engine.execute(Command::Update(update)));
     let view = updated.view.as_ref().unwrap();
     assert_eq!(view.selected_lineage_id(), Some(lineage));
@@ -154,6 +178,22 @@ fn exercise_catalog(encrypted: bool) {
     let revised_source = view.selected_source_id().unwrap().clone();
     assert_ne!(&revised_source, source);
     assert!(view.search_results().is_empty());
+
+    let refreshed = ok(other.execute(select_old()));
+    assert!(
+        refreshed
+            .message
+            .as_deref()
+            .unwrap()
+            .contains("Source changed")
+    );
+    let refreshed = refreshed.view.unwrap();
+    assert_eq!(refreshed.catalog_offset(), 0);
+    assert_eq!(refreshed.selected_source_id(), Some(&revised_source));
+    assert_eq!(refreshed.versions().len(), 2);
+    assert!(refreshed.selected_excerpt().is_none());
+    assert_eq!(refreshed.search_results().len(), 1);
+    assert_eq!(refreshed.search_results()[0].source_id(), &revised_source);
 
     // The update moves the lineage to page one. Select it from page two before
     // exporting or deleting, so neither action can rely on a cached catalog row.
@@ -199,14 +239,30 @@ fn exercise_catalog(encrypted: bool) {
     assert_eq!(view.sources().len(), 200);
     assert!(view.sources().iter().all(|row| row.lineage_id() != lineage));
     assert_eq!(fs::read(&export_path).unwrap(), revised_bytes.as_bytes());
-    drop(engine);
+    let refreshed = ok(other.execute(Command::ReadOriginal { edit: false }));
+    assert!(
+        refreshed
+            .message
+            .as_deref()
+            .unwrap()
+            .contains("Source changed")
+    );
+    assert!(refreshed.original.is_none());
+    let refreshed = refreshed.view.unwrap();
+    assert_ne!(refreshed.selected_lineage_id(), Some(lineage));
+    assert!(
+        refreshed
+            .sources()
+            .iter()
+            .all(|row| row.lineage_id() != lineage)
+    );
+    assert!(refreshed.search_results().is_empty());
+    assert!(refreshed.selected_excerpt().is_none());
 
+    drop(engine);
+    drop(other);
     let mut reopened = fixture.engine();
-    ok(reopened.execute(if encrypted {
-        Command::OpenEncrypted
-    } else {
-        Command::OpenPlain
-    }));
+    ok(reopened.execute(open()));
     let searched = ok(reopened.execute(Command::Search("catalogrevised".into())));
     assert!(searched.view.unwrap().search_results().is_empty());
     ok(reopened.execute(Command::Verify));

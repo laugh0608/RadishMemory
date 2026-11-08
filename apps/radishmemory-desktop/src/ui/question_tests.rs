@@ -63,12 +63,16 @@ fn local_question_revalidates_exact_evidence_before_answer_and_open_in_both_body
             .clone();
         let mut harness = Harness::new();
         harness.viewport_size = egui::vec2(760.0, 520.0);
+        harness.app.search_query = "orchard".into();
+        harness.app.search_filters.media_type = Some(MediaType::TextMarkdown);
         harness.results.send(beta).unwrap();
+        let searched = ok(engine.execute(click_command(&mut harness, "Search")));
+        assert_eq!(searched.view.as_ref().unwrap().search_results().len(), 1);
+        harness.results.send(searched).unwrap();
         harness.click("Ask locally").drop_without_applying_deltas();
         harness.no_command();
         paste_field(&mut harness, "Ask a question", "这个项目采用哪套方案？");
         paste_field(&mut harness, "Optional evidence keywords", "orchard");
-        harness.app.search_filters.media_type = Some(MediaType::TextMarkdown);
 
         let preview = click_command(&mut harness, "Preview evidence");
         assert!(matches!(&preview, Command::PreviewQuestion(input, filters)
@@ -110,14 +114,15 @@ fn local_question_revalidates_exact_evidence_before_answer_and_open_in_both_body
         harness.results.send(original).unwrap();
         assert!(rendered(&mut harness).contains("Original text"));
 
-        harness.app.send(Command::CorrectNote(
+        let preview = ok(engine.execute(click_command(&mut harness, "Preview evidence")));
+        harness.results.send(preview).unwrap();
+        let mut other = fixture.engine();
+        ok(other.execute(open()));
+        let corrected = ok(other.execute(Command::CorrectNote(
             alpha_lineage.clone(),
             alpha_v1.clone(),
             "orchard 紫色方案".into(),
-        ));
-        assert!(!rendered(&mut harness).contains("青色方案"));
-        let corrected = ok(engine.execute(harness.commands.try_recv().unwrap()));
-        assert!(corrected.view.as_ref().unwrap().question().is_none());
+        )));
         let alpha_v2 = corrected
             .view
             .as_ref()
@@ -126,9 +131,28 @@ fn local_question_revalidates_exact_evidence_before_answer_and_open_in_both_body
             .unwrap()
             .clone();
         assert_ne!(alpha_v2, alpha_v1);
-        harness.results.send(corrected).unwrap();
+        let answer = click_command(&mut harness, "Run local mock");
+        assert!(!rendered(&mut harness).contains("青色方案"));
+        let changed = ok(engine.execute(answer));
+        let view = changed.view.as_ref().unwrap();
+        assert!(matches!(
+            view.question().unwrap().state,
+            QuestionState::Changed
+        ));
+        assert_eq!(view.selected_source_id(), Some(&alpha_v2));
+        assert_eq!(view.versions().len(), 2);
+        assert_eq!(view.search_results().len(), 1);
+        assert_eq!(view.search_results()[0].source_id(), &alpha_v2);
+        harness.results.send(changed).unwrap();
+        let text = rendered(&mut harness);
+        assert!(text.contains("Source evidence changed. Preview again."));
+        assert!(text.contains("Current version: 2"));
+        assert!(text.contains("v1"));
+        assert!(!text.contains("青色方案"));
 
         harness.app.search_filters.media_type = None;
+        let searched = ok(engine.execute(click_command(&mut harness, "Search")));
+        harness.results.send(searched).unwrap();
         let preview = ok(engine.execute(click_command(&mut harness, "Preview evidence")));
         let evidence = &preview.view.as_ref().unwrap().question().unwrap().evidence;
         assert_eq!(evidence.len(), 2);
@@ -143,14 +167,15 @@ fn local_question_revalidates_exact_evidence_before_answer_and_open_in_both_body
                 .all(|entry| !entry.text.contains("青色方案"))
         );
         harness.results.send(preview).unwrap();
-        let mut other = fixture.engine();
-        ok(other.execute(open()));
         ok(other.execute(Command::SelectLineage(beta_lineage)));
         ok(other.execute(Command::Delete));
         let changed = ok(engine.execute(click_command(&mut harness, "Run local mock")));
         let question = changed.view.as_ref().unwrap().question().unwrap();
         assert!(matches!(question.state, QuestionState::Changed));
         assert!(question.evidence.is_empty());
+        let view = changed.view.as_ref().unwrap();
+        assert_eq!(view.search_results().len(), 1);
+        assert_eq!(view.search_results()[0].source_id(), &alpha_v2);
         harness.results.send(changed).unwrap();
         let text = rendered(&mut harness);
         assert!(text.contains("Source evidence changed. Preview again."));
@@ -175,17 +200,35 @@ fn local_question_revalidates_exact_evidence_before_answer_and_open_in_both_body
             QuestionState::MockAnswer(quotes) if quotes == &["[1] orchard 紫色方案"])
         );
         harness.results.send(answer).unwrap();
+        let original = ok(engine.execute(click_command(&mut harness, "Open evidence [1]")));
+        assert!(original.original.is_some());
+        harness.results.send(original).unwrap();
+        assert!(rendered(&mut harness).contains("Original text"));
         ok(other.execute(Command::SelectLineage(alpha_lineage)));
         ok(other.execute(Command::Delete));
         drop(other);
         let invalidated = ok(engine.execute(click_command(&mut harness, "Open evidence [1]")));
         assert!(invalidated.original.is_none());
+        let view = invalidated.view.as_ref().unwrap();
         assert!(matches!(
-            invalidated.view.as_ref().unwrap().question().unwrap().state,
+            view.question().unwrap().state,
             QuestionState::Changed
         ));
+        assert!(view.selected_lineage_id().is_none());
+        assert!(view.versions().is_empty());
+        assert!(view.sources().is_empty());
+        assert!(view.search_results().is_empty());
         harness.results.send(invalidated).unwrap();
-        assert!(!rendered(&mut harness).contains("紫色方案"));
+        let text = rendered(&mut harness);
+        assert!(text.contains("Source evidence changed. Preview again."));
+        for stale in ["紫色方案", "QA Alpha", "Original text", "Open evidence [1]"] {
+            assert!(!text.contains(stale), "{stale} should be withdrawn");
+        }
+        assert_eq!(
+            harness.app.question_input.question,
+            "这个项目采用哪套方案？"
+        );
+        assert_eq!(harness.app.question_input.keywords, "orchard");
 
         let empty = ok(engine.execute(click_command(&mut harness, "Preview evidence")));
         assert!(matches!(

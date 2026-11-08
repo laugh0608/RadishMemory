@@ -1,6 +1,6 @@
 //! Desktop-local evidence and extractive mock answers. Only current, revalidated
 //! source citations may contribute quotes.
-use super::{LibraryController, selection_invalid, text_excerpt};
+use super::{LibraryController, citation_is_current, selection_invalid, text_excerpt};
 use crate::DesktopError;
 use radishmemory_application::{
     ApplicationRuntime, Citation, NonEmptyText, SOURCE_COMPARISON_LIMIT, Sensitivity,
@@ -39,6 +39,13 @@ pub(crate) struct QuestionView {
     pub state: QuestionState,
 }
 
+impl QuestionView {
+    pub(super) fn invalidate(&mut self) {
+        self.evidence.clear();
+        self.state = QuestionState::Changed;
+    }
+}
+
 #[derive(Clone)]
 pub(crate) enum QuestionState {
     Insufficient,
@@ -72,7 +79,6 @@ impl<R: ApplicationRuntime, P: LibraryProvider> LibraryController<R, P> {
         if !input.is_valid() {
             return Err(selection_invalid());
         }
-        self.view.clear_search_results();
         let query = input.query();
         let request = NonEmptyText::new(query).map_err(|_| selection_invalid())?;
         let hits = self
@@ -108,7 +114,7 @@ impl<R: ApplicationRuntime, P: LibraryProvider> LibraryController<R, P> {
                 .resolve_source_citations(&citations)
                 .map_err(crate::backend::app_error)?;
             for ((citation, start), entry) in candidates.into_iter().zip(resolved) {
-                let Some(entry) = entry.filter(is_current) else {
+                let Some(entry) = entry.filter(citation_is_current) else {
                     continue;
                 };
                 let result = entry.result;
@@ -189,20 +195,12 @@ impl<R: ApplicationRuntime, P: LibraryProvider> LibraryController<R, P> {
             .resolve_source_citations(&citations)
             .map_err(crate::backend::app_error)?
             .into_iter()
-            .map(|entry| entry.filter(is_current))
+            .map(|entry| entry.filter(citation_is_current))
             .collect::<Option<Vec<_>>>();
         if resolved.is_none() {
-            view.evidence.clear();
-            view.state = QuestionState::Changed;
-            self.view.clear_search_results();
+            view.invalidate();
+            self.refresh_changed_sources(None)?;
         }
         Ok(resolved)
     }
-}
-
-fn is_current(entry: &SourceCitationEvidence) -> bool {
-    entry
-        .versions
-        .iter()
-        .any(|version| version.current() && version.source_id() == entry.result.source_id())
 }

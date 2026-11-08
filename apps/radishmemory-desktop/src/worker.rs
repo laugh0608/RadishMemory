@@ -10,6 +10,8 @@ use radishmemory_source_vault::{CaptureAbandonmentTarget, LibraryProvider, Platf
 use std::sync::mpsc::{self, Receiver, Sender, TryRecvError};
 use std::thread::{self, JoinHandle};
 
+const SOURCE_CHANGED: &str = "Source changed or is unavailable. The library view was refreshed.";
+
 pub(crate) enum Command {
     OpenPlain,
     OpenEncrypted,
@@ -516,8 +518,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 {
                     return Err(crate::controller::selection_invalid());
                 }
-                snapshot.original = Some(controller.selected_original()?);
-                snapshot.edit_original = edit;
+                snapshot.original = controller.selected_original()?;
+                snapshot.edit_original = edit && snapshot.original.is_some();
+                if snapshot.original.is_none() {
+                    snapshot.message = Some(SOURCE_CHANGED.into());
+                }
             }
             Command::Export(request) => {
                 self.controller()?.export_selected(&request)?;
@@ -531,8 +536,12 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::SelectLineage(id) => self.controller()?.select_lineage(&id)?,
             Command::SelectVersion(id) => self.controller()?.select_source_version(&id)?,
             Command::SelectResult(lineage, source, fragment) => {
-                self.controller()?
-                    .select_search_result(&lineage, &source, &fragment)?;
+                if !self
+                    .controller()?
+                    .select_search_result(&lineage, &source, &fragment)?
+                {
+                    snapshot.message = Some(SOURCE_CHANGED.into());
+                }
             }
             Command::AddComparison(id) => self.controller()?.add_to_comparison(&id)?,
             Command::RemoveComparison(id) => self.controller()?.remove_from_comparison(&id),
