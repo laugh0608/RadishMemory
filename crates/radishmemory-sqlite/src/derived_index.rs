@@ -133,18 +133,23 @@ struct Catalog {
 
 impl Catalog {
     fn load(connection: &Connection) -> Result<Self, SqliteError> {
-        Self::load_with(connection, &load_source_artifact)
+        Self::load_with(connection, &load_source_artifact, None)
     }
 
     fn load_with(
         connection: &Connection,
         load_source: SourceLoader<'_>,
+        request: Option<&LocalSearchRequest>,
     ) -> Result<Self, SqliteError> {
         let _cost = crate::read_cost::span(crate::read_cost::Stage::CatalogLoad);
         verify_source_tips(connection, load_source)?;
         let mut catalog = Self::default();
-        catalog.load_sources(connection, load_source)?;
-        catalog.load_memories(connection, load_source)?;
+        catalog.load_sources(connection, load_source, request)?;
+        catalog.load_memories(
+            connection,
+            load_source,
+            request.is_some_and(LocalSearchRequest::includes_memories),
+        )?;
         Ok(catalog)
     }
 
@@ -152,6 +157,7 @@ impl Catalog {
         &mut self,
         connection: &Connection,
         load_source: SourceLoader<'_>,
+        request: Option<&LocalSearchRequest>,
     ) -> Result<(), SqliteError> {
         let mut statement = connection
             .prepare(
@@ -194,11 +200,13 @@ impl Catalog {
                 content: fragment.params().content.as_str().to_owned(),
             };
             insert_unique(&mut self.recall_rows, key.clone(), row)?;
-            insert_unique(
-                &mut self.candidates,
-                key,
-                Candidate::source(fragment, &source),
-            )?;
+            if request.is_some_and(|request| request.includes_source(&source)) {
+                insert_unique(
+                    &mut self.candidates,
+                    key,
+                    Candidate::source(fragment, &source),
+                )?;
+            }
         }
         Ok(())
     }
@@ -207,6 +215,7 @@ impl Catalog {
         &mut self,
         connection: &Connection,
         load_source: SourceLoader<'_>,
+        include_candidates: bool,
     ) -> Result<(), SqliteError> {
         let mut statement = connection
             .prepare(
@@ -253,7 +262,9 @@ impl Catalog {
                 content: value.content.text().as_str().to_owned(),
             };
             insert_unique(&mut self.recall_rows, key.clone(), row)?;
-            insert_unique(&mut self.candidates, key, Candidate::memory(record))?;
+            if include_candidates {
+                insert_unique(&mut self.candidates, key, Candidate::memory(record))?;
+            }
         }
         Ok(())
     }
@@ -281,7 +292,7 @@ pub(crate) fn rebuild_with_sources(
             )
             .map_err(SqliteError::storage)?;
     }
-    let expected = Catalog::load_with(connection, load_source)?;
+    let expected = Catalog::load_with(connection, load_source, None)?;
     connection
         .execute("DELETE FROM radishmemory_recall_fts", [])
         .map_err(SqliteError::storage)?;
@@ -318,14 +329,17 @@ pub(crate) fn verify(connection: &Connection) -> Result<(), SqliteError> {
 /// using their persisted derivations. Managed source fragments are checked separately.
 pub(crate) fn verify_rebuild_inputs(connection: &Connection) -> Result<(), SqliteError> {
     expected_source_tips_with(connection, &load_source_artifact)?;
-    Catalog::default().load_memories(connection, &load_source_artifact)
+    Catalog::default().load_memories(connection, &load_source_artifact, false)
 }
 
 pub(crate) fn verify_with_sources(
     connection: &Connection,
     load_source: SourceLoader<'_>,
 ) -> Result<(), SqliteError> {
-    verify_catalog(connection, &Catalog::load_with(connection, load_source)?)
+    verify_catalog(
+        connection,
+        &Catalog::load_with(connection, load_source, None)?,
+    )
 }
 
 fn verify_source_tips(
@@ -428,7 +442,7 @@ pub(crate) fn search_with_sources(
     request: &LocalSearchRequest,
     load_source: SourceLoader<'_>,
 ) -> Result<Vec<LocalSearchHit>, SqliteError> {
-    let catalog = Catalog::load_with(connection, load_source)?;
+    let catalog = Catalog::load_with(connection, load_source, Some(request))?;
     verify_catalog(connection, &catalog)?;
     let preparation_cost = crate::read_cost::span(crate::read_cost::Stage::QueryPreparation);
     let expression = match crate::recall_profile::read(connection)? {

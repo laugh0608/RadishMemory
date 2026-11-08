@@ -22,8 +22,9 @@ use radishmemory_core::{
     SourceVault, Version, build_local_purge_targets, compute_deletion_evidence_digest,
 };
 pub use radishmemory_core::{
-    DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, NonEmptyText, Sensitivity,
-    SourceArtifact, SourceCapture, SourceLineageSummary, SourceVersionSummary, Timestamp,
+    DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, MediaType, NonEmptyText,
+    Sensitivity, SourceArtifact, SourceCapture, SourceLineageSummary, SourceVersionSummary,
+    Timestamp,
 };
 pub use radishmemory_file_entry::{
     FileCaptureOutcome, FileCaptureReceipt, FileExportReceipt, FileExportRequest, FileReadRequest,
@@ -36,6 +37,7 @@ pub use error::{
     ApplicationError, ApplicationErrorCode, ApplicationErrorReason, ApplicationOperation,
 };
 pub use radishmemory_sqlite::RecallProfile;
+pub use read::{SourceEntry, SourceSavedWithin, SourceSearchFilters};
 
 pub const LOCAL_LIBRARY_HOST_CONTRACT_ID: &str = "radishmemory.phase1-local-library-host/1";
 
@@ -460,6 +462,21 @@ where
         top_k: usize,
         allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
     ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
+        self.search_sources_filtered(
+            query,
+            top_k,
+            allowed_sensitivities,
+            SourceSearchFilters::default(),
+        )
+    }
+
+    pub fn search_sources_filtered(
+        &mut self,
+        query: NonEmptyText,
+        top_k: usize,
+        allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
+        filters: SourceSearchFilters,
+    ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
         let now = self.now(ApplicationOperation::SearchSources)?;
         read::search_sources(
             &self.database,
@@ -468,6 +485,7 @@ where
             now,
             top_k,
             allowed_sensitivities,
+            filters,
         )
     }
 

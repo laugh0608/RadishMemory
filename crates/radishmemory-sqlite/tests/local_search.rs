@@ -6,8 +6,8 @@ use radishmemory_core::{
     MemoryStore, MemoryType, MemoryValue, NonEmptyText, ProducerRef, ProducerType,
     ProposalOperation, RetentionMode, RetentionRule, Sensitivity, SourceArtifact,
     SourceArtifactParams, SourceFragment, SourceFragmentParams, SourceKind, SourceOriginKind,
-    SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime, ValidTimeMode, Version,
-    compute_exact_bytes_digest,
+    SourceSearchScope, SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime,
+    ValidTimeMode, Version, compute_exact_bytes_digest,
 };
 use radishmemory_file_entry as _;
 use radishmemory_sqlite::{SqliteDatabase, SqliteErrorCode, SqliteStorageReason};
@@ -370,6 +370,76 @@ fn local_search_filters_before_top_k_and_uses_stable_ids_for_ties() {
 }
 
 #[test]
+fn save_time_filter_applies_before_top_k_with_exact_utc_bounds() {
+    let synthetic = SyntheticDatabase::new("saved-time-filter");
+    let mut database = SqliteDatabase::open(synthetic.path()).unwrap();
+    for (name, captured_at, namespace, sensitivity) in [
+        (
+            "a-older",
+            "2026-08-01T08:00:00.1234567890+08:00",
+            "namespace-1",
+            Sensitivity::Personal,
+        ),
+        (
+            "b-restricted",
+            "2026-08-01T08:00:00.1234567891+08:00",
+            "namespace-1",
+            Sensitivity::Restricted,
+        ),
+        (
+            "c-foreign",
+            "2026-08-01T08:00:00.1234567891+08:00",
+            "namespace-other",
+            Sensitivity::Personal,
+        ),
+        (
+            "d-future",
+            "2026-08-02T00:00:00.1234567892Z",
+            "namespace-1",
+            Sensitivity::Personal,
+        ),
+        (
+            "e-boundary",
+            "2026-08-01T08:00:00.1234567891+08:00",
+            "namespace-1",
+            Sensitivity::Personal,
+        ),
+    ] {
+        seed_source(
+            &mut database,
+            SourceSpec {
+                namespace_id: namespace,
+                source_id: &format!("source-{name}"),
+                fragment_id: &format!("fragment-{name}"),
+                content: "Shared orchard keyword",
+                captured_at,
+                sensitivity,
+            },
+        );
+    }
+    let query = LocalSearchRequest::new(
+        id("namespace-1"),
+        text("orchard"),
+        timestamp("2026-08-02T00:00:00.1234567891Z"),
+        1,
+        [Sensitivity::Personal],
+    )
+    .unwrap();
+    assert_eq!(
+        hit_ids(&database.search(&query).unwrap()),
+        ["fragment-a-older"]
+    );
+    let filtered = query.for_sources(SourceSearchScope {
+        saved_within_seconds: Some(86_400),
+        ..SourceSearchScope::default()
+    });
+    assert_eq!(
+        hit_ids(&database.search(&filtered).unwrap()),
+        ["fragment-e-boundary"]
+    );
+}
+
+#[test]
 fn non_active_fragments_remain_facts_but_never_enter_the_fts_derivation() {
     let synthetic = SyntheticDatabase::new("non-active-fragment");
     let mut database = SqliteDatabase::open(synthetic.path()).expect("database must initialize");
@@ -488,6 +558,20 @@ fn proposals_never_enter_recall_and_accept_materialization_is_atomic_with_indexi
 
     let after = database.search(&query).expect("memory search must succeed");
     assert_eq!(hit_ids(&after), vec!["memory-1", "fragment-1"]);
+    let one = LocalSearchRequest::new(
+        query.namespace_id().clone(),
+        query.query().clone(),
+        query.as_of().clone(),
+        1,
+        [Sensitivity::Personal],
+    )
+    .unwrap();
+    assert_eq!(hit_ids(&database.search(&one).unwrap()), ["memory-1"]);
+    let sources_only = one.for_sources(SourceSearchScope::default());
+    assert_eq!(
+        hit_ids(&database.search(&sources_only).unwrap()),
+        ["fragment-1"]
+    );
     database
         .verify_recall_derivations()
         .expect("live derivations must match a full rebuild");

@@ -10,7 +10,7 @@ use radishmemory_core::{
 };
 use radishmemory_file_entry::{MAX_FILE_BYTES, build_source_capture, read_file_snapshot};
 
-const NOTE_PRODUCER_ID: &str = "radishmemory-desktop-text-entry";
+pub(crate) const NOTE_PRODUCER_ID: &str = "radishmemory-desktop-text-entry";
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum NoteFormat {

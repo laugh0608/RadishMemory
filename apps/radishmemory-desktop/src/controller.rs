@@ -1,7 +1,8 @@
 use radishmemory_application::{
     ApplicationRuntime, DeletionEvidence, FileCaptureReceipt, FileExportReceipt, FileExportRequest,
     FileReadRequest, Identifier, LocalLibrary, LocalLibraryConfig, NonEmptyText, NoteFormat,
-    Sensitivity, SourceArtifact, SourceLineageSummary, SourceSearchResult, SourceVersionSummary,
+    Sensitivity, SourceArtifact, SourceLineageSummary, SourceSearchFilters, SourceSearchResult,
+    SourceVersionSummary,
 };
 
 use crate::{
@@ -331,6 +332,14 @@ where
     }
 
     pub fn search(&mut self, query: &str) -> Result<(), DesktopError> {
+        self.search_filtered(query, SourceSearchFilters::default())
+    }
+
+    pub(crate) fn search_filtered(
+        &mut self,
+        query: &str,
+        filters: SourceSearchFilters,
+    ) -> Result<(), DesktopError> {
         self.view.clear_search_results();
         if query.trim().is_empty() {
             return Ok(());
@@ -338,7 +347,12 @@ where
         let request = NonEmptyText::new(query.to_owned()).map_err(|_| selection_invalid())?;
         self.view.search_results = self
             .library
-            .search_sources(request, SEARCH_RESULT_LIMIT, [Sensitivity::Personal])
+            .search_sources(
+                request,
+                SEARCH_RESULT_LIMIT,
+                [Sensitivity::Personal],
+                filters,
+            )
             .map_err(|source| DesktopError::application(&source))?;
         self.view.submitted_query.push_str(query);
         Ok(())

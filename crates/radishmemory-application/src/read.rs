@@ -2,16 +2,48 @@
 //! including source resolution and publication of an authorized export.
 use crate::{
     ApplicationError, ApplicationOperation, FileExportReceipt, FileExportRequest, Identifier,
-    LocalLibraryConfig, NonEmptyText, Sensitivity, SourceArtifact, SourceLineageSummary,
+    LocalLibraryConfig, MediaType, NonEmptyText, Sensitivity, SourceArtifact, SourceLineageSummary,
     SourceSearchResult, SourceVersionSummary, Timestamp,
 };
 use radishmemory_core::{
-    LocalSearch, LocalSearchHit, LocalSearchRequest, SourceCatalog, SourceCatalogRequest,
-    SourceVault,
+    LocalSearch, LocalSearchHit, LocalSearchRequest, ProducerType, SourceCatalog,
+    SourceCatalogRequest, SourceSearchScope, SourceVault,
 };
 use radishmemory_file_entry::export_managed_source;
 use radishmemory_source_vault::LibraryReader;
 use radishmemory_sqlite::SqliteDatabase;
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SourceEntry {
+    Note,
+    FileImport,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum SourceSavedWithin {
+    Day,
+    Week,
+    ThirtyDays,
+}
+
+impl SourceSavedWithin {
+    const fn seconds(self) -> u64 {
+        let days = match self {
+            Self::Day => 1,
+            Self::Week => 7,
+            Self::ThirtyDays => 30,
+        };
+        days * 86_400
+    }
+}
+
+/// Filters on the saved current version. Missing fields include every value in that dimension.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
+pub struct SourceSearchFilters {
+    pub entry: Option<SourceEntry>,
+    pub media_type: Option<MediaType>,
+    pub saved_within: Option<SourceSavedWithin>,
+}
 
 /// A private read-only adapter boundary, not a second canonical storage port.
 pub(crate) trait SourceReader: SourceCatalog + LocalSearch {
@@ -126,8 +158,21 @@ pub(crate) fn search_sources<S: SourceReader>(
     now: Timestamp,
     top_k: usize,
     allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
+    filters: SourceSearchFilters,
 ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
     let operation = ApplicationOperation::SearchSources;
+    let user_input_producer = match filters.entry {
+        Some(SourceEntry::Note) => Some((
+            ProducerType::System,
+            Identifier::new(crate::capture::NOTE_PRODUCER_ID)
+                .map_err(|error| ApplicationError::canonical(operation, error))?,
+        )),
+        Some(SourceEntry::FileImport) => Some((
+            config.source_producer.producer_type(),
+            config.source_producer.producer_id().clone(),
+        )),
+        None => None,
+    };
     let request = LocalSearchRequest::new(
         config.namespace_id.clone(),
         query,
@@ -135,7 +180,12 @@ pub(crate) fn search_sources<S: SourceReader>(
         top_k,
         allowed_sensitivities,
     )
-    .map_err(|error| ApplicationError::canonical(operation, error))?;
+    .map_err(|error| ApplicationError::canonical(operation, error))?
+    .for_sources(SourceSearchScope {
+        user_input_producer,
+        media_type: filters.media_type,
+        saved_within_seconds: filters.saved_within.map(SourceSavedWithin::seconds),
+    });
     let hits = reader
         .search(&request)
         .map_err(|error| S::search_error(operation, error))?;

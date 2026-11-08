@@ -1,7 +1,16 @@
 use crate::{
-    CanonicalObjectType, CoreError, Identifier, InvalidCanonicalObjectReason, MemoryRecord,
-    NonEmptyText, Sensitivity, SourceFragment, Timestamp,
+    CanonicalObjectType, CoreError, Identifier, InvalidCanonicalObjectReason, MediaType,
+    MemoryRecord, NonEmptyText, ProducerType, Sensitivity, SourceArtifact, SourceFragment,
+    SourceOriginKind, Timestamp,
 };
+
+/// Optional restrictions for a source-only search over current artifacts.
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
+pub struct SourceSearchScope {
+    pub user_input_producer: Option<(ProducerType, Identifier)>,
+    pub media_type: Option<MediaType>,
+    pub saved_within_seconds: Option<u64>,
+}
 
 /// Validated boundary for one local M0 full-text search.
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -11,6 +20,7 @@ pub struct LocalSearchRequest {
     as_of: Timestamp,
     top_k: usize,
     allowed_sensitivities: Vec<Sensitivity>,
+    source_scope: Option<SourceSearchScope>,
 }
 
 impl LocalSearchRequest {
@@ -43,7 +53,39 @@ impl LocalSearchRequest {
             as_of,
             top_k,
             allowed_sensitivities,
+            source_scope: None,
         })
+    }
+
+    #[must_use]
+    pub fn for_sources(mut self, scope: SourceSearchScope) -> Self {
+        self.source_scope = Some(scope);
+        self
+    }
+
+    #[must_use]
+    pub fn includes_source(&self, source: &SourceArtifact) -> bool {
+        let Some(scope) = &self.source_scope else {
+            return true;
+        };
+        let source = source.params();
+        scope.user_input_producer.as_ref().is_none_or(|(kind, id)| {
+            source.origin_kind == SourceOriginKind::ExplicitUserInput
+                && source.producer.producer_type() == *kind
+                && source.producer.producer_id() == id
+        }) && scope
+            .media_type
+            .is_none_or(|media| source.media_type == media)
+            && scope.saved_within_seconds.is_none_or(|seconds| {
+                source
+                    .captured_at
+                    .at_or_after_seconds_before(&self.as_of, seconds)
+            })
+    }
+
+    #[must_use]
+    pub const fn includes_memories(&self) -> bool {
+        self.source_scope.is_none()
     }
 
     #[must_use]

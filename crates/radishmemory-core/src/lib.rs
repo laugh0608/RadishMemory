@@ -36,6 +36,6 @@ pub use model::*;
 pub use ports::{
     DeletionStore, LocalSearch, MemoryStore, SourceCaptureStore, SourceCatalog, SourceVault,
 };
-pub use search::{LocalSearchHit, LocalSearchRequest};
+pub use search::{LocalSearchHit, LocalSearchRequest, SourceSearchScope};
 pub use source::*;
 pub use temporal::{TimePrecision, Timestamp, TimestampPrecision, ValidTime, ValidTimeMode};

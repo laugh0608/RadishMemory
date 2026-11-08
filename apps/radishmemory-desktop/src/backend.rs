@@ -41,8 +41,12 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
         query: NonEmptyText,
         limit: usize,
         sensitivity: [Sensitivity; 1],
+        filters: SourceSearchFilters,
     ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
-        read!(self, search_sources(query, limit, sensitivity))
+        read!(
+            self,
+            search_sources_filtered(query, limit, sensitivity, filters)
+        )
     }
     pub(crate) fn get_source(
         &self,

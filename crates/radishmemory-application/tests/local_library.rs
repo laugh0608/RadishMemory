@@ -6,7 +6,8 @@ use std::sync::atomic::{AtomicU64, Ordering};
 
 use radishmemory_application::{
     ApplicationErrorReason, ApplicationIdentifierKind, ApplicationRuntime, LocalDeletionConfig,
-    LocalLibrary, LocalLibraryConfig,
+    LocalLibrary, LocalLibraryConfig, MediaType, NoteFormat, SourceEntry, SourceSavedWithin,
+    SourceSearchFilters,
 };
 use radishmemory_core::{
     ActorRef, ActorType, DeletionOverallStatus, DeletionState, EgressPolicy, Governance,
@@ -62,6 +63,7 @@ impl Error for TestRuntimeError {}
 struct TestRuntime {
     next_id: u64,
     next_time: u8,
+    date: Option<&'static str>,
 }
 
 impl ApplicationRuntime for TestRuntime {
@@ -88,7 +90,8 @@ impl ApplicationRuntime for TestRuntime {
     fn now(&mut self) -> Result<Timestamp, Self::Error> {
         self.next_time += 1;
         Ok(timestamp(&format!(
-            "2026-08-30T10:00:{:02}Z",
+            "{}T10:00:{:02}Z",
+            self.date.unwrap_or("2026-08-30"),
             self.next_time
         )))
     }
@@ -158,6 +161,52 @@ fn config() -> LocalLibraryConfig {
 
 fn read_request(path: &Path, allowed_root: &Path) -> FileReadRequest {
     FileReadRequest::new(path, vec![allowed_root.to_path_buf()]).unwrap()
+}
+
+#[test]
+fn save_time_filter_uses_the_current_version_after_correction() {
+    let directory = TestDirectory::new("filter-current-save-time");
+    let database = directory.path().join("library.sqlite");
+    let mut library = LocalLibrary::open(&database, TestRuntime::default(), config()).unwrap();
+    let original = library
+        .save_note(NoteFormat::Markdown, None, "orchard initial".into())
+        .unwrap();
+    let (mut runtime, config) = library.close();
+    runtime.date = Some("2026-09-05");
+    let mut library = LocalLibrary::open(&database, runtime, config).unwrap();
+    let filters = SourceSearchFilters {
+        entry: Some(SourceEntry::Note),
+        media_type: Some(MediaType::TextMarkdown),
+        saved_within: Some(SourceSavedWithin::Day),
+    };
+    let recent = |library: &mut LocalLibrary<TestRuntime>, query| {
+        library
+            .search_sources_filtered(text(query), 1, [Sensitivity::Personal], filters)
+            .unwrap()
+    };
+    assert!(recent(&mut library, "orchard").is_empty());
+    let corrected = library
+        .correct_note(
+            original.lineage_id(),
+            original.source_id(),
+            "orchard corrected".into(),
+        )
+        .unwrap();
+    assert_eq!(
+        recent(&mut library, "orchard")[0].source_id(),
+        corrected.source_id()
+    );
+    assert!(recent(&mut library, "initial").is_empty());
+    assert_eq!(
+        library
+            .get_source(original.source_id())
+            .unwrap()
+            .unwrap()
+            .params()
+            .content
+            .as_str(),
+        "orchard initial"
+    );
 }
 
 #[test]

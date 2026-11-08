@@ -27,7 +27,7 @@ pub(crate) enum Command {
     CorrectNote(Identifier, Identifier, String),
     ReadOriginal { edit: bool },
     Export(FileExportRequest),
-    Search(String),
+    Search(SearchQuery),
     CatalogPage(u64),
     SelectLineage(Identifier),
     SelectVersion(Identifier),
@@ -39,6 +39,22 @@ pub(crate) enum Command {
     Abandon,
     Shutdown,
 }
+
+pub(crate) struct SearchQuery {
+    pub text: String,
+    pub filters: SourceSearchFilters,
+}
+
+#[cfg(test)]
+impl From<&str> for SearchQuery {
+    fn from(text: &str) -> Self {
+        Self {
+            text: text.to_owned(),
+            filters: SourceSearchFilters::default(),
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct Snapshot {
     pub view: Option<LibraryView>,
@@ -457,7 +473,8 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 snapshot.message = Some("Managed bytes exported without overwrite.".into());
             }
             Command::Search(query) => {
-                self.controller()?.search(&query)?;
+                self.controller()?
+                    .search_filtered(&query.text, query.filters)?;
             }
             Command::CatalogPage(offset) => self.controller()?.show_catalog_page(offset)?,
             Command::SelectLineage(id) => self.controller()?.select_lineage(&id)?,

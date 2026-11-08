@@ -65,6 +65,14 @@ impl Timestamp {
     pub const fn offset_seconds(&self) -> i32 {
         self.offset_seconds
     }
+
+    /// Compare to a rolling cutoff using the same UTC and fractional keys as Ord.
+    pub(crate) fn at_or_after_seconds_before(&self, reference: &Self, seconds: u64) -> bool {
+        self.utc_second_key
+            .cmp(&(reference.utc_second_key - 2 * i128::from(seconds)))
+            .then_with(|| compare_fraction(&self.fractional_seconds, &reference.fractional_seconds))
+            .is_ge()
+    }
 }
 
 impl PartialEq for Timestamp {

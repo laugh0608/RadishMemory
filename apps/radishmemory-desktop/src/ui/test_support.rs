@@ -22,6 +22,7 @@ impl Harness {
                 note_draft: None,
                 original_offset: 0,
                 search_query: String::new(),
+                search_filters: SourceSearchFilters::default(),
                 notice: None,
                 refresh_notice: None,
                 last_deletion: None,

@@ -12,7 +12,7 @@ use radishmemory_source_vault::{
 use crate::{
     ApplicationError, ApplicationOperation, ApplicationRuntime, FileExportReceipt,
     FileExportRequest, Identifier, LocalLibraryConfig, NonEmptyText, Sensitivity, SourceArtifact,
-    SourceLineageSummary, SourceSearchResult, SourceVersionSummary, read,
+    SourceLineageSummary, SourceSearchFilters, SourceSearchResult, SourceVersionSummary, read,
 };
 
 /// An explicit application root and verified host profile, with no live database
@@ -304,6 +304,21 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
         top_k: usize,
         allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
     ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
+        self.search_sources_filtered(
+            query,
+            top_k,
+            allowed_sensitivities,
+            SourceSearchFilters::default(),
+        )
+    }
+
+    pub fn search_sources_filtered(
+        &mut self,
+        query: NonEmptyText,
+        top_k: usize,
+        allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
+        filters: SourceSearchFilters,
+    ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
         let operation = ApplicationOperation::SearchSources;
         let now = self
             .runtime
@@ -317,6 +332,7 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
                 now,
                 top_k,
                 allowed_sensitivities,
+                filters,
             )
         })
     }

@@ -1,10 +1,10 @@
 use crate::controller::{CATALOG_PAGE_SIZE, LibraryView, text_excerpt};
-use crate::worker::{Command, Snapshot, Worker};
+use crate::worker::{Command, SearchQuery, Snapshot, Worker};
 use crate::{DesktopError, NativeFilePicker, PickerOutcome};
 use eframe::egui;
 use radishmemory_application::{
-    ApplicationErrorReason, Identifier, NonEmptyText, NoteFormat, is_note_producer,
-    note_body_is_valid,
+    ApplicationErrorReason, Identifier, MediaType, NonEmptyText, NoteFormat, SourceEntry,
+    SourceSavedWithin, SourceSearchFilters, is_note_producer, note_body_is_valid,
 };
 
 pub struct RadishMemoryApp {
@@ -14,6 +14,7 @@ pub struct RadishMemoryApp {
     note_draft: Option<NoteDraft>,
     original_offset: usize,
     search_query: String,
+    search_filters: SourceSearchFilters,
     notice: Option<Notice>,
     refresh_notice: Option<String>,
     last_deletion: Option<radishmemory_application::DeletionEvidence>,
@@ -61,6 +62,7 @@ impl RadishMemoryApp {
             note_draft: None,
             original_offset: 0,
             search_query: String::new(),
+            search_filters: SourceSearchFilters::default(),
             notice: None,
             refresh_notice: None,
             last_deletion: None,
@@ -93,7 +95,7 @@ impl RadishMemoryApp {
         self.worker.as_ref().is_some_and(|w| w.busy)
     }
     fn send(&mut self, command: Command) {
-        let changes_sources = matches!(
+        let invalidates_results = matches!(
             &command,
             Command::Import(_)
                 | Command::Update(_)
@@ -102,14 +104,15 @@ impl RadishMemoryApp {
                 | Command::Delete
                 | Command::RetryOriginal
                 | Command::ResumeDelete(_)
+                | Command::Search(_)
         );
         if let Some(worker) = &mut self.worker {
             match worker.send(command) {
                 Ok(()) => {
                     self.state.original = None;
                     self.original_offset = 0;
-                    // The write may commit before its refreshed snapshot arrives.
-                    if changes_sources && let Some(view) = &mut self.controller {
+                    // Previous results stop applying as soon as a new search or write is accepted.
+                    if invalidates_results && let Some(view) = &mut self.controller {
                         view.clear_search_results();
                     }
                     self.notice = Some(Notice::neutral("Working…"));
@@ -201,7 +204,10 @@ impl RadishMemoryApp {
             }
             UiAction::Verify => self.send(Command::Verify),
             UiAction::Rebuild => self.send(Command::Rebuild),
-            UiAction::Search => self.send(Command::Search(self.search_query.clone())),
+            UiAction::Search => self.send(Command::Search(SearchQuery {
+                text: self.search_query.clone(),
+                filters: self.search_filters,
+            })),
             UiAction::SelectLineage(id) => self.send(Command::SelectLineage(id)),
             UiAction::SelectVersion(id) => self.send(Command::SelectVersion(id)),
             UiAction::SelectSearchResult {
@@ -405,6 +411,25 @@ impl RadishMemoryApp {
                         }
                     });
                 });
+                let previous_filters = self.search_filters;
+                content_ui.horizontal_wrapped(|ui| {
+                    search_filter(ui, "All sources", &mut self.search_filters.entry, &[
+                        (SourceEntry::Note, "In-app notes"),
+                        (SourceEntry::FileImport, "Imported files"),
+                    ]);
+                    search_filter(ui, "All formats", &mut self.search_filters.media_type, &[
+                        (MediaType::TextPlain, "Plain text"),
+                        (MediaType::TextMarkdown, "Markdown"),
+                    ]);
+                    search_filter(ui, "Any save time", &mut self.search_filters.saved_within, &[
+                        (SourceSavedWithin::Day, "Last 24 hours"),
+                        (SourceSavedWithin::Week, "Last 7 days"),
+                        (SourceSavedWithin::ThirtyDays, "Last 30 days"),
+                    ]);
+                });
+                if self.search_filters != previous_filters {
+                    action = Some(UiAction::Search);
+                }
                 content_ui.separator();
 
                 if let Some(source) = controller.current_version() {
@@ -797,7 +822,29 @@ mod recall_profile_tests;
 #[cfg(test)]
 mod recall_repair_tests;
 #[cfg(test)]
+mod search_filter_tests;
+#[cfg(test)]
 mod test_support;
+
+fn search_filter<T: Copy + PartialEq>(
+    ui: &mut egui::Ui,
+    unrestricted: &str,
+    value: &mut Option<T>,
+    options: &[(T, &str)],
+) {
+    let label = options
+        .iter()
+        .find(|(option, _)| Some(*option) == *value)
+        .map_or(unrestricted, |(_, label)| *label);
+    egui::ComboBox::from_id_salt(unrestricted)
+        .selected_text(label)
+        .show_ui(ui, |ui| {
+            ui.selectable_value(value, None, unrestricted);
+            for &(option, label) in options {
+                ui.selectable_value(value, Some(option), label);
+            }
+        });
+}
 
 fn source_label(title: Option<&NonEmptyText>) -> &str {
     title.map_or("Untitled source", NonEmptyText::as_str)
