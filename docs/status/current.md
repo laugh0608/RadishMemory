@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-导航整理：2026-11-01。最近新增证据为 2026-11-08 的 Q02 桌面分页、Q06 正文后段回源与旧结果撤回、Q03 默认 v6 启动失败后的显式派生修复合成回归。760×520 原生尺寸与新跨平台证据仍待验。
+导航整理：2026-11-01。最近新增证据为 2026-11-08 的 Q02 桌面分页、Q06 正文后段回源与旧结果撤回、Q03 默认 v6 启动失败后的显式派生修复合成回归和 macOS 原生正常修复验收。760×520 原生尺寸与新跨平台证据仍待验。
 
 从[专题地图](../topics.md#当前五项后续的任务与验收链)进入当前任务的主要归属、原实施切片与验收来源。近期动作以“后续事项”五项顺序为准；“当前顺位”保留既有接入进展与剩余范围，不另定一套任务顺序。
 
@@ -10,7 +10,7 @@
 
 `Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending`
 
-M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，现已接入显式 application 加密用例与桌面 worker / 恢复界面，默认启动仍保留旧入口。默认桌面产品入口仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 承载正文迁移状态与已迁移对象库，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；默认 `LocalLibrary` 入口拒绝 v7 / v8 / v9 / v10 / v11 / v12，显式加密入口只接受迁移完成的 v8 至 v12。项目具备受约束的工程原型，但中文找回的独立人工复核、目录分页、正文后段回源和默认 v6 派生修复的原生验收仍有缺口，不能据历史合成验收宣称日常资料库已完整可用。
+M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，现已接入显式 application 加密用例与桌面 worker / 恢复界面，默认启动仍保留旧入口。默认桌面产品入口仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 承载正文迁移状态与已迁移对象库，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；默认 `LocalLibrary` 入口拒绝 v7 / v8 / v9 / v10 / v11 / v12，显式加密入口只接受迁移完成的 v8 至 v12。项目具备受约束的工程原型。中文找回的独立人工复核、目录分页及正文后段回源的原生验收仍待补；默认 v6 派生修复已有 macOS 常规窗口证据，跨平台仍待验。
 
 P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../implementation/phase1-source-vault-key-provider.md)，三平台 locked CI 由下述 PR #4 复验；macOS 最小真实密钥库 / GUI 正常链路、受损库边界、权限故障下的三条原请求恢复路径及外部 SQLite 持锁下 GUI 失败恢复已验收；双 GUI 交替与精确导出也已通过。新签名副本首次误加的 Prompt 常许许可已按追加授权精确撤销；重新交接拒绝后，真实 `KeyStoreCancelled` 显式打开失败关闭通过。其它系统错误 / 操作阶段、失败窗口与平台仍待验收。P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；实现范围为独立 Source Vault package 与 Windows 文件身份 adapter，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
 
@@ -21,7 +21,7 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 | M0 领域与存储 | canonical core、SQLite v6、来源 / 记忆 / 事件、FTS5、本地删除与真实 M0 runner 已经建立 | [ADR 0002](../adr/0002-m0-local-memory-loop.md)；runner 编排不等于 production 历史查询与上下文编译接口 |
 | 字段与 fixture | M0 字段级 canonical schema 定义九种顶层对象；fixture 固定 12 个场景的 86 个有序操作和 12 个指标 gate | [M0 Canonical Schema](../schema/m0-canonical-schema.md)不绑定数据库、生产 ID 编码或语言类型；[M0 Fixture 与指标契约](../evaluation/m0-fixture-contract.md)说明实际证据限制 |
 | 文件入口 | `radishmemory-file-entry` 的 P1-I01 file snapshot contract、P1-I02 atomic source capture、P1-I03 exact export、P1-I04 lineage deletion 已落地 | [ADR 0006](../adr/0006-phase1-text-markdown-file-entry.md)；`SourceCaptureStore` 原子提交，`P1-F01` 至 `P1-F18` 已有三平台证据，故障 seam 仅 opt-in `acceptance-test-support`；不代表完整 importer / exporter 已实现 |
-| 本地宿主 | P1-H02 application service、P1-H03 source catalog、P1-H04 desktop UI、P1-H05 host acceptance 已有实现及合成宿主证据 | [ADR 0007](../adr/0007-phase1-local-library-host.md)的 `P1-HF01` 至 `P1-HF12` 保留历史记录；[Q02 第 201 条](../evaluation/phase1-local-library-quality.md#2026-11-08-q02-桌面目录分页与页外选择)双入口合成回归已通过，原生分页仍待验；[Q03 默认 v6 派生修复](../evaluation/phase1-local-library-quality.md#2026-11-08-q03-默认-v6-启动失败后的派生修复)已有合成回归，显式加密入口的对应正常修复已通过真实 GUI，默认 v6 的原生和其它平台仍待验 |
+| 本地宿主 | P1-H02 application service、P1-H03 source catalog、P1-H04 desktop UI、P1-H05 host acceptance 已有实现及合成宿主证据 | [ADR 0007](../adr/0007-phase1-local-library-host.md)的 `P1-HF01` 至 `P1-HF12` 保留历史记录；[Q02 第 201 条](../evaluation/phase1-local-library-quality.md#2026-11-08-q02-桌面目录分页与页外选择)双入口合成回归已通过，原生分页仍待验；[Q03 默认 v6 派生修复](../evaluation/phase1-local-library-quality.md#2026-11-08-q03-默认-v6-启动失败后的派生修复)与显式加密入口的正常修复均有 macOS 真实 GUI 证据，默认 v6 的跨平台和失败分支原生验收仍待覆盖 |
 | 加密 Source Vault | P1-S01 storage contract、P1-S02 dependency and cipher review、P1-S03a portable crypto dependency landing 已完成对应范围；P1-S03b immutable object filesystem adapter 已通过 macOS 合成验证、Windows ARM64 / NTFS 提升权限与普通用户验收、Linux ARM64 / ext4 普通用户验收 | [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md)的 `P1-SF01` 至 `P1-SF18` 尚未全部实现；object adapter 的 Windows 文件身份替换缺陷已修复并通过普通用户 / ACL 回归；P1-S03c-2 独立 key provider 已实现并有 macOS 构建与合成测试证据；P1-S04a 已建立密钥初始化 checkpoint；正文迁移 / 恢复、加密 capture、inventory reconciliation 及显式放弃 / 精确 orphan retirement 合成切片已落地；独立 object-backed verify / rebuild、删除执行及历史请求接管已实现；认证读取、目录 / 检索及精确导出组合验收已通过；显式 application 打开 / 恢复、读取、原请求 capture / 删除及派生维护已接入；桌面后台接线与原请求恢复已实现并通过合成测试；macOS 最小正常链路、受损库边界及权限故障下的原请求重试 / 精确放弃 / 原删除授权恢复已完成真实 Keychain / GUI 验收；外部 SQLite 持锁下 GUI 失败恢复、双 GUI 交替及精确导出已通过；误加的 Prompt 常许许可已精确撤销，真实系统交互返回 `KeyStoreCancelled` 的空库打开失败关闭通过；当前 Linux / Windows ARM64 的默认构建与常规合成测试已通过，Windows 另通过显式 reparse 与普通用户 ACL 验收；Windows / Linux ARM64 两轮真实 provider / GUI 正常链路、重登后五份精确导出与应用层删除均已通过；Linux 新账号失效 default 已按追加授权修复，重登后本批 collection 由用户解锁；其它系统错误 / 操作阶段继续待验 |
 | 用户价值 | 已能通过本地入口导入、版本化、搜索、精确导出和删除合成文本 | 尚无完整记忆控制台、模型问答、PDF / 图片解析、向量、同步、恢复或签名发行包 |
 
@@ -85,7 +85,7 @@ pwsh ./scripts/check-repo.ps1
 
 ## 后续事项
 
-2026-11-08 Q03 实施切片：默认 v6 因逻辑派生不一致而打不开时，可先只读检查现有库，再显式确认重建。事务重验与提交后复验通过才恢复普通视图。已覆盖取消、正文或绑定损坏、提交受锁、数据库缺失及不支持的版本；原生窗口与其它平台仍待验。见[Q03 证据](../evaluation/phase1-local-library-quality.md#2026-11-08-q03-默认-v6-启动失败后的派生修复)。
+2026-11-08 Q03 实施切片：默认 v6 因逻辑派生不一致而打不开时，可先只读检查现有库，再显式确认重建。事务重验与提交后复验通过才恢复普通视图。合成回归覆盖取消、正文或绑定损坏、提交受锁、数据库缺失及不支持的版本。macOS 常规窗口已通过正常修复、取消字节不变、重开、中文检索、系统选择器精确导出与 Verify；跨平台及原生失败分支仍待验。见[Q03 证据](../evaluation/phase1-local-library-quality.md#2026-11-08-q03-默认-v6-启动失败后的派生修复)。
 
 2026-11-08 Q06 实施切片：搜索结果按原有 source / fragment citation 打开可翻阅的原文摘录。默认 v6 与显式加密入口已通过正文第 400 字符后回源、更新与删除期间撤回旧正文及失效 citation 恢复指引的合成回归。原生显示、系统 picker、跨平台与外部窗口更改后的可见刷新仍待验。见[Q06 证据](../evaluation/phase1-local-library-quality.md#2026-11-08-q06-正文后段回源与旧结果撤回)。
 
@@ -105,7 +105,7 @@ pwsh ./scripts/check-repo.ps1
 
 1. **Q01 独立人工复核与 Q04 后续规模评审**：标签[逐项静态审阅表](../evaluation/phase1-chinese-retrieval-baseline.md#2026-11-02-标签静态审阅)已就绪，交独立人工复核，不能把 AI 复核当人工标注或迁就算法改写标签。100 来源 / 部分多版本的固定档位已有有限证据，1000 / 10000、物理冷缓存、其它分布和平台仍待验；下一档先评审数据 / 版本 / 长短分布、操作、总运行时间与资源预算，再决定扩大范围。主要剩余成本包含对象认证 / IO 与 canonical 复验，多结果回源的重复认证组织另做边界评审，全部权限与完整性校验保持。生产延迟 / 容量和 CI 时间预算尚未冻结；人工复核或预算未完成时，第 2 项准备和第 3 项可以独立推进。
 2. **收口有限可见验收的剩余项**：[macOS 实际结果](../evaluation/phase1-recall-native-acceptance.md#2026-11-02-macos-原生局部结果)已覆盖明文 / 加密升级与降级 Cancel / Confirm、中文命中、关闭重开、限制文案和四份精确导出。现有控制记录缺少实际 content rect / scale。已记录[人工调整和独立读回的候选步骤](../evaluation/phase1-recall-native-acceptance.md#2026-11-08-窗口几何能力复核)，先确认目标内容视图和缩放可读，再按实际 data / profile、默认构建、精确 slot 和预算准备新操作单，具体授权补 760×520 与 Han 升级后的旧 ASCII 词 GUI 查询。旧冻结件和已结束操作单保持。Windows / Linux 新字体及切换 UI 按最终输入先做构建 / 合成、再补可见证据，VM 启动前核对完整清单并始终串行。
-3. **继续文本资料库质量闭环**：Q02 分页与页外操作、Q06 正文后段回源与本地写入后的旧结果撤回均已通过明文 / 合成加密双入口回归，Q03 默认 v6 failed-open 派生维护也已通过合成回归。后续补原生可见行为、Q02 / Q06 的系统 picker 和其它平台，按各自关闭条件验收。11 月 2 日的默认 v8 通用 StorageFailure 仍是独立的模式引导评审输入。已经通过的 macOS 有资料 Refresh 认证失败、空库自然 busy 关闭、双 GUI 交替和 Windows / Linux 正常链路不重复列为未验。
+3. **继续文本资料库质量闭环**：Q02 分页与页外操作、Q06 正文后段回源与本地写入后的旧结果撤回均已通过明文 / 合成加密双入口回归，Q03 默认 v6 failed-open 派生维护已通过合成回归和 macOS 常规窗口原生正常链路。后续按各自关闭条件补 Q02 / Q06 的可见行为和系统 picker、Q03 原生失败分支及跨平台证据。11 月 2 日的默认 v8 通用 StorageFailure 仍是独立的模式引导评审输入。已经通过的 macOS 有资料 Refresh 认证失败、空库自然 busy 关闭、双 GUI 交替和 Windows / Linux 正常链路不重复列为未验。
 4. **其余失败窗口与契约保持独立**：真实 key 首尾取消、其它有资料操作失败、pending 原请求关闭 Cancel / Confirm、跨平台错误窗口仍按[有限检查点](../evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)另定范围。精确同帧关闭只引用 headless 回归，不能由正常原生退出替代。`evidence_digest` 复算及历史兼容先做契约评审，完整 P1-S05 与 PDF / 图片停止线保持。
 5. **M01 继续暂缓**：10 月 24 日确认的源码摘要漂移与旧 v2 冻结件保留，详见[当日日终记录](2026-10-24-source-vault.md)及[副本范围 v2](../evaluation/phase1-keychain-prompt-diagnostic-plan.md#2026-10-18-m01-副本范围-v2-实现与重新冻结)。未来先审阅绑定和独立冻结范围，再按新版操作单精确授权；不重签、不跳过校验、不改 key / ACL、不把副本匹配当作原 app 授权。D01 / D02 观测与未解释提示仍见[10 月 18 日记录](2026-10-18-source-vault.md)，四读及全部认证检查保持。
 
