@@ -1,20 +1,8 @@
 //! Real encrypted engine snapshots delivered to production UI; key failures are synthetic.
-use super::test_support::Harness;
+use super::test_support::{Harness, painted_text};
 use super::*;
 use crate::worker::tests::{Fixture, ok, ready};
 use radishmemory_source_vault::SourceVaultErrorCode;
-
-fn painted_text(output: &egui::FullOutput) -> String {
-    output
-        .shapes
-        .iter()
-        .filter_map(|shape| match &shape.shape {
-            egui::epaint::Shape::Text(text) => Some(text.galley.text()),
-            _ => None,
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
-}
 
 #[test]
 fn cancelled_authenticated_read_withdraws_populated_ui_until_explicit_recovery() {

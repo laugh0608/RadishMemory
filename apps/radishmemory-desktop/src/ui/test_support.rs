@@ -102,6 +102,17 @@ pub(super) fn label_position(output: &egui::FullOutput, label: &str) -> egui::Po
         })
         .unwrap_or_else(|| panic!("missing painted label: {label}"))
 }
+pub(super) fn painted_text(output: &egui::FullOutput) -> String {
+    output
+        .shapes
+        .iter()
+        .filter_map(|shape| match &shape.shape {
+            egui::epaint::Shape::Text(text) => Some(text.galley.text()),
+            _ => None,
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
 pub(super) fn cancelled(output: &egui::FullOutput) -> bool {
     output.viewport_output[&egui::ViewportId::ROOT]
         .commands

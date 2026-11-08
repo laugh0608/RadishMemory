@@ -26,7 +26,7 @@ pub(crate) enum Command {
     CatalogPage(u64),
     SelectLineage(Identifier),
     SelectVersion(Identifier),
-    SelectResult(Identifier, Identifier),
+    SelectResult(Identifier, Identifier, Identifier),
     Delete,
     RetryOriginal,
     ResumeDelete(Identifier),
@@ -352,8 +352,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::CatalogPage(offset) => self.controller()?.show_catalog_page(offset)?,
             Command::SelectLineage(id) => self.controller()?.select_lineage(&id)?,
             Command::SelectVersion(id) => self.controller()?.select_source_version(&id)?,
-            Command::SelectResult(lineage, source) => {
-                self.controller()?.select_search_result(&lineage, &source)?;
+            Command::SelectResult(lineage, source, fragment) => {
+                self.controller()?
+                    .select_search_result(&lineage, &source, &fragment)?;
             }
             Command::Delete => {
                 snapshot.last_deletion = Some(self.controller()?.delete_selected_lineage()?);

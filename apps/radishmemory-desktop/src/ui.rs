@@ -71,9 +71,21 @@ impl RadishMemoryApp {
         self.worker.as_ref().is_some_and(|w| w.busy)
     }
     fn send(&mut self, command: Command) {
+        let changes_sources = matches!(
+            &command,
+            Command::Import(_)
+                | Command::Update(_)
+                | Command::Delete
+                | Command::RetryOriginal
+                | Command::ResumeDelete(_)
+        );
         if let Some(worker) = &mut self.worker {
             match worker.send(command) {
                 Ok(()) => {
+                    // The write may commit before its refreshed snapshot arrives.
+                    if changes_sources && let Some(view) = &mut self.controller {
+                        view.clear_search_results();
+                    }
                     self.notice = Some(Notice::neutral("Working…"));
                     self.refresh_notice = None;
                 }
@@ -139,7 +151,13 @@ impl RadishMemoryApp {
             UiAction::SelectSearchResult {
                 lineage_id,
                 source_id,
-            } => self.send(Command::SelectResult(lineage_id, source_id)),
+                fragment_id,
+            } => self.send(Command::SelectResult(lineage_id, source_id, fragment_id)),
+            UiAction::ShowFragmentExcerpt(offset) => {
+                if let Some(view) = &mut self.controller {
+                    view.show_fragment_excerpt(offset);
+                }
+            }
             UiAction::RequestDelete => self.confirm_delete = true,
             UiAction::CancelDelete => self.confirm_delete = false,
             UiAction::ConfirmDelete => {
@@ -365,6 +383,36 @@ impl RadishMemoryApp {
                             version.media_type()
                         ));
                     }
+                    if let Some(excerpt) = controller.selected_excerpt() {
+                        content_ui.add_space(8.0);
+                        content_ui.strong("Source fragment").on_hover_text(
+                            "Opens at the literal query text when present. Use the buttons to browse the original fragment.",
+                        );
+                        content_ui.small(format!(
+                            "v{} · excerpt bytes {}..{}",
+                            excerpt.result.version().get(),
+                            excerpt.byte_start,
+                            excerpt.byte_end
+                        ));
+                        content_ui.horizontal_wrapped(|ui| {
+                            for (label, offset) in [
+                                ("Previous excerpt", excerpt.previous),
+                                ("Next excerpt", excerpt.next),
+                            ] {
+                                if ui.add_enabled(offset.is_some(), egui::Button::new(label)).clicked()
+                                    && let Some(offset) = offset
+                                {
+                                    action = Some(UiAction::ShowFragmentExcerpt(offset));
+                                }
+                            }
+                        });
+                        egui::ScrollArea::vertical()
+                            .id_salt(("source-fragment", excerpt.result.fragment_id().as_str(), excerpt.byte_start))
+                            .max_height(110.0)
+                            .show(content_ui, |ui| {
+                                ui.label(excerpt.text);
+                            });
+                    }
                 } else {
                     content_ui.heading("No managed sources");
                     content_ui
@@ -395,6 +443,7 @@ impl RadishMemoryApp {
                                     action = Some(UiAction::SelectSearchResult {
                                         lineage_id: result.lineage_id().clone(),
                                         source_id: result.source_id().clone(),
+                                        fragment_id: result.fragment_id().clone(),
                                     });
                                 }
                                 ui.label(content_preview(result.content().as_str()));
@@ -512,6 +561,8 @@ mod close_tests;
 #[cfg(test)]
 mod font_tests;
 #[cfg(test)]
+mod fragment_tests;
+#[cfg(test)]
 mod read_session_tests;
 #[cfg(test)]
 mod recall_profile_tests;
@@ -579,7 +630,9 @@ enum UiAction {
     SelectSearchResult {
         lineage_id: Identifier,
         source_id: Identifier,
+        fragment_id: Identifier,
     },
+    ShowFragmentExcerpt(usize),
     RequestDelete,
     CancelDelete,
     ConfirmDelete,
@@ -605,9 +658,13 @@ impl Notice {
     }
 
     fn error(error: &DesktopError) -> Self {
+        let mut message = redacted_error(error);
+        if error.reason() == crate::DesktopErrorReason::SelectionInvalid {
+            message.push_str(". Refresh the library and search again to select a current result.");
+        }
         Self {
             kind: NoticeKind::Error,
-            message: redacted_error(error),
+            message,
         }
     }
 

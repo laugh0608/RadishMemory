@@ -12,6 +12,7 @@ use crate::{
 pub(crate) const CATALOG_PAGE_SIZE: usize = 200;
 pub(crate) const CATALOG_READ_LIMIT: usize = CATALOG_PAGE_SIZE + 1;
 const SEARCH_RESULT_LIMIT: usize = 50;
+const EXCERPT_CHARACTERS: usize = 400;
 
 pub struct LibraryController<R, P = radishmemory_source_vault::PlatformKeyProvider>
 where
@@ -32,6 +33,23 @@ pub struct LibraryView {
     versions: Vec<SourceVersionSummary>,
     selected_source_id: Option<Identifier>,
     search_results: Vec<SourceSearchResult>,
+    submitted_query: String,
+    selected_fragment: Option<SelectedFragment>,
+}
+
+#[derive(Clone, Copy)]
+struct SelectedFragment {
+    result_index: usize,
+    start: usize,
+}
+
+pub(crate) struct FragmentExcerpt<'a> {
+    pub(crate) result: &'a SourceSearchResult,
+    pub(crate) text: &'a str,
+    pub(crate) byte_start: u64,
+    pub(crate) byte_end: u64,
+    pub(crate) previous: Option<usize>,
+    pub(crate) next: Option<usize>,
 }
 
 impl<R, P: radishmemory_source_vault::LibraryProvider> LibraryController<R, P>
@@ -146,6 +164,7 @@ where
         } else {
             self.view.selected_lineage_id = None;
             self.view.selected_source_id = None;
+            self.view.selected_fragment = None;
             self.view.versions.clear();
         }
         self.view.set_catalog_page(offset, sources);
@@ -167,15 +186,30 @@ where
         &mut self,
         lineage_id: &Identifier,
         source_id: &Identifier,
+        fragment_id: &Identifier,
     ) -> Result<(), DesktopError> {
-        if !self
+        let result_index = self
             .search_results
             .iter()
-            .any(|result| result.lineage_id() == lineage_id && result.source_id() == source_id)
-        {
-            return Err(selection_invalid());
-        }
-        self.load_selection(lineage_id, Some(source_id))
+            .position(|result| {
+                result.lineage_id() == lineage_id
+                    && result.source_id() == source_id
+                    && result.fragment_id() == fragment_id
+            })
+            .ok_or_else(selection_invalid)?;
+        self.load_selection(lineage_id, Some(source_id))?;
+        // Literal positioning is a navigation aid. MATCH may find text by
+        // normalization or separate query terms, so the whole fragment stays browsable.
+        let start = self.view.search_results[result_index]
+            .content()
+            .as_str()
+            .find(self.view.submitted_query.trim())
+            .unwrap_or(0);
+        self.view.selected_fragment = Some(SelectedFragment {
+            result_index,
+            start,
+        });
+        Ok(())
     }
 
     fn load_selection(
@@ -196,6 +230,7 @@ where
             .ok_or_else(selection_invalid)?;
         self.view.selected_lineage_id = Some(lineage_id.clone());
         self.view.selected_source_id = Some(selected.source_id().clone());
+        self.view.selected_fragment = None;
         self.view.versions = versions;
         Ok(())
     }
@@ -209,6 +244,7 @@ where
             return Err(selection_invalid());
         }
         self.view.selected_source_id = Some(source_id.clone());
+        self.view.selected_fragment = None;
         Ok(())
     }
 
@@ -256,16 +292,16 @@ where
     }
 
     pub fn search(&mut self, query: &str) -> Result<(), DesktopError> {
-        self.view.search_results.clear();
+        self.view.clear_search_results();
         if query.trim().is_empty() {
-            self.view.search_results.clear();
             return Ok(());
         }
-        let query = NonEmptyText::new(query.to_owned()).map_err(|_| selection_invalid())?;
+        let request = NonEmptyText::new(query.to_owned()).map_err(|_| selection_invalid())?;
         self.view.search_results = self
             .library
-            .search_sources(query, SEARCH_RESULT_LIMIT, [Sensitivity::Personal])
+            .search_sources(request, SEARCH_RESULT_LIMIT, [Sensitivity::Personal])
             .map_err(|source| DesktopError::application(&source))?;
+        self.view.submitted_query.push_str(query);
         Ok(())
     }
 
@@ -279,7 +315,7 @@ where
             .library
             .delete_source_lineage(&lineage_id)
             .map_err(|source| DesktopError::application(&source))?;
-        self.view.search_results.clear();
+        self.view.clear_search_results();
         self.view.selected_lineage_id = None;
         self.view.selected_source_id = None;
         self.view.versions.clear();
@@ -355,6 +391,48 @@ impl LibraryView {
     #[must_use]
     pub fn search_results(&self) -> &[SourceSearchResult] {
         &self.search_results
+    }
+
+    pub(crate) fn clear_search_results(&mut self) {
+        self.search_results.clear();
+        self.submitted_query.clear();
+        self.selected_fragment = None;
+    }
+
+    pub(crate) fn show_fragment_excerpt(&mut self, start: usize) {
+        if let Some(selection) = &mut self.selected_fragment {
+            selection.start = start;
+        }
+    }
+
+    pub(crate) fn selected_excerpt(&self) -> Option<FragmentExcerpt<'_>> {
+        let SelectedFragment {
+            result_index,
+            start,
+        } = self.selected_fragment?;
+        let result = &self.search_results[result_index];
+        let content = result.content().as_str();
+        let remaining = &content[start..];
+        let len = remaining
+            .char_indices()
+            .nth(EXCERPT_CHARACTERS)
+            .map_or(remaining.len(), |(offset, _)| offset);
+        let end = start + len;
+        let previous = (start > 0).then(|| {
+            content[..start]
+                .char_indices()
+                .rev()
+                .nth(EXCERPT_CHARACTERS - 1)
+                .map_or(0, |(offset, _)| offset)
+        });
+        Some(FragmentExcerpt {
+            result,
+            text: &content[start..end],
+            byte_start: result.byte_start() + start as u64,
+            byte_end: result.byte_start() + end as u64,
+            previous,
+            next: (end < content.len()).then_some(end),
+        })
     }
 
     #[must_use]

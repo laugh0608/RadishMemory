@@ -128,3 +128,15 @@ macOS ARM64 的两项 headless 回归各由正式 application API 写入 201 个
 离线定向 `cargo test -p radishmemory-desktop --locked catalog_tests` 两项通过，默认 `cargo build -p radishmemory-desktop --locked` 通过。离线 `./scripts/check-repo.sh` 通过仓库基线、格式化、Clippy 与 30 个 Rust suites，共 437 passed、0 failed、14 ignored。
 
 加密回归使用 synthetic provider。原生窗口、系统文件选择器、真实凭据、其他平台及目录读取性能均未在此切片验收。分页沿用现有目录读取与认证，不给出规模或延迟结论；Q03、Q06 的后段定位与完整结果刷新、完整 P1-S05 分别验收。
+
+## 2026-11-08 Q06 正文后段回源与旧结果撤回
+
+基于 `e06d3ba` 的正式桌面入口，已复现搜索命中正文第 400 个字符后的查询词，点击结果可以选中正确版本，但界面只能看到正文开头。现在搜索链接按 lineage、source 和 fragment ID 打开已返回的原文片段，显示对应版本及当前摘录的 UTF-8 字节范围。摘录每次最多 400 个 Unicode 字符，可向前、向后浏览。存在已提交查询的字面文本时从该处开始；Unicode61 等价匹配或多项查询没有字面文本时从片段开头开始。字面导航与索引分词独立，正文、canonical citation 和召回规则沿用既有契约。
+
+桌面接收更新或删除等写入命令后立即撤下已展示的搜索结果与片段。成功后使用 worker 返回的刷新视图，保留搜索框供用户重新检索。已失效的 citation 无法重新选中，界面提示 Refresh 后重新搜索。
+
+macOS ARM64 无窗口回归各覆盖默认 v6 和显式加密入口。用含 BOM / CRLF 的两版本合成 Markdown 核对第 400 字符后的中文命中、原文与 UTF-8 字节范围、编辑未提交搜索词时仍按已提交词定位、前后翻阅，以及 `CAFE` 命中 `café` 后翻页看到原文。通过正式 worker 更新与删除，核对等待期间和结果交付后旧正文均撤下、旧词从普通召回消失、新查询指向 v2、完成删除后新词也不再命中，以及失效 citation 的提示与显式刷新。加密入口使用 synthetic provider，更新使用测试构造的授权文件选择结果。
+
+离线定向 `cargo test -p radishmemory-desktop --locked fragment_tests` 与默认 `cargo build -p radishmemory-desktop --locked` 通过。离线 `./scripts/check-repo.sh` 通过仓库基线、格式化、Clippy 与 30 个 Rust suites，共 438 passed、0 failed、14 ignored。
+
+Q06 已有上述双入口合成证据。原生窗口、系统文件选择器、真实凭据、跨平台和外部窗口并发更改后的可见刷新另验；本批不提供全文索引逐词偏移或高亮证据。

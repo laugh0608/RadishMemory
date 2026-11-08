@@ -168,6 +168,7 @@ fn exercise_catalog(encrypted: bool) {
     let selected = ok(engine.execute(Command::SelectResult(
         lineage.clone(),
         revised_source.clone(),
+        results[0].fragment_id().clone(),
     )));
     let view = selected.view.as_ref().unwrap();
     assert_eq!(view.catalog_offset(), 200);
