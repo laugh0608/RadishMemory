@@ -13,6 +13,7 @@ pub enum ApplicationOperation {
     UpdateSource,
     ListSources,
     GetSource,
+    ResolveSourceCitations,
     SearchSources,
     ExportSource,
     DeleteSourceLineage,
@@ -54,6 +55,7 @@ pub enum ApplicationErrorReason {
     NoteBodyInvalid,
     NoteVersionChanged,
     NoteEntryMismatch,
+    InvalidCitationBatch,
 }
 
 /// Redacted application failure with a local source chain.
@@ -66,6 +68,15 @@ pub struct ApplicationError {
 }
 
 impl ApplicationError {
+    pub(crate) const fn invalid_citation_batch() -> Self {
+        Self::without_source(
+            ApplicationOperation::ResolveSourceCitations,
+            ApplicationErrorCode::InvalidRequest,
+            ApplicationErrorReason::InvalidCitationBatch,
+            false,
+        )
+    }
+
     pub(crate) const fn invalid_note_request(
         operation: ApplicationOperation,
         reason: ApplicationErrorReason,

@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use radishmemory_application::{
-    ApplicationErrorReason, ApplicationIdentifierKind, ApplicationRuntime, LocalDeletionConfig,
-    LocalLibrary, LocalLibraryConfig, MediaType, NoteFormat, SourceEntry, SourceSavedWithin,
-    SourceSearchFilters,
+    ApplicationErrorReason, ApplicationIdentifierKind, ApplicationRuntime, Citation,
+    LocalDeletionConfig, LocalLibrary, LocalLibraryConfig, MediaType, NoteFormat, SourceEntry,
+    SourceSavedWithin, SourceSearchFilters,
 };
 use radishmemory_core::{
     ActorRef, ActorType, DeletionOverallStatus, DeletionState, EgressPolicy, Governance,
@@ -138,6 +138,10 @@ fn config() -> LocalLibraryConfig {
         id("policy-host-local"),
     )
     .unwrap();
+    config_with_governance(governance)
+}
+
+fn config_with_governance(governance: Governance) -> LocalLibraryConfig {
     LocalLibraryConfig::new(
         id("namespace-host"),
         governance,
@@ -161,6 +165,75 @@ fn config() -> LocalLibraryConfig {
 
 fn read_request(path: &Path, allowed_root: &Path) -> FileReadRequest {
     FileReadRequest::new(path, vec![allowed_root.to_path_buf()]).unwrap()
+}
+
+#[test]
+fn comparison_citations_require_exact_ranges_and_current_authority() {
+    let directory = TestDirectory::new("citation-authority");
+    let database = directory.path().join("library.sqlite");
+    let governance = Governance::new(
+        Sensitivity::Personal,
+        EgressPolicy::LocalOnly,
+        RetentionRule::new(
+            RetentionMode::UntilTime,
+            Some(timestamp("2026-09-01T00:00:00Z")),
+            None,
+        )
+        .unwrap(),
+        DeletionState::Active,
+        id("policy-host-local"),
+    )
+    .unwrap();
+    let mut library = LocalLibrary::open(
+        &database,
+        TestRuntime::default(),
+        config_with_governance(governance),
+    )
+    .unwrap();
+    library
+        .save_note(NoteFormat::Text, None, "orchard citation".into())
+        .unwrap();
+    let hits = library
+        .search_sources(text("orchard"), 1, [Sensitivity::Personal])
+        .unwrap();
+    let citation = hits[0].citation();
+    let requested = std::slice::from_ref(citation);
+    let resolved = library
+        .resolve_source_citations(requested, &[Sensitivity::Personal])
+        .unwrap();
+    assert_eq!(resolved[0].as_ref().unwrap().result.citation(), citation);
+    assert!(
+        library
+            .resolve_source_citations(requested, &[Sensitivity::Restricted])
+            .unwrap()[0]
+            .is_none()
+    );
+    let shifted = Citation::new(
+        citation.citation_id().clone(),
+        citation.source_id().clone(),
+        citation.fragment_id().clone(),
+        citation.byte_start() + 1,
+        citation.byte_end(),
+        citation.fragment_digest().clone(),
+    )
+    .unwrap();
+    assert_eq!(
+        library
+            .resolve_source_citations(&[shifted], &[Sensitivity::Personal])
+            .err()
+            .unwrap()
+            .reason(),
+        ApplicationErrorReason::StorageFailure
+    );
+    let (mut runtime, config) = library.close();
+    runtime.date = Some("2026-09-02");
+    let mut reopened = LocalLibrary::open(&database, runtime, config).unwrap();
+    assert!(
+        reopened
+            .resolve_source_citations(requested, &[Sensitivity::Personal])
+            .unwrap()[0]
+            .is_none()
+    );
 }
 
 #[test]

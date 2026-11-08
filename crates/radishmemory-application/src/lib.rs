@@ -22,9 +22,9 @@ use radishmemory_core::{
     SourceVault, Version, build_local_purge_targets, compute_deletion_evidence_digest,
 };
 pub use radishmemory_core::{
-    DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, MediaType, NonEmptyText,
-    Sensitivity, SourceArtifact, SourceCapture, SourceLineageSummary, SourceVersionSummary,
-    Timestamp,
+    Citation, DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, MediaType,
+    NonEmptyText, Sensitivity, SourceArtifact, SourceCapture, SourceLineageSummary,
+    SourceVersionSummary, Timestamp,
 };
 pub use radishmemory_file_entry::{
     FileCaptureOutcome, FileCaptureReceipt, FileExportReceipt, FileExportRequest, FileReadRequest,
@@ -37,6 +37,7 @@ pub use error::{
     ApplicationError, ApplicationErrorCode, ApplicationErrorReason, ApplicationOperation,
 };
 pub use radishmemory_sqlite::RecallProfile;
+pub use read::{SOURCE_COMPARISON_LIMIT, SourceCitationEvidence};
 pub use read::{SourceEntry, SourceSavedWithin, SourceSearchFilters};
 
 pub const LOCAL_LIBRARY_HOST_CONTRACT_ID: &str = "radishmemory.phase1-local-library-host/1";
@@ -202,27 +203,22 @@ impl fmt::Debug for LocalLibraryConfig {
 /// One source-only search hit with a resolvable citation and redacted Debug.
 #[derive(Clone, Eq, PartialEq)]
 pub struct SourceSearchResult {
-    source_id: Identifier,
+    citation: Citation,
     lineage_id: Identifier,
     version: Version,
-    fragment_id: Identifier,
-    byte_start: u64,
-    byte_end: u64,
     title: Option<NonEmptyText>,
     content: NonEmptyText,
 }
 
 impl SourceSearchResult {
     fn from_resolved(fragment: &SourceFragment, source: &SourceArtifact) -> Self {
+        let citation = Citation::for_fragment(fragment);
         let fragment = fragment.params();
         let source = source.params();
         Self {
-            source_id: source.source_id.clone(),
+            citation,
             lineage_id: source.lineage_id.clone(),
             version: source.version,
-            fragment_id: fragment.fragment_id.clone(),
-            byte_start: fragment.byte_start,
-            byte_end: fragment.byte_end,
             title: source.title.clone(),
             content: fragment.content.clone(),
         }
@@ -230,7 +226,12 @@ impl SourceSearchResult {
 
     #[must_use]
     pub const fn source_id(&self) -> &Identifier {
-        &self.source_id
+        self.citation.source_id()
+    }
+
+    #[must_use]
+    pub const fn citation(&self) -> &Citation {
+        &self.citation
     }
 
     #[must_use]
@@ -245,17 +246,17 @@ impl SourceSearchResult {
 
     #[must_use]
     pub const fn fragment_id(&self) -> &Identifier {
-        &self.fragment_id
+        self.citation.fragment_id()
     }
 
     #[must_use]
     pub const fn byte_start(&self) -> u64 {
-        self.byte_start
+        self.citation.byte_start()
     }
 
     #[must_use]
     pub const fn byte_end(&self) -> u64 {
-        self.byte_end
+        self.citation.byte_end()
     }
 
     #[must_use]
@@ -273,12 +274,12 @@ impl fmt::Debug for SourceSearchResult {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         formatter
             .debug_struct("SourceSearchResult")
-            .field("source_id", &self.source_id)
+            .field("source_id", self.source_id())
             .field("lineage_id", &self.lineage_id)
             .field("version", &self.version)
-            .field("fragment_id", &self.fragment_id)
-            .field("byte_start", &self.byte_start)
-            .field("byte_end", &self.byte_end)
+            .field("fragment_id", self.fragment_id())
+            .field("byte_start", &self.byte_start())
+            .field("byte_end", &self.byte_end())
             .field("has_title", &self.title.is_some())
             .field("content_length", &self.content.utf8_len())
             .finish()
@@ -454,6 +455,21 @@ where
         source_id: &Identifier,
     ) -> Result<Option<SourceArtifact>, ApplicationError> {
         read::get_source(&self.database, &self.config, source_id)
+    }
+
+    pub fn resolve_source_citations(
+        &mut self,
+        citations: &[Citation],
+        allowed: &[Sensitivity],
+    ) -> Result<Vec<Option<SourceCitationEvidence>>, ApplicationError> {
+        let operation = ApplicationOperation::ResolveSourceCitations;
+        read::validate_citation_batch(citations, allowed)?;
+        let now = self.now(operation)?;
+        let resolved = self
+            .database
+            .resolve_source_citations(&self.config.namespace_id, citations)
+            .map_err(|error| ApplicationError::storage(operation, error))?;
+        Ok(read::visible_citations(resolved, allowed, &now))
     }
 
     pub fn search_sources(

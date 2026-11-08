@@ -1,10 +1,11 @@
 use radishmemory_application::{
     ApplicationRuntime, DeletionEvidence, FileCaptureReceipt, FileExportReceipt, FileExportRequest,
     FileReadRequest, Identifier, LocalLibrary, LocalLibraryConfig, NonEmptyText, NoteFormat,
-    Sensitivity, SourceArtifact, SourceLineageSummary, SourceSearchFilters, SourceSearchResult,
-    SourceVersionSummary,
+    SOURCE_COMPARISON_LIMIT, Sensitivity, SourceArtifact, SourceCitationEvidence,
+    SourceLineageSummary, SourceSearchFilters, SourceSearchResult, SourceVersionSummary,
 };
 
+use crate::comparison::{ComparisonCard, ComparisonSelection};
 use crate::{
     ApplicationPaths, DesktopError, DesktopErrorCode, DesktopErrorReason,
     load_or_create_host_profile,
@@ -23,6 +24,7 @@ where
     library: crate::backend::Library<R, P>,
     pub(crate) refresh_error: Option<DesktopError>,
     view: LibraryView,
+    comparison: Vec<ComparisonSelection>,
 }
 
 #[derive(Clone, Default)]
@@ -36,6 +38,7 @@ pub struct LibraryView {
     search_results: Vec<SourceSearchResult>,
     submitted_query: String,
     selected_fragment: Option<SelectedFragment>,
+    comparison: Vec<ComparisonCard>,
 }
 
 #[derive(Clone, Copy)]
@@ -70,6 +73,7 @@ where
             },
             refresh_error: None,
             view: LibraryView::from_read_snapshot(snapshot),
+            comparison: Vec::new(),
         }
     }
 
@@ -88,6 +92,7 @@ where
             .read_snapshot(previous.as_ref(), CATALOG_READ_LIMIT)
             .map_err(crate::backend::app_error)?;
         self.view = LibraryView::from_read_snapshot(&snapshot);
+        self.refresh_comparison()?;
         Ok(snapshot)
     }
 
@@ -98,6 +103,7 @@ where
             library,
             refresh_error: None,
             view: LibraryView::default(),
+            comparison: Vec::new(),
         };
         controller.refresh_sources()?;
         Ok(controller)
@@ -132,7 +138,8 @@ where
     pub fn refresh_sources(&mut self) -> Result<(), DesktopError> {
         let previous = self.view.selected_lineage_id.clone();
         self.view = LibraryView::default();
-        self.load_catalog_page(0, previous.as_ref())
+        self.load_catalog_page(0, previous.as_ref())?;
+        self.refresh_comparison()
     }
 
     pub(crate) fn show_catalog_page(&mut self, offset: u64) -> Result<(), DesktopError> {
@@ -211,6 +218,111 @@ where
             start,
         });
         Ok(())
+    }
+
+    pub(crate) fn add_to_comparison(
+        &mut self,
+        fragment_id: &Identifier,
+    ) -> Result<(), DesktopError> {
+        self.require_no_original()?;
+        if self.comparison.len() == SOURCE_COMPARISON_LIMIT
+            || self
+                .comparison
+                .iter()
+                .any(|item| item.citation.fragment_id() == fragment_id)
+        {
+            return Err(selection_invalid());
+        }
+        let result = self
+            .view
+            .search_results
+            .iter()
+            .find(|result| result.fragment_id() == fragment_id)
+            .ok_or_else(selection_invalid)?;
+        self.comparison.push(ComparisonSelection {
+            citation: result.citation().clone(),
+            start: result
+                .content()
+                .as_str()
+                .find(self.view.submitted_query.trim())
+                .unwrap_or(0),
+        });
+        if let Err(error) = self.refresh_comparison() {
+            self.comparison.pop();
+            return Err(error);
+        }
+        Ok(())
+    }
+
+    pub(crate) fn remove_from_comparison(&mut self, fragment_id: &Identifier) {
+        self.comparison
+            .retain(|item| item.citation.fragment_id() != fragment_id);
+        self.view
+            .comparison
+            .retain(|card| &card.fragment_id != fragment_id);
+    }
+
+    pub(crate) fn refresh_comparison(&mut self) -> Result<(), DesktopError> {
+        self.resolve_comparison().map(|_| ())
+    }
+
+    fn resolve_comparison(&mut self) -> Result<Vec<Option<SourceCitationEvidence>>, DesktopError> {
+        self.view.clear_comparison_content();
+        if self.comparison.is_empty() || self.library.holds_original() {
+            self.view.comparison = self.comparison.iter().map(|item| item.card(None)).collect();
+            return Ok(Vec::new());
+        }
+        let citations = self
+            .comparison
+            .iter()
+            .map(|item| item.citation.clone())
+            .collect::<Vec<_>>();
+        let resolved = self
+            .library
+            .resolve_source_citations(&citations)
+            .map_err(crate::backend::app_error)?;
+        self.view.comparison = self
+            .comparison
+            .iter()
+            .zip(&resolved)
+            .map(|(item, evidence)| item.card(evidence.as_ref()))
+            .collect();
+        // A refreshed citation can invalidate an older search snapshot from another window.
+        if self.view.search_results.iter().any(|result| {
+            self.view.comparison.iter().any(|card| {
+                &card.fragment_id == result.fragment_id()
+                    && card
+                        .excerpt
+                        .as_ref()
+                        .is_none_or(|excerpt| excerpt.historical)
+            })
+        }) {
+            self.view.clear_search_results();
+        }
+        Ok(resolved)
+    }
+
+    pub(crate) fn open_comparison_source(
+        &mut self,
+        fragment_id: &Identifier,
+    ) -> Result<Option<(SourceArtifact, usize)>, DesktopError> {
+        self.require_no_original()?;
+        let index = self
+            .comparison
+            .iter()
+            .position(|item| item.citation.fragment_id() == fragment_id)
+            .ok_or_else(selection_invalid)?;
+        let Some(evidence) = self.resolve_comparison()?.into_iter().nth(index).flatten() else {
+            return Ok(None);
+        };
+        let offset = usize::try_from(evidence.result.byte_start())
+            .map_err(|_| selection_invalid())?
+            + self.comparison[index].start;
+        self.view.selected_lineage_id = Some(evidence.result.lineage_id().clone());
+        self.view.selected_source_id = Some(evidence.result.source_id().clone());
+        self.view.versions = evidence.versions;
+        self.view.selected_fragment = None;
+        Ok(Some((evidence.original, offset)))
     }
 
     fn load_selection(
@@ -342,7 +454,7 @@ where
     ) -> Result<(), DesktopError> {
         self.view.clear_search_results();
         if query.trim().is_empty() {
-            return Ok(());
+            return self.refresh_comparison();
         }
         let request = NonEmptyText::new(query.to_owned()).map_err(|_| selection_invalid())?;
         self.view.search_results = self
@@ -355,7 +467,7 @@ where
             )
             .map_err(|source| DesktopError::application(&source))?;
         self.view.submitted_query.push_str(query);
-        Ok(())
+        self.refresh_comparison()
     }
 
     pub fn delete_selected_lineage(&mut self) -> Result<DeletionEvidence, DesktopError> {
@@ -450,6 +562,16 @@ impl LibraryView {
         self.search_results.clear();
         self.submitted_query.clear();
         self.selected_fragment = None;
+    }
+
+    pub(crate) fn comparison(&self) -> &[ComparisonCard] {
+        &self.comparison
+    }
+
+    pub(crate) fn clear_comparison_content(&mut self) {
+        for card in &mut self.comparison {
+            card.excerpt = None;
+        }
     }
 
     pub(crate) fn show_fragment_excerpt(&mut self, start: usize) {

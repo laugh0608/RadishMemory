@@ -10,9 +10,10 @@ use radishmemory_source_vault::{
 };
 
 use crate::{
-    ApplicationError, ApplicationOperation, ApplicationRuntime, FileExportReceipt,
+    ApplicationError, ApplicationOperation, ApplicationRuntime, Citation, FileExportReceipt,
     FileExportRequest, Identifier, LocalLibraryConfig, NonEmptyText, Sensitivity, SourceArtifact,
-    SourceLineageSummary, SourceSearchFilters, SourceSearchResult, SourceVersionSummary, read,
+    SourceCitationEvidence, SourceLineageSummary, SourceSearchFilters, SourceSearchResult,
+    SourceVersionSummary, read,
 };
 
 /// An explicit application root and verified host profile, with no live database
@@ -295,6 +296,25 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
     ) -> Result<Option<SourceArtifact>, ApplicationError> {
         self.with_reader(ApplicationOperation::GetSource, |reader| {
             read::get_source(reader, &self.location.config, source)
+        })
+    }
+
+    pub fn resolve_source_citations(
+        &mut self,
+        citations: &[Citation],
+        allowed: &[Sensitivity],
+    ) -> Result<Vec<Option<SourceCitationEvidence>>, ApplicationError> {
+        let operation = ApplicationOperation::ResolveSourceCitations;
+        read::validate_citation_batch(citations, allowed)?;
+        let now = self
+            .runtime
+            .now()
+            .map_err(|error| ApplicationError::clock(operation, error))?;
+        self.with_reader(operation, |reader| {
+            let resolved = reader
+                .resolve_source_citations(&self.location.config.namespace_id, citations)
+                .map_err(|error| ApplicationError::vault(operation, error))?;
+            Ok(read::visible_citations(resolved, allowed, &now))
         })
     }
 

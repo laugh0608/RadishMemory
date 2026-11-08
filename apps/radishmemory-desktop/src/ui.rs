@@ -15,6 +15,7 @@ pub struct RadishMemoryApp {
     original_offset: usize,
     search_query: String,
     search_filters: SourceSearchFilters,
+    show_comparison: bool,
     notice: Option<Notice>,
     refresh_notice: Option<String>,
     last_deletion: Option<radishmemory_application::DeletionEvidence>,
@@ -63,6 +64,7 @@ impl RadishMemoryApp {
             original_offset: 0,
             search_query: String::new(),
             search_filters: SourceSearchFilters::default(),
+            show_comparison: false,
             notice: None,
             refresh_notice: None,
             last_deletion: None,
@@ -106,14 +108,32 @@ impl RadishMemoryApp {
                 | Command::ResumeDelete(_)
                 | Command::Search(_)
         );
+        let invalidates_comparison = invalidates_results
+            || matches!(
+                &command,
+                Command::Refresh
+                    | Command::RefreshComparison
+                    | Command::AddComparison(_)
+                    | Command::OpenComparisonSource(_)
+                    | Command::OpenPlain
+                    | Command::OpenEncrypted
+                    | Command::InitializeKey
+                    | Command::Migrate
+                    | Command::Abandon
+            );
         if let Some(worker) = &mut self.worker {
             match worker.send(command) {
                 Ok(()) => {
                     self.state.original = None;
                     self.original_offset = 0;
                     // Previous results stop applying as soon as a new search or write is accepted.
-                    if invalidates_results && let Some(view) = &mut self.controller {
-                        view.clear_search_results();
+                    if let Some(view) = &mut self.controller {
+                        if invalidates_results {
+                            view.clear_search_results();
+                        }
+                        if invalidates_comparison {
+                            view.clear_comparison_content();
+                        }
                     }
                     self.notice = Some(Notice::neutral("Working…"));
                     self.refresh_notice = None;
@@ -127,6 +147,7 @@ impl RadishMemoryApp {
             return;
         };
         self.controller = state.view.take();
+        self.original_offset = state.original_offset;
         if state.capture_completed {
             self.note_draft = None;
         }
@@ -208,6 +229,16 @@ impl RadishMemoryApp {
                 text: self.search_query.clone(),
                 filters: self.search_filters,
             })),
+            UiAction::ShowComparison(show) => {
+                self.show_comparison = show;
+                if show {
+                    self.send(Command::RefreshComparison);
+                }
+            }
+            UiAction::AddComparison(id) => {
+                self.show_comparison = true;
+                self.send(Command::AddComparison(id));
+            }
             UiAction::SelectLineage(id) => self.send(Command::SelectLineage(id)),
             UiAction::SelectVersion(id) => self.send(Command::SelectVersion(id)),
             UiAction::SelectSearchResult {
@@ -359,39 +390,44 @@ impl RadishMemoryApp {
             };
 
             let selected_is_note = controller.current_version().is_some_and(|version| is_note_producer(version.producer()));
+            let busy = self.busy();
             ui.columns(2, |columns| {
                 let (source_columns, content_columns) = columns.split_at_mut(1);
                 let source_ui = &mut source_columns[0];
-                source_ui.heading("Sources");
-                let offset = controller.catalog_offset();
-                let page_size = CATALOG_PAGE_SIZE as u64;
-                source_ui.horizontal_wrapped(|ui| {
-                    if ui.add_enabled(offset > 0, egui::Button::new("Previous page")).clicked() {
-                        action = Some(UiAction::Command(Command::CatalogPage(offset - page_size)));
-                    }
-                    ui.label(format!("Page {}", offset / page_size + 1));
-                    if ui.add_enabled(controller.has_next_catalog_page(), egui::Button::new("Next page")).clicked() {
-                        action = Some(UiAction::Command(Command::CatalogPage(offset + page_size)));
-                    }
-                });
-                source_ui.label(format!("{} active lineage(s) on this page", controller.sources().len()));
-                source_ui.separator();
-                egui::ScrollArea::vertical().id_salt(("source-catalog", offset)).show(source_ui, |ui| {
-                    for source in controller.sources() {
-                        let selected =
-                            controller.selected_lineage_id() == Some(source.lineage_id());
-                        if ui.selectable_label(selected, source_label(source.title())).clicked() {
-                            action = Some(UiAction::SelectLineage(source.lineage_id().clone()));
+                comparison::navigation(source_ui, controller, self.show_comparison, &mut action);
+                if self.show_comparison {
+                    comparison::panel(source_ui, controller, busy, self.state.holds_original, &mut action);
+                } else {
+                    let offset = controller.catalog_offset();
+                    let page_size = CATALOG_PAGE_SIZE as u64;
+                    source_ui.horizontal_wrapped(|ui| {
+                        if ui.add_enabled(offset > 0, egui::Button::new("Previous page")).clicked() {
+                            action = Some(UiAction::Command(Command::CatalogPage(offset - page_size)));
                         }
-                        ui.small(format!(
-                            "v{} · {} · {}",
-                            source.current_version().get(),
-                            format_bytes(source.content_length()),
-                            source.captured_at().original()
-                        ));
-                        ui.add_space(6.0);
-                    }
-                });
+                        ui.label(format!("Page {}", offset / page_size + 1));
+                        if ui.add_enabled(controller.has_next_catalog_page(), egui::Button::new("Next page")).clicked() {
+                            action = Some(UiAction::Command(Command::CatalogPage(offset + page_size)));
+                        }
+                    });
+                    source_ui.label(format!("{} active lineage(s) on this page", controller.sources().len()));
+                    source_ui.separator();
+                    egui::ScrollArea::vertical().id_salt(("source-catalog", offset)).show(source_ui, |ui| {
+                        for source in controller.sources() {
+                            let selected =
+                                controller.selected_lineage_id() == Some(source.lineage_id());
+                            if ui.selectable_label(selected, source_label(source.title())).clicked() {
+                                action = Some(UiAction::SelectLineage(source.lineage_id().clone()));
+                            }
+                            ui.small(format!(
+                                "v{} · {} · {}",
+                                source.current_version().get(),
+                                format_bytes(source.content_length()),
+                                source.captured_at().original()
+                            ));
+                            ui.add_space(6.0);
+                        }
+                    });
+                }
 
                 let content_ui = &mut content_columns[0];
                 content_ui.horizontal(|ui| {
@@ -577,6 +613,7 @@ impl RadishMemoryApp {
                                         fragment_id: result.fragment_id().clone(),
                                     });
                                 }
+                                comparison::add_button(ui, controller, result, self.state.holds_original, &mut action);
                                 ui.label(content_preview(result.content().as_str()));
                                 ui.small(format!(
                                     "source {} · fragment {}",
@@ -805,10 +842,14 @@ fn render_note_editor(
         .inner
 }
 
+mod comparison;
+
 #[cfg(test)]
 mod catalog_tests;
 #[cfg(test)]
 mod close_tests;
+#[cfg(test)]
+mod comparison_tests;
 #[cfg(test)]
 mod font_tests;
 #[cfg(test)]
@@ -907,6 +948,8 @@ enum UiAction {
     Verify,
     Rebuild,
     Search,
+    ShowComparison(bool),
+    AddComparison(Identifier),
     SelectLineage(Identifier),
     SelectVersion(Identifier),
     SelectSearchResult {

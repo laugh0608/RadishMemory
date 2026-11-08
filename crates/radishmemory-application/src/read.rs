@@ -1,17 +1,69 @@
 //! Shared application read use cases. The caller owns the complete read session,
 //! including source resolution and publication of an authorized export.
 use crate::{
-    ApplicationError, ApplicationOperation, FileExportReceipt, FileExportRequest, Identifier,
-    LocalLibraryConfig, MediaType, NonEmptyText, Sensitivity, SourceArtifact, SourceLineageSummary,
-    SourceSearchResult, SourceVersionSummary, Timestamp,
+    ApplicationError, ApplicationOperation, Citation, FileExportReceipt, FileExportRequest,
+    Identifier, LocalLibraryConfig, MediaType, NonEmptyText, Sensitivity, SourceArtifact,
+    SourceLineageSummary, SourceSearchResult, SourceVersionSummary, Timestamp,
 };
 use radishmemory_core::{
-    LocalSearch, LocalSearchHit, LocalSearchRequest, ProducerType, SourceCatalog,
-    SourceCatalogRequest, SourceSearchScope, SourceVault,
+    DeletionState, Governance, GovernedCanonicalObject, LocalSearch, LocalSearchHit,
+    LocalSearchRequest, ProducerType, SourceCatalog, SourceCatalogRequest, SourceSearchScope,
+    SourceVault,
 };
 use radishmemory_file_entry::export_managed_source;
 use radishmemory_source_vault::LibraryReader;
-use radishmemory_sqlite::SqliteDatabase;
+use radishmemory_sqlite::{ResolvedSourceCitation, SqliteDatabase};
+
+pub const SOURCE_COMPARISON_LIMIT: usize = 5;
+
+/// A currently authorized citation, with source details from the same read snapshot.
+pub struct SourceCitationEvidence {
+    pub result: SourceSearchResult,
+    pub original: SourceArtifact,
+    pub versions: Vec<SourceVersionSummary>,
+}
+
+pub(crate) fn validate_citation_batch(
+    citations: &[Citation],
+    allowed: &[Sensitivity],
+) -> Result<(), ApplicationError> {
+    if citations.len() > SOURCE_COMPARISON_LIMIT || allowed.is_empty() {
+        return Err(ApplicationError::invalid_citation_batch());
+    }
+    Ok(())
+}
+
+pub(crate) fn visible_citations(
+    resolved: Vec<Option<ResolvedSourceCitation>>,
+    allowed: &[Sensitivity],
+    now: &Timestamp,
+) -> Vec<Option<SourceCitationEvidence>> {
+    let visible = |governance: &Governance| {
+        governance.deletion_state() == DeletionState::Active
+            && allowed.contains(&governance.sensitivity())
+            && governance
+                .retention()
+                .expires_at()
+                .is_none_or(|end| end > now)
+    };
+    resolved
+        .into_iter()
+        .map(|entry| {
+            let entry = entry?;
+            if entry.source.params().captured_at > *now
+                || !visible(&entry.source.params().governance)
+                || !visible(entry.fragment.governance())
+            {
+                return None;
+            }
+            Some(SourceCitationEvidence {
+                result: SourceSearchResult::from_resolved(&entry.fragment, &entry.source),
+                original: entry.source,
+                versions: entry.versions,
+            })
+        })
+        .collect()
+}
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum SourceEntry {

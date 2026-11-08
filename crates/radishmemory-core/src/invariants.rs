@@ -379,11 +379,7 @@ pub fn validate_context_pack_resolution(
             pack.governance(),
             &[source.governance(), fragment.governance()],
         )?;
-        if citation.source_id() != &fragment.params().source_id
-            || citation.byte_start() != fragment.params().byte_start
-            || citation.byte_end() != fragment.params().byte_end
-            || citation.fragment_digest() != &fragment.params().content_digest
-        {
+        if !citation.matches_fragment(fragment) {
             return invariant(CrossObjectInvariantReason::CitationMismatch);
         }
     }

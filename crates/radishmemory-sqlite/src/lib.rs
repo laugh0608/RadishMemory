@@ -23,6 +23,7 @@ mod recall_profile;
 mod recall_repair;
 mod source_capture;
 mod source_catalog;
+mod source_citation;
 mod source_store;
 mod source_vault_key;
 mod source_vault_migration;
@@ -48,6 +49,7 @@ pub use error::{
 pub use fixture_runner::FixtureDeletionFailure;
 pub use migration::SQLITE_SCHEMA_VERSION;
 pub use recall_profile::RecallProfile;
+pub use source_citation::ResolvedSourceCitation;
 pub use source_vault_key::{KeyInitializationTransaction, SourceVaultKeyDatabase};
 pub use source_vault_migration::{BodyMigrationDatabase, BodyMigrationItem, BodyMigrationState};
 

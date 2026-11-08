@@ -1,7 +1,7 @@
 //! Queries over a caller-authenticated source set; never loads an inline body.
 use super::*;
 use radishmemory_core::{
-    LocalSearch, LocalSearchHit, LocalSearchRequest, SourceCatalog, SourceCatalogRequest,
+    Citation, LocalSearch, LocalSearchHit, LocalSearchRequest, SourceCatalog, SourceCatalogRequest,
     SourceFragment, SourceLineageState, SourceLineageSummary, SourceVersionSummary,
 };
 
@@ -139,6 +139,20 @@ impl ObjectReadView<'_> {
                 source_store::load_fragments_for_source(&self.database.connection, &source)
             })
             .transpose()
+    }
+    pub fn resolve_source_citations(
+        &self,
+        namespace: &Identifier,
+        citations: &[Citation],
+    ) -> Result<Vec<Option<crate::ResolvedSourceCitation>>> {
+        self.require_namespace(namespace)?;
+        let load = source_loader(self.sources)?;
+        crate::source_citation::resolve(
+            &self.database.connection,
+            namespace,
+            citations,
+            &|_, ns, id| load(ns, id),
+        )
     }
 }
 impl SourceCatalog for ObjectReadView<'_> {

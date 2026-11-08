@@ -32,6 +32,10 @@ pub(crate) enum Command {
     SelectLineage(Identifier),
     SelectVersion(Identifier),
     SelectResult(Identifier, Identifier, Identifier),
+    AddComparison(Identifier),
+    RemoveComparison(Identifier),
+    RefreshComparison,
+    OpenComparisonSource(Identifier),
     Delete,
     RetryOriginal,
     ResumeDelete(Identifier),
@@ -59,6 +63,7 @@ impl From<&str> for SearchQuery {
 pub(crate) struct Snapshot {
     pub view: Option<LibraryView>,
     pub original: Option<SourceArtifact>,
+    pub original_offset: usize,
     pub edit_original: bool,
     pub capture_completed: bool,
     pub encrypted: bool,
@@ -250,6 +255,16 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 | Command::Delete
                 | Command::ChangeRecallProfile(_)
         ) && self.blocked()
+        {
+            return Err(recovery_required());
+        }
+        if matches!(
+            command,
+            Command::AddComparison(_)
+                | Command::RemoveComparison(_)
+                | Command::RefreshComparison
+                | Command::OpenComparisonSource(_)
+        ) && !self.view_valid
         {
             return Err(recovery_required());
         }
@@ -482,6 +497,15 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::SelectResult(lineage, source, fragment) => {
                 self.controller()?
                     .select_search_result(&lineage, &source, &fragment)?;
+            }
+            Command::AddComparison(id) => self.controller()?.add_to_comparison(&id)?,
+            Command::RemoveComparison(id) => self.controller()?.remove_from_comparison(&id),
+            Command::RefreshComparison => self.controller()?.refresh_comparison()?,
+            Command::OpenComparisonSource(id) => {
+                if let Some((original, offset)) = self.controller()?.open_comparison_source(&id)? {
+                    snapshot.original = Some(original);
+                    snapshot.original_offset = offset;
+                }
             }
             Command::Delete => {
                 snapshot.last_deletion = Some(self.controller()?.delete_selected_lineage()?);

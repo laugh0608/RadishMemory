@@ -23,6 +23,7 @@ impl Harness {
                 original_offset: 0,
                 search_query: String::new(),
                 search_filters: SourceSearchFilters::default(),
+                show_comparison: false,
                 notice: None,
                 refresh_notice: None,
                 last_deletion: None,

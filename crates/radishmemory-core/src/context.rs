@@ -187,6 +187,30 @@ pub struct Citation {
 }
 
 impl Citation {
+    /// Builds a citation to a complete, already validated fragment.
+    #[must_use]
+    pub fn for_fragment(fragment: &crate::SourceFragment) -> Self {
+        let fragment = fragment.params();
+        Self {
+            citation_id: fragment.fragment_id.clone(),
+            source_id: fragment.source_id.clone(),
+            fragment_id: fragment.fragment_id.clone(),
+            byte_start: fragment.byte_start,
+            byte_end: fragment.byte_end,
+            fragment_digest: fragment.content_digest.clone(),
+        }
+    }
+
+    #[must_use]
+    pub fn matches_fragment(&self, fragment: &crate::SourceFragment) -> bool {
+        let fragment = fragment.params();
+        self.fragment_id == fragment.fragment_id
+            && self.source_id == fragment.source_id
+            && self.byte_start == fragment.byte_start
+            && self.byte_end == fragment.byte_end
+            && self.fragment_digest == fragment.content_digest
+    }
+
     pub fn new(
         citation_id: Identifier,
         source_id: Identifier,

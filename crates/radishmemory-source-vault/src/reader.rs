@@ -6,8 +6,8 @@ use crate::{
     VaultMaintenanceError,
 };
 use radishmemory_core::{
-    Identifier, LocalSearch, LocalSearchHit, LocalSearchRequest, SourceArtifact, SourceCatalog,
-    SourceCatalogRequest, SourceFragment, SourceLineageState, SourceLineageSummary,
+    Citation, Identifier, LocalSearch, LocalSearchHit, LocalSearchRequest, SourceArtifact,
+    SourceCatalog, SourceCatalogRequest, SourceFragment, SourceLineageState, SourceLineageSummary,
     SourceVersionSummary,
 };
 use radishmemory_sqlite::{EncryptedCaptureDatabase, ObjectReadView};
@@ -167,6 +167,15 @@ impl LibraryReader<'_> {
     ) -> Result<Option<Vec<SourceFragment>>> {
         self.read(namespace, |view| {
             view.load_source_fragments(namespace, source)
+        })
+    }
+    pub fn resolve_source_citations(
+        &self,
+        namespace: &Identifier,
+        citations: &[Citation],
+    ) -> Result<Vec<Option<radishmemory_sqlite::ResolvedSourceCitation>>> {
+        self.read(namespace, |view| {
+            view.resolve_source_citations(namespace, citations)
         })
     }
 }

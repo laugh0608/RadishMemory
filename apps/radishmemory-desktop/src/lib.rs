@@ -1,4 +1,5 @@
 mod backend;
+mod comparison;
 mod controller;
 mod error;
 mod fonts;

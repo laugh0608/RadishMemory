@@ -54,6 +54,15 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
     ) -> Result<Option<SourceArtifact>, ApplicationError> {
         read!(self, get_source(id))
     }
+    pub(crate) fn resolve_source_citations(
+        &mut self,
+        citations: &[Citation],
+    ) -> Result<Vec<Option<SourceCitationEvidence>>, ApplicationError> {
+        read!(
+            self,
+            resolve_source_citations(citations, &[Sensitivity::Personal])
+        )
+    }
     pub(crate) fn export_source(
         &self,
         id: &Identifier,
