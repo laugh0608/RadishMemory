@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-导航整理：2026-11-01。最近新增证据为 2026-11-08 的 macOS 桌面资料组合筛选与回源原生验收。Q02 桌面分页、Q06 正文后段回源与旧结果撤回、Q03 默认 v6 显式派生修复的证据见各专题。760×520 原生尺寸与新跨平台证据仍待验。
+导航整理：2026-11-01。最近新增证据为 2026-11-08 的 macOS 桌面多份资料对照与版本回源原生验收。Q02 桌面分页、Q06 正文后段回源与旧结果撤回、Q03 默认 v6 显式派生修复的证据见各专题。760×520 原生尺寸与新跨平台证据仍待验。
 
 从[专题地图](../topics.md#当前五项后续的任务与验收链)进入当前任务的主要归属、原实施切片与验收来源。近期动作以“后续事项”五项顺序为准；“当前顺位”保留既有接入进展与剩余范围，不另定一套任务顺序。
 
@@ -33,7 +33,7 @@ P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../i
 
 桌面手输资料与组合筛选已完成默认明文库的 macOS 常规窗口验收。筛选覆盖来源方式、正文格式和当前版本保存时间，包含零结果、清除条件、从结果定位片段和查看完整原文。规则见[本地宿主 ADR](../adr/0007-phase1-local-library-host.md#桌面资料搜索筛选)，合成与原生证据见[质量验收](../evaluation/phase1-local-library-quality.md#macos-原生组合筛选与回源)。加密库原生窗口、760×520 原生内容区和其他平台仍待验。检索质量与本地加密仍沿各自验收条目跟踪。
 
-桌面资料对照已接入搜索结果和精确引用，支持更正后的历史版本与删除后的不可用状态。[对照规则](../adr/0007-phase1-local-library-host.md#多份资料对照与引用)和[双入口合成验收](../evaluation/phase1-local-library-quality.md#2026-11-08-多份资料对照与引用)已记录。下一项可见验收为在原生窗口核对选取多份资料、从摘录回源，以及更正和删除后的对照状态。
+桌面资料对照已通过 macOS 默认明文库的常规窗口验收，覆盖三份资料、长文摘录回源、更正后的历史标记和删除后的正文撤回。合成加密与其它窗口变更已有无窗口回归证据。详见[对照规则](../adr/0007-phase1-local-library-host.md#多份资料对照与引用)与[原生验收](../evaluation/phase1-local-library-quality.md#macos-原生资料对照与版本回源)。加密库、760×520 原生内容区和其他平台的对照操作仍待原生验收。
 
 1. `P1-S04a SQLite key bootstrap coordination` 已实现：在真实 SQLite `IMMEDIATE` transaction 内验真初始化资格，复验对象目录、创建 / 复用密钥并提交 maintenance-only v7 `key_ready` checkpoint。合成测试覆盖并发连接、独立子进程、真实 commit 失败、缺 key、历史正文损坏和 schema 漂移，见[落地记录](../implementation/phase1-source-vault-key-bootstrap.md)。普通产品入口继续使用 v6；该初始化步骤不迁移正文；后续迁移由独立 v8 维护入口承担。
 2. `P1-S04` 已完成独立的正文迁移 / 恢复、加密 capture、inventory reconciliation、显式放弃、verify / rebuild、对象删除与历史请求接管，以及认证读取 / 目录 / 检索和精确导出组合验收；各批实现与代码复核见[9 月 26 日日终记录](2026-09-26-source-vault.md)。[application 加密用例](../implementation/phase1-source-vault-application.md) 已完成显式旧连接关闭、密钥准备 / 迁移恢复、已迁移库打开及完整读取 / 导出会话，具备合成验收。本批已接入 application 的 import / update、lineage 删除及 verify / rebuild，保留原请求精确恢复。[桌面宿主接入](../implementation/phase1-source-vault-host.md) 已完成串行 worker、显式初始化 / 迁移 / 打开、内存原请求重试、重启发现原删除授权、精确放弃及 failed-open 维护入口。依赖连线已获批准；诊断采用无输出 logger 与 panic payload 抑制，并通过隔离子进程验证。2026-10-06 已按精确授权完成 macOS 真实 Keychain / GUI 的最小正常闭环；随后完成派生损坏重启恢复与密文损坏拒绝的真实 GUI 扩展；2026-10-09 又完成权限故障下的原请求重试、重启精确放弃及原删除授权恢复；随后外部 SQLite 持锁下的 GUI 失败恢复通过，并只读核对测试 key 访问控制。随后不同 bundle ID 的 A/B 已完成独立定位、跨窗口版本刷新与精确导出；Prompt 首次“始终允许”新增许可已按追加授权精确撤销；在触发前交接拒绝后，空合成库打开返回真实 `KeyStoreCancelled` 并失败关闭，原 A 读取对照通过。2026-10-13 已修复关闭事件与 worker 结果同帧到达、接受关闭后仍派发动作的 UI 竞争，并补齐 headless UI 和真实 worker 退出回归；2026-10-24 当前构建已通过空库锁等待下的自然 busy 关闭拒绝、错误交付保留与再次正常关闭；精确同帧竞争及原请求关闭确认不在该原生证据范围。其余提交 / evidence 中断窗口、其它系统密钥错误 / 操作阶段、重叠 GUI 事务、中文最小窗口 / 跨平台显示与跨平台扩展验收仍待收口。详见[宿主证据](../implementation/phase1-source-vault-host.md#2026-10-06-macos-最小真实闭环)，新增系统操作继续按具体范围授权。
