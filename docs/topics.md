@@ -8,7 +8,7 @@
 
 current 维护实际能力、跨专题顺位、未关闭问题和停止线；原实施文档维护对应切片的版本、结果与剩余范围；evaluation 保存验收标准及实际证据，status 日期记录保存历史交接。地图只登记来源，不复制执行状态或另建任务卡。方案被接受、有限实现、局部验收与完整阶段通过分别判断。
 
-近期工作以 [current 后续事项](status/current.md#后续事项)的五项顺序为准；“当前顺位”提供接入依赖与剩余范围。索引中的旧实现摘要、数字和平台记录只在其原版本范围成立，不能覆盖后续 current 或实际证据。
+近期工作只以 [current 后续事项](status/current.md#后续事项)为准；旧“当前顺位”保留跳转，原接入流水已归档。索引中的旧实现摘要、数字和平台记录只在其原版本范围成立，不能覆盖后续 current 或实际证据。
 
 ## 大专题
 
@@ -46,15 +46,15 @@ current 维护实际能力、跨专题顺位、未关闭问题和停止线；原
 
 ## 当前五项后续的任务与验收链
 
-不改变 [current 后续事项](status/current.md#后续事项)的编号、顺序或暂停条件；本表只给归属和来源。
+保留原锚点供既有链接使用；下表按 2026-11-10 已确认的有限收口重排，只提供职责与来源，不维护独立排期。完整阶段、Q / P1 判据与 M01 暂停条件保持。
 
 | 接续项 | 牵头 / 协同 | 原任务与验收来源 |
 | --- | --- | --- |
-| 1. Q01 标签与 Q04 成本 | 检索与上下文；质量主线独立复核 | 原[质量场景](evaluation/phase1-local-library-quality.md#场景与关闭条件)、中文基线 / 修复及[100 来源成本](evaluation/phase1-local-library-scale.md)；人工标签与下一档预算独立评审，不删安全校验 |
-| 2. 新格式有限可见验收 | 客户端体验；检索、存储和质量协同 | current 原操作范围、中文显示 / 检索记录及[新批次原生判据与结果](evaluation/phase1-recall-native-acceptance.md)；macOS 已观察尺寸的切换 / 重开 / 导出已有证据，最小窗口与平台证据分列 |
-| 3. 文本资料库质量闭环 | 客户端体验；检索与存储协同 | Q02 / Q03 / Q06 原关闭条件；第 201 条、默认 v6 failed-open、回源 / 更新 / 删除刷新分别关闭，已通过范围不重复列为未验 |
-| 4. 其余失败窗口与契约 | 资料库与安全存储；客户端、质量协同 | [有限检查点](evaluation/phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)；key 取消、pending 关闭和 evidence_digest 契约各自评审；完整 P1-S05 与 PDF / 图片停止线保留 |
-| 5. M01 暂缓 | 资料库与安全存储；质量主线协同 | 原诊断冻结件及[10 月 24 日记录](status/2026-10-24-source-vault.md)；先审阅绑定与独立范围，不能重签、改 key / ACL 或跳过身份检查 |
+| 1. 已迁移库启动引导 | 客户端体验；存储提供只读格式 / 迁移资格 | [有限批次](evaluation/phase1-local-library-quality.md#finite-desktop-closeout)；先区分 v6、未完成迁移、已完成受支持格式与损坏 / 未知，保持显式 key 调用和失败关闭 |
+| 2. 用户路径与必要质量 | 客户端体验；检索、存储与质量协同 | 原 Q01 / Q02 / Q03 / Q05 / Q06、[原生尺寸与旧格式](evaluation/phase1-recall-native-acceptance.md)及[Source Vault 整合清单](evaluation/phase1-local-library-quality.md#source-vault-closeout)；已有结果按原批次复用，必要缺口不因有限范围而免除 |
+| 3. 本批性能边界 | 检索与上下文；质量和存储协同 | [Q04 有限规模评审](evaluation/phase1-local-library-scale.md#finite-scale-review)；代表输入与预算先定，100 来源成本与 201 条功能不互换，后续规模按支持目标启动 |
+| 4. 技术后价值复核 | 交付、质量与评测；客户端与产品协同 | [有限出口](evaluation/phase1-local-library-quality.md#finite-desktop-closeout)与[产品价值场景](product-scope.md#首个价值验证场景)；评价找回、更正、引用与维护负担，再决定下一能力 |
+| 5. 平台后置与独立暂停 | 相应平台 / 存储专题；质量协同 | Windows / Linux 原[平台计划](evaluation/phase1-windows-linux-provider-gui-plan.md)、完整 P1-S05 与原合同继续开放；M01 沿[诊断计划](evaluation/phase1-keychain-prompt-diagnostic-plan.md)暂停，恢复需重新核对身份和冻结范围 |
 
 ## 后续能力与维护
 
