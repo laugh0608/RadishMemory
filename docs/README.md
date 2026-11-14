@@ -85,6 +85,8 @@
 
 ## 治理入口
 
+- [界面与交互评审](governance/agent-collaboration.md#界面与交互评审)记录可选设计工具及源稿、预览和恢复的留档方式。
+
 - [Agent 协作与执行规则](governance/agent-collaboration.md)：工作区、授权、数据边界、验证和交接细则。
 - [仓库治理](governance/repository-governance.md)：规则层级、仓库资产、PR、CI、Ruleset 和同步矩阵。
 - [ADR 0001：分支、PR 与 Ruleset 治理](adr/0001-branch-and-pr-governance.md)：`dev` / `master` 拓扑、合并方式和回流决策。
