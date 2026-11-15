@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-规划更新：2026-11-10；最近产品与原生执行证据仍为 2026-11-08。所有者已确认 macOS 文本资料库有限收口方案，本轮仅修改文档，未实施启动引导或新增原生验收。
+原生验收更新：2026-11-15，macOS 文本资料库启动引导、加密库 201 条分页及明文 / 加密真实 760×520 内容区已通过限定验收。独立人工标签复核和有限批次的其余质量项待补。所有者于 2026-11-10 确认 macOS 文本资料库有限收口方案。
 
 [专题地图](../topics.md#当前五项后续的任务与验收链)只路由职责与证据；实际执行顺序只见[后续事项](#后续事项)。历史接续与验证流水已移至[11 月 10 日归档](2026-11-10-planning-history.md)，11 月 8 日的提交与原生结果见[日终记录](2026-11-08-desktop-library.md)，不能将旧授权或旧环境状态当作当前事实。
 
@@ -8,9 +8,9 @@
 
 `Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending`
 
-当前交付批次为 **macOS 文本资料库有限验收**，覆盖既有默认明文与显式加密对象两种入口的所选用户路径。技术批次、产品价值、完整 P1-S05、完整阶段 1 和发布分别判断。有限范围与退出条件统一见[质量验收](../evaluation/phase1-local-library-quality.md#finite-desktop-closeout)；本次规划确认不代表任何新场景通过。
+当前交付批次为 **macOS 文本资料库有限验收**，覆盖既有默认明文与显式加密对象两种入口的所选用户路径。技术批次、产品价值、完整 P1-S05、完整阶段 1 和发布分别判断。有限范围与退出条件统一见[质量验收](../evaluation/phase1-local-library-quality.md#finite-desktop-closeout)，原生执行结论按实际构建及场景记录。
 
-M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，现已接入显式 application 加密用例与桌面 worker / 恢复界面，默认启动仍保留旧入口。默认桌面产品入口仍是 SQLite v6 inline plaintext body；这里指普通产品正文路径，P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 承载正文迁移状态与已迁移对象库，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；默认 `LocalLibrary` 入口拒绝 v7 / v8 / v9 / v10 / v11 / v12，显式加密入口只接受迁移完成的 v8 至 v12。项目具备受约束的工程原型。中文找回的独立人工复核仍待补，目录分页及正文后段回源已有 macOS 明文库常规窗口证据；默认 v6 派生修复已有 macOS 常规窗口证据，跨平台仍待验。
+M0、文本 / Markdown 文件入口和本地桌面宿主已建立；原始对象加密已完成独立 portable crypto 与 filesystem adapter 实现，并具备 macOS 本机、Windows ARM64 / NTFS、Linux ARM64 / ext4 的合成运行证据，现已接入显式 application 加密用例与桌面 worker / 恢复界面。启动引导按格式和迁移状态分流。默认桌面产品入口仍是 SQLite v6 inline plaintext body，对应普通产品正文路径。P1-S04a 的 v7 仅用于显式维护入口的密钥准备 checkpoint；P1-S04b 的 v8 承载正文迁移状态与已迁移对象库，后续 v9 供显式加密 capture 协调，v10 增加显式放弃与终态记录，v11 增加既有 DeleteRequest 下的对象删除执行 checkpoint，v12 保存历史正文缺失的原执行凭据引用；默认 `LocalLibrary` 入口拒绝 v7 / v8 / v9 / v10 / v11 / v12，显式加密入口只接受迁移完成的 v8 至 v12。项目具备受约束的工程原型。中文找回的独立人工复核仍待补，目录分页及正文后段回源已有 macOS 明文库常规窗口证据；默认 v6 派生修复已有 macOS 常规窗口证据，跨平台仍待验。
 
 P1-S03c-2 的独立 provider、macOS 构建与合成验证见[落地记录](../implementation/phase1-source-vault-key-provider.md)，三平台 locked CI 由下述 PR #4 复验；macOS 最小真实密钥库 / GUI 正常链路、受损库边界、权限故障下的三条原请求恢复路径及外部 SQLite 持锁下 GUI 失败恢复已验收；双 GUI 交替与精确导出也已通过。新签名副本首次误加的 Prompt 常许许可已按追加授权精确撤销；重新交接拒绝后，真实 `KeyStoreCancelled` 显式打开失败关闭通过。其它系统错误 / 操作阶段、失败窗口与平台仍待验收。P1-S03b 实现与证据见[filesystem adapter 落地记录](../implementation/phase1-source-vault-filesystem.md)；实现范围为独立 Source Vault package 与 Windows 文件身份 adapter，没有修复既有文本产品质量缺口。已确认问题、静态发现和待测风险见[2026-09-05 项目审阅](../implementation/2026-09-05-project-review.md)；截至 2026-09-03 的详细提交、三平台 CI、依赖数量与 M0 完成流水见[阶段基线归档](2026-09-03-baseline.md)。
 
@@ -83,8 +83,8 @@ pwsh ./scripts/check-repo.ps1
 
 以下是唯一执行顺序，实施与系统操作按当前任务范围授权，不沿用历史冻结包。原五项内容已按交付依赖重排；专题地图只引用本节。
 
-1. **启动引导优先。** 先评审现有只读格式 / 迁移状态识别，再实施正常 v6、v7 或迁移未完成、已完成迁移的受支持加密库、未知 / 损坏状态的明确分流。只有已验证支持且迁移完成时提示用户显式打开加密对象；用户选择后才调用系统 key。验证零自动密钥调用、无自动迁移 / 新库 fallback 和原有失败关闭，再准备限定原生验收。
-2. **一次收口所选用户路径与质量。** 按[有限批次清单](../evaluation/phase1-local-library-quality.md#finite-desktop-closeout)整合保存、找回、回源、更正、再查询、导出 / 删除和重开；已有证据复核版本影响后复用，补中文独立标签、760×520 实际内容区、加密库分页及适用失败路径。影响本批的安全 / 一致性缺口仍阻塞对应能力，不因未能构造就记为通过。缺口归属见[Source Vault 整合清单](../evaluation/phase1-local-library-quality.md#source-vault-closeout)。
+1. **启动引导限定原生验收已通过。** 2026-11-15 的六个隔离窗口覆盖四类启动状态。LLDB 在唯一一次显式打开前的密钥观测点零命中，正对照只查询指定合成条目属性并返回 `KeyMissing`。详见[启动引导原生记录](../evaluation/phase1-local-library-quality.md#desktop-startup-native)。
+2. **一次收口所选用户路径与质量。** [加密库 201 条分页和明文 / 加密 760×520 原生记录](../evaluation/phase1-local-library-quality.md#macos-catalog-and-min-viewport)已补齐对应场景。按[有限批次清单](../evaluation/phase1-local-library-quality.md#finite-desktop-closeout)继续中文标签独立人工复核、选入用户路径的其余原生缺项及适用失败路径。影响本批的安全 / 一致性缺口仍阻塞对应能力，不因未能构造就记为通过。缺口归属见[Source Vault 整合清单](../evaluation/phase1-local-library-quality.md#source-vault-closeout)。
 3. **确定本批性能边界。** 先固定代表资料分布、版本数、操作与可接受延迟 / 资源预算，再测量并决定是否需优化。100 来源成本与 201 条功能证据分开解释；不自动扩大 1000 / 10000、物理冷缓存或全平台矩阵。只针对影响本批的成本评审读取会话和重复认证组织，权限、完整性、时间和删除校验保持；详细规则见[规模基线](../evaluation/phase1-local-library-scale.md#finite-scale-review)。第 2 / 3 项可独立准备，性能预算未定不能宣称容量达标。
 4. **技术出口后作价值复核。** 围绕一个长期项目，用合成 / 已明确授权的材料观察是否找得到、引用是否可回源、更正 / 删除后是否仍误用旧内容及维护负担；未经授权不使用真实个人资料。摘录式 mock 不代表真实模型问答。根据结果选择一个下一能力或修正已有路径，不自动扩展界面、模型或故障实验。平台扩展与完整 P1-S05 保持各自出口，不由本次价值复核代签。
 5. **后置与暂停分别维护。** Windows / Linux 的新字体、中文格式和新增桌面流程按目标平台单独补验；支持范围不能从旧正常链路外推。M01 继续暂缓：先复核身份绑定、源码漂移与独立冻结范围，再按新精确操作单授权；不重签、不改 key / ACL、不跳过校验。无法安全构造的原生时序保留合成证据与未覆盖边界；若相关缺陷影响当前用户路径，转为对应阻塞。完整 P1-S05、PDF / 图片、模型外发、同步、恢复与发行沿原合同进入，不随有限批次放行。
