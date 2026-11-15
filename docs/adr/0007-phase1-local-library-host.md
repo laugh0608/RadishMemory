@@ -129,7 +129,11 @@ application error 只公开 operation、稳定 category / reason、retryable、�
 
 启动时数据库 capability、migration、canonical integrity、FTS / projection 或 binding 验证失败时，宿主显示不可用状态并停止普通操作。只有派生数据损坏且 canonical facts 已通过完整复验时，用户才能显式执行 rebuild；canonical 损坏不允许重建、重新读取外部文件或创建空数据库来掩盖。
 
+已有库先通过只读格式探测核对 SQLite 持久格式、迁移历史和适用的 profile 绑定。v6 进入普通明文打开，v7 和迁移未完成的 v8 显示显式维护入口，已迁移的 v8–v12 等待用户显式打开并认证对象。格式探测不调用密钥 Provider。未知、损坏、绑定不符或已有 profile 对应数据库缺失时保持关闭。正式首次建库仅在符合新库条件的目录内执行。[启动分流证据](../evaluation/phase1-local-library-quality.md#desktop-startup-guide)
+
 默认 v6 因逻辑派生不一致启动失败时，用户可先只读检查现有库，再显式确认重建。执行时在 SQLite 写事务内重验原始事实、绑定和 FTS 结构，只重建派生行，并在提交后复验通过才重新交付普通视图。数据库缺失、格式不符、FTS 结构损坏或原始事实异常时停止修复。加密正文的 Verify 与 Rebuild 按 [ADR 0008](0008-phase1-encrypted-source-vault.md)走已认证对象路径。
+
+已有库的回执表通过同一串行 worker 显式升级。确认前保留旧回执读回，并阻止需要新写回执的删除。提交后正文模式与已有删除请求保持，旧客户端会拒绝重开升级后的库。加密升级经过原有对象认证和排他会话。摘要复验及旧回执兼容规则见[删除回执 v2](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)。
 
 首批不自动恢复正在进行的 UI operation。capture 与计划提交继续依赖现有 SQLite transaction；export 继续依赖任务临时文件和原子不覆盖发布；删除继续报告真实 pending / failed / completed evidence。进程终止后重新打开必须从持久事实恢复状态，不从 UI cache 推断成功。
 

@@ -1589,9 +1589,11 @@ def check_phase1_encrypted_source_vault_contract(
         "README.md": (
             "[ADR 0008]",
             "Phase 1 encrypted desktop integration; macOS minimal native loop verified; extended acceptance pending",
-            "一 source version 一密文对象",
+            "每个来源版本独立加密",
             "SQLite v6 inline plaintext body",
-            "不能声明加密 Source Vault 已可用或整个资料库已静态加密",
+            "通过显式入口打开加密对象库",
+            "对象静态加密覆盖受管原始正文",
+            "SQLite FTS 仍保存整文件片段的完整可读正文",
         ),
         "docs/README.md": (
             "ADR 0008：阶段 1 加密内容寻址 Source Vault",

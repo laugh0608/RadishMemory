@@ -88,6 +88,8 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 宿主在平台应用数据目录的专用位置打开文件 SQLite，启动时验证 capability、migration、canonical facts、派生索引和 binding。派生漂移只有在 canonical facts 通过完整复验后才能由用户显式 rebuild；canonical 损坏不能通过扫描外部原件、建立空库或 UI cache 静默恢复。首批仍不启动本地 HTTP 服务、daemon、网络、模型、RadishMind 或同步，也不声明本地明文数据库已经加密。
 
+已有库启动时先只读判定正文格式。明文 v6 进入普通打开，v7 和未完成的 v8 进入显式维护指引，迁移完成的 v8–v12 由显式加密打开交付资料视图。回执表升级是单独的维护动作，记录在同一份 SQLite 迁移历史，正文格式继续由原 `user_version` 和正文迁移 checkpoint 决定。[宿主启动边界](adr/0007-phase1-local-library-host.md#错误日志与恢复)、[回执表升级](implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-proposal)
+
 `P1-H02` / `P1-H03` 已以第一方 `radishmemory-application` package 落地上述组合边界。core 的 `SourceCatalog` 定义当前 lineage、版本历史和 body-free summary，SQLite adapter 从已验真的 active source、opaque binding 与单一 lineage tip 生成读取模型。`LocalLibrary` 组合打开、写入、目录、检索、精确导出、来源删除、Verify 与 Rebuild，通过 `ApplicationRuntime` 隔离 production ID 和时钟。应用内手输资料复用来源和版本写入，显式保存与更正语义见 [ADR 0010](adr/0010-phase1-desktop-text-entry.md)。
 
 桌面 worker 按页读取目录，以来源版本和片段标识打开搜索结果。对照可以引用可读取的历史版本，本地 mock 问答只使用重验后仍为当前版本的证据。搜索命中和问答引用发现失效时，worker 重新读取目录、详情和上次提交的搜索，返回同一组 UI 快照。检索筛选、引用校验和证据撤回规则见 [ADR 0007](adr/0007-phase1-local-library-host.md)。
@@ -96,7 +98,7 @@ file-entry package 继续不知道 SQLite；SQLite adapter 也不读取或写入
 
 ## 阶段 1 加密内容寻址 Source Vault 边界
 
-[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter，通过 macOS 合成验证与 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，默认启动仍走旧 v6；显式 application 与桌面加密入口已接线，真实系统验收见下文。受管原始对象将从 SQLite inline body 外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
+[ADR 0008](adr/0008-phase1-encrypted-source-vault.md) 已冻结下一 Source Vault 存储契约；[P1-S03a](implementation/phase1-source-vault-portable-crypto.md) 已落地独立 portable crypto package；[P1-S03b](implementation/phase1-source-vault-filesystem.md)已实现 filesystem adapter，通过 macOS 合成验证与 Windows ARM64 / NTFS 提升权限、普通用户验收；Linux ARM64 / ext4 普通用户验收也已通过，普通明文库仍为 v6。已迁移库使用显式 application 与桌面加密入口，真实系统验收见下文。在显式加密库中，受管原始对象外置为应用专用目录中的版本化认证密文；SQLite 继续保存结构化 metadata、对象 reference、FTS、投影、binding、audit 与 deletion evidence，因此首批只能声明原始对象加密，不能声明整个资料库或所有派生数据已经静态加密。
 
 一个不可变 SourceArtifact version 首批对应一个不可变密文对象。逻辑 lookup 使用精确 `source_id` 与 `exact-bytes-v1` digest，物理 locator 保持 adapter-private；不同 `source_id` 即使摘要相同也不跨 lineage / provenance 物理去重。该选择保留独立 governance、retention 和 deletion scope，不把内容摘要升级为 canonical identity。
 

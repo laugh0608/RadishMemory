@@ -55,6 +55,7 @@
 
 ## 质量与历史记录
 
+- [2026-11-15 macOS 文本资料库日终记录](status/2026-11-15-macos-library.md)：当天实现、验收和审阅提交，含启动分流、Q01 / Q03 / Q04、删除回执 v2 与下次准备范围。
 - [2026-11-10 有限交付规划收口](status/2026-11-10-planning-closeout.md)：macOS 文本资料库批次、技术与价值出口、验收缺口分工和静态 / 仓库检查结果。
 - [收口前的接续流水](status/2026-11-10-planning-history.md)：从 current 提取的原接入进展与历史安排，不作为当前排期或授权。
 
@@ -68,7 +69,7 @@
 
 - [2026-09-26 Source Vault 日终记录与明日事项](status/2026-09-26-source-vault.md)：当天七个实现提交、代码与文档复核、读取 / 导出验收及 application 生命周期接入安排。
 - [P1-S05 隔离原生验收计划](evaluation/phase1-source-vault-native-acceptance.md)：显式验收入口、合成 profile 绑定、真实 Keychain / GUI 授权材料及待验场景。
-- [旧检索格式与最小窗口验收](evaluation/phase1-recall-native-acceptance.md)：独立 LegacyUnicode61 旧库、明文 / 加密切换、中文命中、重开和四份精确导出的 macOS 局部结果；760×520 原生内容尺寸仍待验。
+- [旧检索格式与最小窗口验收](evaluation/phase1-recall-native-acceptance.md)：独立 LegacyUnicode61 旧库、明文 / 加密切换、中文命中、重开和四份精确导出的 macOS 局部结果。[11 月 15 日复验](evaluation/phase1-local-library-quality.md#macos-catalog-and-min-viewport)实测双入口 760×520 原生内容区与选定工作流。
 - [Windows / Linux 真实 provider 与 GUI 验收方案](evaluation/phase1-windows-linux-provider-gui-plan.md)：专用普通账户、独立合成库 / slot、串行会话、凭据确认与分层清理范围，以及两平台真实正常链路、重登、导出、删除与保留结果。
 - [Keychain 重复提示有限诊断与原生关闭方案](evaluation/phase1-keychain-prompt-diagnostic-plan.md)：2026-10-18 受限观测实现、D01 / D02 实测、M01 身份前置失败与副本范围 v2 冻结；M01 因源码摘要漂移暂缓，当前构建的空库自然 busy 关闭结果见宿主记录。
 - [阶段 1 本地资料库质量验收](evaluation/phase1-local-library-quality.md)：production 入口、中文检索、目录、派生修复、性能与回源的关闭条件和实际证据，含明文与加密正文的 macOS 原生问答。

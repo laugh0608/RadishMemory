@@ -14,6 +14,7 @@
 - 2026-10-13 起，桌面的 `OpenEncrypted` 改用 `open_with_snapshot`，显式 `Refresh` 改用 `read_snapshot`，按[只读动作会话契约](#2026-10-13-只读动作认证会话)合并目录、版本与恢复检查；既有 `open` 和其它独立用例保持原生命周期。
 - `EncryptedLibrary` 是显式加密应用句柄，提供目录、历史版本、来源读取、搜索回源、精确导出及下述写用例。它与原 `LocalLibrary` 共用私有读取用例和已有 core / file-entry 契约，不建立第二套来源、查询或导出协议。
 - 每次读取用例重新取得认证 `LibraryReader`，一个 exclusive session 覆盖完整搜索及来源解析或完整导出发布；正常返回、错误和 unwind 都释放锁与 key。句柄空闲时没有数据库连接、缓存 key 或解密正文，已有 capture / 删除 / maintenance 协调器可取得同库会话。返回值和用户导出是调用方持有的明文副本，关闭句柄不撤回这些副本。
+- 11 月 15 日接入只读格式探测及显式回执表维护。`inspect_library_format` 为宿主分类已有库，已迁移库的对象认证由显式 `open` 路径负责。`upgrade_deletion_evidence` 走既有认证维护会话并保留原删除 checkpoint。同日的 `search_sources_filtered` 在一次认证读取中完成排序与精确回源。[启动分流](../evaluation/phase1-local-library-quality.md#desktop-startup-guide)、[回执升级](phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)、[检索读取](phase1-source-vault-reader.md#q04-single-search-review)
 
 宿主接入时的显式调用顺序为：消费并关闭旧 `LocalLibrary` → 用原 profile 构造 location → 用户明确选择首次准备或既有迁移恢复 → `open` → 单次读取或显式准备 / 执行写入用例。已迁移库只需构造 location 后 `open`。迁移失败保留真实 checkpoint，重试沿原 profile / 原 key；不重新生成身份。
 

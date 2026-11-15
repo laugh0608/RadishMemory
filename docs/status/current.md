@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-验收更新：2026-11-15，macOS 启动引导、加密库 201 条分页、明文 / 加密 760×520 组合筛选与版本对照、加密手输已通过选入的原生验收。固定中文语料的独立人工标签复核与双入口复验已完成。默认 v6 派生修复遇读锁失败和显式恢复已通过 macOS 原生验收。本批继续核对加密失败与待处理原请求，并确定性能预算。所有者于 2026-11-10 确认 macOS 文本资料库有限收口方案。
+2026-11-15 的 macOS 启动引导、加密库 201 条分页、双入口 760×520 组合筛选与版本对照、加密手输、v6 派生修复失败与恢复，均通过选定的原生验收。固定中文语料通过独立人工复核，Q04 有限离线预算已通过。本地删除回执 v2 已完成实现和合成回归。完整结果及限制见[当日日终记录](2026-11-15-macos-library.md)。
 
 [专题地图](../topics.md#当前五项后续的任务与验收链)只路由职责与证据；实际执行顺序只见[后续事项](#后续事项)。历史接续与验证流水已移至[11 月 10 日归档](2026-11-10-planning-history.md)，11 月 8 日的提交与原生结果见[日终记录](2026-11-08-desktop-library.md)，不能将旧授权或旧环境状态当作当前事实。
 
@@ -85,6 +85,8 @@ pwsh ./scripts/check-repo.ps1
 
 1. **启动引导限定原生验收已通过。** 2026-11-15 的六个隔离窗口覆盖四类启动状态。LLDB 在唯一一次显式打开前的密钥观测点零命中，正对照只查询指定合成条目属性并返回 `KeyMissing`。详见[启动引导原生记录](../evaluation/phase1-local-library-quality.md#desktop-startup-native)。
 2. **收口所选用户路径与质量。** [加密库 201 条分页](../evaluation/phase1-local-library-quality.md#macos-catalog-and-min-viewport)、[加密手输和双入口 760×520 筛选 / 对照](../evaluation/phase1-local-library-quality.md#macos-text-workflows-760)、[固定中文语料的独立人工复核与双入口对账](../evaluation/phase1-chinese-retrieval-baseline.md#q01-human-recheck)已通过所选范围。按[有限批次清单](../evaluation/phase1-local-library-quality.md#finite-desktop-closeout)继续适用的失败与恢复分支。[Q03 明文修复遇读锁失败与恢复](../evaluation/phase1-local-library-quality.md#q03-plaintext-busy-native)已通过。有资料的显式加密打开和刷新本轮均正常返回，[未观察到可安全交接的系统提示](../evaluation/phase1-local-library-quality.md#macos-populated-key-failure-attempt)。真实凭据失败后的关闭状态与正文撤回保留待验。待处理原请求的取消关闭、确认关闭和重开继续待验。[删除回执 v2](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)已接入明文、加密与 M0 runner 的生成和回读。已有库经显式升级后允许继续写入回执。升级窗口和真实凭据交互按独立原生批次验收。影响本批的安全 / 一致性缺口仍阻塞对应能力，缺口归属见[Source Vault 整合清单](../evaluation/phase1-local-library-quality.md#source-vault-closeout)。
+   - **下次先准备明文旧库的回执升级操作单。** 冻结本地默认构建与带历史 v1 回执的独立合成 v6 副本。计划覆盖取消升级、确认升级、重开复验原 v1 及一次新删除写出 v2。先离线核对旧客户端拒绝升级后格式，再独立准备加密旧库和已持久化原请求的恢复场景。每份操作单列明构建、隔离库、串行窗口上限、Keychain 范围、时长和清理方式，按确认的单独批次执行。遇系统提示交由所有者处理。
+   - 有资料的凭据失败、正文撤回和待处理请求关闭沿原清单各自保留。待处理请求的原生关闭暂缓，只有能安全抵达且具备明确判据的窗口才列入操作单。
 3. **本批离线性能预算已通过。** [单次加密检索复测](../evaluation/phase1-local-library-scale.md#macos-q04-single-search-retest)中，两轮各 610 条样本及正确性检查通过。加密五命中首次和 p95 均低于 1 秒，全库认证为 3 轮，其它选定操作及资源也达到预算。201 条目录继续作为功能证据。GUI、真实 Keychain、1000 / 10000 来源、物理冷缓存和全平台成本按各自范围验收。
 4. **技术出口后作价值复核。** 围绕一个长期项目，用合成 / 已明确授权的材料观察是否找得到、引用是否可回源、更正 / 删除后是否仍误用旧内容及维护负担；未经授权不使用真实个人资料。摘录式 mock 不代表真实模型问答。根据结果选择一个下一能力或修正已有路径，不自动扩展界面、模型或故障实验。平台扩展与完整 P1-S05 保持各自出口，不由本次价值复核代签。
 5. **后置与暂停分别维护。** Windows / Linux 的新字体、中文格式和新增桌面流程按目标平台单独补验；支持范围不能从旧正常链路外推。M01 继续暂缓：先复核身份绑定、源码漂移与独立冻结范围，再按新精确操作单授权；不重签、不改 key / ACL、不跳过校验。无法安全构造的原生时序保留合成证据与未覆盖边界；若相关缺陷影响当前用户路径，转为对应阻塞。完整 P1-S05、PDF / 图片、模型外发、同步、恢复与发行沿原合同进入，不随有限批次放行。
