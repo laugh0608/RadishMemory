@@ -1,12 +1,11 @@
 //! Explicit v6 maintenance after normal open rejects logical recall drift.
 use crate::{
-    SQLITE_SCHEMA_VERSION, SqliteCapabilities, SqliteConfigurationReason, SqliteDatabase,
-    SqliteError, capability, configure_connection, derived_index, memory_store, migration,
-    recall_profile, source_vault_key,
+    SqliteCapabilities, SqliteDatabase, SqliteError, capability, configure_connection,
+    derived_index, library_format::require_v6, memory_store, recall_profile, source_vault_key,
 };
 use radishmemory_core::Identifier;
 use rusqlite::{Connection, OpenFlags, TransactionBehavior};
-use std::{fs, io, path::Path};
+use std::path::Path;
 
 impl SqliteDatabase {
     /// Read only the inputs to an explicit repair on an existing v6 database.
@@ -66,57 +65,12 @@ fn open_existing(
     path: &Path,
     access: OpenFlags,
 ) -> Result<(Connection, SqliteCapabilities), SqliteError> {
-    let invalid_path = || SqliteError::open_path(io::ErrorKind::InvalidInput.into());
-    let name = path.file_name().ok_or_else(invalid_path)?;
-    let directory = path.parent().ok_or_else(invalid_path)?;
-    if !path.is_absolute()
-        || !fs::symlink_metadata(directory)
-            .map_err(SqliteError::open_path)?
-            .is_dir()
-    {
-        return Err(invalid_path());
-    }
-    // Resolve platform ancestor aliases such as macOS /var. The application
-    // directory and database themselves must not be symlinks.
-    let path = directory
-        .canonicalize()
-        .map_err(SqliteError::open_path)?
-        .join(name);
-    if !fs::symlink_metadata(&path)
-        .map_err(SqliteError::open_path)?
-        .is_file()
-    {
-        return Err(invalid_path());
-    }
-    let connection = Connection::open_with_flags(
-        path,
-        access | OpenFlags::SQLITE_OPEN_NO_MUTEX | OpenFlags::SQLITE_OPEN_NOFOLLOW,
-    )
-    .map_err(SqliteError::open)?;
+    let connection = crate::library_format::open_existing(path, access)?;
     require_v6(&connection)?;
-    // Reject unexpected journal modes without converting an existing file.
-    let journal: String = connection
-        .pragma_query_value(None, "journal_mode", |row| row.get(0))
-        .map_err(SqliteError::configuration_source)?;
-    if journal != "delete" {
-        return Err(SqliteError::configuration(
-            SqliteConfigurationReason::PersistentJournalMode,
-        ));
-    }
+    crate::library_format::require_delete_journal(&connection)?;
     configure_connection(&connection)?;
     let capabilities = capability::probe(&connection)?;
     Ok((connection, capabilities))
-}
-
-fn require_v6(connection: &Connection) -> Result<(), SqliteError> {
-    let version = migration::preflight(connection)?;
-    if version != i64::from(SQLITE_SCHEMA_VERSION) {
-        return Err(SqliteError::unsupported_schema_version(
-            version,
-            SQLITE_SCHEMA_VERSION,
-        ));
-    }
-    Ok(())
 }
 
 fn verify_inputs(connection: &Connection, namespace: &Identifier) -> Result<(), SqliteError> {

@@ -14,6 +14,7 @@ mod error;
 #[cfg(feature = "fixture-runner")]
 mod fixture_runner;
 mod legacy_deletion;
+mod library_format;
 mod memory_store;
 mod migration;
 #[doc(hidden)]
@@ -47,6 +48,7 @@ pub use error::{
 };
 #[cfg(feature = "fixture-runner")]
 pub use fixture_runner::FixtureDeletionFailure;
+pub use library_format::{LibraryFormat, inspect_library_format};
 pub use migration::SQLITE_SCHEMA_VERSION;
 pub use recall_profile::RecallProfile;
 pub use source_citation::ResolvedSourceCitation;
@@ -67,18 +69,63 @@ impl SqliteDatabase {
         Self::initialize(connection)
     }
 
-    fn initialize(mut connection: Connection) -> Result<Self, SqliteError> {
+    fn initialize(connection: Connection) -> Result<Self, SqliteError> {
         let schema_version = migration::preflight(&connection)?;
+        Self::initialize_from(connection, schema_version)
+    }
+
+    fn initialize_from(
+        mut connection: Connection,
+        schema_version: i64,
+    ) -> Result<Self, SqliteError> {
         configure_connection(&connection)?;
         let capabilities = capability::probe(&connection)?;
         migration::migrate_from(&mut connection, schema_version)?;
-        derived_index::verify(&connection)?;
-        source_capture::verify_origin_bindings(&connection)?;
+        Self::verify_initialized(&connection)?;
 
         Ok(Self {
             connection,
             capabilities,
         })
+    }
+
+    /// Opens an existing v6 library without creating or upgrading a database.
+    pub fn open_current(path: &Path) -> Result<Self, SqliteError> {
+        let mut connection =
+            library_format::open_existing(path, rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+        library_format::require_delete_journal(&connection)?;
+        configure_connection(&connection)?;
+        let capabilities = capability::probe(&connection)?;
+        let readback = connection.transaction().map_err(SqliteError::storage)?;
+        library_format::require_v6(&readback)?;
+        Self::verify_initialized(&readback)?;
+        readback.commit().map_err(SqliteError::storage)?;
+        Ok(Self {
+            connection,
+            capabilities,
+        })
+    }
+
+    /// Initializes a new file, failing if its name is already occupied.
+    pub fn create_new(path: &Path) -> Result<Self, SqliteError> {
+        let path = library_format::resolve_database_path(path)?;
+        std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .map_err(SqliteError::open_path)?;
+        let connection =
+            library_format::open_existing(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE)?;
+        let version = migration::preflight(&connection)?;
+        if version != 0 {
+            return Err(SqliteError::unsupported_schema_version(version, 0));
+        }
+        Self::initialize_from(connection, version)
+    }
+
+    fn verify_initialized(connection: &Connection) -> Result<(), SqliteError> {
+        derived_index::verify(connection)?;
+        source_capture::verify_origin_bindings(connection)
     }
 
     /// Returns the adapter schema version established by migration.

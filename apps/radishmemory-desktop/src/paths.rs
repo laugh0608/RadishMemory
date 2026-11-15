@@ -74,6 +74,11 @@ impl ApplicationPaths {
                 ));
             }
         }
+        self.prepare_existing_directory()?;
+        self.database_exists().map(|_| ())
+    }
+
+    pub(crate) fn prepare_existing_directory(&self) -> Result<(), DesktopError> {
         let metadata = fs::symlink_metadata(&self.data_directory).map_err(|source| {
             DesktopError::io(
                 DesktopErrorCode::ApplicationDirectory,
@@ -89,8 +94,7 @@ impl ApplicationPaths {
                 false,
             ));
         }
-        set_owner_only_directory(&self.data_directory)?;
-        self.database_exists().map(|_| ())
+        set_owner_only_directory(&self.data_directory)
     }
 
     pub fn database_exists(&self) -> Result<bool, DesktopError> {
@@ -109,6 +113,34 @@ impl ApplicationPaths {
                 &source,
             )),
         }
+    }
+
+    /// A missing database alone does not establish that this is a new library.
+    pub(crate) fn is_fresh_library_directory(
+        &self,
+        allow_profile: bool,
+    ) -> Result<bool, DesktopError> {
+        let invalid = |source: io::Error| {
+            DesktopError::io(
+                DesktopErrorCode::ApplicationDirectory,
+                DesktopErrorReason::DataDirectoryInvalid,
+                source.kind() == io::ErrorKind::Interrupted,
+                &source,
+            )
+        };
+        match fs::symlink_metadata(&self.data_directory) {
+            Ok(metadata) if metadata.is_dir() => {}
+            Ok(_) => return Err(invalid(io::ErrorKind::InvalidInput.into())),
+            Err(source) if source.kind() == io::ErrorKind::NotFound => return Ok(!allow_profile),
+            Err(source) => return Err(invalid(source)),
+        }
+        for entry in fs::read_dir(&self.data_directory).map_err(invalid)? {
+            let entry = entry.map_err(invalid)?;
+            if !allow_profile || entry.path() != self.profile_path {
+                return Ok(false);
+            }
+        }
+        Ok(true)
     }
 
     #[must_use]

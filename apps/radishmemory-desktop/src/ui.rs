@@ -1,10 +1,10 @@
 use crate::controller::{CATALOG_PAGE_SIZE, LibraryView, QuestionInput, text_excerpt};
-use crate::worker::{Command, SearchQuery, Snapshot, Worker};
+use crate::worker::{Command, SearchQuery, Snapshot, StartupState, Worker};
 use crate::{DesktopError, NativeFilePicker, PickerOutcome};
 use eframe::egui;
 use radishmemory_application::{
-    ApplicationErrorReason, Identifier, MediaType, NonEmptyText, NoteFormat, SourceEntry,
-    SourceSavedWithin, SourceSearchFilters, is_note_producer, note_body_is_valid,
+    ApplicationErrorReason, Identifier, LibraryFormat, MediaType, NonEmptyText, NoteFormat,
+    SourceEntry, SourceSavedWithin, SourceSearchFilters, is_note_producer, note_body_is_valid,
 };
 
 pub struct RadishMemoryApp {
@@ -92,7 +92,7 @@ impl RadishMemoryApp {
         match worker {
             Ok(worker) => {
                 app.worker = Some(worker);
-                app.send(Command::OpenPlain);
+                app.send(Command::StartLibrary);
             }
             Err(error) => app.notice = Some(Notice::error(&error)),
         }
@@ -131,6 +131,7 @@ impl RadishMemoryApp {
                     | Command::AddComparison(_)
                     | Command::OpenComparisonSource(_)
                     | Command::PreviewQuestion(..)
+                    | Command::StartLibrary
                     | Command::OpenPlain
                     | Command::OpenEncrypted
                     | Command::InitializeKey
@@ -201,7 +202,6 @@ impl RadishMemoryApp {
     }
     fn execute(&mut self, action: UiAction) {
         match action {
-            UiAction::RetryStartup => self.send(Command::OpenPlain),
             UiAction::NewNote => {
                 self.note_draft = Some(NoteDraft::New {
                     format: NoteFormat::Text,
@@ -362,12 +362,23 @@ impl RadishMemoryApp {
             });
             ui.horizontal_wrapped(|ui| {
                 let can_switch = !self.state.holds_original;
-                if ui.add_enabled(can_switch, egui::Button::new("Open legacy plaintext")).clicked() { action = Some(UiAction::RetryStartup); }
-                if ui.add_enabled(can_switch, egui::Button::new("Open encrypted objects")).clicked() { action = Some(UiAction::Command(Command::OpenEncrypted)); }
-                if ui.add_enabled(can_switch, egui::Button::new("Prepare key…")).clicked() { action = Some(UiAction::Confirm(Confirmation::Initialize)); }
-                if ui.add_enabled(can_switch, egui::Button::new("Migrate / resume bodies…")).clicked() { action = Some(UiAction::Confirm(Confirmation::Migrate)); }
+                if self.controller.is_some()
+                    && self.state.startup == StartupState::Existing(LibraryFormat::Plaintext)
+                    && ui.add_enabled(can_switch, egui::Button::new("Prepare key…")).clicked()
+                {
+                    action = Some(UiAction::Confirm(Confirmation::Initialize));
+                }
+                if self.state.startup == StartupState::Existing(LibraryFormat::MigrationPending)
+                    && ui.add_enabled(can_switch, egui::Button::new("Migrate / resume bodies…")).clicked()
+                {
+                    action = Some(UiAction::Confirm(Confirmation::Migrate));
+                }
             });
-            ui.small(if self.state.encrypted { "Encrypted object mode: FTS retains full readable text. This is not whole-library encryption." } else { "Default legacy mode: SQLite stores plaintext source bodies." });
+            if self.state.encrypted || self.state.startup == StartupState::Existing(LibraryFormat::EncryptedObjects) {
+                ui.small("FTS retains full readable text. Source object encryption covers original objects.");
+            } else if self.controller.is_some() {
+                ui.small("SQLite stores plaintext source bodies.");
+            }
             if self.controller.is_some() {
                 ui.horizontal_wrapped(|ui| {
                     match self.state.recall_profile {
@@ -408,11 +419,40 @@ impl RadishMemoryApp {
             let Some(controller) = self.controller.as_ref() else {
                 ui.vertical_centered(|ui| {
                     ui.add_space(80.0);
-                    ui.heading("Local library unavailable");
-                    ui.label("Library data is unavailable. Use recovery, Refresh, or an explicit open action after preparation or repair.");
+                    let waiting_to_open = self.state.startup == StartupState::Existing(LibraryFormat::EncryptedObjects)
+                        && !self.state.encrypted;
+                    ui.heading(if waiting_to_open { "Open local library" } else { "Local library unavailable" });
+                    let open = match self.state.startup {
+                        StartupState::Existing(LibraryFormat::Plaintext) => {
+                            ui.label("The plaintext library could not open. Check the error or the available repair options.");
+                            Some(("Retry legacy open", Command::OpenPlain))
+                        }
+                        StartupState::Existing(LibraryFormat::MigrationPending) => {
+                            ui.label("Source body migration is incomplete. Use the migration action when ready.");
+                            None
+                        }
+                        StartupState::Existing(LibraryFormat::EncryptedObjects) => {
+                            ui.label("Opening this migrated library requires access to the system key store.");
+                            let label = if self.state.encrypted { "Retry encrypted open" } else { "Open encrypted objects" };
+                            Some((label, Command::OpenEncrypted))
+                        }
+                        StartupState::NewAcceptanceLibrary => {
+                            ui.label("The selected synthetic acceptance root has no database.");
+                            Some(("Create acceptance library", Command::OpenPlain))
+                        }
+                        StartupState::Unavailable => {
+                            ui.label("Check the startup error and recheck the library after resolving it.");
+                            None
+                        }
+                    };
                     ui.add_space(12.0);
-                    if ui.add_enabled(!self.state.holds_original, egui::Button::new(if self.state.encrypted { "Retry encrypted open" } else { "Retry legacy open" })).clicked() {
-                        action = Some(UiAction::Command(if self.state.encrypted { Command::OpenEncrypted } else { Command::OpenPlain }));
+                    if let Some((label, command)) = open
+                        && ui.add_enabled(!self.state.holds_original, egui::Button::new(label)).clicked()
+                    {
+                        action = Some(UiAction::Command(command));
+                    }
+                    if ui.add_enabled(!self.state.holds_original, egui::Button::new("Recheck library")).clicked() {
+                        action = Some(UiAction::Command(Command::StartLibrary));
                     }
                     if self.state.plain_repair_available {
                         if ui.button("Check plaintext recall repair").clicked() {
@@ -907,6 +947,8 @@ mod recall_repair_tests;
 #[cfg(test)]
 mod search_filter_tests;
 #[cfg(test)]
+mod startup_tests;
+#[cfg(test)]
 mod test_support;
 
 fn library_navigation(
@@ -1001,7 +1043,6 @@ fn redacted_error(error: &DesktopError) -> String {
 enum UiAction {
     Command(Command),
     Confirm(Confirmation),
-    RetryStartup,
     NewNote,
     DiscardNote,
     Import,

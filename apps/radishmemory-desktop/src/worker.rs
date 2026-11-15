@@ -13,6 +13,7 @@ use std::thread::{self, JoinHandle};
 const SOURCE_CHANGED: &str = "Source changed or is unavailable. The library view was refreshed.";
 
 pub(crate) enum Command {
+    StartLibrary,
     OpenPlain,
     OpenEncrypted,
     InitializeKey,
@@ -54,7 +55,8 @@ impl Command {
     pub(crate) fn withdraws_question(&self) -> bool {
         matches!(
             self,
-            Self::OpenPlain
+            Self::StartLibrary
+                | Self::OpenPlain
                 | Self::OpenEncrypted
                 | Self::InitializeKey
                 | Self::Migrate
@@ -96,6 +98,7 @@ impl From<&str> for SearchQuery {
 
 #[derive(Default)]
 pub(crate) struct Snapshot {
+    pub startup: StartupState,
     pub view: Option<LibraryView>,
     pub original: Option<SourceArtifact>,
     pub original_offset: usize,
@@ -116,11 +119,20 @@ pub(crate) struct Snapshot {
     pub refresh_error: Option<DesktopError>,
 }
 
+#[derive(Clone, Copy, Default, Eq, PartialEq, Debug)]
+pub(crate) enum StartupState {
+    #[default]
+    Unavailable,
+    Existing(LibraryFormat),
+    NewAcceptanceLibrary,
+}
+
 pub(crate) struct Engine<P: LibraryProvider, F: Fn() -> P> {
     paths: ApplicationPaths,
     acceptance: Option<crate::startup::AcceptanceLocation>,
     provider: F,
     controller: Option<LibraryController<ProductionRuntime, P>>,
+    startup: StartupState,
     encrypted: bool,
     recall_profile: Option<RecallProfile>,
     plain_repair_available: bool,
@@ -142,6 +154,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             acceptance: None,
             provider,
             controller: None,
+            startup: StartupState::default(),
             encrypted: false,
             recall_profile: None,
             plain_repair_available: false,
@@ -155,12 +168,6 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             encrypted_consumed: false,
             #[cfg(test)]
             after_observed_action: None,
-        }
-    }
-    fn profile(&self) -> Result<crate::HostProfile, DesktopError> {
-        match &self.acceptance {
-            Some(location) => location.load_profile(),
-            None => load_or_create_host_profile(&self.paths, &mut ProductionRuntime),
         }
     }
     fn existing_plain_profile(&self) -> Result<crate::HostProfile, DesktopError> {
@@ -177,7 +184,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         }
     }
     fn location(&self) -> Result<EncryptedLibraryLocation<P>, DesktopError> {
-        let profile = self.profile()?;
+        if !self.paths.database_exists()? {
+            return Err(missing_database());
+        }
+        self.paths.prepare_existing_directory()?;
+        let profile = crate::profile::load_profile(&self.paths)?;
         let config = LocalLibraryConfig::phase1_local(
             profile.namespace_id().clone(),
             profile.device_id().clone(),
@@ -231,15 +242,94 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             || !self.deletions.is_empty()
             || !self.recovery_known
     }
+
+    fn start_library(
+        &mut self,
+        command: Command,
+        snapshot: &mut Snapshot,
+    ) -> Result<(), DesktopError> {
+        self.controller = None;
+        self.encrypted = false;
+        let previous = std::mem::take(&mut self.startup);
+        let retrying_repair = self.plain_repair_available;
+        let path = self.paths.database_path();
+        let exists = self.paths.database_exists()?;
+        let profile = if exists {
+            crate::profile::load_profile(&self.paths)?
+        } else {
+            if matches!(previous, StartupState::Existing(_))
+                || !self
+                    .paths
+                    .is_fresh_library_directory(self.acceptance.is_some())?
+            {
+                return Err(missing_database());
+            }
+            if let Some(location) = &self.acceptance {
+                let profile = location.load_profile()?;
+                if matches!(command, Command::StartLibrary) {
+                    self.startup = StartupState::NewAcceptanceLibrary;
+                    return Ok(());
+                }
+                profile
+            } else {
+                load_or_create_host_profile(&self.paths, &mut ProductionRuntime)?
+            }
+        };
+        let config = LocalLibraryConfig::phase1_local(
+            profile.namespace_id().clone(),
+            profile.device_id().clone(),
+        )
+        .map_err(app_error)?;
+        let format = if exists {
+            inspect_library_format(path, &config).map_err(app_error)?
+        } else {
+            LibraryFormat::Plaintext
+        };
+        if self.observation && format != LibraryFormat::EncryptedObjects {
+            return Err(recovery_required());
+        }
+        self.startup = StartupState::Existing(format);
+        if format != LibraryFormat::Plaintext {
+            self.plain_repair_available = false;
+            if matches!(command, Command::OpenPlain) {
+                return Err(recovery_required());
+            }
+            if self.observation {
+                snapshot.message =
+                    Some("Key-read observation is ready; open encrypted objects once.".into());
+            }
+            return Ok(());
+        }
+        if exists {
+            self.paths.prepare_existing_directory()?;
+        }
+
+        let library = if retrying_repair {
+            LocalLibrary::reopen_after_recall_failure(path, ProductionRuntime, config)
+        } else if exists {
+            LocalLibrary::open_current(path, ProductionRuntime, config)
+        } else {
+            LocalLibrary::create_new(path, ProductionRuntime, config)
+        }
+        .map_err(|error| {
+            self.plain_repair_available = retrying_repair || error.is_recall_open_mismatch();
+            app_error(error)
+        })?;
+        self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
+        self.controller = Some(LibraryController::from_library(Library::Plain(library))?);
+        self.inspect()?;
+        self.plain_repair_available = false;
+        snapshot.message = Some("Legacy plaintext library opened.".into());
+        Ok(())
+    }
+
     fn perform(&mut self, command: Command, snapshot: &mut Snapshot) -> Result<(), DesktopError> {
         let checked_plain_repair = self.checked_plain_repair.take();
         if self.observation {
             let allowed = match command {
-                Command::OpenPlain if !self.plain_consumed && !self.encrypted_consumed => {
+                Command::StartLibrary if !self.plain_consumed && !self.encrypted_consumed => {
                     self.plain_consumed = true;
-                    snapshot.message =
-                        Some("Key-read observation is ready; open encrypted objects once.".into());
-                    return Ok(());
+                    true
                 }
                 Command::OpenEncrypted if !self.encrypted_consumed => {
                     self.encrypted_consumed = true;
@@ -267,14 +357,18 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         }
         let changes_library = matches!(
             command,
-            Command::OpenPlain | Command::OpenEncrypted | Command::InitializeKey | Command::Migrate
+            Command::StartLibrary
+                | Command::OpenPlain
+                | Command::OpenEncrypted
+                | Command::InitializeKey
+                | Command::Migrate
         );
         if changes_library {
             if self.held() {
                 return Err(recovery_required());
             }
             self.recovery_known = false;
-            if !matches!(command, Command::OpenPlain) {
+            if !matches!(command, Command::StartLibrary | Command::OpenPlain) {
                 self.plain_repair_available = false;
             }
             self.target = None;
@@ -307,37 +401,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             return Err(recovery_required());
         }
         match command {
-            Command::OpenPlain => {
-                self.controller = None;
-                self.encrypted = false;
-                let retrying_repair = self.plain_repair_available;
-                let profile = if retrying_repair {
-                    self.existing_plain_profile()?
-                } else {
-                    self.profile()?
-                };
-                let config = LocalLibraryConfig::phase1_local(
-                    profile.namespace_id().clone(),
-                    profile.device_id().clone(),
-                )
-                .map_err(app_error)?;
-                let path = self.paths.database_path();
-                let library = if retrying_repair {
-                    LocalLibrary::reopen_after_recall_failure(path, ProductionRuntime, config)
-                } else {
-                    LocalLibrary::open(path, ProductionRuntime, config)
-                }
-                .map_err(|error| {
-                    self.plain_repair_available =
-                        retrying_repair || error.is_recall_open_mismatch();
-                    app_error(error)
-                })?;
-                self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
-                self.controller = Some(LibraryController::from_library(Library::Plain(library))?);
-                self.inspect()?;
-                self.plain_repair_available = false;
-                snapshot.message = Some("Legacy plaintext library opened.".into());
-            }
+            Command::StartLibrary | Command::OpenPlain => self.start_library(command, snapshot)?,
             Command::OpenEncrypted => {
                 self.controller = None;
                 self.encrypted = true;
@@ -382,21 +446,25 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 self.target = read_snapshot.abandonment_target;
                 self.deletions = read_snapshot.deletion_requests;
                 self.recovery_known = true;
+                self.startup = StartupState::Existing(LibraryFormat::EncryptedObjects);
                 snapshot.message = Some(
                     "Encrypted source objects opened. FTS still contains full plaintext.".into(),
                 );
             }
             Command::InitializeKey | Command::Migrate => {
                 self.controller = None; // Drop legacy database before migration/provider access.
-                self.encrypted = true;
+                self.encrypted = false;
+                self.startup = StartupState::Unavailable;
                 self.recovery_known = false;
                 let location = self.location()?;
                 if matches!(command, Command::InitializeKey) {
                     location.initialize_key().map_err(app_error)?;
+                    self.startup = StartupState::Existing(LibraryFormat::MigrationPending);
                     snapshot.message =
                         Some("Key checkpoint prepared. Explicitly migrate bodies next.".into());
                 } else {
                     location.migrate_bodies().map_err(app_error)?;
+                    self.startup = StartupState::Existing(LibraryFormat::EncryptedObjects);
                     snapshot.message = Some(
                         "Body migration finished. Explicitly open encrypted objects next.".into(),
                     );
@@ -614,7 +682,8 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         }
         let refreshes = matches!(
             command,
-            Command::OpenPlain
+            Command::StartLibrary
+                | Command::OpenPlain
                 | Command::OpenEncrypted
                 | Command::Refresh
                 | Command::RebuildPlainRecall
@@ -656,6 +725,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             None
         };
         snapshot.encrypted = self.encrypted;
+        snapshot.startup = self.startup;
         snapshot.plain_repair_available = self.plain_repair_available;
         snapshot.plain_repair_checked = self.checked_plain_repair.is_some();
         snapshot.abandonment_available = self.target.is_some();
@@ -667,6 +737,14 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             .collect();
         snapshot
     }
+}
+
+fn missing_database() -> DesktopError {
+    DesktopError::without_source(
+        DesktopErrorCode::ApplicationDirectory,
+        DesktopErrorReason::DatabaseMissing,
+        false,
+    )
 }
 
 pub(crate) struct Worker {

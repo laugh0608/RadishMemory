@@ -36,11 +36,25 @@ pub use encrypted::{EncryptedLibrary, EncryptedLibraryLocation};
 pub use error::{
     ApplicationError, ApplicationErrorCode, ApplicationErrorReason, ApplicationOperation,
 };
-pub use radishmemory_sqlite::RecallProfile;
+pub use radishmemory_sqlite::{LibraryFormat, RecallProfile};
 pub use read::{SOURCE_COMPARISON_LIMIT, SourceCitationEvidence};
 pub use read::{SourceEntry, SourceSavedWithin, SourceSearchFilters};
 
 pub const LOCAL_LIBRARY_HOST_CONTRACT_ID: &str = "radishmemory.phase1-local-library-host/1";
+
+/// Inspect the selected database without opening a library or accessing keys.
+pub fn inspect_library_format(
+    path: &Path,
+    config: &LocalLibraryConfig,
+) -> Result<LibraryFormat, ApplicationError> {
+    radishmemory_sqlite::inspect_library_format(
+        path,
+        config.namespace_id.as_str(),
+        config.deletion.device_id.as_str(),
+        radishmemory_source_vault::PROVIDER_PROFILE,
+    )
+    .map_err(|source| ApplicationError::storage(ApplicationOperation::OpenLibrary, source))
+}
 
 /// Identifier roles requested from the production host runtime.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -303,6 +317,38 @@ where
         config: LocalLibraryConfig,
     ) -> Result<Self, ApplicationError> {
         let database = SqliteDatabase::open(database_path).map_err(|source| {
+            ApplicationError::storage(ApplicationOperation::OpenLibrary, source)
+        })?;
+        Ok(Self {
+            database,
+            runtime,
+            config,
+        })
+    }
+
+    /// Opens an existing v6 library after startup inspection, with no creation or upgrade.
+    pub fn open_current(
+        database_path: &Path,
+        runtime: R,
+        config: LocalLibraryConfig,
+    ) -> Result<Self, ApplicationError> {
+        let database = SqliteDatabase::open_current(database_path).map_err(|source| {
+            ApplicationError::storage(ApplicationOperation::OpenLibrary, source)
+        })?;
+        Ok(Self {
+            database,
+            runtime,
+            config,
+        })
+    }
+
+    /// Create the first local library at a previously unoccupied path.
+    pub fn create_new(
+        database_path: &Path,
+        runtime: R,
+        config: LocalLibraryConfig,
+    ) -> Result<Self, ApplicationError> {
+        let database = SqliteDatabase::create_new(database_path).map_err(|source| {
             ApplicationError::storage(ApplicationOperation::OpenLibrary, source)
         })?;
         Ok(Self {

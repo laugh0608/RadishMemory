@@ -21,6 +21,7 @@ pub enum DesktopErrorReason {
     DataDirectoryInvalid,
     DataDirectoryCreateFailed,
     DatabasePathInvalid,
+    DatabaseMissing,
     ProfileMissingForExistingDatabase,
     ProfileInvalid,
     ProfileReadFailed,

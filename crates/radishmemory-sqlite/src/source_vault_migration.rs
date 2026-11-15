@@ -276,16 +276,7 @@ impl BodyMigrationDatabase {
         if self.version == 7 {
             return Ok(());
         }
-        let state: String = c
-            .query_row(
-                "SELECT state FROM radishmemory_source_vault_migration WHERE singleton = 1",
-                [],
-                |r| r.get(0),
-            )
-            .map_err(SqliteError::storage)?;
-        if !matches!(state.as_str(), "migrating" | "objects_ready") {
-            return Err(invalid());
-        }
+        let complete = body_migration_complete(c)?;
         let mismatch: bool = c.query_row(
             "SELECT EXISTS (
                SELECT 1 FROM radishmemory_source_artifacts a
@@ -301,13 +292,28 @@ impl BodyMigrationDatabase {
                        OR (m.state = 'retired') != (b.source_id IS NULL)
                        OR (m.state IN ('referenced', 'retired')) != (r.source_id IS NOT NULL)
                        OR (r.source_id IS NOT NULL AND (r.locator != m.locator OR r.attempt_id != m.attempt_id))
-                       OR (?2 = 'objects_ready' AND m.state != 'retired')))
-             )", params![self.namespace, state], |r| r.get(0),
+                       OR (?2 AND m.state != 'retired')))
+             )", params![self.namespace, complete], |r| r.get(0),
         ).map_err(SqliteError::storage)?;
         if mismatch {
             return Err(invalid());
         }
         Ok(())
+    }
+}
+
+pub(crate) fn body_migration_complete(connection: &rusqlite::Connection) -> Result<bool> {
+    let state: String = connection
+        .query_row(
+            "SELECT state FROM radishmemory_source_vault_migration WHERE singleton = 1",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(SqliteError::storage)?;
+    match state.as_str() {
+        "migrating" => Ok(false),
+        "objects_ready" => Ok(true),
+        _ => Err(invalid()),
     }
 }
 

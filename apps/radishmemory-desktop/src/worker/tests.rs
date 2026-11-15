@@ -9,6 +9,7 @@ mod filesystem_failures;
 mod key_read_observation;
 mod locking;
 mod read_session;
+mod startup_guide;
 
 static NEXT: AtomicU64 = AtomicU64::new(1);
 pub(crate) struct Fixture {

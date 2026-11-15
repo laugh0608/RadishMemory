@@ -37,7 +37,18 @@ pub(crate) fn open(
         return Err(SqliteError::unsupported_schema_version(version, supported));
     }
     migration::verify_schema_definition(&transaction, version as u32)?;
-    let profile: (String, String, String, String) = transaction.query_row(
+    verify_key_profile(&transaction, namespace, device, provider)?;
+    transaction.commit().map_err(SqliteError::storage)?;
+    Ok((connection, version as u32))
+}
+
+pub(crate) fn verify_key_profile(
+    connection: &Connection,
+    namespace: &str,
+    device: &str,
+    provider: &str,
+) -> Result<(), SqliteError> {
+    let profile: (String, String, String, String) = connection.query_row(
             "SELECT namespace_id, device_id, provider_profile, state FROM radishmemory_source_vault_key_profile WHERE singleton = 1",
             [], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         ).map_err(SqliteError::storage)?;
@@ -53,6 +64,5 @@ pub(crate) fn open(
             SqliteStorageReason::KeyProfileMismatch,
         ));
     }
-    transaction.commit().map_err(SqliteError::storage)?;
-    Ok((connection, version as u32))
+    Ok(())
 }

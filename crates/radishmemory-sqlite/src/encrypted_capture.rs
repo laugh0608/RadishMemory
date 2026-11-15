@@ -436,26 +436,10 @@ impl EncryptedCaptureDatabase {
 
     fn verify_structure(&self) -> Result<()> {
         crate::source_vault_key::verify_database_facts(&self.connection, &self.namespace)?;
-        let state: String = self
-            .connection
-            .query_row(
-                "SELECT state FROM radishmemory_source_vault_migration WHERE singleton=1",
-                [],
-                |r| r.get(0),
-            )
-            .map_err(SqliteError::storage)?;
-        if state != "objects_ready" {
+        if !crate::source_vault_migration::body_migration_complete(&self.connection)? {
             return Err(invalid());
         }
-        if self
-            .connection
-            .prepare("SELECT 1 FROM radishmemory_source_bodies LIMIT 1")
-            .map_err(SqliteError::storage)?
-            .exists([])
-            .map_err(SqliteError::storage)?
-        {
-            return Err(invalid());
-        }
+        require_no_inline_bodies(&self.connection)?;
         let deletion_rows = if self.version >= 11 {
             "SELECT source_id FROM radishmemory_source_vault_deletions"
         } else {
@@ -491,6 +475,18 @@ impl EncryptedCaptureDatabase {
         }
         Ok(())
     }
+}
+
+pub(crate) fn require_no_inline_bodies(connection: &Connection) -> Result<()> {
+    if connection
+        .prepare("SELECT 1 FROM radishmemory_source_bodies LIMIT 1")
+        .map_err(SqliteError::storage)?
+        .exists([])
+        .map_err(SqliteError::storage)?
+    {
+        return Err(invalid());
+    }
+    Ok(())
 }
 
 fn verify_facts(connection: &Connection, sources: &[SourceArtifact]) -> Result<()> {

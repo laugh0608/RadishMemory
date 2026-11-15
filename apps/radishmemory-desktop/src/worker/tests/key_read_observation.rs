@@ -46,7 +46,7 @@ fn single_diagnostic_action_success_or_business_failure_never_retries_or_writes(
         assert!(!trace.exists());
         let database_before = fs::read(fixture.root.join("library.sqlite3")).unwrap();
         let loads_before_initial = provider.key_loads();
-        let initial = ok(engine.execute(Command::OpenPlain));
+        let initial = ok(engine.execute(Command::StartLibrary));
         assert!(initial.view.is_none());
         assert!(!initial.recovery_known);
         assert_eq!(
