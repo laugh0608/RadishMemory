@@ -98,7 +98,7 @@ pub struct SourceSearchFilters {
 }
 
 /// A private read-only adapter boundary, not a second canonical storage port.
-pub(crate) trait SourceReader: SourceCatalog + LocalSearch {
+pub(crate) trait SourceReader: SourceCatalog {
     fn source(
         &self,
         namespace: &Identifier,
@@ -108,10 +108,6 @@ pub(crate) trait SourceReader: SourceCatalog + LocalSearch {
     fn catalog_error(
         operation: ApplicationOperation,
         error: <Self as SourceCatalog>::Error,
-    ) -> ApplicationError;
-    fn search_error(
-        operation: ApplicationOperation,
-        error: <Self as LocalSearch>::Error,
     ) -> ApplicationError;
 }
 
@@ -132,13 +128,6 @@ impl SourceReader for SqliteDatabase {
     ) -> ApplicationError {
         ApplicationError::storage(operation, error)
     }
-
-    fn search_error(
-        operation: ApplicationOperation,
-        error: <Self as LocalSearch>::Error,
-    ) -> ApplicationError {
-        ApplicationError::storage(operation, error)
-    }
 }
 
 impl SourceReader for LibraryReader<'_> {
@@ -155,13 +144,6 @@ impl SourceReader for LibraryReader<'_> {
     fn catalog_error(
         operation: ApplicationOperation,
         error: <Self as SourceCatalog>::Error,
-    ) -> ApplicationError {
-        ApplicationError::vault(operation, error)
-    }
-
-    fn search_error(
-        operation: ApplicationOperation,
-        error: <Self as LocalSearch>::Error,
     ) -> ApplicationError {
         ApplicationError::vault(operation, error)
     }
@@ -203,15 +185,14 @@ pub(crate) fn get_source(
     )
 }
 
-pub(crate) fn search_sources<S: SourceReader>(
-    reader: &S,
+pub(crate) fn source_search_request(
     config: &LocalLibraryConfig,
     query: NonEmptyText,
     now: Timestamp,
     top_k: usize,
     allowed_sensitivities: impl IntoIterator<Item = Sensitivity>,
     filters: SourceSearchFilters,
-) -> Result<Vec<SourceSearchResult>, ApplicationError> {
+) -> Result<LocalSearchRequest, ApplicationError> {
     let operation = ApplicationOperation::SearchSources;
     let user_input_producer = match filters.entry {
         Some(SourceEntry::Note) => Some((
@@ -232,15 +213,22 @@ pub(crate) fn search_sources<S: SourceReader>(
         top_k,
         allowed_sensitivities,
     )
-    .map_err(|error| ApplicationError::canonical(operation, error))?
-    .for_sources(SourceSearchScope {
+    .map_err(|error| ApplicationError::canonical(operation, error))?;
+    Ok(request.for_sources(SourceSearchScope {
         user_input_producer,
         media_type: filters.media_type,
         saved_within_seconds: filters.saved_within.map(SourceSavedWithin::seconds),
-    });
+    }))
+}
+
+pub(crate) fn search_sources(
+    reader: &SqliteDatabase,
+    request: &LocalSearchRequest,
+) -> Result<Vec<SourceSearchResult>, ApplicationError> {
+    let operation = ApplicationOperation::SearchSources;
     let hits = reader
-        .search(&request)
-        .map_err(|error| S::search_error(operation, error))?;
+        .search(request)
+        .map_err(|error| ApplicationError::storage(operation, error))?;
     let _cost = radishmemory_sqlite::read_cost::span(
         radishmemory_sqlite::read_cost::Stage::ResultResolution,
     );
@@ -251,7 +239,7 @@ pub(crate) fn search_sources<S: SourceReader>(
         };
         let source = reader
             .source(
-                &config.namespace_id,
+                request.namespace_id(),
                 &fragment.params().source_id,
                 operation,
             )?

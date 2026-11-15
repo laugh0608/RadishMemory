@@ -22,6 +22,9 @@ fn reader(dir: &ObjectDirectory) -> LibraryReader<'_> {
 fn query(value: &str) -> LocalSearchRequest {
     LocalSearchRequest::new(id(NS), text(value), at(), 20, [Sensitivity::Personal]).unwrap()
 }
+fn source_query(value: &str) -> LocalSearchRequest {
+    query(value).for_sources(SourceSearchScope::default())
+}
 fn sql(root: &TestDirectory, value: &str) {
     Connection::open(root.0.join("library.sqlite3"))
         .unwrap()
@@ -321,6 +324,159 @@ fn late_file_damage_is_rechecked_before_return_and_later_reads_do_not_use_a_cach
 }
 
 #[test]
+fn resolved_source_search_preserves_ranked_versions_under_the_reader_lock() {
+    let (root, dir) = setup(true);
+    let revised = request(
+        "next-source",
+        "legacy-lineage",
+        2,
+        "\u{feff}Synthetic needle revised\r\n萝卜 e\u{301}\r\n",
+        Some("legacy-source"),
+    );
+    let other = request("other-source", "other-lineage", 1, "Synthetic needle", None);
+    for capture in [&revised, &other] {
+        run(&dir, capture).unwrap();
+    }
+
+    let r = reader(&dir);
+    let query = source_query("needle");
+    let expected = r.search(&query).unwrap();
+    let resolved = r
+        .search_source_hits_with_check(&query, || {
+            crate::test_support::assert_database_writer_locked(&root.0);
+            Ok(())
+        })
+        .unwrap()
+        .unwrap();
+    assert_eq!(expected.len(), 2);
+    assert_eq!(resolved.len(), expected.len());
+    for (hit, expected) in resolved.into_iter().zip(expected) {
+        let LocalSearchHit::SourceFragment(expected) = expected else {
+            panic!("source-only search returned a memory");
+        };
+        assert_eq!(hit.fragment, expected);
+        let capture = [&revised, &other]
+            .into_iter()
+            .find(|capture| capture.source().params().source_id == hit.fragment.params().source_id)
+            .unwrap();
+        assert_eq!(&hit.source, capture.source());
+    }
+    assert!(
+        r.search_source_hits(&source_query("Legacy"))
+            .unwrap()
+            .unwrap()
+            .is_empty()
+    );
+    drop(r);
+    Connection::open(root.0.join("library.sqlite3"))
+        .unwrap()
+        .execute_batch("BEGIN IMMEDIATE; ROLLBACK;")
+        .unwrap();
+}
+
+#[test]
+fn resolved_source_search_rejects_memory_scope_and_foreign_namespace() {
+    let (_root, dir) = setup_confirmed_memory();
+    let r = reader(&dir);
+    let query = query("preference");
+    assert!(
+        r.search(&query)
+            .unwrap()
+            .iter()
+            .any(|hit| matches!(hit, LocalSearchHit::MemoryRecord(_)))
+    );
+    assert!(matches!(
+        r.search_source_hits(&query),
+        Err(VaultMaintenanceError::Vault(error)) if error.code() == SourceVaultErrorCode::InvalidMetadata
+    ));
+    let foreign = LocalSearchRequest::new(
+        id("other-namespace"),
+        text("preference"),
+        at(),
+        1,
+        [Sensitivity::Personal],
+    )
+    .unwrap()
+    .for_sources(SourceSearchScope::default());
+    assert!(matches!(
+        r.search_source_hits(&foreign),
+        Err(VaultMaintenanceError::Vault(error)) if error.code() == SourceVaultErrorCode::MetadataMismatch
+    ));
+}
+
+#[test]
+fn resolved_source_search_rechecks_late_damage_even_for_empty_results() {
+    let (root, dir) = setup(true);
+    run(
+        &dir,
+        &request(
+            "other-source",
+            "other-lineage",
+            1,
+            "Synthetic other bytes",
+            None,
+        ),
+    )
+    .unwrap();
+    let r = reader(&dir);
+    let path = object(&root);
+    let original = fs::read(&path).unwrap();
+    let mut damaged = original.clone();
+    *damaged.last_mut().unwrap() ^= 1;
+    for (term, expected) in [("Synthetic", 2), ("absent", 0)] {
+        let query = source_query(term);
+        assert_eq!(
+            r.search_source_hits(&query).unwrap().unwrap().len(),
+            expected
+        );
+        assert!(matches!(
+            r.search_source_hits_with_check(&query, || {
+                fs::write(&path, &damaged).unwrap();
+                Ok(())
+            }),
+            Err(VaultMaintenanceError::Vault(error)) if error.code() == SourceVaultErrorCode::AuthenticationFailed
+        ));
+        assert!(r.search_source_hits(&query).is_err());
+        fs::write(&path, &original).unwrap();
+        assert_eq!(
+            r.search_source_hits(&query).unwrap().unwrap().len(),
+            expected
+        );
+    }
+}
+
+#[cfg(unix)]
+#[test]
+fn resolved_source_search_checks_database_identity_again_before_return() {
+    let (root, dir) = setup(true);
+    let database = root.0.join("library.sqlite3");
+    let replacement = root.0.join("replacement-database");
+    let original = root.0.join("original-database");
+    fs::copy(&database, &replacement).unwrap();
+    let r = reader(&dir);
+    let query = source_query("Legacy");
+    assert_eq!(r.search_source_hits(&query).unwrap().unwrap().len(), 1);
+    assert!(matches!(
+        r.search_source_hits_with_check(&query, || {
+            fs::rename(&database, &original).unwrap();
+            fs::rename(&replacement, &database).unwrap();
+            Ok(())
+        }),
+        Err(VaultMaintenanceError::Vault(error)) if error.code() == SourceVaultErrorCode::FilesystemChanged
+    ));
+    drop(r);
+    fs::rename(&original, &database).unwrap();
+    assert_eq!(
+        reader(&dir)
+            .search_source_hits(&query)
+            .unwrap()
+            .unwrap()
+            .len(),
+        1
+    );
+}
+
+#[test]
 fn reader_keeps_an_exclusive_session_and_releases_it_on_drop() {
     let (root, dir) = setup(true);
     let r = reader(&dir);
@@ -399,6 +555,12 @@ fn deletion_closed_sources_and_memories_never_reappear_in_reads_or_rebuilt_searc
                 .is_empty()
         );
         assert!(r.search(&query("Synthetic")).unwrap().is_empty());
+        assert!(
+            r.search_source_hits(&source_query("Synthetic"))
+                .unwrap()
+                .unwrap()
+                .is_empty()
+        );
     };
     check();
     let execution = LocalDeletionExecution::new(
@@ -503,6 +665,12 @@ fn search_applies_sensitivity_retention_and_time_before_ranking() {
         panic!("expected a source")
     };
     assert_eq!(fragment.params().source_id, id("z-allowed"));
+    let resolved = r
+        .search_source_hits(&q.for_sources(SourceSearchScope::default()))
+        .unwrap()
+        .unwrap();
+    assert_eq!(resolved.len(), 1);
+    assert_eq!(&resolved[0].fragment, fragment);
     drop(r);
     assert_eq!(count(&root, "radishmemory_recall_fts"), 3);
 }
@@ -626,6 +794,12 @@ fn pending_and_abandoned_capture_never_become_readable_sources() {
             .is_none()
     );
     assert!(r.search(&query("pending")).unwrap().is_empty());
+    assert!(
+        r.search_source_hits(&source_query("pending"))
+            .unwrap()
+            .unwrap()
+            .is_empty()
+    );
     assert_eq!(
         r.list_source_lineages(&SourceCatalogRequest::new(id(NS), 0, 20).unwrap())
             .unwrap()
@@ -645,6 +819,12 @@ fn pending_and_abandoned_capture_never_become_readable_sources() {
             .is_none()
     );
     assert!(r.search(&query("pending")).unwrap().is_empty());
+    assert!(
+        r.search_source_hits(&source_query("pending"))
+            .unwrap()
+            .unwrap()
+            .is_empty()
+    );
 }
 
 #[test]

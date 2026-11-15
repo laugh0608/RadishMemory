@@ -540,15 +540,15 @@ where
         filters: SourceSearchFilters,
     ) -> Result<Vec<SourceSearchResult>, ApplicationError> {
         let now = self.now(ApplicationOperation::SearchSources)?;
-        read::search_sources(
-            &self.database,
+        let request = read::source_search_request(
             &self.config,
             query,
             now,
             top_k,
             allowed_sensitivities,
             filters,
-        )
+        )?;
+        read::search_sources(&self.database, &request)
     }
 
     pub fn export_source(

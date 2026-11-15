@@ -16,6 +16,12 @@ pub(crate) use snapshot::snapshot;
 use std::fmt;
 type Result<T> = std::result::Result<T, VaultMaintenanceError>;
 
+/// One ranked fragment and its exact authenticated source version.
+pub struct ResolvedSourceSearchHit {
+    pub fragment: Box<SourceFragment>,
+    pub source: SourceArtifact,
+}
+
 /// Holds the existing key and an exclusive database session until dropped.
 /// Every query authenticates objects and validates canonical/derived facts before
 /// and after resolving results. No decrypted source cache survives a query.
@@ -169,6 +175,55 @@ impl LibraryReader<'_> {
             view.load_source_fragments(namespace, source)
         })
     }
+
+    /// Resolves a source-only search within one authenticated read.
+    /// Returns None if a hit's exact source is missing after revalidation.
+    pub fn search_source_hits(
+        &self,
+        request: &LocalSearchRequest,
+    ) -> Result<Option<Vec<ResolvedSourceSearchHit>>> {
+        self.search_source_hits_with_check(request, || Ok(()))
+    }
+
+    fn search_source_hits_with_check(
+        &self,
+        request: &LocalSearchRequest,
+        before_return: impl FnOnce() -> Result<()>,
+    ) -> Result<Option<Vec<ResolvedSourceSearchHit>>> {
+        if request.includes_memories() {
+            return Err(SourceVaultError::new(
+                SourceVaultErrorCode::InvalidMetadata,
+                "resolved search requires source scope",
+            )
+            .into());
+        }
+        let namespace = request.namespace_id();
+        self.read_with_check(
+            namespace,
+            |view| {
+                let hits = view.search(request)?;
+                let _cost = radishmemory_sqlite::read_cost::span(
+                    radishmemory_sqlite::read_cost::Stage::ResultResolution,
+                );
+                let mut resolved = Vec::with_capacity(hits.len());
+                for hit in hits {
+                    let LocalSearchHit::SourceFragment(fragment) = hit else {
+                        continue;
+                    };
+                    let Some(source) =
+                        view.load_source_artifact(namespace, &fragment.params().source_id)?
+                    else {
+                        // Preserve the release check before reporting a missing hit.
+                        return Ok(None);
+                    };
+                    resolved.push(ResolvedSourceSearchHit { fragment, source });
+                }
+                Ok(Some(resolved))
+            },
+            before_return,
+        )
+    }
+
     pub fn resolve_source_citations(
         &self,
         namespace: &Identifier,

@@ -47,7 +47,7 @@
 
 ## 2026-11-15 Q04 单次加密检索的认证边界评审
 
-状态：候选方案待所有者审阅。已完成代码边界核对与现有合成回归。拟将单次应用检索的来源筛选、排序和同批命中回源合并为一个固定只读动作，有效范围为显式加密 `EncryptedLibrary::search_sources_filtered`。沿用 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md#读取导出与派生数据)、[Source Vault 信任边界](../privacy-threat-model.md#阶段-1-加密-source-vault-信任边界)及 [SourceArtifact / SourceFragment](../schema/m0-canonical-schema.md#sourceartifact)。部署与持久格式沿既有契约。
+状态：2026-11-15 所有者接受单次检索中间观察点减少的取舍。单次应用检索的来源筛选、排序和同批命中回源已合并为一个固定只读动作，有效范围为显式加密 `EncryptedLibrary::search_sources_filtered`。沿用 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md#读取导出与派生数据)、[Source Vault 信任边界](../privacy-threat-model.md#阶段-1-加密-source-vault-信任边界)及 [SourceArtifact / SourceFragment](../schema/m0-canonical-schema.md#sourceartifact)。部署与持久格式沿既有契约。
 
 ### 代码边界和候选接口
 
@@ -58,7 +58,7 @@
 
 ### 审阅判断
 
-当前五命中调用包含构造 reader 一轮、初次检索两轮及五次回源各两轮。按上述边界预计变为 **3 轮**，与命中数无关。零命中和权限拒绝后返回空结果仍为 3 轮。减少的是同一动作中间的对象和文件身份观察点。SQLite 会话能排斥遵循锁的写入者。交付复验发现对象损坏、数据库路径身份不符或 inventory 漂移时继续失败关闭。对于在两次检查之间发生且还原的外部变化，观察覆盖随检查点减少。现有实现同样无法证明这种变化一定被捕获。这个差异需要在采用固定入口前明确接受。
+当前五命中调用包含构造 reader 一轮、初次检索两轮及五次回源各两轮。按上述边界预计变为 **3 轮**，与命中数无关。零命中和权限拒绝后返回空结果仍为 3 轮。减少的是同一动作中间的对象和文件身份观察点。SQLite 会话能排斥遵循锁的写入者。交付复验发现对象损坏、数据库路径身份不符或 inventory 漂移时继续失败关闭。对于在两次检查之间发生且还原的外部变化，观察覆盖随检查点减少。现有实现同样无法证明这种变化一定被捕获。本次所有者确认按该边界继续实施。
 
 `ObjectReadView` 本身只代表已经认证的正文集合和 SQLite 上的查询。把视图或通用回调暴露给 application 会允许在最终复验前观察中间结果，扩大 API 能力。推荐固定来源检索入口，保持业务 API、错误和授权语义。SQLite 锁解决的是遵循锁的并发写入，最终复验也不能撤回已返回给调用方的副本。
 
@@ -70,6 +70,14 @@
 | 交付失败关闭 | 复用 reader 现有 `read_with_check` 测试入口。在同批命中构造后、交付前注入合成对象持久损坏与 Unix 数据库路径替换，断言整批无结果。测试亦覆盖零命中的末次复验、拒绝超出来源范围的请求和密钥失败原分类 |
 | 锁及生命周期 | 复用跨进程 writer probe，在最后一道复验前确认另一进程无法写入，动作退出后可重新读写。每个新搜索动作重新加载 key，故障动作结束后不会复用结果 |
 | 性能 | 复跑两轮 [Q04 冻结预算](../evaluation/phase1-local-library-scale.md#macos-finite-q04-budget)，分别核对首次与组内 p95 均在 1 秒内，认证轮数与各阶段计数可解释，资源及其它操作仍满足既定预算 |
+
+### 实现与定向验证
+
+`LibraryReader::search_source_hits` 将排序后的片段及其精确来源作为固定结果交付。应用层的两种正文模式共用请求构造，加密路径在原独占会话中调用此入口，复验通过后才构造对外的 `SourceSearchResult`。在 Source Vault 内部复用现有末次复验，回源缺失在通过该复验后映射为 `SourceNotFound`。请求、key 和借用视图均在当前调用内结束。
+
+macOS ARM64 的定向回归通过 47 项。多命中的次序、原文和来源版本与既有查询一致，跨进程 writer 在交付前仍被锁阻止。已构造结果后的密文损坏或 Unix 数据库路径替换会拒绝整批内容。零命中也会拒绝迟到密文损坏。旧版本、过期、权限排除、pending 和已删除来源不进入结果，外来 namespace 和记忆检索范围被拒绝。应用入口的多命中、零命中和权限排除分别记录 3 轮全库对象认证和 1 次 provider load，动作完成后可从另一进程获取写锁。
+
+[Q04 双轮复测](../evaluation/phase1-local-library-scale.md#macos-q04-single-search-retest)确认本批离线预算达标。以上故障与成本均使用隔离合成资料，实际窗口、真实 Keychain 和其他平台继续按各自验收范围核对。
 
 ## 工作区与下一步
 

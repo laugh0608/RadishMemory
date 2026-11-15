@@ -345,15 +345,25 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
             .now()
             .map_err(|error| ApplicationError::clock(operation, error))?;
         self.with_reader(operation, |reader| {
-            read::search_sources(
-                reader,
+            let request = read::source_search_request(
                 &self.location.config,
                 query,
                 now,
                 top_k,
                 allowed_sensitivities,
                 filters,
-            )
+            )?;
+            let hits = reader
+                .search_source_hits(&request)
+                .map_err(|error| ApplicationError::vault(operation, error))?
+                .ok_or_else(|| ApplicationError::source_not_found(operation))?;
+            let _cost = radishmemory_sqlite::read_cost::span(
+                radishmemory_sqlite::read_cost::Stage::ResultResolution,
+            );
+            Ok(hits
+                .into_iter()
+                .map(|hit| SourceSearchResult::from_resolved(&hit.fragment, &hit.source))
+                .collect())
         })
     }
 

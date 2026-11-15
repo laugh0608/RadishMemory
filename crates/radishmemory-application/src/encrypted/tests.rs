@@ -478,6 +478,51 @@ fn every_operation_reloads_the_existing_key_and_preserves_bounded_failure_causes
 }
 
 #[test]
+fn encrypted_search_rechecks_once_at_release_for_both_hits_and_empty_results() {
+    use radishmemory_sqlite::read_cost::{Stage, observe};
+
+    let mut fixture = Fixture::migrated();
+    let mut library = fixture
+        .location()
+        .open(std::mem::take(&mut fixture.runtime))
+        .unwrap();
+    let second = library
+        .prepare_save_note(
+            crate::NoteFormat::Text,
+            None,
+            "Synthetic second needle".into(),
+        )
+        .unwrap();
+    let second = library.capture_source(&second).unwrap();
+
+    for (term, allowed, expected) in [
+        ("needle", Sensitivity::Personal, 2),
+        ("absent", Sensitivity::Personal, 0),
+        ("needle", Sensitivity::Restricted, 0),
+    ] {
+        let loads = fixture.provider.key_loads();
+        let (results, costs) = observe(|| library.search_sources(text(term), 5, [allowed]));
+        let results = results.unwrap();
+        assert_eq!(results.len(), expected);
+        assert_eq!(costs.cost(Stage::ObjectAuthentication).calls, 3);
+        assert_eq!(fixture.provider.key_loads(), loads + 1);
+        if expected == 2 {
+            assert!(
+                results
+                    .iter()
+                    .any(|hit| hit.source_id() == fixture.first.source_id())
+            );
+            assert!(
+                results
+                    .iter()
+                    .any(|hit| hit.source_id() == second.source_id())
+            );
+        }
+        probe(&fixture.root, "writable");
+    }
+}
+
+#[test]
 fn profile_mismatch_is_rejected_before_loading_a_key() {
     let fixture = Fixture::migrated();
     let loads = fixture.provider.key_loads();
