@@ -19,7 +19,7 @@ use radishmemory_core::{
     DeletionState, DeletionStore, EgressPolicy, EvidenceRef, EvidenceType, Governance,
     LocalDeletionExecution, ProducerRef, ProducerType, RequestedGuarantee, RetentionMode,
     RetentionRule, SourceCaptureStore, SourceCatalog, SourceFragment, SourceLineageState,
-    SourceVault, Version, build_local_purge_targets, compute_deletion_evidence_digest,
+    SourceVault, Version, build_local_purge_targets,
 };
 pub use radishmemory_core::{
     Citation, DeleteRequest, DeletionEvidence, DeletionOverallStatus, Identifier, MediaType,
@@ -622,14 +622,7 @@ where
         } else {
             DeletionOverallStatus::Failed
         };
-        let evidence_digest = compute_deletion_evidence_digest(
-            &deletion_evidence_id,
-            &request.params().delete_request_id,
-            overall_status,
-            &component_results,
-        )
-        .map_err(|source| ApplicationError::canonical(operation, source))?;
-        let evidence = DeletionEvidence::new(DeletionEvidenceParams {
+        let evidence = DeletionEvidence::seal(DeletionEvidenceParams {
             deletion_evidence_id,
             delete_request_id: request.params().delete_request_id.clone(),
             previous_evidence_id: None,
@@ -640,13 +633,30 @@ where
             started_at,
             finished_at: Some(finished_at),
             verified_by: self.config.deletion.verified_by.clone(),
-            evidence_digest,
+            evidence_digest: (),
         })
         .map_err(|source| ApplicationError::canonical(operation, source))?;
         self.database
             .store_deletion_evidence(&evidence)
             .map_err(|source| ApplicationError::storage(operation, source))?;
         Ok(evidence)
+    }
+
+    pub fn deletion_evidence_upgrade_required(&self) -> Result<bool, ApplicationError> {
+        self.database
+            .deletion_evidence_upgrade_required()
+            .map_err(|source| {
+                ApplicationError::storage(ApplicationOperation::UpgradeDeletionEvidence, source)
+            })
+    }
+
+    /// Explicit maintenance. The caller must first suspend other users of the library.
+    pub fn upgrade_deletion_evidence(&mut self) -> Result<(), ApplicationError> {
+        self.database
+            .upgrade_deletion_evidence(&self.config.namespace_id)
+            .map_err(|source| {
+                ApplicationError::storage(ApplicationOperation::UpgradeDeletionEvidence, source)
+            })
     }
 
     pub fn get_deletion_evidence(

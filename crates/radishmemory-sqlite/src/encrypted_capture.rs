@@ -49,6 +49,24 @@ pub struct EncryptedCaptureDatabase {
 }
 
 impl EncryptedCaptureDatabase {
+    pub fn deletion_evidence_upgrade_required(&self) -> Result<bool> {
+        Ok(!migration::evidence_v2_enabled(&self.connection)?)
+    }
+
+    /// Preserve authenticated object/deletion checkpoints while upgrading the receipt table.
+    pub fn upgrade_deletion_evidence<E: From<SqliteError>>(
+        &self,
+        before_commit: impl FnOnce() -> std::result::Result<(), E>,
+    ) -> std::result::Result<(), E> {
+        let tx =
+            rusqlite::Transaction::new_unchecked(&self.connection, TransactionBehavior::Exclusive)
+                .map_err(SqliteError::storage)?;
+        migration::upgrade_evidence(&tx, self.version)?;
+        before_commit()?;
+        tx.commit().map_err(SqliteError::storage)?;
+        Ok(())
+    }
+
     pub fn open(
         path: impl AsRef<Path>,
         namespace: &str,

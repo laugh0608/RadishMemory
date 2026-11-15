@@ -30,11 +30,40 @@ pub enum DeletionComponentType {
     MinimalAudit,
 }
 
+impl DeletionComponentType {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SourceBody => "source_body",
+            Self::SourceMetadata => "source_metadata",
+            Self::SourceFragment => "source_fragment",
+            Self::MemoryProposal => "memory_proposal",
+            Self::MemoryDecision => "memory_decision",
+            Self::MemoryRecord => "memory_record",
+            Self::MemoryStateEvent => "memory_state_event",
+            Self::FullTextIndex => "full_text_index",
+            Self::ContextCache => "context_cache",
+            Self::MinimalAudit => "minimal_audit",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum RequiredAction {
     Delete,
     Redact,
     RetainMinimal,
+}
+
+impl RequiredAction {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Delete => "delete",
+            Self::Redact => "redact",
+            Self::RetainMinimal => "retain_minimal",
+        }
+    }
 }
 
 const LOCAL_PURGE_PROFILE: [(&str, DeletionComponentType, RequiredAction); 10] = [
@@ -179,18 +208,15 @@ impl FrozenTargetClosure {
 
 /// Computes the canonical JSON digest that binds one frozen deletion closure.
 pub fn compute_target_refs_digest(target_refs: &[ObjectRef]) -> Result<Digest, CoreError> {
-    let value = serde_json::Value::Array(
-        target_refs
-            .iter()
-            .map(|target_ref| {
-                serde_json::json!({
-                    "object_id": target_ref.object_id().as_str(),
-                    "object_type": target_ref.object_type().as_str(),
-                })
-            })
-            .collect(),
-    );
+    let value = serde_json::Value::Array(target_refs.iter().map(object_ref_json).collect());
     compute_canonical_json_digest(&value.to_string())
+}
+
+fn object_ref_json(target: &ObjectRef) -> serde_json::Value {
+    serde_json::json!({
+        "object_id": target.object_id().as_str(),
+        "object_type": target.object_type().as_str(),
+    })
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -326,11 +352,34 @@ pub enum DeletionOverallStatus {
     Completed,
 }
 
+impl DeletionOverallStatus {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Partial => "partial",
+            Self::Failed => "failed",
+            Self::Completed => "completed",
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ComponentStatus {
     Pending,
     Succeeded,
     Failed,
+}
+
+impl ComponentStatus {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Pending => "pending",
+            Self::Succeeded => "succeeded",
+            Self::Failed => "failed",
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -340,6 +389,19 @@ pub enum ComponentOutcome {
     RetainedMinimal,
     NotFound,
     NotApplicable,
+}
+
+impl ComponentOutcome {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Deleted => "deleted",
+            Self::Redacted => "redacted",
+            Self::RetainedMinimal => "retained_minimal",
+            Self::NotFound => "not_found",
+            Self::NotApplicable => "not_applicable",
+        }
+    }
 }
 
 /// Deterministic inputs required by one local deletion execution attempt.
@@ -466,7 +528,7 @@ impl ComponentResult {
     }
 }
 
-/// Computes the deterministic M0 evidence digest payload used by the local execution path.
+/// Recomputes the legacy local receipt projection in persisted plan order.
 pub fn compute_deletion_evidence_digest(
     deletion_evidence_id: &Identifier,
     delete_request_id: &Identifier,
@@ -479,12 +541,12 @@ pub fn compute_deletion_evidence_digest(
             .map(|result| serde_json::json!({
                 "component_key": result.params().component_key.as_str(),
                 "processed_count": result.params().processed_count,
-                "status": component_status_str(result.params().status),
+                "status": result.params().status.as_str(),
             }))
             .collect::<Vec<_>>(),
         "deletion_evidence_id": deletion_evidence_id.as_str(),
         "delete_request_id": delete_request_id.as_str(),
-        "overall_status": deletion_overall_status_str(overall_status),
+        "overall_status": overall_status.as_str(),
     });
     crate::compute_digest(
         DigestProfile::DeletionEvidenceV1.as_str(),
@@ -492,25 +554,8 @@ pub fn compute_deletion_evidence_digest(
     )
 }
 
-const fn component_status_str(status: ComponentStatus) -> &'static str {
-    match status {
-        ComponentStatus::Pending => "pending",
-        ComponentStatus::Succeeded => "succeeded",
-        ComponentStatus::Failed => "failed",
-    }
-}
-
-const fn deletion_overall_status_str(status: DeletionOverallStatus) -> &'static str {
-    match status {
-        DeletionOverallStatus::Pending => "pending",
-        DeletionOverallStatus::Partial => "partial",
-        DeletionOverallStatus::Failed => "failed",
-        DeletionOverallStatus::Completed => "completed",
-    }
-}
-
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct DeletionEvidenceParams {
+pub struct DeletionEvidenceParams<D = Digest> {
     pub deletion_evidence_id: Identifier,
     pub delete_request_id: Identifier,
     pub previous_evidence_id: Option<Identifier>,
@@ -521,13 +566,64 @@ pub struct DeletionEvidenceParams {
     pub started_at: Timestamp,
     pub finished_at: Option<Timestamp>,
     pub verified_by: ProducerRef,
-    pub evidence_digest: Digest,
+    pub evidence_digest: D,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DeletionEvidence(DeletionEvidenceParams);
 
 impl DeletionEvidence {
+    /// Constructs a new snapshot with a digest covering its canonical fields.
+    pub fn seal(params: DeletionEvidenceParams<()>) -> Result<Self, CoreError> {
+        let evidence_digest = compute_full_evidence_digest(&params)?;
+        let DeletionEvidenceParams {
+            deletion_evidence_id,
+            delete_request_id,
+            previous_evidence_id,
+            namespace_id,
+            device_id,
+            overall_status,
+            component_results,
+            started_at,
+            finished_at,
+            verified_by,
+            evidence_digest: (),
+        } = params;
+        Self::new(DeletionEvidenceParams {
+            deletion_evidence_id,
+            delete_request_id,
+            previous_evidence_id,
+            namespace_id,
+            device_id,
+            overall_status,
+            component_results,
+            started_at,
+            finished_at,
+            verified_by,
+            evidence_digest,
+        })
+    }
+
+    /// Recomputes the stored profile. Legacy component results must be supplied
+    /// in the original plan order. The profile identifies the verified coverage.
+    pub fn verify_digest(&self) -> Result<(), CoreError> {
+        let params = &self.0;
+        let expected = match params.evidence_digest.profile() {
+            DigestProfile::DeletionEvidenceV1 => compute_deletion_evidence_digest(
+                &params.deletion_evidence_id,
+                &params.delete_request_id,
+                params.overall_status,
+                &params.component_results,
+            )?,
+            DigestProfile::DeletionEvidenceV2 => compute_full_evidence_digest(params)?,
+            _ => return Err(CoreError::unsupported_profile()),
+        };
+        if expected != params.evidence_digest {
+            return Err(CoreError::digest_mismatch());
+        }
+        Ok(())
+    }
+
     pub fn new(params: DeletionEvidenceParams) -> Result<Self, CoreError> {
         require_non_empty(&params.component_results)?;
         require_unique_by(&params.component_results, |result| {
@@ -569,7 +665,12 @@ impl DeletionEvidence {
                 InvalidCanonicalObjectReason::InvalidFieldCombination,
             ));
         }
-        require_profile(&params.evidence_digest, DigestProfile::DeletionEvidenceV1)?;
+        if !matches!(
+            params.evidence_digest.profile(),
+            DigestProfile::DeletionEvidenceV1 | DigestProfile::DeletionEvidenceV2
+        ) {
+            return Err(CoreError::unsupported_profile());
+        }
         Ok(Self(params))
     }
 
@@ -582,6 +683,87 @@ impl DeletionEvidence {
     pub const fn params(&self) -> &DeletionEvidenceParams {
         &self.0
     }
+}
+
+fn compute_full_evidence_digest<D>(
+    params: &DeletionEvidenceParams<D>,
+) -> Result<Digest, CoreError> {
+    let mut components = params.component_results.iter().collect::<Vec<_>>();
+    components.sort_unstable_by(|left, right| {
+        left.params()
+            .component_key
+            .cmp(&right.params().component_key)
+    });
+    let mut value = serde_json::json!({
+        "schema_version": crate::M0_SCHEMA_VERSION,
+        "object_type": CanonicalObjectType::DeletionEvidence.as_str(),
+        "deletion_evidence_id": params.deletion_evidence_id.as_str(),
+        "delete_request_id": params.delete_request_id.as_str(),
+        "namespace_id": params.namespace_id.as_str(),
+        "scope": "local_device",
+        "device_id": params.device_id.as_str(),
+        "overall_status": params.overall_status.as_str(),
+        "component_results": components.into_iter().map(component_result_json).collect::<Vec<_>>(),
+        "started_at": params.started_at.original(),
+        "verified_by": {
+            "producer_type": params.verified_by.producer_type().as_str(),
+            "producer_id": params.verified_by.producer_id().as_str(),
+            "producer_version": params.verified_by.producer_version().as_str(),
+        },
+    });
+    if let Some(previous) = &params.previous_evidence_id {
+        value["previous_evidence_id"] = previous.as_str().into();
+    }
+    if let Some(finished) = &params.finished_at {
+        value["finished_at"] = finished.original().into();
+    }
+    crate::compute_digest(
+        DigestProfile::DeletionEvidenceV2.as_str(),
+        &value.to_string(),
+    )
+}
+
+fn component_result_json(result: &ComponentResult) -> serde_json::Value {
+    let params = result.params();
+    let target = match &params.target_ref {
+        DeletionTargetRef::Object(target) => object_ref_json(target),
+        DeletionTargetRef::FrozenClosure(closure) => {
+            let digest = closure.target_refs_digest();
+            serde_json::json!({
+                "target_refs": closure.target_refs().iter().map(object_ref_json).collect::<Vec<_>>(),
+                "target_refs_digest": {
+                    "algorithm": digest.algorithm(),
+                    "profile": digest.profile().as_str(),
+                    "value": digest.value(),
+                },
+            })
+        }
+    };
+    let mut value = serde_json::json!({
+        "component_key": params.component_key.as_str(),
+        "component_type": params.component_type.as_str(),
+        "target_ref": target,
+        "required_action": params.required_action.as_str(),
+        "target_count": params.target_count,
+        "processed_count": params.processed_count,
+        "status": params.status.as_str(),
+        "outcome": params.outcome.as_str(),
+        "verification_method": params.verification_method.as_str(),
+        "checked_at": params.checked_at.original(),
+    });
+    if let Some(code) = &params.error_code {
+        value["error_code"] = code.as_str().into();
+    }
+    if let Some(retryable) = params.retryable {
+        value["retryable"] = retryable.into();
+    }
+    if let Some(basis) = &params.retention_basis {
+        value["retention_basis"] = serde_json::json!({
+            "evidence_type": basis.evidence_type().as_str(),
+            "evidence_id": basis.evidence_id().as_str(),
+        });
+    }
+    value
 }
 
 impl CanonicalObject for DeletionEvidence {

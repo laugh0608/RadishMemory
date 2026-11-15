@@ -135,7 +135,7 @@ fn altered_migration_history_is_reported_as_schema_drift() {
         .expect("synthetic migration history must be writable");
     assert_eq!(
         changed,
-        usize::try_from(SQLITE_SCHEMA_VERSION).expect("schema version must fit usize")
+        usize::try_from(SQLITE_SCHEMA_VERSION).expect("schema version must fit usize") + 1
     );
     drop(connection);
 

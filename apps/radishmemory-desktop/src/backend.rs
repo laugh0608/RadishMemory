@@ -88,6 +88,17 @@ impl<R: ApplicationRuntime, P: LibraryProvider> Library<R, P> {
             Self::Encrypted { .. } => Ok(None), // Obtained from the authenticated read snapshot.
         }
     }
+    pub(crate) fn plain_evidence_upgrade_required(&self) -> Result<bool, ApplicationError> {
+        match self {
+            Self::Plain(library) => library.deletion_evidence_upgrade_required(),
+            Self::Encrypted { .. } => Ok(false), // Encrypted state comes from the authenticated snapshot.
+        }
+    }
+
+    pub(crate) fn upgrade_deletion_evidence(&mut self) -> Result<(), ApplicationError> {
+        read!(self, upgrade_deletion_evidence())
+    }
+
     pub(crate) fn change_recall_profile(
         &mut self,
         target: RecallProfile,

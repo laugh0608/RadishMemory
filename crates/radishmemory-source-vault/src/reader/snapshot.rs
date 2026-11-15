@@ -6,6 +6,7 @@ use radishmemory_core::DeleteRequest;
 /// Owned read results, released only after the final key and object checks.
 /// Contains no key/session and does not authorize abandonment or deletion.
 pub struct LibraryReadSnapshot {
+    pub deletion_evidence_upgrade_required: bool,
     pub recall_profile: radishmemory_sqlite::RecallProfile,
     pub sources: Vec<SourceLineageSummary>,
     pub selected_lineage_id: Option<Identifier>,
@@ -85,6 +86,7 @@ pub(crate) fn snapshot(
     // Recheck after any potentially long system prompt, before result release.
     reader.authenticated_sources()?;
     Ok(LibraryReadSnapshot {
+        deletion_evidence_upgrade_required: reader.database.deletion_evidence_upgrade_required()?,
         recall_profile: reader.database.recall_profile()?,
         sources,
         selected_lineage_id,

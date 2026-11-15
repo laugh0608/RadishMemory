@@ -44,6 +44,24 @@ enum Action {
     Verify,
     Rebuild,
     ChangeProfile(radishmemory_sqlite::RecallProfile),
+    UpgradeEvidence,
+}
+
+pub(crate) fn upgrade_deletion_evidence(
+    directory: &ObjectDirectory,
+    namespace: &str,
+    device: &str,
+    load_existing: impl FnOnce() -> std::result::Result<KeyEncryptionKey, SourceVaultError>,
+) -> Result<()> {
+    maintain_action_with_step(
+        directory,
+        namespace,
+        device,
+        Action::UpgradeEvidence,
+        load_existing,
+        |_| Ok(()),
+    )?;
+    Ok(())
 }
 
 pub(crate) fn change_profile(
@@ -130,6 +148,14 @@ fn maintain_action_with_step(
             })?;
             step(Step::Committed)?;
         }
+        Action::UpgradeEvidence => {
+            verify_all()?;
+            db.upgrade_deletion_evidence(|| {
+                step(Step::BeforeCommit)?;
+                verify_all()
+            })?;
+            step(Step::Committed)?;
+        }
     }
     step(Step::BeforeReadBack)?;
     verify_all()?;
@@ -159,7 +185,7 @@ fn maintain_action_with_step(
             .iter()
             .filter(|i| i.state == CaptureObjectState::Deleted)
             .count(),
-        derivations_rebuilt: !matches!(action, Action::Verify),
+        derivations_rebuilt: matches!(action, Action::Rebuild | Action::ChangeProfile(_)),
         recall_profile: db.recall_profile()?,
     })
 }

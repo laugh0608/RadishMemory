@@ -1,5 +1,5 @@
 use super::*;
-use crate::{ApplicationErrorReason, FileCaptureOutcome};
+use crate::{ApplicationErrorReason, DeletionEvidence, FileCaptureOutcome};
 
 fn input(fixture: &Fixture, body: &str) -> FileReadRequest {
     let path = fixture.root.0.join("write.md");
@@ -18,6 +18,112 @@ fn writer(fixture: &Fixture) -> Library {
 }
 fn count(fixture: &Fixture, table: &str) -> i64 {
     fixture.scalar(&format!("SELECT count(*) FROM {table}"))
+}
+
+fn restore_legacy_receipt(fixture: &Fixture, receipt: &DeletionEvidence) -> DeletionEvidence {
+    // Reproduce the old on-disk format around one receipt from real execution.
+    let mut params = receipt.params().clone();
+    params.evidence_digest = radishmemory_core::compute_deletion_evidence_digest(
+        &params.deletion_evidence_id,
+        &params.delete_request_id,
+        params.overall_status,
+        &params.component_results,
+    )
+    .unwrap();
+    let connection = Connection::open(fixture.root.0.join("library.sqlite3")).unwrap();
+    assert_eq!(connection.execute(
+        "UPDATE radishmemory_deletion_evidence SET evidence_digest_profile=?1, evidence_digest_value=?2 WHERE deletion_evidence_id=?3",
+        rusqlite::params![params.evidence_digest.profile().as_str(), params.evidence_digest.value(), params.deletion_evidence_id.as_str()],
+    ).unwrap(), 1);
+    restore_legacy_receipt_table(&connection);
+    DeletionEvidence::new(params).unwrap()
+}
+
+fn restore_legacy_receipt_table(connection: &Connection) {
+    let legacy = include_str!("../../../../radishmemory-sqlite/migrations/0005_local_deletion.sql");
+    let table = &legacy[legacy
+        .find("CREATE TABLE radishmemory_deletion_evidence (")
+        .unwrap()..];
+    connection
+        .execute_batch(&format!(
+            "BEGIN EXCLUSIVE;
+         ALTER TABLE radishmemory_deletion_evidence RENAME TO synthetic_evidence_source;
+         {table}
+         INSERT INTO radishmemory_deletion_evidence SELECT * FROM synthetic_evidence_source;
+         DROP TABLE synthetic_evidence_source;
+         DELETE FROM radishmemory_schema_migrations WHERE version=13;
+         COMMIT;"
+        ))
+        .unwrap();
+}
+
+#[test]
+fn plaintext_receipt_upgrade_verifies_legacy_and_blocks_new_purge_until_confirmed() {
+    let fixture = Fixture::legacy();
+    let open = |next| {
+        LocalLibrary::open_current(
+            &fixture.root.0.join("library.sqlite3"),
+            Runtime {
+                next,
+                fail_clock: false,
+            },
+            fixture.config.clone(),
+        )
+        .unwrap()
+    };
+    let mut library = open(fixture.runtime.next);
+    let receipt = library
+        .delete_source_lineage(fixture.first.lineage_id())
+        .unwrap();
+    let capture = library
+        .import_new_source(&input(&fixture, UPDATED))
+        .unwrap();
+    let (runtime, _) = library.close();
+    let legacy = restore_legacy_receipt(&fixture, &receipt);
+    let id = &receipt.params().deletion_evidence_id;
+    let mut library = open(runtime.next);
+    assert!(library.deletion_evidence_upgrade_required().unwrap());
+    assert_eq!(
+        library.get_deletion_evidence(id).unwrap(),
+        Some(legacy.clone())
+    );
+    let error = library
+        .delete_source_lineage(capture.lineage_id())
+        .unwrap_err();
+    assert_eq!(
+        error.sqlite_failure().unwrap().storage_reason(),
+        Some(radishmemory_sqlite::SqliteStorageReason::EvidenceUpgradeRequired)
+    );
+    assert_eq!(count(&fixture, "radishmemory_delete_requests"), 1);
+    assert_eq!(count(&fixture, "radishmemory_source_bodies"), 1);
+
+    // Legacy digests are retained, and an invalid legacy projection aborts maintenance.
+    fixture
+        .sql("UPDATE radishmemory_deletion_evidence SET evidence_digest_value=printf('%064d',0)");
+    assert!(library.get_deletion_evidence(id).is_err());
+    assert!(library.upgrade_deletion_evidence().is_err());
+    assert!(library.deletion_evidence_upgrade_required().unwrap());
+    fixture.sql(&format!(
+        "UPDATE radishmemory_deletion_evidence SET evidence_digest_value='{}'",
+        legacy.params().evidence_digest.value()
+    ));
+    library.upgrade_deletion_evidence().unwrap();
+    library.upgrade_deletion_evidence().unwrap();
+    assert!(!library.deletion_evidence_upgrade_required().unwrap());
+    assert_eq!(fixture.scalar("PRAGMA user_version"), 6);
+    assert_eq!(library.get_deletion_evidence(id).unwrap(), Some(legacy));
+    let new_receipt = library.delete_source_lineage(capture.lineage_id()).unwrap();
+    assert_eq!(
+        new_receipt.params().evidence_digest.profile(),
+        radishmemory_core::DigestProfile::DeletionEvidenceV2
+    );
+    let (runtime, _) = library.close();
+    assert_eq!(
+        open(runtime.next)
+            .get_deletion_evidence(&new_receipt.params().deletion_evidence_id)
+            .unwrap(),
+        Some(new_receipt)
+    );
 }
 
 #[test]
@@ -437,6 +543,7 @@ fn failed_legacy_deletion_resumes_original_request_and_extends_evidence_chain() 
     );
     fixture.sql("DROP TRIGGER synthetic_component_failure");
     let (runtime, config) = legacy.close();
+    let failed = restore_legacy_receipt(&fixture, &failed);
     fixture.runtime = runtime;
     fixture.config = config;
     fixture.location().initialize_key().unwrap();
@@ -456,7 +563,22 @@ fn failed_legacy_deletion_resumes_original_request_and_extends_evidence_chain() 
         library.unfinished_delete_requests().unwrap(),
         vec![original.clone()]
     );
+    let objects = fixture.objects();
+    assert!(!objects.is_empty());
+    assert!(library.execute_source_lineage_deletion(&original).is_err());
+    assert_eq!(objects, fixture.objects());
+    assert_eq!(
+        count(&fixture, "radishmemory_deletion_execution_attempts"),
+        1
+    );
+    assert_eq!(fixture.scalar("PRAGMA user_version"), 8);
+    library.upgrade_deletion_evidence().unwrap();
+    assert_eq!(fixture.scalar("PRAGMA user_version"), 8);
     let completed = library.execute_source_lineage_deletion(&original).unwrap();
+    assert_eq!(
+        completed.params().evidence_digest.profile(),
+        radishmemory_core::DigestProfile::DeletionEvidenceV2
+    );
     assert!(library.unfinished_delete_requests().unwrap().is_empty());
     assert_eq!(
         completed.params().overall_status,
@@ -491,9 +613,27 @@ fn restart_discovers_original_deletion_authority_even_after_execution_before_evi
         }
         assert!(library.execute_source_lineage_deletion(&original).is_err());
         drop(library);
+        let connection = Connection::open(fixture.root.0.join("library.sqlite3")).unwrap();
+        restore_legacy_receipt_table(&connection);
+        drop(connection);
         let mut reopened = writer(&fixture);
         let requests = reopened.unfinished_delete_requests().unwrap();
         assert_eq!(requests, vec![original]);
+        let objects = fixture.objects();
+        let attempts = count(&fixture, "radishmemory_deletion_execution_attempts");
+        assert_eq!(fixture.scalar("PRAGMA user_version"), 11);
+        assert!(
+            reopened
+                .execute_source_lineage_deletion(&requests[0])
+                .is_err()
+        );
+        reopened.upgrade_deletion_evidence().unwrap();
+        assert_eq!(fixture.scalar("PRAGMA user_version"), 11);
+        assert_eq!(fixture.objects(), objects);
+        assert_eq!(
+            count(&fixture, "radishmemory_deletion_execution_attempts"),
+            attempts
+        );
         reopened
             .execute_source_lineage_deletion(&requests[0])
             .unwrap();
@@ -572,8 +712,18 @@ fn recovery_discovery_rejects_damaged_completed_evidence_instead_of_hiding_reque
     let request = library
         .prepare_source_lineage_deletion(fixture.first.lineage_id())
         .unwrap();
-    library.execute_source_lineage_deletion(&request).unwrap();
+    let receipt = library.execute_source_lineage_deletion(&request).unwrap();
     assert!(library.unfinished_delete_requests().unwrap().is_empty());
-    fixture.sql("UPDATE radishmemory_deletion_evidence SET device_id='device-11111111111111111111111111111111'");
+    fixture.sql("UPDATE radishmemory_deletion_execution_results SET verification_method='synthetic-other-method' WHERE component_key='source-body'");
+    assert!(
+        library
+            .get_deletion_evidence(&receipt.params().deletion_evidence_id)
+            .is_err()
+    );
     assert!(library.unfinished_delete_requests().is_err());
+    assert!(library.execute_source_lineage_deletion(&request).is_err());
+    assert_eq!(
+        count(&fixture, "radishmemory_deletion_execution_attempts"),
+        1
+    );
 }

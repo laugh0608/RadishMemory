@@ -113,13 +113,7 @@ impl ObjectReadView<'_> {
         request: &Identifier,
     ) -> Result<Option<radishmemory_core::DeletionEvidence>> {
         self.require_namespace(namespace)?;
-        let tip: Option<String> = self.database.connection.query_row(
-            "SELECT deletion_evidence_id FROM radishmemory_deletion_evidence WHERE namespace_id=?1 AND delete_request_id=?2 ORDER BY execution_ordinal DESC LIMIT 1",
-            params![namespace.as_str(), request.as_str()], |row| row.get(0),
-        ).optional().map_err(SqliteError::storage)?;
-        tip.map(|tip| self.load_deletion_evidence(namespace, &source_store::identifier(tip)?))
-            .transpose()
-            .map(Option::flatten)
+        crate::deletion_store::latest_evidence(&self.database.connection, namespace, request)
     }
     pub fn load_source_artifact(
         &self,

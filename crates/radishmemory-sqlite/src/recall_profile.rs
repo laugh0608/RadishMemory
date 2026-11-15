@@ -154,17 +154,8 @@ pub(crate) fn require_completed_deletions(connection: &Connection) -> Result<(),
         let request = crate::source_store::identifier(request)?;
         crate::deletion_store::load_request(connection, &namespace, &request)?
             .ok_or_else(pending)?;
-        let evidence: Option<String> = connection.query_row(
-            "SELECT deletion_evidence_id FROM radishmemory_deletion_evidence WHERE namespace_id=?1 AND delete_request_id=?2 ORDER BY execution_ordinal DESC LIMIT 1",
-            rusqlite::params![namespace.as_str(), request.as_str()], |row| row.get(0),
-        ).optional().map_err(SqliteError::storage)?;
-        let evidence = evidence.ok_or_else(pending)?;
-        let evidence = crate::deletion_store::load_evidence(
-            connection,
-            &namespace,
-            &crate::source_store::identifier(evidence)?,
-        )?
-        .ok_or_else(pending)?;
+        let evidence = crate::deletion_store::latest_evidence(connection, &namespace, &request)?
+            .ok_or_else(pending)?;
         if evidence.params().overall_status != radishmemory_core::DeletionOverallStatus::Completed {
             return Err(pending());
         }

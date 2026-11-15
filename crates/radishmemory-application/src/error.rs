@@ -23,6 +23,7 @@ pub enum ApplicationOperation {
     RebuildRecall,
     InspectRecallProfile,
     ChangeRecallProfile,
+    UpgradeDeletionEvidence,
 }
 
 /// Stable top-level categories returned by the Phase 1 application service.

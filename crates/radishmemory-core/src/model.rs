@@ -158,6 +158,20 @@ pub enum EvidenceType {
     PolicyBasis,
 }
 
+impl EvidenceType {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::SourceFragment => "source_fragment",
+            Self::MemoryProposal => "memory_proposal",
+            Self::MemoryDecision => "memory_decision",
+            Self::MemoryRecord => "memory_record",
+            Self::DeleteRequest => "delete_request",
+            Self::PolicyBasis => "policy_basis",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct ObjectRef {
     object_type: CanonicalObjectType,
@@ -263,6 +277,18 @@ pub enum ProducerType {
     Parser,
     TestFixture,
     System,
+}
+
+impl ProducerType {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Rule => "rule",
+            Self::Parser => "parser",
+            Self::TestFixture => "test_fixture",
+            Self::System => "system",
+        }
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]

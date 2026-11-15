@@ -70,6 +70,8 @@ pub enum SqliteStorageReason {
     MissingDeleteRequest,
     DeletionExecution,
     EvidenceChain,
+    EvidenceDigestMismatch,
+    EvidenceUpgradeRequired,
     OriginBindingMismatch,
     LineageTipMismatch,
     CaptureStateMismatch,
@@ -367,9 +369,19 @@ impl fmt::Display for SqliteError {
                 "recall format changed after commit; refresh to inspect the current format"
             }
             SqliteErrorCode::Conflict => "immutable SQLite object already exists",
+            SqliteErrorCode::InvalidStoredData
+                if self.storage_reason == Some(SqliteStorageReason::EvidenceDigestMismatch) =>
+            {
+                "deletion receipt digest verification failed"
+            }
             SqliteErrorCode::InvalidStoredData => "stored SQLite object is invalid",
             SqliteErrorCode::SourceInvariant => "source storage invariant violation",
             SqliteErrorCode::MemoryInvariant => "memory storage invariant violation",
+            SqliteErrorCode::DeletionInvariant
+                if self.storage_reason == Some(SqliteStorageReason::EvidenceUpgradeRequired) =>
+            {
+                "explicit deletion receipt upgrade required before deletion"
+            }
             SqliteErrorCode::DeletionInvariant => "deletion storage invariant violation",
         };
         formatter.write_str(message)

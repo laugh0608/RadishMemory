@@ -39,7 +39,7 @@
 
 升级 / 降级不改变 `user_version` 或正文模式，不删除事实、对象、原请求及证据。已升级的 v6 以后进入 key bootstrap、迁移、capture、放弃、删除及历史删除接管，所有路径必须保留并校验 profile。v7 / 未迁移完 v8 不开放独立切换；已有 profile 可以跟随原正文恢复链完成。
 
-降级是显式地从当前验真 canonical 重建旧索引并移除新 profile；不是还原旧数据库备份。失败 rollback 保留之前状态。旧客户端只恢复到其本来支持的正文版本，普通旧 v6 入口不会因此获得打开加密库的权限。
+降级是显式地从当前验真 canonical 重建旧索引并移除新 profile；不是还原旧数据库备份。失败 rollback 保留之前状态。旧客户端只恢复到其本来支持的正文版本，普通旧 v6 入口不会因此获得打开加密库的权限。独立的[删除回执表升级](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-proposal)另外要求客户端支持新回执格式。
 
 ## 桌面与验证要求
 

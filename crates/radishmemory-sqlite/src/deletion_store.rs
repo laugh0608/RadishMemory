@@ -2,11 +2,12 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 use radishmemory_core::{
     ActorRef, ActorType, CanonicalObjectType, ComponentOutcome, ComponentResult,
-    ComponentResultParams, ComponentStatus, DeleteRequest, DeleteRequestParams, DeletionEvidence,
-    DeletionEvidenceParams, DeletionOverallStatus, DeletionStore, DeletionTarget,
-    DeletionTargetRef, Digest, EvidenceRef, EvidenceType, FrozenTargetClosure, Identifier,
-    LocalDeletionExecution, M0_SCHEMA_VERSION, NonEmptyText, ObjectRef, ProducerRef, ProducerType,
-    RequestedGuarantee, RequiredAction, SourceCatalog, Timestamp, validate_deletion_evidence,
+    ComponentResultParams, ComponentStatus, DeleteRequest, DeleteRequestParams,
+    DeletionComponentType, DeletionEvidence, DeletionEvidenceParams, DeletionOverallStatus,
+    DeletionStore, DeletionTarget, DeletionTargetRef, Digest, DigestProfile, EvidenceRef,
+    EvidenceType, FrozenTargetClosure, Identifier, LocalDeletionExecution, M0_SCHEMA_VERSION,
+    NonEmptyText, ObjectRef, ProducerRef, ProducerType, RequestedGuarantee, RequiredAction,
+    SourceCatalog, Timestamp, validate_deletion_evidence,
 };
 use rusqlite::{Connection, OptionalExtension, Row, Transaction, TransactionBehavior, params};
 
@@ -111,6 +112,7 @@ impl DeletionStore for SqliteDatabase {
             .connection
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(SqliteError::storage)?;
+        crate::migration::require_evidence_v2(&transaction)?;
         validate_semantic_targets(&transaction, request)?;
         let execution_closure = build_execution_closure(&transaction, request)?;
         insert_request(&transaction, request, &execution_closure)?;
@@ -406,7 +408,12 @@ pub(crate) fn build_execution_closure(
 ) -> Result<ExecutionClosure, SqliteError> {
     let mut closure = PROFILE
         .iter()
-        .map(|entry| (component_type_str(entry.component_type), BTreeSet::new()))
+        .map(|entry| {
+            (
+                DeletionComponentType::as_str(entry.component_type),
+                BTreeSet::new(),
+            )
+        })
         .collect::<ExecutionClosure>();
     let namespace = request.params().namespace_id.as_str();
     let source_ids = request
@@ -567,7 +574,7 @@ fn insert_closure_ref(
     object_id: Identifier,
 ) {
     closure
-        .entry(component_type_str(component_type))
+        .entry(DeletionComponentType::as_str(component_type))
         .or_default()
         .insert(ObjectRef::new(object_type, object_id));
 }
@@ -577,7 +584,7 @@ fn closure_refs(
     component_type: radishmemory_core::DeletionComponentType,
 ) -> Result<&BTreeSet<ObjectRef>, SqliteError> {
     closure
-        .get(component_type_str(component_type))
+        .get(DeletionComponentType::as_str(component_type))
         .ok_or_else(deletion_plan)
 }
 
@@ -657,10 +664,10 @@ pub(crate) fn insert_request(
                     value.delete_request_id.as_str(),
                     to_i64(ordinal)?,
                     component.component_key().as_str(),
-                    component_type_str(component.component_type()),
+                    DeletionComponentType::as_str(component.component_type()),
                     kind,
                     to_i64_u64(component.target_count())?,
-                    required_action_str(component.required_action()),
+                    RequiredAction::as_str(component.required_action()),
                     digest.map(Digest::algorithm),
                     digest.map(|value| value.profile().as_str()),
                     digest.map(Digest::value),
@@ -696,7 +703,7 @@ pub(crate) fn insert_request(
                      VALUES (?1, ?2, ?3, ?4, ?5)",
                     params![
                         value.delete_request_id.as_str(),
-                        component_type_str(entry.component_type),
+                        DeletionComponentType::as_str(entry.component_type),
                         to_i64(ordinal)?,
                         target.object_type().as_str(),
                         target.object_id().as_str(),
@@ -1066,6 +1073,8 @@ fn execute_request_inner(
     let transaction = connection
         .transaction_with_behavior(TransactionBehavior::Immediate)
         .map_err(SqliteError::storage)?;
+    crate::migration::require_evidence_v2(&transaction)?;
+    latest_evidence(&transaction, &request.params().namespace_id, request_id)?;
     let attempt_ordinal: i64 = transaction
         .query_row(
             "SELECT COALESCE(MAX(attempt_ordinal), 0) + 1
@@ -1165,8 +1174,8 @@ fn insert_execution_result(
                 attempt_ordinal,
                 value.component_key.as_str(),
                 to_i64_u64(value.processed_count)?,
-                component_status_str(value.status),
-                component_outcome_str(value.outcome),
+                ComponentStatus::as_str(value.status),
+                ComponentOutcome::as_str(value.outcome),
                 value.verification_method.as_str(),
                 value.checked_at.original(),
                 value.error_code.as_ref().map(NonEmptyText::as_str),
@@ -1174,7 +1183,7 @@ fn insert_execution_result(
                 value
                     .retention_basis
                     .as_ref()
-                    .map(|basis| evidence_type_str(basis.evidence_type())),
+                    .map(|basis| EvidenceType::as_str(basis.evidence_type())),
                 value
                     .retention_basis
                     .as_ref()
@@ -1255,14 +1264,24 @@ pub(crate) fn store_evidence(
     evidence: &DeletionEvidence,
 ) -> Result<(), SqliteError> {
     let value = evidence.params();
-    let request = load_request(connection, &value.namespace_id, &value.delete_request_id)?
+    let transaction = connection
+        .transaction_with_behavior(TransactionBehavior::Immediate)
+        .map_err(SqliteError::storage)?;
+    crate::migration::require_evidence_v2(&transaction)?;
+    if value.evidence_digest.profile() != DigestProfile::DeletionEvidenceV2 {
+        return Err(evidence_digest_error());
+    }
+    evidence
+        .verify_digest()
+        .map_err(|_| evidence_digest_error())?;
+    let request = load_request(&transaction, &value.namespace_id, &value.delete_request_id)?
         .ok_or_else(|| {
             SqliteError::deletion_invariant(SqliteStorageReason::MissingDeleteRequest)
         })?;
     validate_request_profile(&request)?;
     validate_deletion_evidence(&request, evidence).map_err(deletion_core)?;
 
-    let latest_attempt: i64 = connection
+    let latest_attempt: i64 = transaction
         .query_row(
             "SELECT MAX(attempt_ordinal) FROM radishmemory_deletion_execution_attempts
              WHERE delete_request_id = ?1",
@@ -1271,7 +1290,7 @@ pub(crate) fn store_evidence(
         )
         .map_err(SqliteError::storage)?
         .ok_or_else(|| SqliteError::deletion_invariant(SqliteStorageReason::DeletionExecution))?;
-    let persisted_results = load_execution_results(connection, &request, latest_attempt)?;
+    let persisted_results = load_execution_results(&transaction, &request, latest_attempt)?;
     if persisted_results != value.component_results {
         return Err(SqliteError::deletion_invariant(
             SqliteStorageReason::DeletionPlan,
@@ -1291,24 +1310,18 @@ pub(crate) fn store_evidence(
         ));
     }
 
-    let previous_tip = connection
-        .query_row(
-            "SELECT deletion_evidence_id FROM radishmemory_deletion_evidence
-             WHERE delete_request_id = ?1 ORDER BY execution_ordinal DESC LIMIT 1",
-            params![value.delete_request_id.as_str()],
-            |row| row.get::<_, String>(0),
-        )
-        .optional()
-        .map_err(SqliteError::storage)?;
-    if previous_tip.as_deref() != value.previous_evidence_id.as_ref().map(Identifier::as_str) {
+    let previous_tip =
+        latest_evidence(&transaction, &value.namespace_id, &value.delete_request_id)?;
+    if previous_tip
+        .as_ref()
+        .map(|tip| &tip.params().deletion_evidence_id)
+        != value.previous_evidence_id.as_ref()
+    {
         return Err(SqliteError::deletion_invariant(
             SqliteStorageReason::EvidenceChain,
         ));
     }
 
-    let transaction = connection
-        .transaction_with_behavior(TransactionBehavior::Immediate)
-        .map_err(SqliteError::storage)?;
     transaction
         .execute(
             "INSERT INTO radishmemory_deletion_evidence (
@@ -1330,10 +1343,10 @@ pub(crate) fn store_evidence(
                 value.previous_evidence_id.as_ref().map(Identifier::as_str),
                 value.namespace_id.as_str(),
                 value.device_id.as_str(),
-                overall_status_str(value.overall_status),
+                DeletionOverallStatus::as_str(value.overall_status),
                 value.started_at.original(),
                 value.finished_at.as_ref().map(Timestamp::original),
-                producer_type_str(value.verified_by.producer_type()),
+                ProducerType::as_str(value.verified_by.producer_type()),
                 value.verified_by.producer_id().as_str(),
                 value.verified_by.producer_version().as_str(),
                 value.evidence_digest.algorithm(),
@@ -1342,7 +1355,64 @@ pub(crate) fn store_evidence(
             ],
         )
         .map_err(SqliteError::storage)?;
+    // Digest verification uses the persisted attempt results, including their
+    // original timestamp strings. Component equality alone compares instants.
+    load_evidence(
+        &transaction,
+        &value.namespace_id,
+        &value.deletion_evidence_id,
+    )?
+    .ok_or_else(stored_deletion)?;
     transaction.commit().map_err(SqliteError::storage)
+}
+
+pub(crate) fn latest_evidence(
+    connection: &Connection,
+    namespace: &Identifier,
+    request: &Identifier,
+) -> Result<Option<DeletionEvidence>, SqliteError> {
+    let tip = connection
+        .query_row(
+            "SELECT e.deletion_evidence_id FROM radishmemory_deletion_evidence e
+             JOIN radishmemory_delete_requests r USING (delete_request_id)
+             WHERE e.delete_request_id=?1 AND r.namespace_id=?2 ORDER BY e.execution_ordinal DESC LIMIT 1",
+            params![request.as_str(), namespace.as_str()],
+            |row| row.get::<_, String>(0),
+        )
+        .optional()
+        .map_err(SqliteError::storage)?;
+    tip.map(|id| {
+        load_evidence(connection, namespace, &identifier(id)?)?.ok_or_else(stored_deletion)
+    })
+    .transpose()
+}
+
+pub(crate) fn verify_all_evidence(connection: &Connection) -> Result<(), SqliteError> {
+    let mut statement = connection
+        .prepare(
+            "SELECT namespace_id, deletion_evidence_id FROM radishmemory_deletion_evidence
+         ORDER BY delete_request_id, execution_ordinal",
+        )
+        .map_err(SqliteError::storage)?;
+    let mut rows = statement.query([]).map_err(SqliteError::storage)?;
+    let mut previous: Option<DeletionEvidence> = None;
+    while let Some(row) = rows.next().map_err(SqliteError::storage)? {
+        let namespace = identifier(row.get(0).map_err(SqliteError::storage)?)?;
+        let id = identifier(row.get(1).map_err(SqliteError::storage)?)?;
+        let evidence = load_evidence(connection, &namespace, &id)?.ok_or_else(stored_deletion)?;
+        let expected = previous
+            .as_ref()
+            .map(DeletionEvidence::params)
+            .filter(|tip| tip.delete_request_id == evidence.params().delete_request_id)
+            .map(|tip| &tip.deletion_evidence_id);
+        if evidence.params().previous_evidence_id.as_ref() != expected {
+            return Err(SqliteError::invalid_stored(
+                SqliteStorageReason::EvidenceChain,
+            ));
+        }
+        previous = Some(evidence);
+    }
+    Ok(())
 }
 
 pub(crate) fn load_evidence(
@@ -1358,7 +1428,9 @@ pub(crate) fn load_evidence(
                     verified_by_version, evidence_digest_algorithm, evidence_digest_profile,
                     evidence_digest_value
              FROM radishmemory_deletion_evidence
-             WHERE deletion_evidence_id = ?1 AND namespace_id = ?2",
+             WHERE deletion_evidence_id = ?1 AND delete_request_id IN (
+                 SELECT delete_request_id FROM radishmemory_delete_requests WHERE namespace_id = ?2
+             )",
             params![deletion_evidence_id.as_str(), namespace_id.as_str()],
             |row| {
                 Ok((
@@ -1412,11 +1484,19 @@ pub(crate) fn load_evidence(
             identifier(stored.12)?,
             non_empty_text(stored.13)?,
         ),
-        evidence_digest: digest(&stored.14, &stored.15, &stored.16)?,
+        evidence_digest: Digest::parse(&stored.14, &stored.15, &stored.16)
+            .map_err(|_| evidence_digest_error())?,
     })
     .map_err(deletion_core)?;
     validate_deletion_evidence(&request, &evidence).map_err(deletion_core)?;
+    evidence
+        .verify_digest()
+        .map_err(|_| evidence_digest_error())?;
     Ok(Some(evidence))
+}
+
+fn evidence_digest_error() -> SqliteError {
+    SqliteError::invalid_stored(SqliteStorageReason::EvidenceDigestMismatch)
 }
 
 fn actor_type_str(value: ActorType) -> &'static str {
@@ -1439,15 +1519,6 @@ fn parse_actor_type(value: &str) -> Result<ActorType, SqliteError> {
         "test_fixture" => Ok(ActorType::TestFixture),
         "system" => Ok(ActorType::System),
         _ => Err(stored_deletion()),
-    }
-}
-
-fn producer_type_str(value: ProducerType) -> &'static str {
-    match value {
-        ProducerType::Rule => "rule",
-        ProducerType::Parser => "parser",
-        ProducerType::TestFixture => "test_fixture",
-        ProducerType::System => "system",
     }
 }
 
@@ -1476,21 +1547,6 @@ fn parse_requested_guarantee(value: &str) -> Result<RequestedGuarantee, SqliteEr
     }
 }
 
-pub(crate) fn component_type_str(value: radishmemory_core::DeletionComponentType) -> &'static str {
-    match value {
-        radishmemory_core::DeletionComponentType::SourceBody => "source_body",
-        radishmemory_core::DeletionComponentType::SourceMetadata => "source_metadata",
-        radishmemory_core::DeletionComponentType::SourceFragment => "source_fragment",
-        radishmemory_core::DeletionComponentType::MemoryProposal => "memory_proposal",
-        radishmemory_core::DeletionComponentType::MemoryDecision => "memory_decision",
-        radishmemory_core::DeletionComponentType::MemoryRecord => "memory_record",
-        radishmemory_core::DeletionComponentType::MemoryStateEvent => "memory_state_event",
-        radishmemory_core::DeletionComponentType::FullTextIndex => "full_text_index",
-        radishmemory_core::DeletionComponentType::ContextCache => "context_cache",
-        radishmemory_core::DeletionComponentType::MinimalAudit => "minimal_audit",
-    }
-}
-
 fn parse_component_type(
     value: &str,
 ) -> Result<radishmemory_core::DeletionComponentType, SqliteError> {
@@ -1509,14 +1565,6 @@ fn parse_component_type(
     }
 }
 
-fn required_action_str(value: RequiredAction) -> &'static str {
-    match value {
-        RequiredAction::Delete => "delete",
-        RequiredAction::Redact => "redact",
-        RequiredAction::RetainMinimal => "retain_minimal",
-    }
-}
-
 fn parse_required_action(value: &str) -> Result<RequiredAction, SqliteError> {
     match value {
         "delete" => Ok(RequiredAction::Delete),
@@ -1526,30 +1574,12 @@ fn parse_required_action(value: &str) -> Result<RequiredAction, SqliteError> {
     }
 }
 
-fn component_status_str(value: ComponentStatus) -> &'static str {
-    match value {
-        ComponentStatus::Pending => "pending",
-        ComponentStatus::Succeeded => "succeeded",
-        ComponentStatus::Failed => "failed",
-    }
-}
-
 fn parse_component_status(value: &str) -> Result<ComponentStatus, SqliteError> {
     match value {
         "pending" => Ok(ComponentStatus::Pending),
         "succeeded" => Ok(ComponentStatus::Succeeded),
         "failed" => Ok(ComponentStatus::Failed),
         _ => Err(stored_deletion()),
-    }
-}
-
-fn component_outcome_str(value: ComponentOutcome) -> &'static str {
-    match value {
-        ComponentOutcome::Deleted => "deleted",
-        ComponentOutcome::Redacted => "redacted",
-        ComponentOutcome::RetainedMinimal => "retained_minimal",
-        ComponentOutcome::NotFound => "not_found",
-        ComponentOutcome::NotApplicable => "not_applicable",
     }
 }
 
@@ -1564,15 +1594,6 @@ fn parse_component_outcome(value: &str) -> Result<ComponentOutcome, SqliteError>
     }
 }
 
-fn overall_status_str(value: DeletionOverallStatus) -> &'static str {
-    match value {
-        DeletionOverallStatus::Pending => "pending",
-        DeletionOverallStatus::Partial => "partial",
-        DeletionOverallStatus::Failed => "failed",
-        DeletionOverallStatus::Completed => "completed",
-    }
-}
-
 fn parse_overall_status(value: &str) -> Result<DeletionOverallStatus, SqliteError> {
     match value {
         "pending" => Ok(DeletionOverallStatus::Pending),
@@ -1580,17 +1601,6 @@ fn parse_overall_status(value: &str) -> Result<DeletionOverallStatus, SqliteErro
         "failed" => Ok(DeletionOverallStatus::Failed),
         "completed" => Ok(DeletionOverallStatus::Completed),
         _ => Err(stored_deletion()),
-    }
-}
-
-fn evidence_type_str(value: EvidenceType) -> &'static str {
-    match value {
-        EvidenceType::SourceFragment => "source_fragment",
-        EvidenceType::MemoryProposal => "memory_proposal",
-        EvidenceType::MemoryDecision => "memory_decision",
-        EvidenceType::MemoryRecord => "memory_record",
-        EvidenceType::DeleteRequest => "delete_request",
-        EvidenceType::PolicyBasis => "policy_basis",
     }
 }
 

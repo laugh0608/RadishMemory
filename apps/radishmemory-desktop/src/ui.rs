@@ -41,6 +41,7 @@ enum Confirmation {
     Migrate,
     UpgradeRecall,
     DowngradeRecall,
+    UpgradeDeletionEvidence,
     RebuildPlainRecall,
     Abandon,
     Close,
@@ -394,6 +395,11 @@ impl RadishMemoryApp {
                     }
                 });
             }
+            if self.state.deletion_evidence_upgrade_required
+                && ui.button("Upgrade deletion receipts…").clicked()
+            {
+                action = Some(UiAction::Confirm(Confirmation::UpgradeDeletionEvidence));
+            }
             if self.state.encrypted {
                 ui.horizontal_wrapped(|ui| {
                     if ui.button("Inspect recovery").clicked() { action = Some(UiAction::Command(Command::InspectRecovery)); }
@@ -404,7 +410,7 @@ impl RadishMemoryApp {
                 if !self.state.recovery_known { ui.label("Recovery state is not verified. New mutations are disabled; inspect recovery or reopen after repair."); }
                 if self.state.abandonment_available && !self.state.holds_capture { ui.label("An unfinished capture exists, but its original snapshot is unavailable. It cannot be reconstructed from the selected file. Inspect and explicitly abandon to unblock it."); }
                 for id in &self.state.deletion_requests {
-                    if ui.add_enabled(!self.state.holds_original, egui::Button::new(format!("Continue persisted deletion {}", id.as_str()))).clicked() { action = Some(UiAction::Command(Command::ResumeDelete(id.clone()))); }
+                    if ui.add_enabled(!self.state.holds_original && !self.state.deletion_evidence_upgrade_required, egui::Button::new(format!("Continue persisted deletion {}", id.as_str()))).clicked() { action = Some(UiAction::Command(Command::ResumeDelete(id.clone()))); }
                 }
             }
             if let Some(notice) = &self.notice {
@@ -578,7 +584,7 @@ impl RadishMemoryApp {
                         if ui.button("Export selected version…").clicked() {
                             action = Some(UiAction::Export);
                         }
-                        if ui.add_enabled(can_mutate, egui::Button::new("Delete managed lineage…")).clicked() {
+                        if ui.add_enabled(can_mutate && !self.state.deletion_evidence_upgrade_required, egui::Button::new("Delete managed lineage…")).clicked() {
                             action = Some(UiAction::RequestDelete);
                         }
                     });
@@ -772,8 +778,9 @@ impl RadishMemoryApp {
                 ui.label(match confirmation {
                     Confirmation::Initialize => "Prepare a device-local key checkpoint for this library. This may write the system credential store. An existing missing key is never replaced. Continue with explicit body migration afterward.",
                     Confirmation::Migrate => "Close the current library and migrate or resume its source bodies using the existing key. FTS remains plaintext. Do not delete the key afterward; it is required to reopen encrypted objects.",
-                    Confirmation::UpgradeRecall => "Enable contiguous Chinese phrase matching and rebuild the search index. Earlier clients will refuse this library until you explicitly switch back to legacy search. Source bodies and their encryption mode are unchanged. Encrypted mode reads the existing system key.",
-                    Confirmation::DowngradeRecall => "Rebuild legacy search for earlier clients. Chinese short words may be missed again. This does not restore an old backup or change source bodies, encryption mode, or body-version compatibility. Encrypted mode reads the existing system key.",
+                    Confirmation::UpgradeRecall => "Enable contiguous Chinese phrase matching and rebuild the search index. Earlier clients require legacy search and compatible library formats. Source bodies and their encryption mode are unchanged. Encrypted mode reads the existing system key.",
+                    Confirmation::DowngradeRecall => "Rebuild the legacy search index. Chinese short words may be missed again. This does not restore an old backup or change source bodies, encryption mode, or deletion receipt format. Encrypted mode reads the existing system key.",
+                    Confirmation::UpgradeDeletionEvidence => "Close other apps using this library and keep a restorable backup before upgrading. Earlier versions cannot reopen the upgraded library. Existing deletion requests and receipts are preserved. Encrypted libraries use the existing system key.",
                     Confirmation::RebuildPlainRecall => "Recheck the existing plaintext library and rebuild its search index, source tips and memory projection. The library will reopen only after verification.",
                     Confirmation::Abandon => "Permanently abandon exactly the inspected uncommitted capture. Its original request cannot be replayed afterward. Existing committed sources and unknown files are not targets.",
                     Confirmation::Close => "Closing loses the original request held in memory. An unfinished capture then requires explicit abandonment or the exact original request from elsewhere. Persisted deletion authority can be discovered after restart.",
@@ -788,6 +795,7 @@ impl RadishMemoryApp {
                             Confirmation::Migrate => action = Some(UiAction::Command(Command::Migrate)),
                             Confirmation::UpgradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::HanPhraseV1))),
                             Confirmation::DowngradeRecall => action = Some(UiAction::Command(Command::ChangeRecallProfile(radishmemory_application::RecallProfile::LegacyUnicode61))),
+                            Confirmation::UpgradeDeletionEvidence => action = Some(UiAction::Command(Command::UpgradeDeletionEvidence)),
                             Confirmation::RebuildPlainRecall => action = Some(UiAction::Command(Command::RebuildPlainRecall)),
                             Confirmation::Abandon => action = Some(UiAction::Command(Command::Abandon)),
                             Confirmation::Close | Confirmation::CloseWithDraft => { self.allow_close = true; context.send_viewport_cmd(egui::ViewportCommand::Close); }

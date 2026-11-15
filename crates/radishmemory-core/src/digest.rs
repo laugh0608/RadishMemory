@@ -12,6 +12,7 @@ pub enum DigestProfile {
     FixtureSuiteV1,
     ContextPackV1,
     DeletionEvidenceV1,
+    DeletionEvidenceV2,
 }
 
 impl DigestProfile {
@@ -24,6 +25,7 @@ impl DigestProfile {
             "fixture-suite-v1" => Ok(Self::FixtureSuiteV1),
             "context-pack-v1" => Ok(Self::ContextPackV1),
             "deletion-evidence-v1" => Ok(Self::DeletionEvidenceV1),
+            "deletion-evidence-v2" => Ok(Self::DeletionEvidenceV2),
             _ => Err(CoreError::unsupported_profile()),
         }
     }
@@ -37,6 +39,7 @@ impl DigestProfile {
             Self::FixtureSuiteV1 => "fixture-suite-v1",
             Self::ContextPackV1 => "context-pack-v1",
             Self::DeletionEvidenceV1 => "deletion-evidence-v1",
+            Self::DeletionEvidenceV2 => "deletion-evidence-v2",
         }
     }
 }
@@ -118,7 +121,8 @@ pub fn compute_digest(profile: &str, input: &str) -> Result<Digest, CoreError> {
         DigestProfile::CanonicalJsonV1
         | DigestProfile::FixtureSuiteV1
         | DigestProfile::ContextPackV1
-        | DigestProfile::DeletionEvidenceV1 => {
+        | DigestProfile::DeletionEvidenceV1
+        | DigestProfile::DeletionEvidenceV2 => {
             compute_profiled_canonical_json_digest(DigestProfile::parse(profile)?, input)
         }
     }

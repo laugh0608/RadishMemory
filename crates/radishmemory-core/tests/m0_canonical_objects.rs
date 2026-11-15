@@ -296,6 +296,46 @@ fn deletion_evidence_params() -> DeletionEvidenceParams {
 }
 
 #[test]
+fn full_deletion_receipt_matches_independent_canonical_vector() {
+    let params = deletion_evidence_params();
+    let receipt = DeletionEvidence::seal(DeletionEvidenceParams {
+        deletion_evidence_id: params.deletion_evidence_id,
+        delete_request_id: params.delete_request_id,
+        previous_evidence_id: params.previous_evidence_id,
+        namespace_id: params.namespace_id,
+        device_id: params.device_id,
+        overall_status: params.overall_status,
+        component_results: params.component_results,
+        started_at: params.started_at,
+        finished_at: params.finished_at,
+        verified_by: params.verified_by,
+        evidence_digest: (),
+    })
+    .unwrap();
+    assert_eq!(
+        receipt.params().evidence_digest.profile(),
+        DigestProfile::DeletionEvidenceV2
+    );
+    assert_eq!(
+        receipt.params().evidence_digest.value(),
+        "159475bc6367e4118b36d165ff686863771bfae01c0ed7ad7947d5452ed3a89d"
+    );
+    receipt.verify_digest().unwrap();
+
+    let mut edited = receipt.params().clone();
+    edited.finished_at = Some(timestamp("2026-08-23T08:00:08+00:00"));
+    assert_eq!(edited, *receipt.params());
+    assert_eq!(
+        DeletionEvidence::new(edited)
+            .unwrap()
+            .verify_digest()
+            .unwrap_err()
+            .code(),
+        CoreErrorCode::DigestMismatch
+    );
+}
+
+#[test]
 fn all_nine_canonical_objects_have_frozen_identity_fields() {
     let source = SourceArtifact::new(source_artifact_params()).expect("source must be valid");
     let fragment = SourceFragment::new(source_fragment_params()).expect("fragment must be valid");

@@ -348,6 +348,18 @@ impl LibraryProvider for SyntheticLibraryProvider {
         })
     }
 
+    fn upgrade_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::maintenance::upgrade_deletion_evidence(directory, namespace, device, || {
+            self.load(&slot)
+        })
+    }
+
     fn inspect_library_capture_abandonment(
         &self,
         directory: &crate::ObjectDirectory,

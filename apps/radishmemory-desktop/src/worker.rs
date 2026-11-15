@@ -23,6 +23,7 @@ pub(crate) enum Command {
     CheckPlainRecallRepair,
     RebuildPlainRecall,
     ChangeRecallProfile(RecallProfile),
+    UpgradeDeletionEvidence,
     Refresh,
     Import(FileReadRequest),
     Update(FileReadRequest),
@@ -64,6 +65,7 @@ impl Command {
                 | Self::Rebuild
                 | Self::RebuildPlainRecall
                 | Self::ChangeRecallProfile(_)
+                | Self::UpgradeDeletionEvidence
                 | Self::Import(_)
                 | Self::Update(_)
                 | Self::SaveNote(..)
@@ -106,6 +108,7 @@ pub(crate) struct Snapshot {
     pub capture_completed: bool,
     pub encrypted: bool,
     pub recall_profile: Option<RecallProfile>,
+    pub deletion_evidence_upgrade_required: bool,
     pub plain_repair_available: bool,
     pub plain_repair_checked: bool,
     pub holds_original: bool,
@@ -135,6 +138,7 @@ pub(crate) struct Engine<P: LibraryProvider, F: Fn() -> P> {
     startup: StartupState,
     encrypted: bool,
     recall_profile: Option<RecallProfile>,
+    deletion_evidence_upgrade_required: bool,
     plain_repair_available: bool,
     checked_plain_repair: Option<crate::HostProfile>,
     target: Option<CaptureAbandonmentTarget>,
@@ -157,6 +161,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             startup: StartupState::default(),
             encrypted: false,
             recall_profile: None,
+            deletion_evidence_upgrade_required: false,
             plain_repair_available: false,
             checked_plain_repair: None,
             target: None,
@@ -316,6 +321,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             app_error(error)
         })?;
         self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
+        self.deletion_evidence_upgrade_required = library
+            .deletion_evidence_upgrade_required()
+            .map_err(app_error)?;
         self.controller = Some(LibraryController::from_library(Library::Plain(library))?);
         self.inspect()?;
         self.plain_repair_available = false;
@@ -387,6 +395,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         {
             return Err(recovery_required());
         }
+        if self.deletion_evidence_upgrade_required
+            && matches!(command, Command::Delete | Command::ResumeDelete(_))
+        {
+            return Err(recovery_required());
+        }
         if matches!(
             command,
             Command::AddComparison(_)
@@ -443,6 +456,8 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                     &read_snapshot,
                 ));
                 self.recall_profile = Some(read_snapshot.recall_profile);
+                self.deletion_evidence_upgrade_required =
+                    read_snapshot.deletion_evidence_upgrade_required;
                 self.target = read_snapshot.abandonment_target;
                 self.deletions = read_snapshot.deletion_requests;
                 self.recovery_known = true;
@@ -518,6 +533,9 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                     let library = LocalLibrary::repair_recall(path, ProductionRuntime, config)
                         .map_err(app_error)?;
                     self.recall_profile = Some(library.recall_profile().map_err(app_error)?);
+                    self.deletion_evidence_upgrade_required = library
+                        .deletion_evidence_upgrade_required()
+                        .map_err(app_error)?;
                     self.controller =
                         Some(LibraryController::from_library(Library::Plain(library))?);
                     self.inspect()?;
@@ -529,14 +547,30 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             Command::ChangeRecallProfile(target) => {
                 self.recall_profile = Some(self.controller()?.change_recall_profile(target)?);
                 snapshot.message = Some(match target {
-                    RecallProfile::HanPhraseV1 => "Chinese phrase search enabled. Earlier clients require an explicit switch back to legacy search.".into(),
-                    RecallProfile::LegacyUnicode61 => "Legacy search restored. Chinese short-term recall is limited again; source body mode is unchanged.".into(),
+                    RecallProfile::HanPhraseV1 => "Chinese phrase search enabled. Earlier clients require the legacy search format and a compatible library.".into(),
+                    RecallProfile::LegacyUnicode61 => "Legacy search restored. Chinese short-term recall is limited again. Other library formats are unchanged.".into(),
                 });
+            }
+            Command::UpgradeDeletionEvidence => {
+                if !self.view_valid {
+                    return Err(recovery_required());
+                }
+                self.controller()?
+                    .backend()
+                    .upgrade_deletion_evidence()
+                    .map_err(app_error)?;
+                self.deletion_evidence_upgrade_required = false;
+                snapshot.message = Some(
+                    "Deletion receipts upgraded. Existing receipts and requests were preserved."
+                        .into(),
+                );
             }
             Command::Refresh => {
                 if self.encrypted {
                     let read_snapshot = self.controller()?.refresh_encrypted_snapshot()?;
                     self.recall_profile = Some(read_snapshot.recall_profile);
+                    self.deletion_evidence_upgrade_required =
+                        read_snapshot.deletion_evidence_upgrade_required;
                     self.target = read_snapshot.abandonment_target;
                     self.deletions = read_snapshot.deletion_requests;
                     self.recovery_known = true;
@@ -546,6 +580,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                         .controller()?
                         .backend()
                         .plain_recall_profile()
+                        .map_err(app_error)?;
+                    self.deletion_evidence_upgrade_required = self
+                        .controller()?
+                        .backend()
+                        .plain_evidence_upgrade_required()
                         .map_err(app_error)?;
                     self.inspect()?;
                 }
@@ -724,6 +763,8 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         } else {
             None
         };
+        snapshot.deletion_evidence_upgrade_required =
+            snapshot.view.is_some() && self.deletion_evidence_upgrade_required;
         snapshot.encrypted = self.encrypted;
         snapshot.startup = self.startup;
         snapshot.plain_repair_available = self.plain_repair_available;

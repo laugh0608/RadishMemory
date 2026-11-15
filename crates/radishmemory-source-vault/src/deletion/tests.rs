@@ -318,14 +318,7 @@ fn canonical_evidence_matches_persisted_results_and_round_trips() {
     let req = request(&["legacy-source"], &[]);
     let results = delete(&dir, &req).unwrap();
     let evidence_id = id("evidence-synthetic");
-    let digest = compute_deletion_evidence_digest(
-        &evidence_id,
-        &req.params().delete_request_id,
-        DeletionOverallStatus::Completed,
-        &results,
-    )
-    .unwrap();
-    let evidence = DeletionEvidence::new(DeletionEvidenceParams {
+    let evidence = DeletionEvidence::seal(DeletionEvidenceParams {
         deletion_evidence_id: evidence_id.clone(),
         delete_request_id: req.params().delete_request_id.clone(),
         previous_evidence_id: None,
@@ -340,7 +333,7 @@ fn canonical_evidence_matches_persisted_results_and_round_trips() {
             id("verifier-synthetic"),
             text("1"),
         ),
-        evidence_digest: digest,
+        evidence_digest: (),
     })
     .unwrap();
     store_evidence(&dir, &evidence, || Ok(key())).unwrap();

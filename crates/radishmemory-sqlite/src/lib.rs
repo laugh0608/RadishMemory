@@ -62,6 +62,25 @@ pub struct SqliteDatabase {
 }
 
 impl SqliteDatabase {
+    pub fn deletion_evidence_upgrade_required(&self) -> Result<bool, SqliteError> {
+        Ok(!migration::evidence_v2_enabled(&self.connection)?)
+    }
+
+    /// Upgrade an existing bound plaintext library under its writer lock.
+    pub fn upgrade_deletion_evidence(
+        &mut self,
+        namespace: &radishmemory_core::Identifier,
+    ) -> Result<(), SqliteError> {
+        let tx = self
+            .connection
+            .transaction_with_behavior(TransactionBehavior::Exclusive)
+            .map_err(SqliteError::storage)?;
+        library_format::require_v6(&tx)?;
+        source_vault_key::verify_plaintext_facts(&tx, namespace.as_str())?;
+        migration::upgrade_evidence(&tx, SQLITE_SCHEMA_VERSION)?;
+        tx.commit().map_err(SqliteError::storage)
+    }
+
     /// Opens or creates a database, verifies the runtime, and applies migrations.
     pub fn open(path: impl AsRef<Path>) -> Result<Self, SqliteError> {
         let _cost = read_cost::span(read_cost::Stage::ReaderOpen);

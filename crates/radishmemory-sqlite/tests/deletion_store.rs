@@ -10,10 +10,10 @@ use radishmemory_core::{
     RequestedGuarantee, RequiredAction, RetentionMode, RetentionRule, Sensitivity, SourceArtifact,
     SourceArtifactParams, SourceCapture, SourceCaptureStore, SourceFragment, SourceFragmentParams,
     SourceKind, SourceOriginKind, SourceVault, TimePrecision, Timestamp, UnitInterval, ValidTime,
-    ValidTimeMode, Version, compute_digest, compute_exact_bytes_digest,
+    ValidTimeMode, Version, compute_exact_bytes_digest,
 };
 use radishmemory_file_entry as _;
-use radishmemory_sqlite::SqliteDatabase;
+use radishmemory_sqlite::{SqliteDatabase, SqliteStorageReason};
 use rusqlite::Connection;
 
 mod support;
@@ -302,7 +302,7 @@ fn evidence(
     } else {
         DeletionOverallStatus::Failed
     };
-    DeletionEvidence::new(DeletionEvidenceParams {
+    DeletionEvidence::seal(DeletionEvidenceParams {
         deletion_evidence_id: id(evidence_id),
         delete_request_id: request.params().delete_request_id.clone(),
         previous_evidence_id: previous.map(id),
@@ -313,11 +313,7 @@ fn evidence(
         started_at: timestamp(started_at),
         finished_at: Some(timestamp("2026-08-26T08:02:59Z")),
         verified_by: producer(),
-        evidence_digest: compute_digest(
-            "deletion-evidence-v1",
-            &format!(r#"{{"evidence_id":"{evidence_id}"}}"#),
-        )
-        .expect("evidence digest must compute"),
+        evidence_digest: (),
     })
     .expect("evidence must be valid")
 }
@@ -413,6 +409,30 @@ fn local_purge_closes_recall_executes_all_components_and_chains_idempotent_evide
         first_results
             .iter()
             .all(|result| result.params().status == ComponentStatus::Succeeded)
+    );
+    let mut respelled = first_results.clone();
+    let mut component = respelled[0].params().clone();
+    component.checked_at = timestamp("2026-08-26T08:02:00+00:00");
+    respelled[0] = radishmemory_core::ComponentResult::new(component).unwrap();
+    assert_eq!(respelled, first_results);
+    let error = database
+        .store_deletion_evidence(&evidence(
+            "deletion-evidence-1",
+            &request,
+            None,
+            respelled,
+            "2026-08-26T08:02:00Z",
+        ))
+        .unwrap_err();
+    assert_eq!(
+        error.storage_reason(),
+        Some(SqliteStorageReason::EvidenceDigestMismatch)
+    );
+    assert!(
+        database
+            .load_deletion_evidence(&id("namespace-1"), &id("deletion-evidence-1"))
+            .unwrap()
+            .is_none()
     );
     let first_evidence = evidence(
         "deletion-evidence-1",

@@ -311,9 +311,11 @@ M0 允许 `none → confirmed` 以及 `confirmed → superseded | contradicted |
 | `started_at` | 是 | `Timestamp` |
 | `finished_at` | 条件 | `overall_status` 非 pending 时必须存在 |
 | `verified_by` | 是 | `ProducerRef` |
-| `evidence_digest` | 是 | 不包含被删除正文的 `Digest`；profile 为 `deletion-evidence-v1` |
+| `evidence_digest` | 是 | `Digest`。新回执使用 `deletion-evidence-v2`，兼容读回的历史回执保留 `deletion-evidence-v1` |
 
 每个 `ComponentResult` 必须包含对应 `component_key`、`component_type`、`target_ref`、`required_action`、`target_count`、非负 `processed_count`、`status`、`outcome`、`verification_method` 与 `checked_at`。`status` 为 `pending`、`succeeded` 或 `failed`；`outcome` 为 `deleted`、`redacted`、`retained_minimal`、`not_found` 或 `not_applicable`。`succeeded` 要求 `processed_count = target_count`，且除经验证的 `not_found` 外，outcome 必须分别匹配 `delete → deleted`、`redact → redacted` 或 `retain_minimal → retained_minimal`；集合中任一目标无法复验时整个组件不能成功。失败结果还必须包含稳定 `error_code` 与 `retryable`，其它状态不得携带这两个失败字段。`retained_minimal` 成功结果必须包含指向 `policy_basis` 的 `retention_basis`，其它结果不得携带该字段。错误和依据不得复制正文、密钥或真实路径。
+
+新回执摘要覆盖删除顶层 `evidence_digest` 后的完整 canonical 对象。组件结果按 `component_key` 升序，冻结目标引用沿用闭包顺序，时间保留原 RFC3339 文本，可选字段缺失时省略。SHA-256 输入由 `radishmemory-canonical-json-v1` 编码。旧 v1 按原计划顺序复算历史缩减投影，其完整字段覆盖与 v2 不同。存储细则见[删除回执摘要](../evaluation/m0-fixture-contract.md#摘要-profile)。
 
 每个 DeletionEvidence 都是不可变快照；重试或进展必须创建新证据并引用前一快照。仅当全部计划组件都有唯一结果、必需动作验证成功，且 `retain_minimal` 具有明确保留依据时，`overall_status` 才能为 `completed`。`not_found` 只有在验证对象确实不存在且不会被索引或缓存恢复时才算成功。M0 证据不得扩展成其它设备、服务端或备份已删除的声明。
 

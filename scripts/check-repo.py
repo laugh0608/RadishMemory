@@ -133,6 +133,7 @@ REQUIRED_FILES = (
     "crates/radishmemory-sqlite/src/object_deletion/tests.rs",
     "crates/radishmemory-sqlite/migrations/0011_source_vault_deletion.sql",
     "crates/radishmemory-sqlite/migrations/0012_legacy_body_retirement.sql",
+    "crates/radishmemory-sqlite/migrations/0013_deletion_evidence_v2.sql",
     "crates/radishmemory-sqlite/src/legacy_deletion.rs",
     "crates/radishmemory-source-vault/src/deletion/legacy_tests.rs",
     "docs/implementation/phase1-source-vault-legacy-deletion.md",

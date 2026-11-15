@@ -138,6 +138,19 @@ impl<P: LibraryProvider> EncryptedLibraryLocation<P> {
             })
     }
 
+    /// Explicitly upgrade receipts under the authenticated maintenance session.
+    pub fn upgrade_deletion_evidence(&self) -> Result<(), ApplicationError> {
+        self.provider
+            .upgrade_library_deletion_evidence(
+                &self.directory,
+                self.config.namespace_id.as_str(),
+                self.config.deletion.device_id.as_str(),
+            )
+            .map_err(|error| {
+                ApplicationError::vault(ApplicationOperation::UpgradeDeletionEvidence, error)
+            })
+    }
+
     /// Select pending uncommitted work; selection does not authorize its removal.
     pub fn inspect_capture_abandonment(
         &self,

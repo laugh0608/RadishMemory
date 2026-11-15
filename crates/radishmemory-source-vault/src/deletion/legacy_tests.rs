@@ -251,14 +251,7 @@ fn completed_evidence(
     previous: Option<Identifier>,
 ) -> DeletionEvidence {
     let evidence_id = id(name);
-    let digest = compute_deletion_evidence_digest(
-        &evidence_id,
-        &req.params().delete_request_id,
-        DeletionOverallStatus::Completed,
-        &results,
-    )
-    .unwrap();
-    DeletionEvidence::new(DeletionEvidenceParams {
+    DeletionEvidence::seal(DeletionEvidenceParams {
         deletion_evidence_id: evidence_id,
         delete_request_id: req.params().delete_request_id.clone(),
         previous_evidence_id: previous,
@@ -273,7 +266,7 @@ fn completed_evidence(
             id("verifier-synthetic"),
             text("1"),
         ),
-        evidence_digest: digest,
+        evidence_digest: (),
     })
     .unwrap()
 }

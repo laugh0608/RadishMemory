@@ -59,6 +59,7 @@ impl SourceVaultKeyDatabase {
             migration::apply_pending(&transaction, 0, migration::SQLITE_SCHEMA_VERSION)?;
             crate::recall_profile::replace_schema(&transaction, crate::RecallProfile::HanPhraseV1)?;
             crate::derived_index::rebuild(&transaction)?;
+            migration::upgrade_evidence(&transaction, migration::SQLITE_SCHEMA_VERSION)?;
         }
         let version = if found == 0 { 6 } else { found as u32 };
         migration::verify_schema_definition(&transaction, version)?;

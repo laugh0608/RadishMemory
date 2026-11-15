@@ -171,6 +171,13 @@ pub trait LibraryProvider: sealed::Sealed {
         target: radishmemory_sqlite::RecallProfile,
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError>;
 
+    fn upgrade_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError>;
+
     fn inspect_library_capture_abandonment(
         &self,
         directory: &crate::ObjectDirectory,
@@ -311,6 +318,18 @@ impl LibraryProvider for PlatformKeyProvider {
         target: radishmemory_sqlite::RecallProfile,
     ) -> std::result::Result<crate::VerificationReport, crate::VaultMaintenanceError> {
         self.change_library_recall_profile(directory, namespace, device, target)
+    }
+
+    fn upgrade_library_deletion_evidence(
+        &self,
+        directory: &crate::ObjectDirectory,
+        namespace: &str,
+        device: &str,
+    ) -> std::result::Result<(), crate::VaultMaintenanceError> {
+        let slot = KeySlot::new(namespace, device)?;
+        crate::maintenance::upgrade_deletion_evidence(directory, namespace, device, || {
+            self.load_existing(&slot)
+        })
     }
 
     fn inspect_library_capture_abandonment(

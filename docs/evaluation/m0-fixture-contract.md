@@ -73,7 +73,8 @@ fixture 文件本身可以使用缩进便于评审；所有摘要都对上述 ca
 | `canonical-json-v1` | `radishmemory-canonical-json-v1` 输出 |
 | `fixture-suite-v1` | suite 删除顶层 `suite_digest` 后的 canonical JSON |
 | `context-pack-v1` | ContextPack 删除 `content_digest` 后的 canonical JSON |
-| `deletion-evidence-v1` | DeletionEvidence 删除 `evidence_digest` 后的 canonical JSON |
+| `deletion-evidence-v1` | 旧运行时投影覆盖回执 ID、请求 ID、总状态与按已存计划顺序排列的组件键、处理数及状态。只用于历史回执的兼容复验 |
+| `deletion-evidence-v2` | 完整 DeletionEvidence 删除顶层 `evidence_digest` 后的 canonical JSON。组件结果按 `component_key` 升序，保留已冻结目标顺序和原 RFC3339 时间文本，省略缺失的可选字段 |
 
 任何摘要不匹配、未知 profile 或对包含自身摘要字段的对象计算摘要都必须失败。摘要只证明给定输入一致，不证明内容可信或已授权。
 

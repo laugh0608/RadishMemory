@@ -10,7 +10,7 @@ use radishmemory_core::{
     LocalSearchHit, LocalSearchRequest, MediaType, NonEmptyText, ObjectRef, ProducerRef,
     ProducerType, RequestedGuarantee, RequiredAction, RetentionMode, RetentionRule, Sensitivity,
     SourceCapture, SourceCaptureOutcome, SourceCaptureStore, SourceKind, SourceVault, Timestamp,
-    Version, compute_digest, compute_exact_bytes_digest,
+    Version, compute_exact_bytes_digest,
 };
 use radishmemory_file_entry::{
     FileCapturePlan, FileCaptureReceipt, FileEntryError, FileEntryErrorReason, FileExportRequest,
@@ -211,7 +211,7 @@ fn deletion_evidence(
     request: &DeleteRequest,
     results: Vec<radishmemory_core::ComponentResult>,
 ) -> DeletionEvidence {
-    DeletionEvidence::new(DeletionEvidenceParams {
+    DeletionEvidence::seal(DeletionEvidenceParams {
         deletion_evidence_id: id("deletion-evidence-lineage-1"),
         delete_request_id: request.params().delete_request_id.clone(),
         previous_evidence_id: None,
@@ -222,11 +222,7 @@ fn deletion_evidence(
         started_at: timestamp("2026-08-29T10:01:00Z"),
         finished_at: Some(timestamp("2026-08-29T10:02:00Z")),
         verified_by: producer(ProducerType::TestFixture, "deletion-verifier"),
-        evidence_digest: compute_digest(
-            "deletion-evidence-v1",
-            r#"{"evidence":"synthetic-lineage-1"}"#,
-        )
-        .expect("evidence digest must compute"),
+        evidence_digest: (),
     })
     .expect("deletion evidence must be valid")
 }

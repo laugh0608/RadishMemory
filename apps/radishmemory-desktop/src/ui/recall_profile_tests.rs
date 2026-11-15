@@ -31,6 +31,36 @@ fn visible_label(output: &egui::FullOutput, label: &str) {
 }
 
 #[test]
+fn deletion_receipt_upgrade_requires_confirmation_at_minimum_viewport() {
+    let fixture = Fixture::new();
+    let mut engine = fixture.engine();
+    let mut snapshot = ok(engine.execute(Command::OpenPlain));
+    // The worker and application tests cover storage readiness. Exercise the
+    // old-library snapshot here without changing the test database format.
+    snapshot.deletion_evidence_upgrade_required = true;
+    let mut h = Harness::new();
+    h.viewport_size = egui::vec2(760.0, 520.0);
+    h.results.send(snapshot).unwrap();
+    h.frame(false, vec![]).drop_without_applying_deltas();
+    let button = "Upgrade deletion receipts…";
+    h.click(button).drop_without_applying_deltas();
+    h.frame(false, vec![]).drop_without_applying_deltas();
+    let modal = h.frame(false, vec![]);
+    visible_label(&modal, "Cancel");
+    visible_label(&modal, "Confirm");
+    modal.drop_without_applying_deltas();
+    h.click("Cancel").drop_without_applying_deltas();
+    h.no_command();
+    h.click(button).drop_without_applying_deltas();
+    h.click("Confirm").drop_without_applying_deltas();
+    assert!(matches!(
+        h.commands.try_recv().unwrap(),
+        Command::UpgradeDeletionEvidence
+    ));
+    h.no_command();
+}
+
+#[test]
 fn old_recall_upgrade_and_downgrade_controls_are_reachable_at_minimum_viewport() {
     for encrypted in [false, true] {
         let fixture = Fixture::new();
@@ -74,12 +104,12 @@ fn old_recall_upgrade_and_downgrade_controls_are_reachable_at_minimum_viewport()
             (
                 "Enable Chinese phrase search…",
                 RecallProfile::HanPhraseV1,
-                "Enable contiguous Chinese phrase matching and rebuild the search index. Earlier clients will refuse this library until you explicitly switch back to legacy search. Source bodies and their encryption mode are unchanged. Encrypted mode reads the existing system key.",
+                "Enable contiguous Chinese phrase matching and rebuild the search index. Earlier clients require legacy search and compatible library formats. Source bodies and their encryption mode are unchanged. Encrypted mode reads the existing system key.",
             ),
             (
                 "Use legacy search…",
                 RecallProfile::LegacyUnicode61,
-                "Rebuild legacy search for earlier clients. Chinese short words may be missed again. This does not restore an old backup or change source bodies, encryption mode, or body-version compatibility. Encrypted mode reads the existing system key.",
+                "Rebuild the legacy search index. Chinese short words may be missed again. This does not restore an old backup or change source bodies, encryption mode, or deletion receipt format. Encrypted mode reads the existing system key.",
             ),
         ] {
             let loads = fixture.provider.key_loads();

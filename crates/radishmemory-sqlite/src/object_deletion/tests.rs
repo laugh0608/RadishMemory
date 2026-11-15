@@ -9,6 +9,7 @@ fn setup() -> (EncryptedCaptureDatabase, SourceCapture, DeleteRequest) {
     crate::configure_connection(&connection).unwrap();
     let tx = connection.transaction().unwrap();
     migration::apply_pending(&tx, 0, 9).unwrap();
+    migration::upgrade_evidence(&tx, 9).unwrap();
     tx.execute("INSERT INTO radishmemory_source_vault_key_profile VALUES(1,'namespace-commit-1','device-synthetic','provider-synthetic','key_ready')",[]).unwrap();
     tx.execute(
         "INSERT INTO radishmemory_source_vault_migration VALUES(1,'objects_ready')",

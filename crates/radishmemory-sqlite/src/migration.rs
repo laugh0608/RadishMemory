@@ -146,6 +146,107 @@ const MIGRATIONS: [Migration; 12] = [
     },
 ];
 
+const EVIDENCE_V2: Migration = Migration {
+    version: 13,
+    name: "0013_deletion_evidence_v2",
+    sql: include_str!("../migrations/0013_deletion_evidence_v2.sql"),
+    tables_created: &[],
+};
+
+pub(crate) fn evidence_v2_enabled(connection: &Connection) -> Result<bool, SqliteError> {
+    connection
+        .query_row(
+            "SELECT EXISTS(SELECT 1 FROM radishmemory_schema_migrations
+             WHERE version=?1 AND migration_name=?2 AND canonical_schema_version=?3)",
+            params![EVIDENCE_V2.version, EVIDENCE_V2.name, M0_SCHEMA_VERSION],
+            |row| row.get(0),
+        )
+        .map_err(SqliteError::migration)
+}
+
+pub(crate) fn require_evidence_v2(connection: &Connection) -> Result<(), SqliteError> {
+    if !evidence_v2_enabled(connection)? {
+        return Err(SqliteError::deletion_invariant(
+            crate::SqliteStorageReason::EvidenceUpgradeRequired,
+        ));
+    }
+    Ok(())
+}
+
+pub(crate) fn upgrade_evidence(
+    transaction: &Transaction<'_>,
+    version: u32,
+) -> Result<(), SqliteError> {
+    validate_migration_history(transaction, version)?;
+    crate::deletion_store::verify_all_evidence(transaction)?;
+    if !evidence_v2_enabled(transaction)? {
+        rebuild_evidence_table(transaction)?;
+        record_migration(transaction, &EVIDENCE_V2)?;
+        validate_migration_history(transaction, version)?;
+    }
+    Ok(())
+}
+
+fn rebuild_evidence_table(connection: &Connection) -> Result<(), SqliteError> {
+    connection
+        .execute_batch(EVIDENCE_V2.sql)
+        .map_err(SqliteError::migration)?;
+    connection.execute_batch(
+        "INSERT INTO radishmemory_deletion_evidence_v2 SELECT * FROM radishmemory_deletion_evidence;",
+    ).map_err(SqliteError::migration)?;
+    let matches: bool = connection
+        .query_row(
+            "SELECT NOT EXISTS(SELECT * FROM radishmemory_deletion_evidence
+                           EXCEPT SELECT * FROM radishmemory_deletion_evidence_v2)
+            AND (SELECT COUNT(*) FROM radishmemory_deletion_evidence) =
+                (SELECT COUNT(*) FROM radishmemory_deletion_evidence_v2)",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(SqliteError::migration)?;
+    if !matches {
+        return Err(SqliteError::schema_drift(None));
+    }
+    let mut statement = connection
+        .prepare(
+            "SELECT deletion_evidence_id FROM radishmemory_deletion_evidence
+         ORDER BY execution_ordinal DESC",
+        )
+        .map_err(SqliteError::migration)?;
+    let receipts = statement
+        .query_map([], |row| row.get::<_, String>(0))
+        .map_err(SqliteError::migration)?
+        .collect::<rusqlite::Result<Vec<_>>>()
+        .map_err(SqliteError::migration)?;
+    drop(statement);
+    // The original table's RESTRICT self-reference requires child-first removal.
+    for id in receipts {
+        connection
+            .execute(
+                "DELETE FROM radishmemory_deletion_evidence WHERE deletion_evidence_id=?1",
+                [id],
+            )
+            .map_err(SqliteError::migration)?;
+    }
+    connection
+        .execute_batch(
+            "DROP TABLE radishmemory_deletion_evidence;
+         ALTER TABLE radishmemory_deletion_evidence_v2 RENAME TO radishmemory_deletion_evidence;",
+        )
+        .map_err(SqliteError::migration)?;
+    let clean: bool = connection
+        .query_row(
+            "SELECT NOT EXISTS(SELECT 1 FROM pragma_foreign_key_check)",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(SqliteError::migration)?;
+    if !clean {
+        return Err(SqliteError::schema_drift(None));
+    }
+    Ok(())
+}
+
 pub(crate) fn preflight(connection: &Connection) -> Result<i64, SqliteError> {
     preflight_to(connection, SQLITE_SCHEMA_VERSION)
 }
@@ -187,6 +288,7 @@ pub(crate) fn migrate_from(connection: &mut Connection, found: i64) -> Result<()
     if found == 0 {
         crate::recall_profile::replace_schema(&transaction, crate::RecallProfile::HanPhraseV1)?;
         crate::derived_index::rebuild(&transaction)?;
+        upgrade_evidence(&transaction, SQLITE_SCHEMA_VERSION)?;
     }
     validate_migration_history(&transaction, SQLITE_SCHEMA_VERSION)?;
     transaction.commit().map_err(SqliteError::migration)
@@ -213,22 +315,21 @@ pub(crate) fn apply_pending(
         if migration.version == 6 {
             crate::derived_index::rebuild(transaction)?;
         }
-        let changed = transaction
-            .execute(
-                "INSERT INTO radishmemory_schema_migrations (
-                     version, migration_name, canonical_schema_version
-                 ) VALUES (?1, ?2, ?3)",
-                params![migration.version, migration.name, M0_SCHEMA_VERSION],
-            )
-            .map_err(SqliteError::migration)?;
-        if changed != 1 {
-            return Err(SqliteError::schema_drift(None));
-        }
+        record_migration(transaction, migration)?;
         transaction
             .pragma_update(None, "user_version", migration.version)
             .map_err(SqliteError::migration)?;
     }
 
+    Ok(())
+}
+
+fn record_migration(connection: &Connection, migration: &Migration) -> Result<(), SqliteError> {
+    connection.execute(
+        "INSERT INTO radishmemory_schema_migrations (version, migration_name, canonical_schema_version)
+         VALUES (?1, ?2, ?3)",
+        params![migration.version, migration.name, M0_SCHEMA_VERSION],
+    ).map_err(SqliteError::migration)?;
     Ok(())
 }
 
@@ -261,9 +362,12 @@ fn validate_migration_history(
     let actual = rows
         .collect::<Result<Vec<_>, _>>()
         .map_err(|source| SqliteError::schema_drift(Some(source)))?;
+    let has_evidence_v2 =
+        expected_version >= SQLITE_SCHEMA_VERSION && evidence_v2_enabled(connection)?;
     let expected = MIGRATIONS
         .iter()
         .filter(|migration| migration.version <= expected_version)
+        .chain(has_evidence_v2.then_some(&EVIDENCE_V2))
         .map(|migration| {
             (
                 migration.version,
@@ -278,7 +382,7 @@ fn validate_migration_history(
     }
 
     validate_schema_tables(connection, expected_version)?;
-    verify_schema_definition(connection, expected_version)
+    verify_schema(connection, expected_version, has_evidence_v2)
 }
 
 fn validate_schema_tables(
@@ -325,6 +429,14 @@ pub(crate) fn verify_schema_definition(
     connection: &Connection,
     version: u32,
 ) -> Result<(), SqliteError> {
+    verify_schema(connection, version, evidence_v2_enabled(connection)?)
+}
+
+fn verify_schema(
+    connection: &Connection,
+    version: u32,
+    has_evidence_v2: bool,
+) -> Result<(), SqliteError> {
     let expected = Connection::open_in_memory().map_err(SqliteError::migration)?;
     for migration in MIGRATIONS
         .iter()
@@ -339,6 +451,9 @@ pub(crate) fn verify_schema_definition(
             return Err(SqliteError::schema_drift(None));
         }
         crate::recall_profile::replace_schema(&expected, crate::RecallProfile::HanPhraseV1)?;
+    }
+    if has_evidence_v2 {
+        rebuild_evidence_table(&expected)?;
     }
     fn schema(
         connection: &Connection,
@@ -397,6 +512,7 @@ mod tests {
         let expected = MIGRATIONS
             .iter()
             .filter(|migration| migration.version <= SQLITE_SCHEMA_VERSION)
+            .chain([&EVIDENCE_V2])
             .map(|migration| {
                 (
                     migration.version,
@@ -421,7 +537,78 @@ mod tests {
                 |row| row.get(0),
             )
             .expect("migration metadata must be queryable");
-        assert_eq!(count, i64::from(SQLITE_SCHEMA_VERSION));
+        assert_eq!(count, i64::from(SQLITE_SCHEMA_VERSION) + 1);
+    }
+
+    #[test]
+    fn receipt_upgrade_rolls_back_and_commutes_with_each_body_schema() {
+        let mut before = Connection::open_in_memory().unwrap();
+        let mut after = Connection::open_in_memory().unwrap();
+        for connection in [&mut before, &mut after] {
+            crate::configure_connection(connection).unwrap();
+            apply_reviewed_prefix(connection, SQLITE_SCHEMA_VERSION as usize);
+        }
+        let tx = before.transaction().unwrap();
+        upgrade_evidence(&tx, SQLITE_SCHEMA_VERSION).unwrap();
+        tx.rollback().unwrap();
+        assert_eq!(
+            preflight(&before).unwrap(),
+            i64::from(SQLITE_SCHEMA_VERSION)
+        );
+        assert!(!evidence_v2_enabled(&before).unwrap());
+        let tx = before.transaction().unwrap();
+        upgrade_evidence(&tx, SQLITE_SCHEMA_VERSION).unwrap();
+        tx.commit().unwrap();
+
+        for version in KEY_INITIALIZATION_SCHEMA_VERSION..=LEGACY_DELETION_SCHEMA_VERSION {
+            let tx = before.transaction().unwrap();
+            apply_pending(&tx, i64::from(version - 1), version).unwrap();
+            validate_migration_history(&tx, version).unwrap();
+            assert!(evidence_v2_enabled(&tx).unwrap());
+            tx.commit().unwrap();
+
+            let tx = after.transaction().unwrap();
+            apply_pending(&tx, i64::from(version - 1), version).unwrap();
+            tx.commit().unwrap();
+            let tx = after.transaction().unwrap();
+            upgrade_evidence(&tx, version).unwrap();
+            let ddl = |connection: &Connection| {
+                connection
+                    .query_row(
+                        "SELECT sql FROM sqlite_schema WHERE name='radishmemory_deletion_evidence'",
+                        [],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .unwrap()
+            };
+            assert_eq!(ddl(&before), ddl(&tx));
+            tx.rollback().unwrap();
+            validate_migration_history(&after, version).unwrap();
+        }
+        before
+            .execute(
+                "DELETE FROM radishmemory_schema_migrations WHERE version=13",
+                [],
+            )
+            .unwrap();
+        assert_eq!(
+            preflight_to(&before, LEGACY_DELETION_SCHEMA_VERSION)
+                .unwrap_err()
+                .code(),
+            crate::SqliteErrorCode::SchemaDrift
+        );
+        after
+            .execute(
+                "INSERT INTO radishmemory_schema_migrations VALUES(13,?1,?2)",
+                params![EVIDENCE_V2.name, M0_SCHEMA_VERSION],
+            )
+            .unwrap();
+        assert_eq!(
+            preflight_to(&after, LEGACY_DELETION_SCHEMA_VERSION)
+                .unwrap_err()
+                .code(),
+            crate::SqliteErrorCode::SchemaDrift
+        );
     }
 
     #[test]

@@ -24,6 +24,12 @@ impl EncryptedCaptureDatabase {
     ) -> Result<()> {
         self.verify_facts(sources)?;
         self.validate_delete_identity(request)?;
+        migration::require_evidence_v2(&self.connection)?;
+        deletion_store::latest_evidence(
+            &self.connection,
+            &request.params().namespace_id,
+            &request.params().delete_request_id,
+        )?;
         if let Some(existing) = deletion_store::load_request(
             &self.connection,
             &request.params().namespace_id,
@@ -201,6 +207,7 @@ impl EncryptedCaptureDatabase {
         source_id: &str,
         before_commit: impl FnOnce(&Connection) -> Result<()>,
     ) -> Result<()> {
+        migration::require_evidence_v2(&self.connection)?;
         if !self
             .deletion_objects(request)?
             .iter()

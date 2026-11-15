@@ -6,7 +6,6 @@ use radishmemory_core::{
     ComponentStatus, DeleteRequest, DeleteRequestParams, DeletionEvidence, DeletionEvidenceParams,
     DeletionOverallStatus, EvidenceRef, EvidenceType, LocalDeletionExecution, RequestedGuarantee,
     SourceCapture, SourceCatalog, SourceLineageState, build_local_purge_targets,
-    compute_deletion_evidence_digest,
 };
 use radishmemory_file_entry::{FileCaptureReceipt, FileReadRequest};
 
@@ -285,14 +284,7 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
         } else {
             DeletionOverallStatus::Failed
         };
-        let digest = compute_deletion_evidence_digest(
-            &evidence_id,
-            &request.params().delete_request_id,
-            overall_status,
-            &results,
-        )
-        .map_err(|error| ApplicationError::canonical(operation, error))?;
-        let evidence = DeletionEvidence::new(DeletionEvidenceParams {
+        let evidence = DeletionEvidence::seal(DeletionEvidenceParams {
             deletion_evidence_id: evidence_id,
             delete_request_id: request.params().delete_request_id.clone(),
             previous_evidence_id: previous.map(|e| e.params().deletion_evidence_id.clone()),
@@ -303,7 +295,7 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
             started_at,
             finished_at: Some(finished_at),
             verified_by: config.deletion.verified_by.clone(),
-            evidence_digest: digest,
+            evidence_digest: (),
         })
         .map_err(|error| ApplicationError::canonical(operation, error))?;
         self.location
@@ -318,6 +310,10 @@ impl<R: ApplicationRuntime, P: LibraryProvider> EncryptedLibrary<R, P> {
     ) -> Result<radishmemory_source_vault::VerificationReport, ApplicationError> {
         self.location.verify_library()
     }
+    pub fn upgrade_deletion_evidence(&self) -> Result<(), ApplicationError> {
+        self.location.upgrade_deletion_evidence()
+    }
+
     pub fn change_recall_profile(
         &self,
         target: crate::RecallProfile,

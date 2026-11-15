@@ -8,7 +8,7 @@ use radishmemory_core::{
 use rusqlite::{Connection, Transaction, params};
 
 use crate::deletion_store::{
-    component_type_str, decode_ordered_object_refs, deletion_core, recall_kind, stored_object_ref,
+    decode_ordered_object_refs, deletion_core, recall_kind, stored_object_ref,
 };
 use crate::source_store::non_empty_text;
 use crate::{SqliteError, SqliteStorageReason};
@@ -141,7 +141,7 @@ pub(crate) fn load_execution_closure(
         .map_err(SqliteError::storage)?;
     let rows = statement
         .query_map(
-            params![request_id.as_str(), component_type_str(component_type)],
+            params![request_id.as_str(), component_type.as_str()],
             stored_object_ref,
         )
         .map_err(SqliteError::storage)?

@@ -3,7 +3,7 @@ use radishmemory_core::{
     DeletionComponentType, DeletionEvidence, DeletionEvidenceParams, DeletionOverallStatus,
     DeletionStore, DeletionTarget, DeletionTargetRef, EvidenceRef, EvidenceType,
     FrozenTargetClosure, LocalDeletionExecution, MemoryStore, ObjectRef, RequestedGuarantee,
-    RequiredAction, SourceVault, compute_digest,
+    RequiredAction, SourceVault,
 };
 use radishmemory_sqlite::FixtureDeletionFailure;
 use serde_json::Value;
@@ -306,19 +306,7 @@ pub fn emit_deletion_evidence(
         _ => return Err(invalid_operation("evidence-status-unsupported")),
     };
     let evidence_id = state.stable_id("DeletionEvidence", logical_key)?;
-    let digest_value = serde_json::json!({
-        "component_results": execution.results.iter().map(|result| serde_json::json!({
-            "component_key": result.params().component_key.as_str(),
-            "processed_count": result.params().processed_count,
-            "status": component_status(result.params().status),
-        })).collect::<Vec<_>>(),
-        "deletion_evidence_id": evidence_id.as_str(),
-        "delete_request_id": request.params().delete_request_id.as_str(),
-        "overall_status": overall_status_str(overall_status),
-    });
-    let digest = compute_digest("deletion-evidence-v1", &digest_value.to_string())
-        .map_err(core("deletion-evidence-digest-invalid"))?;
-    let evidence = DeletionEvidence::new(DeletionEvidenceParams {
+    let evidence = DeletionEvidence::seal(DeletionEvidenceParams {
         deletion_evidence_id: evidence_id.clone(),
         delete_request_id: request.params().delete_request_id.clone(),
         previous_evidence_id: None,
@@ -329,7 +317,7 @@ pub fn emit_deletion_evidence(
         started_at: request.params().requested_at.clone(),
         finished_at: Some(request.params().requested_at.clone()),
         verified_by: fixture_producer()?,
-        evidence_digest: digest.clone(),
+        evidence_digest: (),
     })
     .map_err(core("deletion-evidence-invalid"))?;
     state
@@ -337,6 +325,7 @@ pub fn emit_deletion_evidence(
         .database
         .store_deletion_evidence(&evidence)
         .map_err(storage("deletion-evidence-store-failed"))?;
+    let digest = evidence.params().evidence_digest.clone();
     let loaded = state
         .storage
         .database
@@ -382,23 +371,6 @@ pub fn emit_deletion_evidence(
         ),
         ("error-code-preserved", error_preserved),
     ]))
-}
-
-fn component_status(status: ComponentStatus) -> &'static str {
-    match status {
-        ComponentStatus::Pending => "pending",
-        ComponentStatus::Succeeded => "succeeded",
-        ComponentStatus::Failed => "failed",
-    }
-}
-
-fn overall_status_str(status: DeletionOverallStatus) -> &'static str {
-    match status {
-        DeletionOverallStatus::Pending => "pending",
-        DeletionOverallStatus::Partial => "partial",
-        DeletionOverallStatus::Failed => "failed",
-        DeletionOverallStatus::Completed => "completed",
-    }
 }
 
 fn core(detail: &'static str) -> impl FnOnce(radishmemory_core::CoreError) -> RunnerError {
