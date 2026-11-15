@@ -43,6 +43,34 @@
 
 每次读取仍进行全库认证，分页没有降低全库读取成本；201 条合成数据通过不构成大库性能验收，也没有修复宿主目录第 201 条不可访问的 R02 UI 缺口。FTS 仍含完整可读正文。当前 Windows / Linux 新代码、真实 key store 和宿主生命周期未验收；不声明完整加密产品可用。
 
+<a id="q04-single-search-review"></a>
+
+## 2026-11-15 Q04 单次加密检索的认证边界评审
+
+状态：候选方案待所有者审阅。已完成代码边界核对与现有合成回归。拟将单次应用检索的来源筛选、排序和同批命中回源合并为一个固定只读动作，有效范围为显式加密 `EncryptedLibrary::search_sources_filtered`。沿用 [ADR 0008](../adr/0008-phase1-encrypted-source-vault.md#读取导出与派生数据)、[Source Vault 信任边界](../privacy-threat-model.md#阶段-1-加密-source-vault-信任边界)及 [SourceArtifact / SourceFragment](../schema/m0-canonical-schema.md#sourceartifact)。部署与持久格式沿既有契约。
+
+### 代码边界和候选接口
+
+1. `EncryptedLibrary` 继续通过 `with_reader` 持有一条 SQLite exclusive session。schema、namespace、device、provider 和数据库身份通过后才加载既有 key。保留 reader 构造时的完整认证。每个新的检索动作独立打开 reader，锁与 key 在返回、错误或 unwind 时释放。该动作沿用现有一次 provider load，平台内部的 secret 双读和属性校验保持原合同。显式加密打开和刷新原有首尾 key 复验由[快照契约](phase1-source-vault-application.md#生命周期与交付边界)约束。
+2. Application 使用共用逻辑建立 `LocalSearchRequest::for_sources`，保留采集入口、媒体类型、保存时间、敏感度和 `top_k`。同一个 `as_of` 采样用于整个请求。保留时钟、存储打开与请求校验的现有先后顺序。新增的固定入口位于 `LibraryReader`，接受已校验并限制为来源的请求，拒绝包含记忆检索的请求。Source Vault 仅返回可独立持有的最终结果，借用视图与回调留在内部。
+3. 固定入口复用一次 `LibraryReader::read`。进入时由 `authenticate_all` 和 `EncryptedCaptureDatabase::read_view` 校验对象 inventory、canonical、绑定和派生事实。在同一个 `ObjectReadView` 内走既有 `LocalSearch` 实现先筛选再排序，以排序后的 fragment `source_id` 做精确回源。复用现有 `SourceSearchResult::from_resolved`，避免第二套排序、过滤或 lineage 选版。结果顺序与字节范围保持。将回源缺失作为内部结果保留到交付复验后，再返回 `SourceNotFound`，保持原有复验错误优先级。进入或交付复验错误继续保留底层 Source Vault 或 SQLite 分类。合法零命中同样经过交付复验。
+4. 构造完整候选后，在原锁与 key 生命周期内再次认证全库对象和数据库身份及其 canonical / 派生事实。发生晚到损坏、数据库替换、未知对象或失配时丢弃整批结果。Desktop 沿既有错误处理撤下旧视图。明文搜索、其它读入口、导出、快照和写入沿各自现有路径。
+
+### 审阅判断
+
+当前五命中调用包含构造 reader 一轮、初次检索两轮及五次回源各两轮。按上述边界预计变为 **3 轮**，与命中数无关。零命中和权限拒绝后返回空结果仍为 3 轮。减少的是同一动作中间的对象和文件身份观察点。SQLite 会话能排斥遵循锁的写入者。交付复验发现对象损坏、数据库路径身份不符或 inventory 漂移时继续失败关闭。对于在两次检查之间发生且还原的外部变化，观察覆盖随检查点减少。现有实现同样无法证明这种变化一定被捕获。这个差异需要在采用固定入口前明确接受。
+
+`ObjectReadView` 本身只代表已经认证的正文集合和 SQLite 上的查询。把视图或通用回调暴露给 application 会允许在最终复验前观察中间结果，扩大 API 能力。推荐固定来源检索入口，保持业务 API、错误和授权语义。SQLite 锁解决的是遵循锁的并发写入，最终复验也不能撤回已返回给调用方的副本。
+
+### 实施后验证
+
+| 目标 | 复用的回归与新增判据 |
+| --- | --- |
+| 结果和筛选 | Q01 双入口、旧格式与升级、桌面组合筛选、Q04 多版本语料。核对来源次序、source / fragment ID、字节和范围。验证无答案、敏感度拒绝、过期、删除关闭、旧版本、pending capture 和错误 namespace |
+| 交付失败关闭 | 复用 reader 现有 `read_with_check` 测试入口。在同批命中构造后、交付前注入合成对象持久损坏与 Unix 数据库路径替换，断言整批无结果。测试亦覆盖零命中的末次复验、拒绝超出来源范围的请求和密钥失败原分类 |
+| 锁及生命周期 | 复用跨进程 writer probe，在最后一道复验前确认另一进程无法写入，动作退出后可重新读写。每个新搜索动作重新加载 key，故障动作结束后不会复用结果 |
+| 性能 | 复跑两轮 [Q04 冻结预算](../evaluation/phase1-local-library-scale.md#macos-finite-q04-budget)，分别核对首次与组内 p95 均在 1 秒内，认证轮数与各阶段计数可解释，资源及其它操作仍满足既定预算 |
+
 ## 工作区与下一步
 
 本批已在 `dev` 提交为 `8d2c651`，未 push，未运行远程 CI 或启动 GUI / VM / 长期服务。下一步将读取与既有 capture、删除、verify / rebuild 能力接入现有 application service 的显式库打开及操作生命周期；继续沿 ADR 0008 推进 macOS 宿主、真实 Keychain 和集中跨平台验收。
