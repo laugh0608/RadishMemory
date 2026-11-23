@@ -112,7 +112,7 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 
 ### 2026-11-23 macOS 明文旧库删除回执升级操作单
 
-**离线核对已通过。A、B、C 三轮原生窗口待单独授权。** 本批验证用户能取消或明确同意升级，升级后还能核验过去的删除记录，并能为下一次删除生成 v2 回执。[回执实施与历史兼容](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)
+**离线核对与[三轮 macOS 明文原生验收](#macos-plaintext-receipt-result)均已通过。** 本批验证用户能取消或明确同意升级，升级后还能核验过去的删除记录，并能为下一次删除生成 v2 回执。[回执实施与历史兼容](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)
 
 #### 冻结构建与输入
 
@@ -131,11 +131,11 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 2. 经新版 `LocalLibrary::upgrade_deletion_evidence` 显式升级后，同一旧探针返回 `SchemaDrift`（`SQLite schema metadata is inconsistent`）。新版重开后按原 ID 复验 v1 成功。SQLite 的 `user_version` 仍为 6，迁移表新增 `0013_deletion_evidence_v2`。逐列比对原回执、请求、执行 attempt 和组件结果相同，来源和正文相同，完整性与外键检查通过。
 3. 仅在 `offline/` 删除 Gamma 一次。关闭并从快照读回，原 v1 和新增 v2 均通过生产回读与摘要复算。两条均为 `Completed`，各 10 项组件结果。新请求只指向 Gamma，其正文、片段、目录项和相应 FTS 行均已撤下，Alpha 两版的来源与正文逐列一致。离线日志及各次独立快照保存在 `evidence/`。原合成库、只读备份和待原生执行的起始副本已核对摘要。
 
-#### 待执行的原生步骤
+#### 原生步骤与通过判据
 
 预计 15–25 分钟，至多启动三次默认桌面程序，同一时间只开一个常规窗口。写入限于本批 `native/` 的显式格式升级、一次 Gamma 受管删除，以及 `evidence/` 的本地核对快照和记录。Keychain 操作范围为零，遇到系统凭据提示立即交由所有者处理。旧客户端的拒绝证据来自上述只读探针，旧 GUI 和加密库各自另验。
 
-从仓库根进入 `.tmp/2026-11-23-plaintext-receipts/`，先用 `shasum -a 256 SHA256SUMS` 对照本页清单摘要，再运行 `python3 tools/native-window.py check A`。入口会校验冻结件、数据库句柄及副本状态。获本批授权后，每轮用 `python3 tools/native-window.py launch A` 启动，B、C 只替换最后一个字母。入口固定传入 `native/` 的绝对路径及冻结 profile 的 namespace、device。每轮记录界面结果，正常关闭，核对进程退出码 0 和库句柄归零，再从关闭后的库取快照。
+以下命令中的 `python3` 指支持 `hashlib.file_digest` 的解释器，本批使用 Python 3.14.5。从仓库根进入 `.tmp/2026-11-23-plaintext-receipts/`，先用 `shasum -a 256 SHA256SUMS` 对照本页清单摘要，再运行 `python3 tools/native-window.py check A`。入口会校验冻结件、数据库句柄及副本状态。获本批授权后，每轮用 `python3 tools/native-window.py launch A` 启动，B、C 只替换最后一个字母。入口固定传入 `native/` 的绝对路径及冻结 profile 的 namespace、device。每轮记录界面结果，正常关闭，核对进程退出码 0 和库句柄归零，再从关闭后的库取快照。
 
 | 窗口 | 操作 | 通过判据及退出后核对 |
 | --- | --- | --- |
@@ -144,6 +144,22 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 | C · 重开与新删除 | 重开同库，确认升级入口已消失，按标题及 `compgamma` 回源确认目标。只对 `NativeCompare Gamma` 点击 `Delete managed lineage…` 并确认一次。查询 `compgamma`、`compalpha` 并核对 Alpha 历史。 | 界面报告 `Completed` 和 10 项组件结果，Gamma 零命中，Alpha 的当前版和历史版均可回源。退出后运行 `python3 tools/verify-stage.py native deleted`，读回原 v1 与唯一新增的 v2，核对各自摘要、实际目标及对照正文。 |
 
 任一阶段遇到摘要、资料身份、库句柄或预期结果不符，停止后续窗口，保留现场。收尾时复核备份摘要，保留工作副本、快照和本批工具。需要重新开始时，先关闭本批窗口并归档已写入的副本，再以冻结的升级前库和配套 profile 创建新的隔离副本。恢复到升级前副本会回到 Gamma 删除前的状态。
+
+<a id="macos-plaintext-receipt-result"></a>
+
+#### 2026-11-23 原生执行结果
+
+按上述清单在 macOS 27.0.1 ARM64 串行启动三个窗口。首次从图形会话启动 A 时，系统 Python 3.9 在文件摘要预检阶段退出，桌面程序尚未启动。随后显式使用 Python 3.14.5 执行冻结脚本。桌面可执行文件没有 bundle ID，经所有者确认，按各轮持有合成库的 PID 核对可执行路径并通过 macOS 辅助功能操作。每轮都读到了合成库标识及明文正文说明。
+
+| 窗口 | 实际观察 | 关闭后复验 |
+| --- | --- | --- |
+| A · 取消 | 选中 Gamma，确认框说明需退出其他客户端、保留可恢复备份及旧版重开限制。点击 `Cancel` 后升级入口仍在，Gamma 的删除按钮禁用。 | 数据库和 profile 的 SHA-256 均与升级前备份一致。旧探针返回 `Plaintext`，新版按原 ID 读回并复验 Beta 的 v1。 |
+| B · 确认 | 同库重开，点击一次 `Confirm`，界面报告回执已升级、已有请求和回执已保留。升级入口消失，Gamma 的删除按钮可用。 | 正文 `user_version=6`，新增迁移 13。旧版只读探针返回 `SchemaDrift`，新版复验唯一的 Beta v1。原请求、回执、执行记录、组件结果及来源正文与备份逐列一致。 |
+| C · 重开与新删除 | 重开后升级入口已消失。`compgamma` 命中 Gamma v1，在所选条目打开原文并核对 `0..39` 字节后确认一次受管删除。界面报告 `Completed` 和 10 项组件结果。先用 `compalpha` 查询得到命中，再查 `compgamma` 得到零结果，随后 `compalpha` 再次命中。Alpha 当前 v2 的 33 字节与历史 v1 的 1406 字节均可回源，v1 两页覆盖 `0..1158` 和 `1158..1406`。 | 界面显示的新回执 ID 与落盘 v2 相同。原 v1 和新增 v2 均通过生产回读与摘要复算，各有 10 项成功组件结果。新请求只指向 Gamma。其正文、片段、目录项及对应 FTS 行均已撤下，Alpha 两版来源及正文与备份一致。完整性检查通过，外键异常为零。 |
+
+新回执为 `deletion-evidence-4d7e0ffa6a0a3ced6841e4e7ef8310bc`，v2 摘要为 `f1638355ab5354cadc15fc88c53465023a17eba799eae9bab53f4448610581d5`。原 Beta v1 摘要保持冻结值。三轮 GUI 均正常退出 0，每次重开前及末轮退出后均确认库句柄归零。过程中出现过中文输入法候选面板，提交英文原词后在搜索框核对实际值。未观察到凭据提示，本批没有采集 Keychain 调用计数。
+
+本机 `evidence/native-session/` 保留各轮窗口的控件状态，三次退出后的数据库快照与复验结果分别在 `evidence/native-legacy-57snh26z/`、`evidence/native-upgraded-qhkxll0_/`、`evidence/native-deleted-_v1un_7a/`。冻结清单和升级前备份复核通过。结论限于默认明文 v6 路径。加密旧库升级、已持久化原请求的恢复及旧版 GUI 的实际表现仍各自待验。
 
 <a id="source-vault-closeout"></a>
 
@@ -157,7 +173,7 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 | pending 原请求关闭 Cancel / Confirm、失败后的重试 / 放弃 | 影响捕获 / 删除的原请求一致性，不能只凭自然 busy 或正常退出放行 | 对所选原请求状态核验保留、取消关闭、确认关闭、重开后的真实状态；沿既有合成 / 权限故障证据补有限原生缺口，不伪造持久 checkpoint |
 | capture publish / commit、删除 execution / evidence 中断 | 迁移、捕获和删除真相必须成立；原回调错误不是真实崩溃 / 掉电证明 | 对原 SF 和引擎 / 协调器场景逐项核对已有证据与未实现处；发现本批不变量缺口即阻塞。难以安全构造的物理中断保留独立限制，不新加生产故障接口或直接改业务 SQL |
 | 精确同帧关闭及事件竞争 | 已有 headless UI / worker 回归，自然 busy 原生只覆盖其实际窗口 | 按[原有限检查点](phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)区分自动化判据与原生限制；不重复追求不可稳定构造的同帧观察，也不据此关闭完整 P1-S05 |
-| evidence_digest 复算与历史兼容 | [v2 实现](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)覆盖新回执全字段复验、旧回执原投影复验、显式表升级和原请求恢复 | [明文旧库操作单](#macos-plaintext-receipt-upgrade)已复核旧版只读探针拒绝升级后的格式。macOS 实际升级窗口、系统凭据和旧应用重开按原生范围单独验收。以前已观察到的实际删除证据按原场景保留 |
+| evidence_digest 复算与历史兼容 | [v2 实现](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)覆盖新回执全字段复验、旧回执原投影复验、显式表升级和原请求恢复 | [macOS 明文旧库原生结果](#macos-plaintext-receipt-result)覆盖取消、显式升级、重开和新删除。旧版拒绝已由只读格式探针复核。加密库升级、真实凭据、原请求恢复及旧版 GUI 重开按各自原生范围验收 |
 | Windows / Linux 新字体、中文格式和新增 UI 流程 | 不作为本次 macOS 有限结果的前置；仍阻塞相应平台支持及完整验收 | 以实际支持目标和固定输入准备新平台批次；旧两轮正常 provider / GUI 不能代签新功能。VM 仍全机串行 |
 | M01 身份与重复提示诊断 | 独立诊断继续暂停，不作为正常资料路径的默认前置；若当前候选出现阻断交互的问题，转为具名阻塞 | 先复核源码漂移、绑定与独立冻结范围，再按新操作单授权；不重签、不改 ACL / key、不复用旧授权，副本结果不代表原 app 授权 |
 | Q07 保护范围、Q08 恢复 / 迁移 | 本批须准确显示对象加密与 FTS 可读正文、历史明文 / 导出及 key 丢失边界；完整资产恢复未交付 | 不声明全库加密、取证级删除或备份可恢复；新的恢复能力需独立合同。PDF / 图片仍等待原 P1-S03b 至 P1-S05 门槛，不由有限批次放行 |
