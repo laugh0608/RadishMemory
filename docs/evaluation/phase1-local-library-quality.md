@@ -159,7 +159,7 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 
 新回执为 `deletion-evidence-4d7e0ffa6a0a3ced6841e4e7ef8310bc`，v2 摘要为 `f1638355ab5354cadc15fc88c53465023a17eba799eae9bab53f4448610581d5`。原 Beta v1 摘要保持冻结值。三轮 GUI 均正常退出 0，每次重开前及末轮退出后均确认库句柄归零。过程中出现过中文输入法候选面板，提交英文原词后在搜索框核对实际值。未观察到凭据提示，本批没有采集 Keychain 调用计数。
 
-本机 `evidence/native-session/` 保留各轮窗口的控件状态，三次退出后的数据库快照与复验结果分别在 `evidence/native-legacy-57snh26z/`、`evidence/native-upgraded-qhkxll0_/`、`evidence/native-deleted-_v1un_7a/`。冻结清单和升级前备份复核通过。结论限于默认明文 v6 路径。加密旧库升级、已持久化原请求的恢复及旧版 GUI 的实际表现仍各自待验。
+本机 `evidence/native-session/` 保留各轮窗口的控件状态，三次退出后的数据库快照与复验结果分别在 `evidence/native-legacy-57snh26z/`、`evidence/native-upgraded-qhkxll0_/`、`evidence/native-deleted-_v1un_7a/`。冻结清单和升级前备份复核通过。结论限于默认明文 v6 路径。加密旧库的后续结果见[独立原生记录](phase1-encrypted-receipt-upgrade-native.md#native-result)。
 
 <a id="source-vault-closeout"></a>
 
@@ -173,7 +173,7 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 | pending 原请求关闭 Cancel / Confirm、失败后的重试 / 放弃 | 影响捕获 / 删除的原请求一致性，不能只凭自然 busy 或正常退出放行 | 对所选原请求状态核验保留、取消关闭、确认关闭、重开后的真实状态；沿既有合成 / 权限故障证据补有限原生缺口，不伪造持久 checkpoint |
 | capture publish / commit、删除 execution / evidence 中断 | 迁移、捕获和删除真相必须成立；原回调错误不是真实崩溃 / 掉电证明 | 对原 SF 和引擎 / 协调器场景逐项核对已有证据与未实现处；发现本批不变量缺口即阻塞。难以安全构造的物理中断保留独立限制，不新加生产故障接口或直接改业务 SQL |
 | 精确同帧关闭及事件竞争 | 已有 headless UI / worker 回归，自然 busy 原生只覆盖其实际窗口 | 按[原有限检查点](phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)区分自动化判据与原生限制；不重复追求不可稳定构造的同帧观察，也不据此关闭完整 P1-S05 |
-| evidence_digest 复算与历史兼容 | [v2 实现](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)覆盖新回执全字段复验、旧回执原投影复验、显式表升级和原请求恢复 | [macOS 明文旧库原生结果](#macos-plaintext-receipt-result)覆盖取消、显式升级、重开和新删除。旧版拒绝已由只读格式探针复核。[加密旧库升级操作单](phase1-encrypted-receipt-upgrade-native.md)已核对凭据绑定，[原请求恢复操作单](phase1-encrypted-deletion-recovery-native.md)已离线复验两种持久化检查点。两单的真实凭据交互、原生升级与恢复及旧版 GUI 重开各自待验 |
+| evidence_digest 复算与历史兼容 | [v2 实现](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)覆盖新回执全字段复验、旧回执原投影复验、显式表升级和原请求恢复 | [macOS 明文旧库原生结果](#macos-plaintext-receipt-result)覆盖取消、显式升级、重开和新删除。旧版拒绝已由只读格式探针复核。[加密旧库原生结果](phase1-encrypted-receipt-upgrade-native.md#native-result)覆盖既有凭据下的取消、确认、历史 v1 复验和重开回源。[原请求恢复操作单](phase1-encrypted-deletion-recovery-native.md)已离线复验两种持久化检查点。原请求原生恢复及旧版 GUI 重开仍待验 |
 | Windows / Linux 新字体、中文格式和新增 UI 流程 | 不作为本次 macOS 有限结果的前置；仍阻塞相应平台支持及完整验收 | 以实际支持目标和固定输入准备新平台批次；旧两轮正常 provider / GUI 不能代签新功能。VM 仍全机串行 |
 | M01 身份与重复提示诊断 | 独立诊断继续暂停，不作为正常资料路径的默认前置；若当前候选出现阻断交互的问题，转为具名阻塞 | 先复核源码漂移、绑定与独立冻结范围，再按新操作单授权；不重签、不改 ACL / key、不复用旧授权，副本结果不代表原 app 授权 |
 | Q07 保护范围、Q08 恢复 / 迁移 | 本批须准确显示对象加密与 FTS 可读正文、历史明文 / 导出及 key 丢失边界；完整资产恢复未交付 | 不声明全库加密、取证级删除或备份可恢复；新的恢复能力需独立合同。PDF / 图片仍等待原 P1-S03b 至 P1-S05 门槛，不由有限批次放行 |
