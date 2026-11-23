@@ -22,7 +22,8 @@
 | Migrate / resume bodies | 确认后使用既有 key 执行 v7 / v8 正文迁移或精确恢复；之后须显式打开 |
 | Verify / Rebuild recall | 分别只核对或显式重建派生行；加密打开失败时仍使用同一目录 / profile，拒绝修复损坏 canonical 或自动推进 pending |
 | Refresh | 显式加密刷新合并目录 / 版本与恢复状态并首尾复验 key；不重复先前写入，写后刷新仍为原独立路径 |
-| Enable Chinese phrase search / Use legacy search | 健康库确认后验真并原子重建派生格式；旧客户端拒绝新格式，显式降级后才恢复兼容；busy / pending / 无有效视图禁用，不作为损坏修复入口 |
+| Enable Chinese phrase search / Use legacy search | 健康库确认后验真并原子重建派生格式。旧客户端拒绝新版检索格式，降级检索后还须支持库内回执表格式才能重开。busy、pending 或无有效视图时禁用 |
+| Upgrade deletion receipts… | 用户确认后升级已有库的回执表，保留历史回执、删除请求与执行记录。加密库使用既有凭据。升级后旧版格式探针报告 `SchemaDrift` |
 
 界面明确显示 FTS 仍保留完整可读正文。初始化、迁移、检索格式切换及放弃的确认窗口冻结其它操作，避免用户确认期间当前选择或 inspected target 被 UI 动作替换。各 coordinator 仍在实际执行时复验状态，抵抗其它进程在确认期间改变目录。
 
@@ -32,7 +33,11 @@ worker 在执行 capture 前持有完整 canonical `SourceCapture`。写入失�
 
 原 capture 仅在内存持有，不新增明文磁盘 journal，不承诺在崩溃后保留快照或清零全部进程内副本。关闭时若仍有原请求，提示快照损失与后续限制；busy 时取消关闭请求，等待真实执行结果；2026-10-13 起，关闭帧开始仍 busy 时，即使本帧收到结果也取消这次关闭，保留结果供查看，用户须再次请求关闭。同一帧多次布局保持取消决定，接受关闭后不再派发同帧动作。进程被强制结束不具备该交互保证。重启后已提交 capture 通过目录恢复；未提交 capture 若快照丢失，不允许从 fingerprint 或外部文件伪造精确重试。认证 inspect 只保留不透明 target，明确确认后才调用精确放弃；没有自动清理。未知文件、已提交来源和其它库 target 不在其授权范围。
 
-删除失败保留原 `DeleteRequest`。`unfinished_delete_requests` 在认证 reader 内发现同 namespace 尚无 Completed 最新 evidence 的原授权，包括执行已结束但 evidence 尚未落盘的窗口。它先复验最新 evidence 的身份、时间、计划和真实持久化组件结果，再排除 Completed；不只过滤 status 字段。重启恢复按钮绑定原 request ID 和完整请求，明确继续时不重新规划当前选择的闭包。完成、失败或部分状态按真实 evidence 展示；外部原件、导出、备份和其它设备不属于本地回执。
+backend 执行删除失败时保留收到的原 `DeleteRequest`。`unfinished_delete_requests` 在认证 reader 内发现同 namespace 尚无 Completed 最新 evidence 的原授权，包括执行已结束但 evidence 尚未落盘的窗口。它先复验最新 evidence 的身份、时间、计划和真实持久化组件结果，再排除 Completed；不只过滤 status 字段。重启恢复按钮绑定原 request ID 和完整请求，明确继续时不重新规划当前选择的闭包。完成、失败或部分状态按真实 evidence 展示；外部原件、导出、备份和其它设备不属于本地回执。
+
+用户点击 `Continue persisted deletion` 后，`ResumeDelete` 将选定的原请求交给 backend。若在取得回执前失败，worker 撤回资料视图、旧待办和可放弃目标，将恢复状态标为未知。已经交给 backend 的请求仍可由用户显式重试。即使此时没有回执，该次执行和组件结果也可能已经落盘。
+
+取得回执后，worker 先刷新目录，再检查恢复状态，各步独立认证。首次读取失败即结束本次动作。若回执已为 `Completed` 而刷新失败，界面保留该回执并单独显示刷新错误，用户可用 `Refresh` 重新查看资料和待办。此行为对应 `ResumeDelete` 的桌面回归，真实 Keychain 下的结果按 B 单取证。[实现回归与原生续跑判据](../evaluation/phase1-encrypted-deletion-recovery-native.md#native-resume-after-fix)
 
 若请求在 durable mutation 之前因永久冲突失败，worker 仍保留它以免误判提交边界；用户可以保留窗口进行诊断，或确认关闭以丢弃内存副本。只有实际存在并认证通过的 uncommitted capture 才出现精确放弃入口，不能凭 UI 错误状态合成删除授权。
 

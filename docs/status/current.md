@@ -1,6 +1,6 @@
 # RadishMemory 当前状态
 
-2026-11-15 的 macOS 启动引导、加密库 201 条分页、双入口 760×520 组合筛选与版本对照、加密手输、v6 派生修复失败与恢复，均通过选定的原生验收。固定中文语料通过独立人工复核，Q04 有限离线预算已通过。本地删除回执 v2 已完成实现和合成回归。完整结果及限制见[当日日终记录](2026-11-15-macos-library.md)。
+macOS 明文和加密旧库的删除回执升级已通过选定的原生验收。桌面继续已持久化删除请求时的凭据拒绝已通过合成回归，新包的原生回读和恢复仍待验。[11 月 23 日日终记录](2026-11-23-deletion-recovery.md)汇总当天提交与证据。[11 月 15 日记录](2026-11-15-macos-library.md)保留启动引导、分页、文本资料操作、派生修复、中文找回与 Q04 离线预算的验收范围。
 
 [专题地图](../topics.md#当前五项后续的任务与验收链)只路由职责与证据；实际执行顺序只见[后续事项](#后续事项)。历史接续与验证流水已移至[11 月 10 日归档](2026-11-10-planning-history.md)，11 月 8 日的提交与原生结果见[日终记录](2026-11-08-desktop-library.md)，不能将旧授权或旧环境状态当作当前事实。
 
@@ -85,7 +85,7 @@ pwsh ./scripts/check-repo.ps1
 
 1. **启动引导限定原生验收已通过。** 2026-11-15 的六个隔离窗口覆盖四类启动状态。LLDB 在唯一一次显式打开前的密钥观测点零命中，正对照只查询指定合成条目属性并返回 `KeyMissing`。详见[启动引导原生记录](../evaluation/phase1-local-library-quality.md#desktop-startup-native)。
 2. **收口所选用户路径与质量。** [加密库 201 条分页](../evaluation/phase1-local-library-quality.md#macos-catalog-and-min-viewport)、[加密手输和双入口 760×520 筛选 / 对照](../evaluation/phase1-local-library-quality.md#macos-text-workflows-760)、[固定中文语料的独立人工复核与双入口对账](../evaluation/phase1-chinese-retrieval-baseline.md#q01-human-recheck)已通过所选范围。按[有限批次清单](../evaluation/phase1-local-library-quality.md#finite-desktop-closeout)继续适用的失败与恢复分支。[Q03 明文修复遇读锁失败与恢复](../evaluation/phase1-local-library-quality.md#q03-plaintext-busy-native)已通过。[此前的有资料凭据失败试验](../evaluation/phase1-local-library-quality.md#macos-populated-key-failure-attempt)中，显式加密打开和刷新均正常返回。真实凭据失败后的关闭状态与正文撤回保留待验。待处理原请求的取消关闭、确认关闭和重开继续待验。[删除回执 v2](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)已接入明文、加密与 M0 runner 的生成和回读。已有库经显式升级后允许继续写入回执。[明文旧库](../evaluation/phase1-local-library-quality.md#macos-plaintext-receipt-result)与[使用既有系统凭据的加密旧库](../evaluation/phase1-encrypted-receipt-upgrade-native.md#native-result)均已通过各自的 macOS 原生升级验收。影响本批的安全 / 一致性缺口仍阻塞对应能力，缺口归属见[Source Vault 整合清单](../evaluation/phase1-local-library-quality.md#source-vault-closeout)。
-   - **B2 首错停止已修复，原生恢复待验。** worker 在继续原请求失败时撤回旧待办，在回执提交后保留真实结果并报告刷新错误。合成回归覆盖六个加载位置的拒绝及写后取消。已从封存检查点另建副本，核对完整原请求、1 次执行、10 项结果和零回执。下一步先在新包完成一次使用指定 Keychain 测试项的原生只读回读，通过后按顺序执行 B1 升级、B2 继续和 B3 重开。遇到系统提示即交还所有者。见[续跑操作单](../evaluation/phase1-encrypted-deletion-recovery-native.md#native-resume-after-fix)。
+   - **下次先做 B 单的一次原生只读回读。** 新包已从封存检查点建立独立副本，离线核对为同一原请求、1 次执行、10 项组件结果、零回执。先复核新包清单，由所有者授权新回读程序在该副本上读取指定的既有 Keychain 测试项，再执行一次 `tools/readback native-readback`。遇系统提示即交还所有者。程序成功退出且数据库与对象摘要仍等于封存件后，再确认窗口执行范围，串行进行 B1 升级、B2 继续原请求、B3 重开。若回读被拒绝，保留现场并结束本轮。[续跑操作单](../evaluation/phase1-encrypted-deletion-recovery-native.md#native-resume-after-fix)
    - 有资料的凭据失败、正文撤回和待处理请求关闭沿原清单各自保留。待处理请求的原生关闭暂缓，只有能安全抵达且具备明确判据的窗口才列入操作单。
 3. **本批离线性能预算已通过。** [单次加密检索复测](../evaluation/phase1-local-library-scale.md#macos-q04-single-search-retest)中，两轮各 610 条样本及正确性检查通过。加密五命中首次和 p95 均低于 1 秒，全库认证为 3 轮，其它选定操作及资源也达到预算。201 条目录继续作为功能证据。GUI、真实 Keychain、1000 / 10000 来源、物理冷缓存和全平台成本按各自范围验收。
 4. **技术出口后作价值复核。** 围绕一个长期项目，用合成 / 已明确授权的材料观察是否找得到、引用是否可回源、更正 / 删除后是否仍误用旧内容及维护负担；未经授权不使用真实个人资料。摘录式 mock 不代表真实模型问答。在同一项目中先保存一项决定，隔一段时间按线索找回并核对原文，再更正或删除后重复查询。误引旧内容或无法回源就修复对应步骤；通过后由实际使用者指出下一项影响使用的缺口，再选一个能力。无法安全构造的原生失败写明受限操作与复验触发条件。平台扩展与完整 P1-S05 保持各自出口，不由本次价值复核代签。

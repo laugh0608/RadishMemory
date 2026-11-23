@@ -118,6 +118,8 @@ M0 fixture 契约与嵌入 runner 通过，覆盖 12 场景、86 操作及 12 �
 
 本轮 `CARGO_NET_OFFLINE=true ./scripts/check-repo.sh` 通过，467 项 Rust 测试通过、14 项忽略。M0 fixture 契约通过 12 场景、86 操作和 12 个指标 gate。`git diff --check` 通过。
 
+11 月 23 日在 macOS 分别验证了两种旧库取消、确认升级和重开。明文 v6 保留原 v1，随后一次新删除写出可复算的 v2。加密 v11 使用既有 Keychain 测试项，重开后原 v1 可复算，活动来源可逐字节回读。两库的正文 `user_version` 均保持原值。已执行但尚无回执的加密请求另有封存检查点，其原生恢复待验。[明文升级结果](../evaluation/phase1-local-library-quality.md#macos-plaintext-receipt-result)、[加密升级结果](../evaluation/phase1-encrypted-receipt-upgrade-native.md#native-result)、[原请求恢复](../evaluation/phase1-encrypted-deletion-recovery-native.md#native-checkpoint-result)
+
 ## 工作区与下一步
 
 上一批 verify / rebuild 已提交为 `543108e`，本批删除实现随后提交为 `292ed57`；未 push、未执行远程 CI、未启动 GUI / VM / 长期服务。测试清理各自的隔离库、子进程和端口，保留常规编译缓存与任务专用临时验证日志，不纳入 Git。当批下一步为历史未完成删除请求的迁移兼容，再按当前状态评估并推进 application 数据流接入，再完成 macOS 宿主、真实 Keychain 及集中跨平台验收；具体系统操作须另行授权。
