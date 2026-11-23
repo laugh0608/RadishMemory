@@ -108,6 +108,43 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 
 本轮确认当前构建的正常加密打开和刷新。无可见提示无法定位真实凭据失败阶段。操作级取消以及入口和末轮归因保留待验，密文认证失败沿用既有原生证据。
 
+<a id="macos-plaintext-receipt-upgrade"></a>
+
+### 2026-11-23 macOS 明文旧库删除回执升级操作单
+
+**离线核对已通过。A、B、C 三轮原生窗口待单独授权。** 本批验证用户能取消或明确同意升级，升级后还能核验过去的删除记录，并能为下一次删除生成 v2 回执。[回执实施与历史兼容](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)
+
+#### 冻结构建与输入
+
+本机批次目录为仓库下的 `.tmp/2026-11-23-plaintext-receipts/`。其中 `baseline/` 保存只读备份，`native/` 是原生窗口唯一操作库，`offline/` 供离线预演使用。三份库和 profile 均为独立文件。来源是[11 月 8 日资料对照验收](#macos-原生资料对照与版本回源)退出后留下的合成库。Beta 有一条历史删除回执，Gamma v1 是本次唯一删除目标，Alpha v1、v2 留作对照。
+
+| 冻结项 | 身份或 SHA-256 |
+| --- | --- |
+| 默认桌面构建 | `0f49ec1c089311296828ea985f250c2297223c4a`，macOS 27.0.1 ARM64、Rust 1.96.0，`cargo build --offline --locked -p radishmemory-desktop`，debug 产物 `e7ebd2b5e8aab96cba08ecdaf2e51e54f145e1cafa8d756ec1784040f1d82ecc` |
+| 升级前 `library.sqlite3` 与 `host-profile-v1.txt` | 数据库 `38779fca14d2e3cbcc6a365fb3acb237759161cd51e1d68ca61ed65505a6cfe9`，profile `35866b79f2f8705d08746d6ab9e04200b13997696250718bec389045b7bd2d7c` |
+| Beta 历史 v1 | `deletion-evidence-d5e94b10b52ff23ebb99050b3cb33d8d`，回执摘要 `6097afa211b1dfb17343a72d07753f93314ff544c466282ca881d4dc156c74ba`，`Completed`，10 项组件结果 |
+| 本机清单 `SHA256SUMS` | `14fe1b0efac68687915b4a16a0b97834862ff744fac2e40b6059d5586a8d16a6`，覆盖备份、桌面产物、两版核对工具、源码和窗口入口 |
+
+#### 已执行的离线核对
+
+1. 从回执升级实现的父提交 `0ce38b0` 离线构建 SQLite adapter，用其生产 `inspect_library_format` 只读检查升级前副本，返回 `Plaintext`。新版应用读回并复验 Beta 的 v1。此时请求删除 Gamma 返回 `EvidenceUpgradeRequired`，整库 SHA-256 与请求前相同。
+2. 经新版 `LocalLibrary::upgrade_deletion_evidence` 显式升级后，同一旧探针返回 `SchemaDrift`（`SQLite schema metadata is inconsistent`）。新版重开后按原 ID 复验 v1 成功。SQLite 的 `user_version` 仍为 6，迁移表新增 `0013_deletion_evidence_v2`。逐列比对原回执、请求、执行 attempt 和组件结果相同，来源和正文相同，完整性与外键检查通过。
+3. 仅在 `offline/` 删除 Gamma 一次。关闭并从快照读回，原 v1 和新增 v2 均通过生产回读与摘要复算。两条均为 `Completed`，各 10 项组件结果。新请求只指向 Gamma，其正文、片段、目录项和相应 FTS 行均已撤下，Alpha 两版的来源与正文逐列一致。离线日志及各次独立快照保存在 `evidence/`。原合成库、只读备份和待原生执行的起始副本已核对摘要。
+
+#### 待执行的原生步骤
+
+预计 15–25 分钟，至多启动三次默认桌面程序，同一时间只开一个常规窗口。写入限于本批 `native/` 的显式格式升级、一次 Gamma 受管删除，以及 `evidence/` 的本地核对快照和记录。Keychain 操作范围为零，遇到系统凭据提示立即交由所有者处理。旧客户端的拒绝证据来自上述只读探针，旧 GUI 和加密库各自另验。
+
+从仓库根进入 `.tmp/2026-11-23-plaintext-receipts/`，先用 `shasum -a 256 SHA256SUMS` 对照本页清单摘要，再运行 `python3 tools/native-window.py check A`。入口会校验冻结件、数据库句柄及副本状态。获本批授权后，每轮用 `python3 tools/native-window.py launch A` 启动，B、C 只替换最后一个字母。入口固定传入 `native/` 的绝对路径及冻结 profile 的 namespace、device。每轮记录界面结果，正常关闭，核对进程退出码 0 和库句柄归零，再从关闭后的库取快照。
+
+| 窗口 | 操作 | 通过判据及退出后核对 |
+| --- | --- | --- |
+| A · 取消 | 确认窗口显示 `Synthetic acceptance library` 及明文说明，选中 `NativeCompare Gamma`。打开 `Upgrade deletion receipts…`，核对停写、备份、旧客户端限制的提示，点击 `Cancel`。 | 升级入口仍在，已选 Gamma 的 `Delete managed lineage…` 禁用。退出后运行 `python3 tools/verify-stage.py native legacy`，整库与 profile 的摘要等于备份，Beta 的 v1 仍可复验。 |
+| B · 确认 | 重开同库，选中 Gamma，再次打开升级提示，点击一次 `Confirm`。 | 显示 `Deletion receipts upgraded. Existing receipts and requests were preserved.`，升级入口消失。退出后运行 `python3 tools/verify-stage.py native upgraded`，旧探针拒绝，新版重开快照读回原 v1，仍只有一条回执。 |
+| C · 重开与新删除 | 重开同库，确认升级入口已消失，按标题及 `compgamma` 回源确认目标。只对 `NativeCompare Gamma` 点击 `Delete managed lineage…` 并确认一次。查询 `compgamma`、`compalpha` 并核对 Alpha 历史。 | 界面报告 `Completed` 和 10 项组件结果，Gamma 零命中，Alpha 的当前版和历史版均可回源。退出后运行 `python3 tools/verify-stage.py native deleted`，读回原 v1 与唯一新增的 v2，核对各自摘要、实际目标及对照正文。 |
+
+任一阶段遇到摘要、资料身份、库句柄或预期结果不符，停止后续窗口，保留现场。收尾时复核备份摘要，保留工作副本、快照和本批工具。需要重新开始时，先关闭本批窗口并归档已写入的副本，再以冻结的升级前库和配套 profile 创建新的隔离副本。恢复到升级前副本会回到 Gamma 删除前的状态。
+
 <a id="source-vault-closeout"></a>
 
 ### Source Vault 剩余缺口与阻塞关系
@@ -120,7 +157,7 @@ A 无 Keychain 操作。B 仅对绑定合成账户执行一次属性预检、一
 | pending 原请求关闭 Cancel / Confirm、失败后的重试 / 放弃 | 影响捕获 / 删除的原请求一致性，不能只凭自然 busy 或正常退出放行 | 对所选原请求状态核验保留、取消关闭、确认关闭、重开后的真实状态；沿既有合成 / 权限故障证据补有限原生缺口，不伪造持久 checkpoint |
 | capture publish / commit、删除 execution / evidence 中断 | 迁移、捕获和删除真相必须成立；原回调错误不是真实崩溃 / 掉电证明 | 对原 SF 和引擎 / 协调器场景逐项核对已有证据与未实现处；发现本批不变量缺口即阻塞。难以安全构造的物理中断保留独立限制，不新加生产故障接口或直接改业务 SQL |
 | 精确同帧关闭及事件竞争 | 已有 headless UI / worker 回归，自然 busy 原生只覆盖其实际窗口 | 按[原有限检查点](phase1-source-vault-native-acceptance.md#2026-10-13-剩余宿主窗口核对与有限检查点)区分自动化判据与原生限制；不重复追求不可稳定构造的同帧观察，也不据此关闭完整 P1-S05 |
-| evidence_digest 复算与历史兼容 | [v2 实现](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)覆盖新回执全字段复验、旧回执原投影复验、显式表升级和原请求恢复 | 旧版本拒绝重开升级后的库。macOS 实际升级窗口、系统凭据和旧应用重开按原生范围单独验收。以前已观察到的实际删除证据按原场景保留 |
+| evidence_digest 复算与历史兼容 | [v2 实现](../implementation/phase1-source-vault-deletion.md#deletion-evidence-v2-implementation)覆盖新回执全字段复验、旧回执原投影复验、显式表升级和原请求恢复 | [明文旧库操作单](#macos-plaintext-receipt-upgrade)已复核旧版只读探针拒绝升级后的格式。macOS 实际升级窗口、系统凭据和旧应用重开按原生范围单独验收。以前已观察到的实际删除证据按原场景保留 |
 | Windows / Linux 新字体、中文格式和新增 UI 流程 | 不作为本次 macOS 有限结果的前置；仍阻塞相应平台支持及完整验收 | 以实际支持目标和固定输入准备新平台批次；旧两轮正常 provider / GUI 不能代签新功能。VM 仍全机串行 |
 | M01 身份与重复提示诊断 | 独立诊断继续暂停，不作为正常资料路径的默认前置；若当前候选出现阻断交互的问题，转为具名阻塞 | 先复核源码漂移、绑定与独立冻结范围，再按新操作单授权；不重签、不改 ACL / key、不复用旧授权，副本结果不代表原 app 授权 |
 | Q07 保护范围、Q08 恢复 / 迁移 | 本批须准确显示对象加密与 FTS 可读正文、历史明文 / 导出及 key 丢失边界；完整资产恢复未交付 | 不声明全库加密、取证级删除或备份可恢复；新的恢复能力需独立合同。PDF / 图片仍等待原 P1-S03b 至 P1-S05 门槛，不由有限批次放行 |
