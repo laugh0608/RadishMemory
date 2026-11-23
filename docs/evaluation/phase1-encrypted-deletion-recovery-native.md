@@ -1,10 +1,10 @@
 # macOS 加密库已持久化删除请求恢复操作单
 
-2026-11-23 已用旧版应用在两个独立合成库生成删除检查点，并以新版分别重开、升级和恢复。原生执行另待本单授权。本单选择“执行已落盘、回执尚未写入”这一窗口，验证即使对象已经退役，桌面仍能发现原授权、保留第一次执行并补齐唯一回执。预计 25–35 分钟，至多一次旧版准备程序、三个串行桌面窗口。
+2026-11-23 已用旧版应用在两个独立合成库生成删除检查点，并以新版分别重开、升级和恢复。本单已获授权。旧版准备程序写入检查点后，在重开回读原请求时退出。现场已封存，B1 至 B3 暂停。见[本次执行记录](#native-checkpoint-result)。本单选择“执行已落盘、回执尚未写入”这一窗口，验证即使对象已经退役，桌面仍能发现原授权、保留第一次执行并补齐唯一回执。预计 25–35 分钟，至多一次旧版准备程序、三个串行桌面窗口。
 
 ## 哪一个请求可以恢复
 
-11 月 8 日原生库内的 `delete-request-ccb92f39e6887637a0687d47ba4fb48d` 已完成，两个来源版本均为 `deleted`，原 v1 摘要为 `11eb8e7c6bfb31aeccec046d2fd3c94e479863e15dfa34b7423fd3d87ffbfa59`，计划摘要为 `972cf31517725d76874e6b978280ad56db172c03ce1ef13b4ceb3ee0b4f58bbf`。它是本单的历史对照。原生工作副本目前只有该终态请求，待恢复请求须在授权后由旧版应用真实持久化。
+11 月 8 日原生库内的 `delete-request-ccb92f39e6887637a0687d47ba4fb48d` 已完成，两个来源版本均为 `deleted`，原 v1 摘要为 `11eb8e7c6bfb31aeccec046d2fd3c94e479863e15dfa34b7423fd3d87ffbfa59`，计划摘要为 `972cf31517725d76874e6b978280ad56db172c03ce1ef13b4ceb3ee0b4f58bbf`。它是本单的历史对照。升级前备份内只有该终态请求。本次旧版应用在独立原生工作副本持久化了第二条请求，ID 和计划摘要见[检查点记录](#native-checkpoint-result)。
 
 离线预演使用同批历史合成 provider 的库。旧版应用通过正常删除入口落盘，新进程按 ID 取回的 `DeleteRequest` 与最初的类型化请求相等，待办列表也只返回它。两个案例均指向该合成库的 `source-3e851f2d0cf69d50e683e5bf9739853c`。表中数量依次为**该请求的执行次数 / 组件结果数 / 回执数**。
 
@@ -27,7 +27,7 @@
 | 计划生成的原请求 | `delete-request-20261123-native-executed`，精确目标为上述一个版本，`local_purge`、当前设备、10 个组件。首次持久化后记录其真实 `plan_digest`，后续逐行对比冻结计划。两条离线计划摘要各属自己的请求。 |
 | 既有系统测试项 | macOS 当前用户默认 Keychain，generic password；service `io.github.laugh0608.RadishMemory.source-vault`，account `v1:namespace-fd8a565292ea95da4c8b5327c012e8ac:device-91e620ecae3c041942722e24c5de8235`，label `RadishMemory Source Vault key`。SQLite 绑定 provider `radishmemory.platform-key-store/1`、`key_ready`。 |
 
-执行授权包含精确条目的一次属性核对，旧程序与桌面通过现有 key 认证打开，以及对 `B/native-seed/` 中指定合成来源的受管删除、显式格式升级与原请求恢复。该副本中的目标会退出目录和索引，对象文件会退役。原库与备份仍保留该对象。系统条目的实时存在性和可访问性待测；遇系统提示即停，由所有者处理。创建或替换凭据、常许、修改 ACL、锁定 Keychain 或更改系统时钟均超出本单。
+执行授权包含精确条目的一次属性核对，旧程序与桌面通过现有 key 认证打开，以及对 `B/native-seed/` 中指定合成来源的受管删除、显式格式升级与原请求恢复。该副本中的目标会退出目录和索引，对象文件会退役。原库与备份仍保留该对象。执行前核对指定条目。遇系统提示即停，由所有者处理。创建或替换凭据、常许、修改 ACL、锁定 Keychain 或更改系统时钟均超出本单。
 
 ## 执行顺序与退出判据
 
@@ -42,3 +42,23 @@
 | B3 终态重开 | `python3 tools/window.py B3`。核对继续入口消失，检索 `mockcontrol` 零命中。 | `python3 tools/check.py B-reopened`。与 B2 完成时的文件摘要相同。目标无对象、活动引用、片段、目录 tip 或 FTS 行，仍只有上述两条回执。 |
 
 任一步身份、授权、计数、字段、系统状态或回执复算异常即停止并保留最后成功的快照。收尾复核 B 清单，保留工作副本、具名检查点与证据。需要重做时从 `B/baseline/` 另建起始副本，或从 `evidence/B-persisted/` 另建具有原请求的副本，并重新固定路径与清单。直接重跑准备程序可能产生冲突，已持久化的请求应按原 ID 恢复。仅在 worker 内存持有原件时才会出现的关闭确认、意图中断的真实平台时序、旧版 GUI 与其它平台另验。
+
+<a id="native-checkpoint-result"></a>
+
+## 2026-11-23 原生检查点与重复凭据提示
+
+B 清单的 27 项冻结文件复核通过，一次 Keychain 属性查询匹配指定的唯一测试项。旧版准备程序对合成工作副本执行了一次。所有者报告多次输入密码后仍收到提示，选择拒绝后提示消失。程序以退出码 101 结束。最后的错误位于准备程序 `checkpoint.rs` 第 26 行：预期的结束时间错误已触发，库也已重开，随后 `get_delete_request` 返回 `DeleteSourceLineage / SourceVaultFailure`。程序输出只保留这层错误，无法据此判定 macOS 的底层状态码。原生的请求相等性断言及后续待办列表断言没有完成。
+
+| 拒绝后核对的内容 | 关闭后的实际状态 |
+| --- | --- |
+| 删除目标与原请求 | `B/native-seed/` 中唯一目标为 `deleted`，对象文件、活动引用、片段、目录 tip 和 FTS 行均为零。请求 `delete-request-20261123-native-executed` 只指向冻结的合成来源，计划摘要为 `8c52d71f20cf9677293541bc7db6c27df5f70aa17b57492f5c6ca1c9ae9b218c`。 |
+| 执行与回执 | 该请求有第 1 次执行及 10 项组件结果，回执为零。另一条历史请求的 v1 仍为 `Completed`，摘要复算通过。SQLite 仍为 v11，尚无迁移 13。 |
+| 备份与现场 | 确认库句柄归零，运行 `python3 tools/check.py B-checkpoint` 通过。封存副本在 `evidence/B-persisted/`，数据库 SHA-256 为 `2a52f387a3b9e0bb68cad5db6c24120fd072d28182bf86619ba45fc7c25d7d37`。升级前的 `B/baseline/` 仍保留目标对象。 |
+
+在封存件的另一个副本上，旧版 SQLite adapter 按 ID 读回了请求，待办列表恰好只有这条，且最新回执为空。核对前后数据库摘要一致。这个存储层复验没有访问 Keychain。原程序中需要真实凭据的 application 回读仍记录为失败。详见本机 `evidence/B-native-session/stored-request-h4mgr72y/result.txt`。
+
+在独立合成副本上用 `SyntheticLibraryProvider::key_loads()` 按步骤计数。旧版准备程序走完共需 12 次逻辑密钥加载，至删除执行及预期的 `ClockFailed` 为 8 次，重开后为 9 次，回读原请求成功后应为第 10 次，末尾另有两次核验。旧 macOS provider 的 `load_existing` 在一次成功加载中执行 `Read1` 和 `Read2`，两次均查询密钥值以比较一致性。完整成功路径按源码推算涉及 24 次密钥值查询。本次系统弹窗次数未采集。
+
+同一桌面构建的 worker 也在单独的合成检查点副本上逐动作计数。B1 显式打开及升级分别为 2 和 1 次加载，B2 显式打开及继续原请求分别为 2 和 6 次，B3 显式打开及搜索分别为 2 和 1 次。三次启动各为零次。这些是合成 provider 的调用计数，B1 至 B3 的真实窗口均未启动。两份计数日志保存在本机 `evidence/B-native-session/` 下的 `offline-reads-taoecxmu/counts.txt` 和 `worker-loads-pr07fpfl/counts.txt`。
+
+本次原生验收停在准备程序的重开回读。后续从已封存请求评估能否合并重复读取，同时保留凭据变化或拒绝时的失败关闭。用合成 provider 验证调整和剩余交互量后，再决定是否恢复原生窗口。保留检查点，避免重跑删除或重复输入密码。
