@@ -3,6 +3,7 @@ use radishmemory_source_vault::{SourceVaultErrorCode, acceptance::SyntheticLibra
 use std::fs;
 use std::sync::atomic::{AtomicU64, Ordering};
 
+mod deletion_recovery;
 #[cfg(unix)]
 mod filesystem_failures;
 #[cfg(target_os = "macos")]

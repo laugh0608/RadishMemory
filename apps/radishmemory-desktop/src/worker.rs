@@ -209,10 +209,13 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
     fn controller(&mut self) -> Result<&mut LibraryController<ProductionRuntime, P>, DesktopError> {
         self.controller.as_mut().ok_or_else(recovery_required)
     }
-    fn inspect(&mut self) -> Result<(), DesktopError> {
+    fn invalidate_recovery(&mut self) {
         self.recovery_known = false;
         self.target = None;
         self.deletions.clear();
+    }
+    fn inspect(&mut self) -> Result<(), DesktopError> {
+        self.invalidate_recovery();
         if let Some(controller) = &mut self.controller {
             let (target, deletions) = controller.backend().recovery()?;
             self.target = target;
@@ -356,9 +359,7 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         if matches!(command, Command::OpenEncrypted)
             || (self.encrypted && matches!(command, Command::Refresh))
         {
-            self.recovery_known = false;
-            self.target = None;
-            self.deletions.clear();
+            self.invalidate_recovery();
         }
         if let Some(location) = &self.acceptance {
             location.load_profile()?;
@@ -375,12 +376,10 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
             if self.held() {
                 return Err(recovery_required());
             }
-            self.recovery_known = false;
+            self.invalidate_recovery();
             if !matches!(command, Command::StartLibrary | Command::OpenPlain) {
                 self.plain_repair_available = false;
             }
-            self.target = None;
-            self.deletions.clear();
         }
         if matches!(
             command,
@@ -691,8 +690,14 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                     .find(|r| r.params().delete_request_id == id)
                     .cloned()
                     .ok_or_else(recovery_required)?;
-                snapshot.last_deletion = self.controller()?.backend().resume_delete(request)?;
-                self.refresh_after_write(snapshot);
+                let controller = self.controller()?;
+                snapshot.last_deletion = controller.backend().resume_delete(request)?;
+                // The receipt is committed. A failed catalog read must end this action
+                // before recovery discovery can ask for credentials again.
+                snapshot.refresh_error = controller
+                    .refresh_sources()
+                    .and_then(|()| self.inspect())
+                    .err();
             }
             Command::InspectRecovery => self.inspect()?,
             Command::Abandon => {
@@ -731,15 +736,14 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
                 | Command::ResumeDelete(_)
                 | Command::Abandon
         );
+        let resuming_deletion = matches!(command, Command::ResumeDelete(_));
         let mut snapshot = Snapshot::default();
         snapshot.error = self.perform(command, &mut snapshot).err();
         if snapshot.error.is_some() {
             self.view_valid = false;
             if self.observation {
                 self.controller = None;
-                self.target = None;
-                self.deletions.clear();
-                self.recovery_known = false;
+                self.invalidate_recovery();
             }
         } else if refreshes {
             self.view_valid = true;
@@ -757,6 +761,11 @@ impl<P: LibraryProvider, F: Fn() -> P> Engine<P, F> {
         if snapshot.refresh_error.is_some() {
             snapshot.view = None;
             self.view_valid = false;
+        }
+        if resuming_deletion && !self.view_valid {
+            // Discovery is stale on failure, including a rejected pinned profile.
+            // The backend retains any original request that still needs an explicit retry.
+            self.invalidate_recovery();
         }
         snapshot.recall_profile = if snapshot.view.is_some() {
             self.recall_profile
