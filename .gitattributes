@@ -30,3 +30,8 @@
 
 # Preserve reviewed upstream bytes; provenance hashes guard this exact vendor copy.
 third_party/vendor/windows-native-keyring-store-1.1.0/** -text whitespace=-blank-at-eol,-blank-at-eof,cr-at-eol
+
+# Repository asset checks
+/.radish-assets/* text eol=lf
+/.githooks/pre-commit text eol=lf
+/.githooks/pre-push text eol=lf
